@@ -4,7 +4,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Company Login Dashboard",
+  title: "MagniGroup-X Login",
   description: "Internal officer management system",
 };
 
