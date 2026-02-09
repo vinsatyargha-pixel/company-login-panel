@@ -54,6 +54,84 @@ export default function LoginPage() {
   <div>MAGNI</div>
   <div className="text-3xl mt-2">GROUP-X</div>
 </h1>
+// TAMBAHKAN DI DALAM RETURN, SEBELUM <form> (atau sesuaikan dengan preferensi)
+<div className="flex justify-center mb-8">
+  {/* Logo X Tech SVG */}
+  <svg 
+    width="140" 
+    height="140" 
+    viewBox="0 0 120 120" 
+    className="filter drop-shadow-lg"
+    style={{ filter: 'drop-shadow(0 0 15px rgba(234, 179, 8, 0.7))' }}
+  >
+    <defs>
+      <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#fbbf24" stopOpacity="1" />
+        <stop offset="100%" stopColor="#f59e0b" stopOpacity="1" />
+      </linearGradient>
+      <linearGradient id="grad2" x1="0%" y1="100%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#fbbf24" stopOpacity="1" />
+        <stop offset="100%" stopColor="#d97706" stopOpacity="1" />
+      </linearGradient>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+    
+    {/* Outer ring */}
+    <circle 
+      cx="60" 
+      cy="60" 
+      r="55" 
+      fill="none" 
+      stroke="url(#grad1)" 
+      strokeWidth="3" 
+      strokeDasharray="8 4" 
+    />
+    
+    {/* X Shape */}
+    <path 
+      d="M40,40 L80,80" 
+      stroke="url(#grad2)" 
+      strokeWidth="6" 
+      strokeLinecap="round" 
+      filter="url(#glow)" 
+    />
+    <path 
+      d="M80,40 L40,80" 
+      stroke="url(#grad2)" 
+      strokeWidth="6" 
+      strokeLinecap="round" 
+      filter="url(#glow)" 
+    />
+    
+    {/* Dotted tech circles */}
+    <circle 
+      cx="60" 
+      cy="60" 
+      r="20" 
+      fill="none" 
+      stroke="#fbbf24" 
+      strokeWidth="2" 
+      strokeDasharray="2 4" 
+      opacity="0.7" 
+    />
+    <circle 
+      cx="60" 
+      cy="60" 
+      r="35" 
+      fill="none" 
+      stroke="#f59e0b" 
+      strokeWidth="1" 
+      strokeDasharray="1 3" 
+      opacity="0.5" 
+    />
+  </svg>
+</div>
         <form onSubmit={handleLogin}>
           <div className="mb-6">
             <label className="block text-sm font-medium mb-3 text-yellow-300">
