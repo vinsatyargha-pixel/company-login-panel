@@ -51,7 +51,7 @@ export default function LoginPage() {
       {/* Form */}
       <div className="bg-gray-900 p-10 rounded-2xl shadow-2xl w-96 border-2 border-yellow-500 relative z-10 backdrop-blur-sm bg-opacity-80">
         <h1 className="text-4xl font-bold mb-8 text-center text-yellow-500 tracking-wider">
-          MagniGroup-X
+          Magni Group-X
         </h1>
         <form onSubmit={handleLogin}>
           <div className="mb-6">
