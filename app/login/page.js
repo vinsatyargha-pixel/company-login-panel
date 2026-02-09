@@ -36,7 +36,7 @@ export default function LoginPage() {
         className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50"
         style={{
           backgroundImage:
-            "url('https://images6.alphacoders.com/133/1331540.png')",
+            "url('https://wall.alphacoders.com/big.php?i=607307')",
         }}
       ></div>
 
