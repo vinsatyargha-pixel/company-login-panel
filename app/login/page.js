@@ -48,46 +48,66 @@ export default function LoginPage() {
         <div className="text-[400px] font-bold text-yellow-500 opacity-15">X</div>
       </div>
 
-      {/* Logo X Tech - DITAMBAHKAN */}
-      <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
+      {/* Logo X Tech Keren - Shutterstock Style */}
+      <div className="absolute top-10 left-1/2 transform -translate-x-1/2 z-20">
         <svg 
-          width="100" 
-          height="100" 
-          viewBox="0 0 120 120"
+          width="140" 
+          height="140" 
+          viewBox="0 0 200 200"
           className="filter drop-shadow-lg"
-          style={{ filter: 'drop-shadow(0 0 15px rgba(234, 179, 8, 0.7))' }}
+          style={{ filter: 'drop-shadow(0 0 25px rgba(0, 100, 255, 0.9))' }}
         >
           <defs>
-            <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#fbbf24" stopOpacity="1" />
-              <stop offset="100%" stopColor="#f59e0b" stopOpacity="1" />
+            <linearGradient id="xGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#0011FF" />
+              <stop offset="50%" stopColor="#0088FF" />
+              <stop offset="100%" stopColor="#00CCFF" />
             </linearGradient>
-            <linearGradient id="grad2" x1="0%" y1="100%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#fbbf24" stopOpacity="1" />
-              <stop offset="100%" stopColor="#d97706" stopOpacity="1" />
+            <linearGradient id="xGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#00CCFF" />
+              <stop offset="50%" stopColor="#0088FF" />
+              <stop offset="100%" stopColor="#0011FF" />
             </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="3" result="blur" />
+            <filter id="neonGlow">
+              <feGaussianBlur stdDeviation="4" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
                 <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
+            <filter id="innerShadow">
+              <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#00AAFF" floodOpacity="0.8" />
+            </filter>
           </defs>
-          <circle cx="60" cy="60" r="55" fill="none" stroke="url(#grad1)" strokeWidth="3" strokeDasharray="8 4" />
-          <path d="M40,40 L80,80" stroke="url(#grad2)" strokeWidth="6" strokeLinecap="round" filter="url(#glow)" />
-          <path d="M80,40 L40,80" stroke="url(#grad2)" strokeWidth="6" strokeLinecap="round" filter="url(#glow)" />
-          <circle cx="60" cy="60" r="20" fill="none" stroke="#fbbf24" strokeWidth="2" strokeDasharray="2 4" opacity="0.7" />
-          <circle cx="60" cy="60" r="35" fill="none" stroke="#f59e0b" strokeWidth="1" strokeDasharray="1 3" opacity="0.5" />
+
+          {/* Outer Glow Ring */}
+          <circle cx="100" cy="100" r="85" fill="none" stroke="url(#xGrad1)" strokeWidth="4" strokeDasharray="10 5" opacity="0.8" filter="url(#neonGlow)" />
+          
+          {/* Main X - Tebal dan solid */}
+          <path d="M60,60 L140,140" stroke="url(#xGrad1)" strokeWidth="16" strokeLinecap="round" filter="url(#neonGlow)" />
+          <path d="M140,60 L60,140" stroke="url(#xGrad2)" strokeWidth="16" strokeLinecap="round" filter="url(#neonGlow)" />
+          
+          {/* Inner X - Tipis untuk depth */}
+          <path d="M70,70 L130,130" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
+          <path d="M130,70 L70,130" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
+          
+          {/* Tech dots pattern */}
+          <circle cx="100" cy="100" r="50" fill="none" stroke="#00FFFF" strokeWidth="2" strokeDasharray="3 6" opacity="0.5" filter="url(#innerShadow)" />
+          <circle cx="100" cy="100" r="70" fill="none" stroke="#0088FF" strokeWidth="1" strokeDasharray="2 4" opacity="0.4" />
+          
+          {/* Center glowing dot */}
+          <circle cx="100" cy="100" r="8" fill="url(#xGrad1)" filter="url(#neonGlow)" />
+          <circle cx="100" cy="100" r="4" fill="#FFFFFF" />
         </svg>
       </div>
 
       {/* Form Container */}
-      <div className="bg-gray-900 p-10 rounded-2xl shadow-2xl w-96 border-2 border-yellow-500 relative z-10 backdrop-blur-sm bg-opacity-80">
-        <h1 className="text-4xl font-bold mb-6 text-center text-yellow-500 tracking-wider">
+      <div className="bg-gray-900 p-10 rounded-2xl shadow-2xl w-96 border-2 border-yellow-500 relative z-10 backdrop-blur-sm bg-opacity-80 mt-24">
+        <h1 className="text-4xl font-bold mb-4 text-center text-yellow-500 tracking-wider">
           <div>MAGNI</div>
           <div className="text-3xl mt-2">GROUP-X</div>
         </h1>
+        <p className="text-center text-blue-300 mb-8 text-sm tracking-widest">ARTIFICIAL TECHNOLOGY PANEL</p>
 
         <form onSubmit={handleLogin}>
           <div className="mb-6">
@@ -123,10 +143,10 @@ export default function LoginPage() {
           )}
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-black font-bold py-3 rounded-lg transition duration-200 disabled:opacity-50 shadow-lg"
+            className="w-full bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-black font-bold py-3 rounded-lg transition duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl hover:scale-[1.02]"
             disabled={loading}
           >
-            {loading ? "🔄 MEMPROSES..." : "🔐 LOGIN"}
+            {loading ? "🔄 MEMPROSES..." : "🔐 ACCESS PANEL"}
           </button>
         </form>
         <p className="mt-6 text-sm text-gray-300 text-center">
