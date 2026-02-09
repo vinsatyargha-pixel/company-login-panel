@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-black">
       {/* Background */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
         style={{
           backgroundImage:
             "url('https://images.pexels.com/photos/6654177/pexels-photo-6654177.jpeg')",
@@ -43,12 +43,20 @@ export default function LoginPage() {
       {/* Form Container */}
       <div className="bg-gradient-to-br from-gray-900 to-black p-10 rounded-2xl shadow-2xl w-96 border border-gray-700 relative z-10">
         
-        {/* Logo X PERSIS seperti XevasTech */}
+        {/* Logo X dengan BUNTAK/JET EFFECT */}
         <div className="flex justify-center mb-8">
           <div className="relative">
-            {/* Outer glow */}
-            <div className="absolute inset-0 bg-blue-500 blur-xl opacity-30 rounded-full animate-pulse"></div>
+            {/* Glow pulse effect */}
+            <div className="absolute inset-0 bg-blue-500 blur-xl opacity-20 rounded-full animate-pulse"></div>
             
+            {/* Jet trail 1 - kiri atas ke kanan bawah */}
+            <div className="absolute -top-2 -left-2 w-32 h-2 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-60 animate-ping"></div>
+            <div className="absolute -top-1 -left-1 w-24 h-1 bg-gradient-to-r from-transparent via-cyan-300 to-transparent opacity-80 animate-pulse"></div>
+            
+            {/* Jet trail 2 - kanan atas ke kiri bawah */}
+            <div className="absolute -top-2 -right-2 w-32 h-2 bg-gradient-to-l from-transparent via-blue-400 to-transparent opacity-60 animate-ping" style={{ animationDelay: '0.3s' }}></div>
+            <div className="absolute -top-1 -right-1 w-24 h-1 bg-gradient-to-l from-transparent via-cyan-300 to-transparent opacity-80 animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+
             {/* Main X Symbol */}
             <div className="relative">
               <svg 
@@ -60,28 +68,69 @@ export default function LoginPage() {
                 <defs>
                   <linearGradient id="xGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="100%" stopColor="#cccccc" />
+                    <stop offset="50%" stopColor="#88ccff" />
+                    <stop offset="100%" stopColor="#ffffff" />
                   </linearGradient>
                   <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="0" stdDeviation="10" floodColor="#0066ff" floodOpacity="0.7" />
+                    <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="#0088ff" floodOpacity="0.8" />
+                    <feDropShadow dx="0" dy="0" stdDeviation="15" floodColor="#0088ff" floodOpacity="0.4" />
+                  </filter>
+                  <filter id="glow">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
                   </filter>
                 </defs>
                 
-                {/* X Shape - SIMPLE & CLEAN seperti gambar */}
+                {/* X Shape dengan efek jet trail */}
                 <path 
                   d="M40,40 L160,160" 
                   stroke="url(#xGradient)" 
-                  strokeWidth="28" 
+                  strokeWidth="24" 
                   strokeLinecap="round"
                   filter="url(#shadow)"
                 />
                 <path 
                   d="M160,40 L40,160" 
                   stroke="url(#xGradient)" 
-                  strokeWidth="28" 
+                  strokeWidth="24" 
                   strokeLinecap="round"
                   filter="url(#shadow)"
                 />
+                
+                {/* Inner highlight */}
+                <path 
+                  d="M50,50 L150,150" 
+                  stroke="#ffffff" 
+                  strokeWidth="4" 
+                  strokeLinecap="round"
+                  opacity="0.6"
+                  filter="url(#glow)"
+                />
+                <path 
+                  d="M150,50 L50,150" 
+                  stroke="#ffffff" 
+                  strokeWidth="4" 
+                  strokeLinecap="round"
+                  opacity="0.6"
+                  filter="url(#glow)"
+                />
+                
+                {/* Jet trail dots */}
+                <circle cx="35" cy="35" r="3" fill="#00ccff" opacity="0.7">
+                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="165" cy="165" r="3" fill="#00ccff" opacity="0.7">
+                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" />
+                </circle>
+                <circle cx="165" cy="35" r="3" fill="#00ccff" opacity="0.7">
+                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" begin="0.5s" />
+                </circle>
+                <circle cx="35" cy="165" r="3" fill="#00ccff" opacity="0.7">
+                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" begin="0.5s" />
+                </circle>
               </svg>
             </div>
           </div>
