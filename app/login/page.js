@@ -48,66 +48,87 @@ export default function LoginPage() {
         <div className="text-[400px] font-bold text-yellow-500 opacity-15">X</div>
       </div>
 
-      {/* Logo X Tech Keren - Shutterstock Style */}
+      {/* Logo X 3D Metallic - Mirip Gambar */}
       <div className="absolute top-10 left-1/2 transform -translate-x-1/2 z-20">
         <svg 
           width="140" 
           height="140" 
           viewBox="0 0 200 200"
-          className="filter drop-shadow-lg"
-          style={{ filter: 'drop-shadow(0 0 25px rgba(0, 100, 255, 0.9))' }}
+          className="filter drop-shadow-2xl"
+          style={{ filter: 'drop-shadow(5px 5px 15px rgba(0, 0, 0, 0.7))' }}
         >
           <defs>
-            <linearGradient id="xGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#0011FF" />
-              <stop offset="50%" stopColor="#0088FF" />
-              <stop offset="100%" stopColor="#00CCFF" />
+            {/* Metal gradient - silver metallic */}
+            <linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#e0e0e0" />
+              <stop offset="25%" stopColor="#ffffff" />
+              <stop offset="50%" stopColor="#c0c0c0" />
+              <stop offset="75%" stopColor="#a0a0a0" />
+              <stop offset="100%" stopColor="#d0d0d0" />
             </linearGradient>
-            <linearGradient id="xGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#00CCFF" />
-              <stop offset="50%" stopColor="#0088FF" />
-              <stop offset="100%" stopColor="#0011FF" />
-            </linearGradient>
-            <filter id="neonGlow">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
+            
+            {/* Shadow untuk 3D */}
+            <filter id="shadow3D">
+              <feDropShadow dx="4" dy="4" stdDeviation="5" floodColor="#000000" floodOpacity="0.6" />
             </filter>
+            
+            {/* Highlight shine */}
+            <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            </linearGradient>
+            
+            {/* Inner shadow */}
             <filter id="innerShadow">
-              <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#00AAFF" floodOpacity="0.8" />
+              <feDropShadow dx="-2" dy="-2" stdDeviation="3" floodColor="#000000" floodOpacity="0.4" />
             </filter>
           </defs>
 
-          {/* Outer Glow Ring */}
-          <circle cx="100" cy="100" r="85" fill="none" stroke="url(#xGrad1)" strokeWidth="4" strokeDasharray="10 5" opacity="0.8" filter="url(#neonGlow)" />
+          {/* Background plate */}
+          <rect x="30" y="30" width="140" height="140" rx="20" fill="url(#metalGrad)" filter="url(#shadow3D)" />
           
-          {/* Main X - Tebal dan solid */}
-          <path d="M60,60 L140,140" stroke="url(#xGrad1)" strokeWidth="16" strokeLinecap="round" filter="url(#neonGlow)" />
-          <path d="M140,60 L60,140" stroke="url(#xGrad2)" strokeWidth="16" strokeLinecap="round" filter="url(#neonGlow)" />
+          {/* Main X - Tebal 3D */}
+          <path 
+            d="M60,60 L140,140" 
+            stroke="url(#metalGrad)" 
+            strokeWidth="20" 
+            strokeLinecap="round"
+            filter="url(#innerShadow)"
+          />
+          <path 
+            d="M140,60 L60,140" 
+            stroke="url(#metalGrad)" 
+            strokeWidth="20" 
+            strokeLinecap="round"
+            filter="url(#innerShadow)"
+          />
           
-          {/* Inner X - Tipis untuk depth */}
-          <path d="M70,70 L130,130" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
-          <path d="M130,70 L70,130" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" opacity="0.6" />
+          {/* X outline */}
+          <path d="M60,60 L140,140" stroke="#333333" strokeWidth="2" strokeLinecap="round" />
+          <path d="M140,60 L60,140" stroke="#333333" strokeWidth="2" strokeLinecap="round" />
           
-          {/* Tech dots pattern */}
-          <circle cx="100" cy="100" r="50" fill="none" stroke="#00FFFF" strokeWidth="2" strokeDasharray="3 6" opacity="0.5" filter="url(#innerShadow)" />
-          <circle cx="100" cy="100" r="70" fill="none" stroke="#0088FF" strokeWidth="1" strokeDasharray="2 4" opacity="0.4" />
+          {/* Shine effect */}
+          <rect x="30" y="30" width="140" height="140" rx="20" fill="url(#shine)" fillOpacity="0.3" />
           
-          {/* Center glowing dot */}
-          <circle cx="100" cy="100" r="8" fill="url(#xGrad1)" filter="url(#neonGlow)" />
-          <circle cx="100" cy="100" r="4" fill="#FFFFFF" />
+          {/* Corner accents */}
+          <circle cx="50" cy="50" r="8" fill="#ffffff" opacity="0.8" />
+          <circle cx="150" cy="50" r="8" fill="#ffffff" opacity="0.8" />
+          <circle cx="50" cy="150" r="8" fill="#ffffff" opacity="0.8" />
+          <circle cx="150" cy="150" r="8" fill="#ffffff" opacity="0.8" />
+          
+          {/* Center dot */}
+          <circle cx="100" cy="100" r="12" fill="#333333" />
+          <circle cx="100" cy="100" r="6" fill="#ffffff" />
         </svg>
       </div>
 
       {/* Form Container */}
       <div className="bg-gray-900 p-10 rounded-2xl shadow-2xl w-96 border-2 border-yellow-500 relative z-10 backdrop-blur-sm bg-opacity-80 mt-24">
-        <h1 className="text-4xl font-bold mb-4 text-center text-yellow-500 tracking-wider">
+        <h1 className="text-4xl font-bold mb-2 text-center text-yellow-500 tracking-wider">
           <div>MAGNI</div>
           <div className="text-3xl mt-2">GROUP-X</div>
         </h1>
-        <p className="text-center text-blue-300 mb-8 text-sm tracking-widest">ARTIFICIAL TECHNOLOGY PANEL</p>
+        <p className="text-center text-gray-300 mb-8 text-sm tracking-widest">SECURE ACCESS PANEL</p>
 
         <form onSubmit={handleLogin}>
           <div className="mb-6">
