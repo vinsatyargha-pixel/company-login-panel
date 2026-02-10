@@ -1,31 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [identifier, setIdentifier] = useState(""); // bisa email atau nama
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const findUserEmail = async (input) => {
-  // Jika input sudah berupa email (@), langsung return
-  if (input.includes('@')) {
-    return input;
-  }
-  
-  // Jika bukan email, cari di officers
-  const { data: officer } = await supabase
-    .from('officers')
-    .select('email')
-    .or(`username.ilike.%${input}%,full_name.ilike.%${input}%,email.ilike.%${input}%`)
-    .maybeSingle(); // ✅ BENAR!
+    if (input.includes('@')) {
+      return input;
+    }
+    
+    const { data: officer } = await supabase
+      .from('officers')
+      .select('email')
+      .or(`username.ilike.%${input}%,full_name.ilike.%${input}%,email.ilike.%${input}%`)
+      .maybeSingle();
 
-  return officer?.email || null;
-};
+    return officer?.email || null;
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -33,39 +31,37 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // 1. Cari email dari identifier
+      // OPTION 1: Skip officers check langsung login dengan input
+      // const userEmail = identifier;
+      
+      // OPTION 2: Cari email di officers dulu
       const userEmail = await findUserEmail(identifier);
       
       if (!userEmail) {
-        setError(`"${identifier}" tidak ditemukan. Coba pakai email: alvin@magingroupx.com`);
+        setError(`"${identifier}" tidak ditemukan. Coba: alvin@magingroupx.com`);
         setLoading(false);
         return;
       }
       
-      console.log('🔄 Login dengan email:', userEmail);
-      
-      // 2. Login ke Supabase Auth
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: userEmail,
         password: password
       });
 
       if (authError) {
-        console.error('Auth error:', authError);
-        
         if (authError.message.includes('Invalid login credentials')) {
           setError(`Password salah untuk ${userEmail}`);
         } else {
           setError(`Error: ${authError.message}`);
         }
-        
         setLoading(false);
         return;
       }
       
-      // 3. SUKSES
-      console.log('✅ Login sukses!', data.user);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      // SUKSES - Simpan ke localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      }
       router.push("/dashboard");
       
     } catch (err) {
@@ -76,28 +72,31 @@ export default function LoginPage() {
     }
   };
 
-  // TEST FUNCTION - PAKAI INI DI CONSOLE
-  window.testLogin = async (testEmail = 'alvin@magingroupx.com', testPass = 'Magni123!') => {
-    console.log('🧪 Testing login dengan:', testEmail);
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: testEmail,
-      password: testPass
-    });
-    
-    if (error) {
-      console.error('❌ TEST FAILED:', error.message);
-      alert(`TEST GAGAL:\n\n${error.message}\n\nPassword mungkin salah. Coba reset di Supabase Dashboard.`);
-      return false;
+  // Setup test function hanya di client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.testLogin = async (testEmail = 'alvin@magingroupx.com', testPass = 'Magni123!') => {
+        console.log('Testing login dengan:', testEmail);
+        
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: testEmail,
+          password: testPass
+        });
+        
+        if (error) {
+          console.error('TEST FAILED:', error.message);
+          alert(`TEST GAGAL:\n\n${error.message}`);
+          return false;
+        }
+        
+        console.log('TEST SUCCESS! User:', data.user);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        alert(`TEST SUKSES!\n\nLogin sebagai: ${data.user.email}`);
+        return true;
+      };
     }
-    
-    console.log('✅ TEST SUCCESS! User:', data.user);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    alert(`TEST SUKSES!\n\nLogin sebagai: ${data.user.email}\n\nRefresh halaman.`);
-    return true;
-  };
+  }, []);
 
-  // AUTO-SET TEST CREDENTIALS
   const setTestAccount = () => {
     setIdentifier('alvin@magingroupx.com');
     setPassword('Magni123!');
