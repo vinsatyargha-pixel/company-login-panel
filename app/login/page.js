@@ -121,7 +121,7 @@ export default function LoginPage() {
         {/* Form */}
         <form onSubmit={handleLogin}>
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-3 text-gray-300">Nama Lengkap</label>
+            <label className="block text-sm font-medium mb-3 text-gray-300">E-Mail</label>
             <input
               type="text"
               className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
@@ -130,7 +130,7 @@ export default function LoginPage() {
               onChange={(e) => setNama(e.target.value)}
               required
             />
-            <p className="text-xs text-gray-500 mt-1">Cukup masukkan nama lengkap Anda</p>
+            <p className="text-xs text-gray-500 mt-1">Cukup masukkan E-mail@magnigroupx Anda</p>
           </div>
           <div className="mb-8">
             <label className="block text-sm font-medium mb-3 text-gray-300">Password</label>
