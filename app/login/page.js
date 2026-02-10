@@ -1,4 +1,3 @@
-// app/login/page.js - NO CALLBACK NEEDED
 "use client";
 
 import { useState } from "react";
@@ -6,88 +5,100 @@ import { useState } from "react";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleLogin = (e) => {
     e.preventDefault();
-    setLoading(true);
     
-    console.log("Login with:", email);
+    // Save to localStorage
+    localStorage.setItem("magni_auth", "true");
+    localStorage.setItem("magni_user", email || "Admin");
     
-    // Simple auth - always work
-    if (typeof window !== "undefined") {
-      localStorage.setItem("magni_auth", "true");
-      localStorage.setItem("magni_user", email || "admin@magni.com");
-      localStorage.setItem("magni_email", email || "admin@magni.com");
-    }
-    
-    // Redirect with timeout to show loading
-    setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 500);
+    // Redirect to dashboard
+    window.location.href = "/dashboard";
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-            🔐 MAGNI GROUP-X
-          </h1>
-          <p className="text-gray-400 mt-2">Database Operasional v3.0</p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-gradient-to-b from-gray-900/90 to-black/90 backdrop-blur-sm border border-gray-800 rounded-2xl p-8 shadow-2xl shadow-cyan-900/10">
+        {/* HEADER */}
+        <div className="text-center mb-10">
+          <div className="mb-6">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border border-cyan-800/30 rounded-2xl mb-4">
+              <span className="text-4xl">🔐</span>
+            </div>
+            <h1 className="text-4xl font-extrabold tracking-tight">
+              <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                MAGNI
+              </span>
+              <span className="block text-2xl font-light text-gray-300 mt-2">GROUP-X</span>
+            </h1>
+            <p className="text-gray-400 text-sm mt-4 tracking-wider font-medium">
+              SECURE TECHNOLOGY PANEL
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleLogin}>
-          <div className="mb-6">
-            <label className="block text-sm text-gray-300 mb-2">E-Mail</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-              placeholder="(contoh: Alvin@magnigroup.com)"
-              required
-              disabled={loading}
-            />
+        {/* FORM */}
+        <form onSubmit={handleLogin} className="space-y-8">
+          {/* EMAIL FIELD */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-300 uppercase tracking-wider">
+              E-Mail
+            </label>
+            <div className="relative">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full p-4 bg-gray-900/70 border-2 border-gray-800 rounded-xl text-lg placeholder-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 focus:outline-none transition-all duration-300"
+                placeholder="(contoh: Alvin@magnigroup.com)"
+                required
+              />
+            </div>
+            <p className="text-gray-500 text-xs italic mt-2">
+              Cukup masukkan E-mail/magnigroup Anda
+            </p>
           </div>
 
-          <div className="mb-6">
-            <label className="block text-sm text-gray-300 mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
-              placeholder="Password"
-              required
-              disabled={loading}
-            />
+          {/* PASSWORD FIELD */}
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-300 uppercase tracking-wider">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-4 bg-gray-900/70 border-2 border-gray-800 rounded-xl text-lg placeholder-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 focus:outline-none transition-all duration-300"
+                placeholder="••••••••"
+                required
+              />
+            </div>
           </div>
 
+          {/* LOGIN BUTTON */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 rounded-lg font-semibold text-lg disabled:opacity-50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full py-4 bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-500 hover:from-cyan-500 hover:via-blue-500 hover:to-cyan-400 text-white font-bold text-lg rounded-xl shadow-lg shadow-cyan-900/30 hover:shadow-xl hover:shadow-cyan-900/40 transform hover:-translate-y-0.5 transition-all duration-300 active:translate-y-0"
           >
-            {loading ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                PROCESSING...
-              </span>
-            ) : "LOGIN TO PANEL"}
+            LOGIN TO PANEL
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-gray-800 text-center">
-          <p className="text-gray-500 text-sm">
-            Forgot password? Contact admin
+        {/* FOOTER */}
+        <div className="mt-12 pt-8 border-t border-gray-800/50 text-center space-y-3">
+          <p className="text-gray-500 text-sm font-medium">
+            Forgot password? <span className="text-cyan-400">Contact admin</span>
           </p>
-          <p className="text-gray-600 text-xs mt-4">
-            MagniGroup-X. • Click login to continue
+          <p className="text-gray-600 text-xs tracking-wider">
+            MagniGroup-X.
           </p>
+          <div className="mt-6 pt-4 border-t border-gray-900/50">
+            <p className="text-gray-700 text-xs">
+              © 2025 Database Operasional v3.0
+            </p>
+          </div>
         </div>
       </div>
     </div>
