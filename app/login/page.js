@@ -1,4 +1,4 @@
-// app/login/page.js - SIMPLE & WORKING
+// app/login/page.js - CLEAN NEON X
 "use client";
 
 import { useState } from "react";
@@ -13,164 +13,203 @@ export default function LoginPage() {
     window.location.href = "/dashboard";
   };
 
-  // Add CSS for glowing X
-  const addStyles = () => {
-    const style = document.createElement('style');
-    style.textContent = `
-      .glowing-x {
-        font-size: 120px;
-        font-weight: 900;
-        color: transparent;
-        text-shadow: 
-          0 0 10px #00f7ff,
-          0 0 20px #00f7ff,
-          0 0 30px #00f7ff,
-          0 0 40px #0066ff,
-          0 0 70px #0066ff,
-          0 0 80px #0066ff;
-        animation: x-glow 1.5s infinite alternate;
-      }
-      
-      @keyframes x-glow {
-        0% {
-          text-shadow: 
-            0 0 10px #00f7ff,
-            0 0 20px #00f7ff,
-            0 0 30px #00f7ff;
-        }
-        100% {
-          text-shadow: 
-            0 0 20px #00f7ff,
-            0 0 30px #00f7ff,
-            0 0 40px #0066ff,
-            0 0 70px #0066ff,
-            0 0 100px #0066ff;
-        }
-      }
-      
-      .magni-text {
-        font-size: 48px;
-        font-weight: bold;
-        color: #00ccff;
-        text-shadow: 0 0 10px rgba(0, 204, 255, 0.5);
-      }
-      
-      .group-text {
-        font-size: 32px;
-        color: #66ccff;
-        letter-spacing: 5px;
-      }
-      
-      .panel-text {
-        color: #88aaff;
-        letter-spacing: 3px;
-        font-size: 14px;
-        margin-top: 10px;
-      }
-      
-      .login-input {
-        width: 100%;
-        padding: 15px;
-        background: rgba(0, 20, 40, 0.7);
-        border: 1px solid #0066ff;
-        border-radius: 8px;
-        color: white;
-        margin-top: 10px;
-      }
-      
-      .login-btn {
-        width: 100%;
-        padding: 15px;
-        background: #0066ff;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 18px;
-        font-weight: bold;
-        margin-top: 20px;
-        cursor: pointer;
-      }
-      
-      body {
-        background: url('https://images.pexels.com/photos/6654177/pexels-photo-6654177.jpeg') center/cover no-repeat;
-        background-attachment: fixed;
-        min-height: 100vh;
-        margin: 0;
-        font-family: Arial, sans-serif;
-      }
-      
-      .login-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        padding: 20px;
-      }
-      
-      .login-box {
-        background: rgba(0, 0, 0, 0.8);
-        padding: 40px;
-        border-radius: 15px;
-        border: 1px solid #0066ff;
-        max-width: 400px;
-        width: 100%;
-        text-align: center;
-      }
-    `;
-    document.head.appendChild(style);
-  };
-
-  if (typeof window !== "undefined") {
-    addStyles();
-  }
-
   return (
-    <div className="login-container">
-      <div className="login-box">
-        {/* GLOWING X SYMBOL */}
-        <div className="glowing-x">X</div>
+    <div style={styles.container}>
+      {/* Background */}
+      <div style={styles.background}></div>
+      
+      <div style={styles.loginBox}>
+        {/* X SYMBOL - CLEAN NEON */}
+        <div style={styles.xSymbol}>✕</div>
         
-        {/* MAGNI TEXT */}
-        <div className="magni-text">MAGNI</div>
-        <div className="group-text">GROUP</div>
-        <div className="panel-text">SECURE TECHNOLOGY PANEL</div>
+        {/* TEXTS */}
+        <h1 style={styles.magniText}>MAGNI</h1>
+        <h2 style={styles.groupText}>GROUP</h2>
+        <p style={styles.panelText}>SECURE TECHNOLOGY PANEL</p>
         
-        {/* LOGIN FORM */}
-        <form onSubmit={handleLogin} style={{ marginTop: "40px" }}>
-          <div style={{ textAlign: "left", marginBottom: "20px" }}>
-            <label style={{ color: "#88ccff" }}>Username/Email</label>
+        {/* FORM */}
+        <form onSubmit={handleLogin} style={styles.form}>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Username/Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="login-input"
+              style={styles.input}
               placeholder="admin@magnigroupx.com"
               required
             />
           </div>
           
-          <div style={{ textAlign: "left", marginBottom: "20px" }}>
-            <label style={{ color: "#88ccff" }}>Password</label>
+          <div style={styles.inputGroup}>
+            <label style={styles.label}>Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="login-input"
+              style={styles.input}
               placeholder="••••••••"
               required
             />
           </div>
           
-          <button type="submit" className="login-btn">
+          <button type="submit" style={styles.button}>
             LOGIN
           </button>
         </form>
         
-        {/* FOOTER */}
-        <div style={{ marginTop: "30px", color: "#6699ff", fontSize: "12px" }}>
+        <div style={styles.footer}>
           © 2025 Database Operational v3.0
         </div>
       </div>
     </div>
   );
+}
+
+const styles = {
+  container: {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+    position: "relative",
+    fontFamily: "'Arial', sans-serif"
+  },
+  background: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundImage: "url('https://images.pexels.com/photos/6654177/pexels-photo-6654177.jpeg')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    filter: "brightness(0.4) contrast(1.2)",
+    zIndex: 1
+  },
+  loginBox: {
+    position: "relative",
+    zIndex: 2,
+    background: "rgba(0, 0, 0, 0.85)",
+    border: "1px solid rgba(0, 100, 255, 0.3)",
+    borderRadius: "15px",
+    padding: "50px 40px",
+    maxWidth: "450px",
+    width: "100%",
+    textAlign: "center",
+    boxShadow: "0 0 40px rgba(0, 100, 255, 0.2)"
+  },
+  // X SYMBOL - CLEAN NEON
+  xSymbol: {
+    fontSize: "100px",
+    fontWeight: "900",
+    color: "#00ffff",
+    textShadow: `
+      0 0 10px #00ffff,
+      0 0 20px #00ffff,
+      0 0 30px #0066ff,
+      0 0 40px #0066ff
+    `,
+    margin: "0 0 20px 0",
+    lineHeight: "1",
+    animation: "pulse 2s infinite alternate"
+  },
+  magniText: {
+    fontSize: "42px",
+    fontWeight: "bold",
+    color: "#00ccff",
+    margin: "10px 0 5px 0",
+    letterSpacing: "2px"
+  },
+  groupText: {
+    fontSize: "28px",
+    color: "#66ccff",
+    margin: "0 0 15px 0",
+    letterSpacing: "3px"
+  },
+  panelText: {
+    fontSize: "12px",
+    color: "#88aaff",
+    letterSpacing: "3px",
+    marginBottom: "40px",
+    textTransform: "uppercase"
+  },
+  form: {
+    marginTop: "30px"
+  },
+  inputGroup: {
+    marginBottom: "25px",
+    textAlign: "left"
+  },
+  label: {
+    display: "block",
+    color: "#aaddff",
+    fontSize: "14px",
+    marginBottom: "8px",
+    fontWeight: "500"
+  },
+  input: {
+    width: "100%",
+    padding: "15px",
+    background: "rgba(10, 25, 47, 0.7)",
+    border: "1px solid rgba(0, 150, 255, 0.5)",
+    borderRadius: "8px",
+    color: "white",
+    fontSize: "16px"
+  },
+  button: {
+    width: "100%",
+    padding: "18px",
+    background: "linear-gradient(45deg, #0066ff, #00aaff)",
+    border: "none",
+    borderRadius: "8px",
+    color: "white",
+    fontSize: "18px",
+    fontWeight: "bold",
+    cursor: "pointer",
+    marginTop: "10px"
+  },
+  footer: {
+    marginTop: "40px",
+    color: "#6699ff",
+    fontSize: "12px",
+    paddingTop: "20px",
+    borderTop: "1px solid rgba(0, 100, 255, 0.2)"
+  }
+};
+
+// Add pulse animation
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes pulse {
+      0% {
+        text-shadow: 
+          0 0 10px #00ffff,
+          0 0 20px #00ffff,
+          0 0 30px #0066ff;
+      }
+      100% {
+        text-shadow: 
+          0 0 15px #00ffff,
+          0 0 30px #00ffff,
+          0 0 45px #0066ff,
+          0 0 60px #0066ff;
+      }
+    }
+    
+    input:focus {
+      outline: none;
+      border-color: #00ffff !important;
+      box-shadow: 0 0 15px rgba(0, 255, 255, 0.3) !important;
+    }
+    
+    button:hover {
+      background: linear-gradient(45deg, #0088ff, #00ccff) !important;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(0, 100, 255, 0.3) !important;
+    }
+  `;
+  document.head.appendChild(style);
 }
