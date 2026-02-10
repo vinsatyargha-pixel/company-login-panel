@@ -5,74 +5,98 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [identifier, setIdentifier] = useState(""); // Bisa email ATAU user_id
+  const [identifier, setIdentifier] = useState(""); // Bisa NAMA atau EMAIL
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // Fungsi cari email berdasarkan user_id
-async function findEmailByUserId(userId) {
-  const cleanUserId = userId.trim();
-  console.log('🔍 [DEBUG] Mencari user_id:', cleanUserId);
-  
-  // 1. Cek apa ada di database
-  const { data, error } = await supabase
-    .from('users')
-    .select('user_id, email')
-    .ilike('user_id', cleanUserId)
-    .single();
+  // Fungsi cari user berdasarkan NAMA atau EMAIL
+  async function findUserByIdentifier(identifier) {
+    const cleanIdentifier = identifier.trim();
+    console.log('🔍 [DEBUG] Mencari user dengan:', cleanIdentifier);
     
-  console.log('📊 [DEBUG] Hasil query:', { data, error });
-  
-  if (error) {
-    console.log('❌ [DEBUG] Error query:', error.message);
-    return null;
+    try {
+      // 1. Coba cari berdasarkan EMAIL (exact match)
+      const { data: byEmail, error: emailError } = await supabase
+        .from('users')
+        .select('id, email, full_name')
+        .eq('email', cleanIdentifier)
+        .single();
+      
+      if (byEmail && !emailError) {
+        console.log('✅ [DEBUG] Ditemukan via email:', byEmail.full_name);
+        return byEmail;
+      }
+      
+      // 2. Jika email tidak ditemukan, cari berdasarkan NAMA (case-insensitive, partial match)
+      const { data: byName, error: nameError } = await supabase
+        .from('users')
+        .select('id, email, full_name')
+        .ilike('full_name', `%${cleanIdentifier}%`)
+        .single();
+      
+      if (byName && !nameError) {
+        console.log('✅ [DEBUG] Ditemukan via nama:', byName.full_name);
+        return byName;
+      }
+      
+      // 3. Tidak ditemukan sama sekali
+      console.log('❌ [DEBUG] User tidak ditemukan via email atau nama');
+      return null;
+      
+    } catch (error) {
+      console.error('❌ [DEBUG] Error query:', error);
+      return null;
+    }
   }
-  
-  if (!data) {
-    console.log('❌ [DEBUG] Data tidak ditemukan');
-    return null;
-  }
-  
-  console.log('✅ [DEBUG] Ditemukan:', data.user_id, '→', data.email);
-  return data.email.toLowerCase();
-}
-  
-  console.log('User ditemukan:', cleanUserId, '→', data?.email);
-  return data?.email?.toLowerCase(); // Return lowercase untuk konsistensi
-}
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    let loginEmail = identifier;
-
-    // Jika input bukan email (@), coba cari sebagai user_id
-    if (!identifier.includes('@')) {
-      const foundEmail = await findEmailByUserId(identifier);
-      if (foundEmail) {
-        loginEmail = foundEmail;
-      } else {
-        setError("User ID tidak ditemukan");
+    try {
+      // Cari user berdasarkan input (bisa email atau nama)
+      const userData = await findUserByIdentifier(identifier);
+      
+      if (!userData) {
+        setError("User tidak ditemukan. Cek nama atau email Anda.");
         setLoading(false);
         return;
       }
-    }
+      
+      // Login dengan Supabase Auth menggunakan EMAIL yang ditemukan
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: userData.email,
+        password,
+      });
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({
-      email: loginEmail,
-      password,
-    });
-
-    if (authError) {
-      setError("User ID/Email atau password salah");
-    } else {
-      router.push("/dashboard");
+      if (authError) {
+        setError("Password salah");
+      } else {
+        console.log('✅ Login sukses:', userData.full_name);
+        
+        // Simpan data user ke localStorage
+        localStorage.setItem('user_data', JSON.stringify({
+          id: userData.id,
+          email: userData.email,
+          full_name: userData.full_name,
+          last_login: new Date().toISOString()
+        }));
+        
+        // Redirect ke dashboard setelah 1 detik
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1000);
+      }
+      
+    } catch (error) {
+      console.error('Login error:', error);
+      setError("Terjadi kesalahan sistem. Coba lagi.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -195,18 +219,18 @@ async function findEmailByUserId(userId) {
         <form onSubmit={handleLogin}>
           <div className="mb-6">
             <label className="block text-sm font-medium mb-3 text-gray-300">
-              User ID / Email
+              Nama atau Email
             </label>
             <input
               type="text"
               className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="MAGNI-ADM-0001 atau admin@magnigroupx.com"
+              placeholder="Masukkan nama (contoh: Alvin) atau email"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Bisa pakai User ID (contoh: MAGNI-ADM-0001) atau Email
+              Bisa pakai Nama Lengkap atau Email
             </p>
           </div>
           <div className="mb-8">
@@ -232,7 +256,7 @@ async function findEmailByUserId(userId) {
             className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold py-3 rounded-lg transition duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl"
             disabled={loading}
           >
-            {loading ? "🔄 PROCESSING..." : "🔐 LOGIN TO PANEL"}
+            {loading ? "🔄 LOGIN..." : "🔐 LOGIN TO PANEL"}
           </button>
         </form>
         
