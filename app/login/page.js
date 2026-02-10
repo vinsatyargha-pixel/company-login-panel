@@ -12,20 +12,32 @@ export default function LoginPage() {
   const router = useRouter();
 
   // Fungsi cari email berdasarkan user_id
- async function findEmailByUserId(userId) {
+async function findEmailByUserId(userId) {
   const cleanUserId = userId.trim();
+  console.log('🔍 [DEBUG] Mencari user_id:', cleanUserId);
   
-  // CASE-INSENSITIVE SEARCH (pakai ilike)
+  // 1. Cek apa ada di database
   const { data, error } = await supabase
     .from('users')
-    .select('email')
-    .ilike('user_id', cleanUserId)  // ← PAKAI ilike BUKAN eq
+    .select('user_id, email')
+    .ilike('user_id', cleanUserId)
     .single();
     
+  console.log('📊 [DEBUG] Hasil query:', { data, error });
+  
   if (error) {
-    console.log('User tidak ditemukan:', cleanUserId, error.message);
+    console.log('❌ [DEBUG] Error query:', error.message);
     return null;
   }
+  
+  if (!data) {
+    console.log('❌ [DEBUG] Data tidak ditemukan');
+    return null;
+  }
+  
+  console.log('✅ [DEBUG] Ditemukan:', data.user_id, '→', data.email);
+  return data.email.toLowerCase();
+}
   
   console.log('User ditemukan:', cleanUserId, '→', data?.email);
   return data?.email?.toLowerCase(); // Return lowercase untuk konsistensi
