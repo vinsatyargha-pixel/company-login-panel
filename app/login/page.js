@@ -5,24 +5,49 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState(""); // Bisa email ATAU user_id
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Fungsi cari email berdasarkan user_id
+  async function findEmailByUserId(userId) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('email')
+      .eq('user_id', userId.toUpperCase()) // Convert ke uppercase
+      .single();
+      
+    return data?.email || null;
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+    let loginEmail = identifier;
+
+    // Jika input bukan email (@), coba cari sebagai user_id
+    if (!identifier.includes('@')) {
+      const foundEmail = await findEmailByUserId(identifier);
+      if (foundEmail) {
+        loginEmail = foundEmail;
+      } else {
+        setError("User ID tidak ditemukan");
+        setLoading(false);
+        return;
+      }
+    }
+
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
       password,
     });
 
-    if (error) {
-      setError("Username atau password salah");
+    if (authError) {
+      setError("User ID/Email atau password salah");
     } else {
       router.push("/dashboard");
     }
@@ -55,7 +80,7 @@ export default function LoginPage() {
             
             {/* Jet trail 2 - kanan atas ke kiri bawah */}
             <div className="absolute -top-2 -right-2 w-32 h-2 bg-gradient-to-l from-transparent via-blue-400 to-transparent opacity-60 animate-ping" style={{ animationDelay: '0.3s' }}></div>
-            <div className="absolute -top-1 -right-1 w-24 h-1 bg-gradient-to-l from-transparent via-cyan-300 to-transparent opacity-80 animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+            <div className="absolute -top-1 -right-1 w-24 h-1 bg-gradient-to-l from-transparent via-cyan-300 to-transparent opacity=80 animate-pulse" style={{ animationDelay: '0.3s' }}></div>
 
             {/* Main X Symbol */}
             <div className="relative">
@@ -149,16 +174,19 @@ export default function LoginPage() {
         <form onSubmit={handleLogin}>
           <div className="mb-6">
             <label className="block text-sm font-medium mb-3 text-gray-300">
-              Username / Email
+              User ID / Email
             </label>
             <input
               type="text"
               className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="admin@magnigroupx.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="MAGNI-ADM-0001 atau admin@magnigroupx.com"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Bisa pakai User ID (contoh: MAGNI-ADM-0001) atau Email
+            </p>
           </div>
           <div className="mb-8">
             <label className="block text-sm font-medium mb-3 text-gray-300">
