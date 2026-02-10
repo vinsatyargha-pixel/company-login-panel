@@ -1,4 +1,4 @@
-// app/login/page.js - SIMPLE & WORKING
+// app/login/page.js - HANYA TAMBAHIN DI handleLogin
 "use client";
 
 import { useState } from "react";
@@ -6,109 +6,68 @@ import { useState } from "react";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // TAMBAH INI ↓
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = (e) => {
     e.preventDefault();
+    
+    // TAMBAH INI ↓ - Loading state
+    setIsLoading(true);
+    
+    // YANG SUDAH ADA ↓
     localStorage.setItem("magni_auth", "true");
-    window.location.href = "/dashboard";
+    
+    // TAMBAH INI ↓ - Set cookie untuk middleware
+    const token = "magni-auth-" + Date.now();
+    document.cookie = `auth-token=${token}; path=/; max-age=86400; SameSite=Lax`;
+    
+    // TAMBAH INI ↓ - Delay biar cookie kebaca
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 200);
+    
+    // JANGAN DIHAPUS YANG LAIN - CSS dan tampilan tetap sama
   };
 
-  // Add CSS for glowing X
+  // CSS glowing X TETAP SAMA PERSIS ↓
   const addStyles = () => {
     const style = document.createElement('style');
     style.textContent = `
       .glowing-x {
-  font-family: Impact, Arial Black, sans-serif;
-  font-size: 120px;
-  font-weight: 900;
-  letter-spacing: -5px;
-
-  background: linear-gradient(
-    135deg,
-    #f5f5f5 0%,
-    #9a9a9a 40%,
-    #ffffff 50%,
-    #7a7a7a 60%,
-    #eaeaea 100%
-  );
-
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-
-  text-shadow:
-    0 0 6px rgba(0, 247, 255, 0.6),
-    0 0 14px rgba(0, 247, 255, 0.4),
-    0 0 30px rgba(0, 102, 255, 0.3);
-
-  animation: neon-breathe 2s ease-in-out infinite;
-}
-
-@keyframes neon-breathe {
-  from {
-    text-shadow:
-      0 0 4px rgba(0, 247, 255, 0.4),
-      0 0 10px rgba(0, 247, 255, 0.3),
-      0 0 20px rgba(0, 102, 255, 0.2);
-  }
-  to {
-    text-shadow:
-      0 0 8px rgba(0, 247, 255, 0.8),
-      0 0 20px rgba(0, 247, 255, 0.6),
-      0 0 40px rgba(0, 102, 255, 0.5);
-  }
-}
-
-  text-shadow:
-    -1px 0 #00f7ff,
-     1px 0 #00f7ff,
-     0 -1px #00f7ff,
-     0  1px #00f7ff,
-     0 0 10px #00f7ff,
-     0 0 20px #00f7ff,
-     0 0 40px #0066ff,
-     0 0 80px #0066ff;
-
-  animation: x-glow 1.5s infinite alternate;
-}
-
-@keyframes x-glow {
-  from {
-    text-shadow:
-      -1px 0 #00f7ff,
-       1px 0 #00f7ff,
-       0 -1px #00f7ff,
-       0  1px #00f7ff,
-       0 0 10px #00f7ff,
-       0 0 20px #00f7ff,
-       0 0 40px #0066ff;
-  }
-  to {
-    text-shadow:
-      -2px 0 #00f7ff,
-       2px 0 #00f7ff,
-       0 -2px #00f7ff,
-       0  2px #00f7ff,
-       0 0 20px #00f7ff,
-       0 0 40px #0066ff,
-       0 0 100px #0066ff;
-  }
-}
-
+        font-family: Impact, Arial Black, sans-serif;
+        font-size: 120px;
+        font-weight: 900;
+        letter-spacing: -5px;
+        background: linear-gradient(
+          135deg,
+          #f5f5f5 0%,
+          #9a9a9a 40%,
+          #ffffff 50%,
+          #7a7a7a 60%,
+          #eaeaea 100%
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow:
+          0 0 6px rgba(0, 247, 255, 0.6),
+          0 0 14px rgba(0, 247, 255, 0.4),
+          0 0 30px rgba(0, 102, 255, 0.3);
+        animation: neon-breathe 2s ease-in-out infinite;
+      }
       
-      @keyframes x-glow {
-        0% {
-          text-shadow: 
-            0 0 10px #00f7ff,
-            0 0 20px #00f7ff,
-            0 0 30px #00f7ff;
+      @keyframes neon-breathe {
+        from {
+          text-shadow:
+            0 0 4px rgba(0, 247, 255, 0.4),
+            0 0 10px rgba(0, 247, 255, 0.3),
+            0 0 20px rgba(0, 102, 255, 0.2);
         }
-        100% {
-          text-shadow: 
-            0 0 20px #00f7ff,
-            0 0 30px #00f7ff,
-            0 0 40px #0066ff,
-            0 0 70px #0066ff,
-            0 0 100px #0066ff;
+        to {
+          text-shadow:
+            0 0 8px rgba(0, 247, 255, 0.8),
+            0 0 20px rgba(0, 247, 255, 0.6),
+            0 0 40px rgba(0, 102, 255, 0.5);
         }
       }
       
@@ -153,6 +112,12 @@ export default function LoginPage() {
         font-weight: bold;
         margin-top: 20px;
         cursor: pointer;
+        transition: opacity 0.3s;
+      }
+      
+      .login-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
       }
       
       body {
@@ -191,15 +156,13 @@ export default function LoginPage() {
   return (
     <div className="login-container">
       <div className="login-box">
-        {/* GLOWING X SYMBOL */}
+        {/* GLOWING X TETAP ADA ↓ */}
         <div className="glowing-x">X</div>
         
-        {/* MAGNI TEXT */}
         <div className="magni-text">MAGNI</div>
         <div className="group-text">GROUP</div>
         <div className="panel-text">SECURE TECHNOLOGY PANEL</div>
         
-        {/* LOGIN FORM */}
         <form onSubmit={handleLogin} style={{ marginTop: "40px" }}>
           <div style={{ textAlign: "left", marginBottom: "20px" }}>
             <label style={{ color: "#88ccff" }}>E-mail</label>
@@ -210,6 +173,7 @@ export default function LoginPage() {
               className="login-input"
               placeholder="admin@magnigroupx.com"
               required
+              disabled={isLoading} // TAMBAH INI
             />
           </div>
           
@@ -222,15 +186,20 @@ export default function LoginPage() {
               className="login-input"
               placeholder="••••••••"
               required
+              disabled={isLoading} // TAMBAH INI
             />
           </div>
           
-          <button type="submit" className="login-btn">
-            LOGIN
+          <button 
+            type="submit" 
+            className="login-btn"
+            disabled={isLoading} // TAMBAH INI
+          >
+            {/* TAMBAH INI ↓ */}
+            {isLoading ? "AUTHENTICATING..." : "LOGIN"}
           </button>
         </form>
         
-        {/* FOOTER */}
         <div style={{ marginTop: "30px", color: "#6699ff", fontSize: "12px" }}>
           © 2025 Database Operational v3.0
         </div>
