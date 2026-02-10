@@ -125,7 +125,7 @@ export default function LoginPage() {
             <input
               type="text"
               className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="Masukkan nama (contoh: Alvin)"
+              placeholder="(contoh: Alvin@magnigroupx.com)"
               value={nama}
               onChange={(e) => setNama(e.target.value)}
               required
