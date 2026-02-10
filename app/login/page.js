@@ -12,15 +12,24 @@ export default function LoginPage() {
   const router = useRouter();
 
   // Fungsi cari email berdasarkan user_id
-  async function findEmailByUserId(userId) {
-    const { data, error } = await supabase
-      .from('users')
-      .select('email')
-      .eq('user_id', userId.toUpperCase()) // Convert ke uppercase
-      .single();
-      
-    return data?.email || null;
+ async function findEmailByUserId(userId) {
+  const cleanUserId = userId.trim();
+  
+  // CASE-INSENSITIVE SEARCH (pakai ilike)
+  const { data, error } = await supabase
+    .from('users')
+    .select('email')
+    .ilike('user_id', cleanUserId)  // ← PAKAI ilike BUKAN eq
+    .single();
+    
+  if (error) {
+    console.log('User tidak ditemukan:', cleanUserId, error.message);
+    return null;
   }
+  
+  console.log('User ditemukan:', cleanUserId, '→', data?.email);
+  return data?.email?.toLowerCase(); // Return lowercase untuk konsistensi
+}
 
   const handleLogin = async (e) => {
     e.preventDefault();
