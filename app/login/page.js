@@ -1,4 +1,4 @@
-// app/login/page.js - MINIMAL VERSION
+// app/login/page.js - NO CALLBACK NEEDED
 "use client";
 
 import { useState } from "react";
@@ -6,121 +6,89 @@ import { useState } from "react";
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = (e) => {
     e.preventDefault();
-    // Save to localStorage
+    setLoading(true);
+    
+    console.log("Login with:", email);
+    
+    // Simple auth - always work
     if (typeof window !== "undefined") {
       localStorage.setItem("magni_auth", "true");
-      localStorage.setItem("magni_user", email || "test@magni.com");
+      localStorage.setItem("magni_user", email || "admin@magni.com");
+      localStorage.setItem("magni_email", email || "admin@magni.com");
     }
-    // Redirect
-    window.location.href = "/dashboard";
+    
+    // Redirect with timeout to show loading
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 500);
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      backgroundColor: "#000",
-      color: "white",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "20px"
-    }}>
-      <div style={{
-        backgroundColor: "#111",
-        padding: "40px",
-        borderRadius: "20px",
-        border: "1px solid #333",
-        maxWidth: "400px",
-        width: "100%"
-      }}>
-        <h1 style={{
-          fontSize: "28px",
-          fontWeight: "bold",
-          background: "linear-gradient(90deg, #3b82f6, #06b6d4)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          marginBottom: "10px",
-          textAlign: "center"
-        }}>
-          🔐 MAGNI GROUP-X
-        </h1>
-        
-        <p style={{ color: "#999", textAlign: "center", marginBottom: "30px" }}>
-          Database Operasional v3.0
-        </p>
-        
+    <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+            🔐 MAGNI GROUP-X
+          </h1>
+          <p className="text-gray-400 mt-2">Database Operasional v3.0</p>
+        </div>
+
         <form onSubmit={handleLogin}>
-          <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", color: "#ccc", marginBottom: "8px" }}>
-              Email
-            </label>
+          <div className="mb-6">
+            <label className="block text-sm text-gray-300 mb-2">E-Mail</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "12px",
-                backgroundColor: "#222",
-                border: "1px solid #444",
-                borderRadius: "10px",
-                color: "white"
-              }}
-              placeholder="admin@magni.com"
+              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+              placeholder="(contoh: Alvin@magnigroup.com)"
+              required
+              disabled={loading}
             />
           </div>
-          
-          <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", color: "#ccc", marginBottom: "8px" }}>
-              Password
-            </label>
+
+          <div className="mb-6">
+            <label className="block text-sm text-gray-300 mb-2">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "12px",
-                backgroundColor: "#222",
-                border: "1px solid #444",
-                borderRadius: "10px",
-                color: "white"
-              }}
-              placeholder="••••••••"
+              className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+              placeholder="Password"
+              required
+              disabled={loading}
             />
           </div>
-          
+
           <button
             type="submit"
-            style={{
-              width: "100%",
-              padding: "14px",
-              background: "linear-gradient(90deg, #3b82f6, #06b6d4)",
-              border: "none",
-              borderRadius: "10px",
-              color: "white",
-              fontWeight: "bold",
-              fontSize: "16px",
-              cursor: "pointer"
-            }}
+            disabled={loading}
+            className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 rounded-lg font-semibold text-lg disabled:opacity-50 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
           >
-            LOGIN TO DASHBOARD
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                PROCESSING...
+              </span>
+            ) : "LOGIN TO PANEL"}
           </button>
-          
-          <p style={{ 
-            color: "#666", 
-            fontSize: "12px", 
-            textAlign: "center",
-            marginTop: "30px",
-            paddingTop: "20px",
-            borderTop: "1px solid #333"
-          }}>
-            © 2025 Magni Group-X • Enter any credentials
-          </p>
         </form>
+
+        <div className="mt-8 pt-6 border-t border-gray-800 text-center">
+          <p className="text-gray-500 text-sm">
+            Forgot password? Contact admin
+          </p>
+          <p className="text-gray-600 text-xs mt-4">
+            MagniGroup-X. • Click login to continue
+          </p>
+        </div>
       </div>
     </div>
   );
