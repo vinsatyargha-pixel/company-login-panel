@@ -5,43 +5,26 @@ import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
-  const [nama, setNama] = useState("");
+  const [identifier, setIdentifier] = useState(""); // bisa email atau nama
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const cariUserDenganNama = async (namaInput) => {
-    const namaBersih = namaInput.trim();
-    console.log('🔍 [1] Mencari di officers dengan:', namaBersih);
-
-    try {
-      // CARI DI TABEL OFFICERS
-      const { data, error } = await supabase
-        .from('officers')
-        .select('email, username, full_name')
-        .or(`username.ilike.%${namaBersih}%,full_name.ilike.%${namaBersih}%,email.ilike.%${namaBersih}%`)
-        .single();
-
-      console.log('📊 [2] Hasil query:', { data, error });
-
-      if (error) {
-        console.log('❌ [3] Error:', error.message);
-        return null;
-      }
-
-      if (!data) {
-        console.log('❌ [4] Data tidak ditemukan');
-        return null;
-      }
-
-      console.log('✅ [5] Ditemukan:', data.username || data.full_name, '→', data.email);
-      return data;
-
-    } catch (err) {
-      console.error('❌ [6] Exception:', err);
-      return null;
+  const findUserEmail = async (input) => {
+    // Jika input sudah berupa email (@), langsung return
+    if (input.includes('@')) {
+      return input;
     }
+    
+    // Jika bukan email, cari di officers
+    const { data: officer } = await supabase
+      .from('officers')
+      .select('email')
+      .or(`username.ilike.%${input}%, full_name.ilike.%${input}%, email.ilike.%${input}%`)
+      .maybeSingle();
+    
+    return officer?.email || null;
   };
 
   const handleLogin = async (e) => {
@@ -50,154 +33,176 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const userData = await cariUserDenganNama(nama);
+      // 1. Cari email dari identifier
+      const userEmail = await findUserEmail(identifier);
       
-      if (!userData) {
-        setError(`User "${nama}" tidak ditemukan`);
+      if (!userEmail) {
+        setError(`"${identifier}" tidak ditemukan. Coba pakai email: alvin@magingroupx.com`);
         setLoading(false);
         return;
       }
       
-      // LOGIN DENGAN EMAIL DARI officers
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: userData.email,
-        password,
+      console.log('🔄 Login dengan email:', userEmail);
+      
+      // 2. Login ke Supabase Auth
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: userEmail,
+        password: password
       });
 
       if (authError) {
-        setError("Password salah");
-      } else {
-        console.log('✅ Login sukses sebagai:', userData.full_name || userData.username);
+        console.error('Auth error:', authError);
         
-        localStorage.setItem('user', JSON.stringify({
-          username: userData.username,
-          email: userData.email,
-          full_name: userData.full_name
-        }));
+        if (authError.message.includes('Invalid login credentials')) {
+          setError(`Password salah untuk ${userEmail}`);
+        } else {
+          setError(`Error: ${authError.message}`);
+        }
         
-        router.push("/dashboard");
+        setLoading(false);
+        return;
       }
       
+      // 3. SUKSES
+      console.log('✅ Login sukses!', data.user);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      router.push("/dashboard");
+      
     } catch (err) {
-      console.error('Login error:', err);
-      setError("System error");
+      console.error('System error:', err);
+      setError("Terjadi kesalahan sistem");
     } finally {
       setLoading(false);
     }
   };
 
+  // TEST FUNCTION - PAKAI INI DI CONSOLE
+  window.testLogin = async (testEmail = 'alvin@magingroupx.com', testPass = 'Magni123!') => {
+    console.log('🧪 Testing login dengan:', testEmail);
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: testEmail,
+      password: testPass
+    });
+    
+    if (error) {
+      console.error('❌ TEST FAILED:', error.message);
+      alert(`TEST GAGAL:\n\n${error.message}\n\nPassword mungkin salah. Coba reset di Supabase Dashboard.`);
+      return false;
+    }
+    
+    console.log('✅ TEST SUCCESS! User:', data.user);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    alert(`TEST SUKSES!\n\nLogin sebagai: ${data.user.email}\n\nRefresh halaman.`);
+    return true;
+  };
+
+  // AUTO-SET TEST CREDENTIALS
+  const setTestAccount = () => {
+    setIdentifier('alvin@magingroupx.com');
+    setPassword('Magni123!');
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-black">
-      {/* Background */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-30"
-        style={{
-          backgroundImage:
-            "url('https://images.pexels.com/photos/6654177/pexels-photo-6654177.jpeg')",
-        }}
-      ></div>
-
-      {/* Form Container */}
-      <div className="bg-gradient-to-br from-gray-900 to-black p-10 rounded-2xl shadow-2xl w-96 border border-gray-700 relative z-10">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-black">
+      <div className="bg-gray-800/80 backdrop-blur-lg p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-700">
         
-        {/* Logo X */}
-        <div className="flex justify-center mb-8">
-          <div className="relative">
-            <div className="absolute inset-0 bg-blue-500 blur-xl opacity-20 rounded-full animate-pulse"></div>
-            <div className="absolute -top-2 -left-2 w-32 h-2 bg-gradient-to-r from-transparent via-blue-400 to-transparent opacity-60 animate-ping"></div>
-            <div className="absolute -top-1 -left-1 w-24 h-1 bg-gradient-to-r from-transparent via-cyan-300 to-transparent opacity-80 animate-pulse"></div>
-            <div className="absolute -top-2 -right-2 w-32 h-2 bg-gradient-to-l from-transparent via-blue-400 to-transparent opacity-60 animate-ping" style={{ animationDelay: '0.3s' }}></div>
-            <div className="absolute -top-1 -right-1 w-24 h-1 bg-gradient-to-l from-transparent via-cyan-300 to-transparent opacity-80 animate-pulse" style={{ animationDelay: '0.3s' }}></div>
-
-            <div className="relative">
-              <svg width="120" height="120" viewBox="0 0 200 200" className="relative z-10">
-                <defs>
-                  <linearGradient id="xGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#ffffff" />
-                    <stop offset="50%" stopColor="#88ccff" />
-                    <stop offset="100%" stopColor="#ffffff" />
-                  </linearGradient>
-                  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                    <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="#0088ff" floodOpacity="0.8" />
-                    <feDropShadow dx="0" dy="0" stdDeviation="15" floodColor="#0088ff" floodOpacity="0.4" />
-                  </filter>
-                  <filter id="glow">
-                    <feGaussianBlur stdDeviation="3" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-                
-                <path d="M40,40 L160,160" stroke="url(#xGradient)" strokeWidth="24" strokeLinecap="round" filter="url(#shadow)" />
-                <path d="M160,40 L40,160" stroke="url(#xGradient)" strokeWidth="24" strokeLinecap="round" filter="url(#shadow)" />
-                <path d="M50,50 L150,150" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" opacity="0.6" filter="url(#glow)" />
-                <path d="M150,50 L50,150" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" opacity="0.6" filter="url(#glow)" />
-                <circle cx="35" cy="35" r="3" fill="#00ccff" opacity="0.7">
-                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" />
-                </circle>
-                <circle cx="165" cy="165" r="3" fill="#00ccff" opacity="0.7">
-                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" />
-                </circle>
-                <circle cx="165" cy="35" r="3" fill="#00ccff" opacity="0.7">
-                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" begin="0.5s" />
-                </circle>
-                <circle cx="35" cy="165" r="3" fill="#00ccff" opacity="0.7">
-                  <animate attributeName="opacity" values="0.3;0.8;0.3" dur="1.5s" repeatCount="indefinite" begin="0.5s" />
-                </circle>
-              </svg>
-            </div>
+        <div className="text-center mb-8">
+          <div className="inline-block p-4 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full mb-4">
+            <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
           </div>
+          <h1 className="text-3xl font-bold text-white">MAGNI GROUP-X</h1>
+          <p className="text-gray-400 mt-2">Secure Access Panel</p>
         </div>
 
-        {/* Title */}
-        <h1 className="text-4xl font-bold mb-2 text-center text-white tracking-wider">
-          <div className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">MAGNI</div>
-          <div className="text-2xl mt-2 text-gray-300">GROUP-X</div>
-        </h1>
-        <p className="text-center text-gray-400 mb-8 text-sm">SECURE TECHNOLOGY PANEL</p>
-
-        {/* Form */}
-        <form onSubmit={handleLogin}>
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-3 text-gray-300">Nama Lengkap</label>
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Nama atau Email
+            </label>
             <input
               type="text"
-              className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="Masukkan nama (contoh: Alvin)"
-              value={nama}
-              onChange={(e) => setNama(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              placeholder="alvin atau alvin@magingroupx.com"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
             />
-            <p className="text-xs text-gray-500 mt-1">Cukup masukkan nama lengkap Anda</p>
           </div>
-          <div className="mb-8">
-            <label className="block text-sm font-medium mb-3 text-gray-300">Password</label>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Password
+            </label>
             <input
               type="password"
-              className="w-full p-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
+
           {error && (
-            <div className="mb-6 p-3 bg-red-900/30 border border-red-700 text-red-200 rounded-lg text-sm">
-              {error}
+            <div className="p-4 bg-red-900/30 border border-red-700 text-red-200 rounded-lg">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <span>{error}</span>
+              </div>
             </div>
           )}
+
           <button
             type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-bold py-3 rounded-lg transition duration-200 disabled:opacity-50 shadow-lg hover:shadow-xl"
             disabled={loading}
+            className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
-            {loading ? "🔄 LOGIN..." : "🔐 LOGIN TO PANEL"}
+            {loading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Processing...
+              </>
+            ) : (
+              '🔐 LOGIN'
+            )}
           </button>
         </form>
-        
-        <p className="mt-6 text-sm text-gray-500 text-center">Forgot password? Contact admin MagniGroup-X.</p>
+
+        <div className="mt-8 pt-6 border-t border-gray-700">
+          <div className="bg-blue-900/20 p-4 rounded-lg mb-4">
+            <p className="text-blue-300 font-semibold mb-2">🧪 TEST ACCOUNT:</p>
+            <p className="text-white text-sm">Email: <code className="bg-gray-900 px-2 py-1 rounded">alvin@magingroupx.com</code></p>
+            <p className="text-white text-sm mt-1">Password: <code className="bg-gray-900 px-2 py-1 rounded">Magni123!</code></p>
+            <button
+              onClick={setTestAccount}
+              className="mt-3 text-sm text-cyan-400 hover:text-cyan-300 flex items-center"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Auto-fill test credentials
+            </button>
+          </div>
+
+          <p className="text-gray-500 text-sm text-center">
+            Pastikan user sudah dibuat di{' '}
+            <a 
+              href="https://app.supabase.com" 
+              target="_blank" 
+              className="text-blue-400 hover:text-blue-300 underline"
+            >
+              Supabase Dashboard → Authentication → Users
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   );
