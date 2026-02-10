@@ -168,7 +168,7 @@ export default function LoginPage() {
         {/* LOGIN FORM */}
         <form onSubmit={handleLogin} style={{ marginTop: "40px" }}>
           <div style={{ textAlign: "left", marginBottom: "20px" }}>
-            <label style={{ color: "#88ccff" }}>Username/Email</label>
+            <label style={{ color: "#88ccff" }}>E-mail</label>
             <input
               type="email"
               value={email}
