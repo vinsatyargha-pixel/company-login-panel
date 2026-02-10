@@ -12,20 +12,20 @@ export default function LoginPage() {
   const router = useRouter();
 
   const findUserEmail = async (input) => {
-    // Jika input sudah berupa email (@), langsung return
-    if (input.includes('@')) {
-      return input;
-    }
-    
-    // Jika bukan email, cari di officers
-    const { data: officer } = await supabase
-      .from('officers')
-      .select('email')
-      .or(`username.ilike.%${input}%, full_name.ilike.%${input}%, email.ilike.%${input}%`)
-      .maybeSingle();
-    
-    return officer?.email || null;
-  };
+  // Jika input sudah berupa email (@), langsung return
+  if (input.includes('@')) {
+    return input;
+  }
+  
+  // Jika bukan email, cari di officers
+  const { data: officer } = await supabase
+    .from('officers')
+    .select('email')
+    .or(`username.ilike.%${input}%,full_name.ilike.%${input}%,email.ilike.%${input}%`)
+    .maybeSingle(); // ✅ BENAR!
+
+  return officer?.email || null;
+};
 
   const handleLogin = async (e) => {
     e.preventDefault();
