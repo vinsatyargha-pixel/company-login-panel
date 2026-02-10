@@ -1,4 +1,4 @@
-// app/login/page.js - FINAL VERSION WITH BACKGROUND AND NEON EFFECT
+// app/login/page.js - SIMPLE & WORKING
 "use client";
 
 import { useState } from "react";
@@ -9,293 +9,168 @@ export default function LoginPage() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    
     localStorage.setItem("magni_auth", "true");
-    localStorage.setItem("magni_user", email || "Admin");
-    
     window.location.href = "/dashboard";
   };
 
+  // Add CSS for glowing X
+  const addStyles = () => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .glowing-x {
+        font-size: 120px;
+        font-weight: 900;
+        color: transparent;
+        text-shadow: 
+          0 0 10px #00f7ff,
+          0 0 20px #00f7ff,
+          0 0 30px #00f7ff,
+          0 0 40px #0066ff,
+          0 0 70px #0066ff,
+          0 0 80px #0066ff;
+        animation: x-glow 1.5s infinite alternate;
+      }
+      
+      @keyframes x-glow {
+        0% {
+          text-shadow: 
+            0 0 10px #00f7ff,
+            0 0 20px #00f7ff,
+            0 0 30px #00f7ff;
+        }
+        100% {
+          text-shadow: 
+            0 0 20px #00f7ff,
+            0 0 30px #00f7ff,
+            0 0 40px #0066ff,
+            0 0 70px #0066ff,
+            0 0 100px #0066ff;
+        }
+      }
+      
+      .magni-text {
+        font-size: 48px;
+        font-weight: bold;
+        color: #00ccff;
+        text-shadow: 0 0 10px rgba(0, 204, 255, 0.5);
+      }
+      
+      .group-text {
+        font-size: 32px;
+        color: #66ccff;
+        letter-spacing: 5px;
+      }
+      
+      .panel-text {
+        color: #88aaff;
+        letter-spacing: 3px;
+        font-size: 14px;
+        margin-top: 10px;
+      }
+      
+      .login-input {
+        width: 100%;
+        padding: 15px;
+        background: rgba(0, 20, 40, 0.7);
+        border: 1px solid #0066ff;
+        border-radius: 8px;
+        color: white;
+        margin-top: 10px;
+      }
+      
+      .login-btn {
+        width: 100%;
+        padding: 15px;
+        background: #0066ff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 20px;
+        cursor: pointer;
+      }
+      
+      body {
+        background: url('https://images.pexels.com/photos/6654177/pexels-photo-6654177.jpeg') center/cover no-repeat;
+        background-attachment: fixed;
+        min-height: 100vh;
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }
+      
+      .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+      
+      .login-box {
+        background: rgba(0, 0, 0, 0.8);
+        padding: 40px;
+        border-radius: 15px;
+        border: 1px solid #0066ff;
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+      }
+    `;
+    document.head.appendChild(style);
+  };
+
+  if (typeof window !== "undefined") {
+    addStyles();
+  }
+
   return (
-    <div style={styles.container}>
-      {/* BACKGROUND IMAGE */}
-      <div style={styles.background}></div>
-      
-      {/* GLOW OVERLAY */}
-      <div style={styles.glowEffect}></div>
-      
-      <div style={styles.loginContainer}>
-        {/* LOGIN CARD */}
-        <div style={styles.loginCard}>
-          {/* HEADER WITH NEON TEXT */}
-          <div style={styles.header}>
-            <h1 style={styles.neonTitle}>MAGNI</h1>
-            <h2 style={styles.neonSubtitle}>GROUP-X</h2>
-            <p style={styles.neonTagline}>SECURE TECHNOLOGY PANEL</p>
+    <div className="login-container">
+      <div className="login-box">
+        {/* GLOWING X SYMBOL */}
+        <div className="glowing-x">X</div>
+        
+        {/* MAGNI TEXT */}
+        <div className="magni-text">MAGNI</div>
+        <div className="group-text">GROUP</div>
+        <div className="panel-text">SECURE TECHNOLOGY PANEL</div>
+        
+        {/* LOGIN FORM */}
+        <form onSubmit={handleLogin} style={{ marginTop: "40px" }}>
+          <div style={{ textAlign: "left", marginBottom: "20px" }}>
+            <label style={{ color: "#88ccff" }}>Username/Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="login-input"
+              placeholder="admin@magnigroupx.com"
+              required
+            />
           </div>
-
-          {/* LOGIN FORM */}
-          <form onSubmit={handleLogin} style={styles.form}>
-            {/* USERNAME/EMAIL FIELD */}
-            <div style={styles.inputContainer}>
-              <label style={styles.inputLabel}>Username/Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={styles.inputField}
-                placeholder="admin@magnigroupx.com"
-                required
-              />
-            </div>
-
-            {/* PASSWORD FIELD */}
-            <div style={styles.inputContainer}>
-              <label style={styles.inputLabel}>Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={styles.inputField}
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            {/* LOGIN BUTTON */}
-            <button type="submit" style={styles.loginBtn}>
-              <span style={styles.btnText}>LOGIN</span>
-              <span style={styles.btnGlow}></span>
-            </button>
-          </form>
-
-          {/* FOOTER */}
-          <div style={styles.footer}>
-            <p style={styles.footerText}>
-              <span style={styles.highlight}>© 2025</span> Database Operational v3.0
-            </p>
+          
+          <div style={{ textAlign: "left", marginBottom: "20px" }}>
+            <label style={{ color: "#88ccff" }}>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="login-input"
+              placeholder="••••••••"
+              required
+            />
           </div>
+          
+          <button type="submit" className="login-btn">
+            LOGIN
+          </button>
+        </form>
+        
+        {/* FOOTER */}
+        <div style={{ marginTop: "30px", color: "#6699ff", fontSize: "12px" }}>
+          © 2025 Database Operational v3.0
         </div>
       </div>
     </div>
   );
-}
-
-// ===== STYLES =====
-const styles = {
-  container: {
-    minHeight: "100vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: "20px",
-    position: "relative",
-    overflow: "hidden",
-    fontFamily: "'Segoe UI', 'Arial', sans-serif"
-  },
-  
-  // Background Image
-  background: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundImage: "url('https://images.pexels.com/photos/6654177/pexels-photo-6654177.jpeg')",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-    filter: "brightness(0.3) contrast(1.2)",
-    zIndex: 1
-  },
-  
-  // Glow Effect Overlay
-  glowEffect: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: "radial-gradient(circle at center, rgba(0, 100, 255, 0.15) 0%, transparent 70%)",
-    zIndex: 2
-  },
-  
-  loginContainer: {
-    position: "relative",
-    zIndex: 3,
-    width: "100%",
-    maxWidth: "450px"
-  },
-  
-  loginCard: {
-    background: "rgba(0, 0, 0, 0.85)",
-    backdropFilter: "blur(10px)",
-    border: "1px solid rgba(0, 150, 255, 0.3)",
-    borderRadius: "20px",
-    padding: "50px 40px",
-    boxShadow: "0 0 50px rgba(0, 100, 255, 0.3), inset 0 0 20px rgba(0, 100, 255, 0.1)"
-  },
-  
-  header: {
-    textAlign: "center",
-    marginBottom: "50px"
-  },
-  
-  // NEON TITLE EFFECT
-  neonTitle: {
-    fontSize: "4.5rem",
-    fontWeight: "900",
-    color: "#fff",
-    textShadow: `
-      0 0 5px #00a2ff,
-      0 0 10px #00a2ff,
-      0 0 20px #00a2ff,
-      0 0 40px #0066ff,
-      0 0 80px #0066ff
-    `,
-    letterSpacing: "2px",
-    margin: "0 0 10px 0",
-    animation: "neonPulse 2s infinite alternate"
-  },
-  
-  neonSubtitle: {
-    fontSize: "2.2rem",
-    fontWeight: "700",
-    color: "#00ccff",
-    textShadow: `
-      0 0 5px #00ccff,
-      0 0 10px #00ccff,
-      0 0 20px #0099ff
-    `,
-    margin: "0 0 20px 0",
-    letterSpacing: "3px"
-  },
-  
-  neonTagline: {
-    fontSize: "0.9rem",
-    color: "#66ccff",
-    letterSpacing: "4px",
-    textTransform: "uppercase",
-    margin: "0",
-    fontWeight: "300"
-  },
-  
-  form: {
-    marginBottom: "30px"
-  },
-  
-  inputContainer: {
-    marginBottom: "30px"
-  },
-  
-  inputLabel: {
-    display: "block",
-    color: "#88ddff",
-    fontSize: "0.9rem",
-    fontWeight: "600",
-    marginBottom: "10px",
-    letterSpacing: "1px"
-  },
-  
-  inputField: {
-    width: "100%",
-    padding: "18px 20px",
-    background: "rgba(0, 20, 40, 0.7)",
-    border: "2px solid rgba(0, 150, 255, 0.4)",
-    borderRadius: "12px",
-    color: "#fff",
-    fontSize: "1rem",
-    transition: "all 0.3s ease",
-    outline: "none"
-  },
-  
-  loginBtn: {
-    width: "100%",
-    padding: "20px",
-    background: "linear-gradient(135deg, #0066ff 0%, #00ccff 100%)",
-    border: "none",
-    borderRadius: "12px",
-    color: "#fff",
-    fontSize: "1.2rem",
-    fontWeight: "bold",
-    cursor: "pointer",
-    position: "relative",
-    overflow: "hidden",
-    transition: "all 0.3s ease",
-    marginTop: "20px"
-  },
-  
-  btnText: {
-    position: "relative",
-    zIndex: 2,
-    letterSpacing: "2px"
-  },
-  
-  btnGlow: {
-    position: "absolute",
-    top: "-50%",
-    left: "-50%",
-    width: "200%",
-    height: "200%",
-    background: "radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)",
-    opacity: 0,
-    transition: "opacity 0.3s ease"
-  },
-  
-  footer: {
-    textAlign: "center",
-    marginTop: "40px",
-    paddingTop: "20px",
-    borderTop: "1px solid rgba(0, 150, 255, 0.2)"
-  },
-  
-  footerText: {
-    color: "#66aaff",
-    fontSize: "0.85rem",
-    letterSpacing: "1px"
-  },
-  
-  highlight: {
-    color: "#00ccff",
-    fontWeight: "bold"
-  }
-};
-
-// Add CSS animation
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style');
-  styleSheet.textContent = `
-    @keyframes neonPulse {
-      0% {
-        text-shadow: 
-          0 0 5px #00a2ff,
-          0 0 10px #00a2ff,
-          0 0 20px #00a2ff,
-          0 0 40px #0066ff;
-      }
-      100% {
-        text-shadow: 
-          0 0 10px #00a2ff,
-          0 0 20px #00a2ff,
-          0 0 30px #00a2ff,
-          0 0 60px #0066ff,
-          0 0 80px #0066ff;
-      }
-    }
-    
-    input:focus {
-      border-color: #00ccff !important;
-      box-shadow: 0 0 15px rgba(0, 200, 255, 0.5) !important;
-    }
-    
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 30px rgba(0, 100, 255, 0.4) !important;
-    }
-    
-    button:hover .btnGlow {
-      opacity: 1;
-    }
-  `;
-  document.head.appendChild(styleSheet);
 }
