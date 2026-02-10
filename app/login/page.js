@@ -21,8 +21,42 @@ export default function LoginPage() {
   font-family: Impact, Arial Black, sans-serif;
   font-size: 120px;
   font-weight: 900;
-  color: transparent;
-  -webkit-text-stroke: 3px #00f7ff;
+  letter-spacing: -5px;
+
+  background: linear-gradient(
+    135deg,
+    #f5f5f5 0%,
+    #9a9a9a 40%,
+    #ffffff 50%,
+    #7a7a7a 60%,
+    #eaeaea 100%
+  );
+
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  text-shadow:
+    0 0 6px rgba(0, 247, 255, 0.6),
+    0 0 14px rgba(0, 247, 255, 0.4),
+    0 0 30px rgba(0, 102, 255, 0.3);
+
+  animation: neon-breathe 2s ease-in-out infinite;
+}
+
+@keyframes neon-breathe {
+  from {
+    text-shadow:
+      0 0 4px rgba(0, 247, 255, 0.4),
+      0 0 10px rgba(0, 247, 255, 0.3),
+      0 0 20px rgba(0, 102, 255, 0.2);
+  }
+  to {
+    text-shadow:
+      0 0 8px rgba(0, 247, 255, 0.8),
+      0 0 20px rgba(0, 247, 255, 0.6),
+      0 0 40px rgba(0, 102, 255, 0.5);
+  }
+}
 
   text-shadow:
     -1px 0 #00f7ff,
