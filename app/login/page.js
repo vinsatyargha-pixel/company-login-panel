@@ -1,3 +1,4 @@
+// app/login/page.js - FINAL VERSION WITH BACKGROUND AND NEON EFFECT
 "use client";
 
 import { useState } from "react";
@@ -9,98 +10,292 @@ export default function LoginPage() {
   const handleLogin = (e) => {
     e.preventDefault();
     
-    // Save to localStorage
     localStorage.setItem("magni_auth", "true");
     localStorage.setItem("magni_user", email || "Admin");
     
-    // Redirect to dashboard
     window.location.href = "/dashboard";
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-gradient-to-b from-gray-900/90 to-black/90 backdrop-blur-sm border border-gray-800 rounded-2xl p-8 shadow-2xl shadow-cyan-900/10">
-        {/* HEADER */}
-        <div className="text-center mb-10">
-          <div className="mb-6">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-cyan-900/30 to-blue-900/30 border border-cyan-800/30 rounded-2xl mb-4">
-              <span className="text-4xl">🔐</span>
-            </div>
-            <h1 className="text-4xl font-extrabold tracking-tight">
-              <span className="bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-300 bg-clip-text text-transparent">
-                MAGNI
-              </span>
-              <span className="block text-2xl font-light text-gray-300 mt-2">GROUP-X</span>
-            </h1>
-            <p className="text-gray-400 text-sm mt-4 tracking-wider font-medium">
-              SECURE TECHNOLOGY PANEL
-            </p>
+    <div style={styles.container}>
+      {/* BACKGROUND IMAGE */}
+      <div style={styles.background}></div>
+      
+      {/* GLOW OVERLAY */}
+      <div style={styles.glowEffect}></div>
+      
+      <div style={styles.loginContainer}>
+        {/* LOGIN CARD */}
+        <div style={styles.loginCard}>
+          {/* HEADER WITH NEON TEXT */}
+          <div style={styles.header}>
+            <h1 style={styles.neonTitle}>MAGNI</h1>
+            <h2 style={styles.neonSubtitle}>GROUP-X</h2>
+            <p style={styles.neonTagline}>SECURE TECHNOLOGY PANEL</p>
           </div>
-        </div>
 
-        {/* FORM */}
-        <form onSubmit={handleLogin} className="space-y-8">
-          {/* EMAIL FIELD */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-300 uppercase tracking-wider">
-              E-Mail
-            </label>
-            <div className="relative">
+          {/* LOGIN FORM */}
+          <form onSubmit={handleLogin} style={styles.form}>
+            {/* USERNAME/EMAIL FIELD */}
+            <div style={styles.inputContainer}>
+              <label style={styles.inputLabel}>Username/Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-4 bg-gray-900/70 border-2 border-gray-800 rounded-xl text-lg placeholder-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 focus:outline-none transition-all duration-300"
-                placeholder="(contoh: Alvin@magnigroup.com)"
+                style={styles.inputField}
+                placeholder="admin@magnigroupx.com"
                 required
               />
             </div>
-            <p className="text-gray-500 text-xs italic mt-2">
-              Cukup masukkan E-mail/magnigroup Anda
-            </p>
-          </div>
 
-          {/* PASSWORD FIELD */}
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-300 uppercase tracking-wider">
-              Password
-            </label>
-            <div className="relative">
+            {/* PASSWORD FIELD */}
+            <div style={styles.inputContainer}>
+              <label style={styles.inputLabel}>Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-4 bg-gray-900/70 border-2 border-gray-800 rounded-xl text-lg placeholder-gray-600 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/30 focus:outline-none transition-all duration-300"
+                style={styles.inputField}
                 placeholder="••••••••"
                 required
               />
             </div>
-          </div>
 
-          {/* LOGIN BUTTON */}
-          <button
-            type="submit"
-            className="w-full py-4 bg-gradient-to-r from-cyan-600 via-blue-600 to-cyan-500 hover:from-cyan-500 hover:via-blue-500 hover:to-cyan-400 text-white font-bold text-lg rounded-xl shadow-lg shadow-cyan-900/30 hover:shadow-xl hover:shadow-cyan-900/40 transform hover:-translate-y-0.5 transition-all duration-300 active:translate-y-0"
-          >
-            LOGIN TO PANEL
-          </button>
-        </form>
+            {/* LOGIN BUTTON */}
+            <button type="submit" style={styles.loginBtn}>
+              <span style={styles.btnText}>LOGIN</span>
+              <span style={styles.btnGlow}></span>
+            </button>
+          </form>
 
-        {/* FOOTER */}
-        <div className="mt-12 pt-8 border-t border-gray-800/50 text-center space-y-3">
-          <p className="text-gray-500 text-sm font-medium">
-            Forgot password? <span className="text-cyan-400">Contact admin</span>
-          </p>
-          <p className="text-gray-600 text-xs tracking-wider">
-            MagniGroup-X.
-          </p>
-          <div className="mt-6 pt-4 border-t border-gray-900/50">
-            <p className="text-gray-700 text-xs">
-              © 2025 Database Operasional v3.0
+          {/* FOOTER */}
+          <div style={styles.footer}>
+            <p style={styles.footerText}>
+              <span style={styles.highlight}>© 2025</span> Database Operational v3.0
             </p>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+// ===== STYLES =====
+const styles = {
+  container: {
+    minHeight: "100vh",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+    position: "relative",
+    overflow: "hidden",
+    fontFamily: "'Segoe UI', 'Arial', sans-serif"
+  },
+  
+  // Background Image
+  background: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundImage: "url('https://images.pexels.com/photos/6654177/pexels-photo-6654177.jpeg')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    filter: "brightness(0.3) contrast(1.2)",
+    zIndex: 1
+  },
+  
+  // Glow Effect Overlay
+  glowEffect: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "radial-gradient(circle at center, rgba(0, 100, 255, 0.15) 0%, transparent 70%)",
+    zIndex: 2
+  },
+  
+  loginContainer: {
+    position: "relative",
+    zIndex: 3,
+    width: "100%",
+    maxWidth: "450px"
+  },
+  
+  loginCard: {
+    background: "rgba(0, 0, 0, 0.85)",
+    backdropFilter: "blur(10px)",
+    border: "1px solid rgba(0, 150, 255, 0.3)",
+    borderRadius: "20px",
+    padding: "50px 40px",
+    boxShadow: "0 0 50px rgba(0, 100, 255, 0.3), inset 0 0 20px rgba(0, 100, 255, 0.1)"
+  },
+  
+  header: {
+    textAlign: "center",
+    marginBottom: "50px"
+  },
+  
+  // NEON TITLE EFFECT
+  neonTitle: {
+    fontSize: "4.5rem",
+    fontWeight: "900",
+    color: "#fff",
+    textShadow: `
+      0 0 5px #00a2ff,
+      0 0 10px #00a2ff,
+      0 0 20px #00a2ff,
+      0 0 40px #0066ff,
+      0 0 80px #0066ff
+    `,
+    letterSpacing: "2px",
+    margin: "0 0 10px 0",
+    animation: "neonPulse 2s infinite alternate"
+  },
+  
+  neonSubtitle: {
+    fontSize: "2.2rem",
+    fontWeight: "700",
+    color: "#00ccff",
+    textShadow: `
+      0 0 5px #00ccff,
+      0 0 10px #00ccff,
+      0 0 20px #0099ff
+    `,
+    margin: "0 0 20px 0",
+    letterSpacing: "3px"
+  },
+  
+  neonTagline: {
+    fontSize: "0.9rem",
+    color: "#66ccff",
+    letterSpacing: "4px",
+    textTransform: "uppercase",
+    margin: "0",
+    fontWeight: "300"
+  },
+  
+  form: {
+    marginBottom: "30px"
+  },
+  
+  inputContainer: {
+    marginBottom: "30px"
+  },
+  
+  inputLabel: {
+    display: "block",
+    color: "#88ddff",
+    fontSize: "0.9rem",
+    fontWeight: "600",
+    marginBottom: "10px",
+    letterSpacing: "1px"
+  },
+  
+  inputField: {
+    width: "100%",
+    padding: "18px 20px",
+    background: "rgba(0, 20, 40, 0.7)",
+    border: "2px solid rgba(0, 150, 255, 0.4)",
+    borderRadius: "12px",
+    color: "#fff",
+    fontSize: "1rem",
+    transition: "all 0.3s ease",
+    outline: "none"
+  },
+  
+  loginBtn: {
+    width: "100%",
+    padding: "20px",
+    background: "linear-gradient(135deg, #0066ff 0%, #00ccff 100%)",
+    border: "none",
+    borderRadius: "12px",
+    color: "#fff",
+    fontSize: "1.2rem",
+    fontWeight: "bold",
+    cursor: "pointer",
+    position: "relative",
+    overflow: "hidden",
+    transition: "all 0.3s ease",
+    marginTop: "20px"
+  },
+  
+  btnText: {
+    position: "relative",
+    zIndex: 2,
+    letterSpacing: "2px"
+  },
+  
+  btnGlow: {
+    position: "absolute",
+    top: "-50%",
+    left: "-50%",
+    width: "200%",
+    height: "200%",
+    background: "radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)",
+    opacity: 0,
+    transition: "opacity 0.3s ease"
+  },
+  
+  footer: {
+    textAlign: "center",
+    marginTop: "40px",
+    paddingTop: "20px",
+    borderTop: "1px solid rgba(0, 150, 255, 0.2)"
+  },
+  
+  footerText: {
+    color: "#66aaff",
+    fontSize: "0.85rem",
+    letterSpacing: "1px"
+  },
+  
+  highlight: {
+    color: "#00ccff",
+    fontWeight: "bold"
+  }
+};
+
+// Add CSS animation
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = `
+    @keyframes neonPulse {
+      0% {
+        text-shadow: 
+          0 0 5px #00a2ff,
+          0 0 10px #00a2ff,
+          0 0 20px #00a2ff,
+          0 0 40px #0066ff;
+      }
+      100% {
+        text-shadow: 
+          0 0 10px #00a2ff,
+          0 0 20px #00a2ff,
+          0 0 30px #00a2ff,
+          0 0 60px #0066ff,
+          0 0 80px #0066ff;
+      }
+    }
+    
+    input:focus {
+      border-color: #00ccff !important;
+      box-shadow: 0 0 15px rgba(0, 200, 255, 0.5) !important;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0, 100, 255, 0.4) !important;
+    }
+    
+    button:hover .btnGlow {
+      opacity: 1;
+    }
+  `;
+  document.head.appendChild(styleSheet);
 }
