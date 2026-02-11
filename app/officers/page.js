@@ -1,4 +1,4 @@
-// app/officers/page.js
+// app/officers/page.js - COMPLETE WITH EDIT
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,13 +9,15 @@ export default function OfficersPage() {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingOfficer, setEditingOfficer] = useState(null); // ← EDIT STATE
+  
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     username: "",
     department: "",
     role: "officer",
-    status: "active"
+    status: "TRAINING"
   });
 
   useEffect(() => {
@@ -40,6 +42,20 @@ export default function OfficersPage() {
     }
   };
 
+  // EDIT FUNCTION
+  const handleEdit = (officer) => {
+    setEditingOfficer(officer);
+    setFormData({
+      full_name: officer.full_name || "",
+      email: officer.email || "",
+      username: officer.username || "",
+      department: officer.department || "",
+      role: officer.role || "officer",
+      status: officer.status || "TRAINING"
+    });
+    setShowForm(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -49,36 +65,58 @@ export default function OfficersPage() {
         return;
       }
 
-      const { error } = await supabase
-        .from('officers')
-        .insert([{
-          full_name: formData.full_name.trim(),
-          email: formData.email || null,
-          username: formData.username || formData.email?.split('@')[0] || '',
-          department: formData.department || null,
-          role: formData.role,
-          status: formData.status,
-          created_at: new Date().toISOString()
-        }]);
+      if (editingOfficer) {
+        // UPDATE
+        const { error } = await supabase
+          .from('officers')
+          .update({
+            full_name: formData.full_name.trim(),
+            email: formData.email || null,
+            username: formData.username || formData.email?.split('@')[0] || '',
+            department: formData.department || null,
+            role: formData.role,
+            status: formData.status,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', editingOfficer.id);
+        
+        if (error) throw error;
+        alert("Officer updated successfully!");
+      } else {
+        // INSERT
+        const { error } = await supabase
+          .from('officers')
+          .insert([{
+            full_name: formData.full_name.trim(),
+            email: formData.email || null,
+            username: formData.username || formData.email?.split('@')[0] || '',
+            department: formData.department || null,
+            role: formData.role,
+            status: formData.status,
+            created_at: new Date().toISOString()
+          }]);
+        
+        if (error) throw error;
+        alert("Officer added successfully!");
+      }
       
-      if (error) throw error;
-      
+      // Reset
       setShowForm(false);
+      setEditingOfficer(null);
       setFormData({
         full_name: "",
         email: "",
         username: "",
         department: "",
         role: "officer",
-        status: "active"
+        status: "TRAINING"
       });
       
       fetchOfficers();
-      alert("Officer added successfully!");
       
     } catch (error) {
-      console.error('Error adding officer:', error);
-      alert('Failed to add officer: ' + error.message);
+      console.error('Error saving officer:', error);
+      alert('Failed to save officer: ' + error.message);
     }
   };
 
@@ -131,7 +169,18 @@ export default function OfficersPage() {
           </div>
           
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setEditingOfficer(null);
+              setFormData({
+                full_name: "",
+                email: "",
+                username: "",
+                department: "",
+                role: "officer",
+                status: "TRAINING"
+              });
+              setShowForm(true);
+            }}
             className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-lg font-semibold hover:opacity-90 transition"
           >
             + Add New Officer
@@ -139,40 +188,51 @@ export default function OfficersPage() {
         </div>
 
         {/* STATS */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-gray-900 p-4 rounded-lg">
             <p className="text-gray-400 text-sm">Total Officers</p>
             <p className="text-2xl font-bold">{officers.length}</p>
           </div>
           <div className="bg-gray-900 p-4 rounded-lg">
-            <p className="text-gray-400 text-sm">Active</p>
+            <p className="text-gray-400 text-sm">Regular</p>
             <p className="text-2xl font-bold text-green-400">
-              {officers.filter(o => o.status === 'active').length}
+              {officers.filter(o => o.status === 'REGULAR').length}
+            </p>
+          </div>
+          <div className="bg-gray-900 p-4 rounded-lg">
+            <p className="text-gray-400 text-sm">Training</p>
+            <p className="text-2xl font-bold text-blue-400">
+              {officers.filter(o => o.status === 'TRAINING').length}
+            </p>
+          </div>
+          <div className="bg-gray-900 p-4 rounded-lg">
+            <p className="text-gray-400 text-sm">Resigned</p>
+            <p className="text-2xl font-bold text-orange-400">
+              {officers.filter(o => o.status === 'RESIGN').length}
             </p>
           </div>
           <div className="bg-gray-900 p-4 rounded-lg">
             <p className="text-gray-400 text-sm">Inactive</p>
             <p className="text-2xl font-bold text-red-400">
-              {officers.filter(o => o.status === 'inactive').length}
-            </p>
-          </div>
-          <div className="bg-gray-900 p-4 rounded-lg">
-            <p className="text-gray-400 text-sm">Admins</p>
-            <p className="text-2xl font-bold text-purple-400">
-              {officers.filter(o => o.role === 'admin').length}
+              {officers.filter(o => ['TERMINATED', 'UNPAID_LEAVE'].includes(o.status)).length}
             </p>
           </div>
         </div>
       </div>
 
-      {/* MODAL ADD */}
+      {/* MODAL */}
       {showForm && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 p-6 md:p-8 rounded-2xl w-full max-w-md border border-gray-700">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Add New Officer</h2>
+              <h2 className="text-2xl font-bold">
+                {editingOfficer ? 'Edit Officer' : 'Add New Officer'}
+              </h2>
               <button 
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingOfficer(null);
+                }}
                 className="text-gray-400 hover:text-white"
               >
                 ✕
@@ -241,48 +301,35 @@ export default function OfficersPage() {
                   </select>
                 </div>
 
-                // Ganti bagian Summary Stats:
-<div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-  <div className="bg-gray-900 p-4 rounded-lg">
-    <p className="text-gray-400 text-sm">Total Officers</p>
-    <p className="text-2xl font-bold">{officers.length}</p>
-  </div>
-  <div className="bg-gray-900 p-4 rounded-lg">
-    <p className="text-gray-400 text-sm">Regular</p>
-    <p className="text-2xl font-bold text-green-400">
-      {officers.filter(o => o.status === 'REGULAR').length}
-    </p>
-  </div>
-  <div className="bg-gray-900 p-4 rounded-lg">
-    <p className="text-gray-400 text-sm">Training</p>
-    <p className="text-2xl font-bold text-blue-400">
-      {officers.filter(o => o.status === 'TRAINING').length}
-    </p>
-  </div>
-  <div className="bg-gray-900 p-4 rounded-lg">
-    <p className="text-gray-400 text-sm">Resigned</p>
-    <p className="text-2xl font-bold text-orange-400">
-      {officers.filter(o => o.status === 'RESIGN').length}
-    </p>
-  </div>
-  <div className="bg-gray-900 p-4 rounded-lg">
-    <p className="text-gray-400 text-sm">Inactive</p>
-    <p className="text-2xl font-bold text-red-400">
-      {officers.filter(o => ['TERMINATED', 'UNPAID_LEAVE'].includes(o.status)).length}
-    </p>
-  </div>
-</div>
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Status</label>
+                  <select
+                    className="w-full p-3 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                  >
+                    <option value="TRAINING">Training</option>
+                    <option value="REGULAR">Regular</option>
+                    <option value="RESIGN">Resign</option>
+                    <option value="TERMINATED">Terminated</option>
+                    <option value="UNPAID_LEAVE">Unpaid Leave</option>
+                  </select>
+                </div>
+              </div>
 
               <div className="flex space-x-4 pt-4">
                 <button
                   type="submit"
                   className="flex-1 py-3 bg-gradient-to-r from-green-600 to-emerald-500 rounded-lg font-semibold hover:opacity-90"
                 >
-                  Save Officer
+                  {editingOfficer ? 'Update Officer' : 'Save Officer'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingOfficer(null);
+                  }}
                   className="flex-1 py-3 bg-gray-800 rounded-lg font-semibold hover:bg-gray-700"
                 >
                   Cancel
@@ -332,16 +379,22 @@ export default function OfficersPage() {
                     </td>
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        officer.status === 'active' ? 'bg-green-900/50 text-green-400' :
-                        officer.status === 'inactive' ? 'bg-red-900/50 text-red-400' :
-                        'bg-yellow-900/50 text-yellow-400'
+                        officer.status === 'REGULAR' ? 'bg-green-900/50 text-green-400' :
+                        officer.status === 'TRAINING' ? 'bg-blue-900/50 text-blue-400' :
+                        officer.status === 'RESIGN' ? 'bg-orange-900/50 text-orange-400' :
+                        officer.status === 'TERMINATED' ? 'bg-red-900/50 text-red-400' :
+                        officer.status === 'UNPAID_LEAVE' ? 'bg-yellow-900/50 text-yellow-400' :
+                        'bg-gray-800 text-gray-400'
                       }`}>
-                        {officer.status || "active"}
+                        {officer.status === 'UNPAID_LEAVE' ? 'Unpaid Leave' : officer.status || "UNKNOWN"}
                       </span>
                     </td>
                     <td className="p-4">
                       <div className="flex space-x-2">
-                        <button className="px-3 py-1 bg-gray-800 rounded text-sm hover:bg-gray-700">
+                        <button 
+                          onClick={() => handleEdit(officer)}
+                          className="px-3 py-1 bg-gray-800 rounded text-sm hover:bg-gray-700"
+                        >
                           Edit
                         </button>
                         <button 

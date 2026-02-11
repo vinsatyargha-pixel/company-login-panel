@@ -12,7 +12,6 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState({
     totalAssets: 0,
     activeOfficers: 0,
-    // Tambah data lain jika perlu
   });
 
   useEffect(() => {
@@ -23,16 +22,26 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       
-      // 1. Total Assets di GROUP-X
+      // 1. Total Assets
       const { count: totalAssets } = await supabase
         .from('assets')
         .select('*', { count: 'exact' });
       
-      // 2. Active Officers (REGULAR + TRAINING)
-      const { count: activeOfficers } = await supabase
+      // 2. Active Officers - FIX QUERY
+      // Cari dengan multiple status possibilities
+      const { count: activeOfficers, error: officersError } = await supabase
         .from('officers')
         .select('*', { count: 'exact' })
-        .in('status', ['REGULAR', 'TRAINING']);
+        .or('status.eq.TRAINING,status.eq.REGULAR,status.eq.regular,status.eq.training,status.eq.active');
+      
+      if (officersError) {
+        console.error('Officers query error:', officersError);
+      }
+      
+      console.log('Dashboard data:', {
+        totalAssets,
+        activeOfficers,
+      });
       
       setDashboardData({
         totalAssets: totalAssets || 0,
@@ -88,7 +97,7 @@ export default function DashboardPage() {
           trend="up"
           icon="👤"
           color="green"
-          href="/officers"  // Ganti dengan route yang sesuai
+          href="/officers"
         />
         
         {/* 3. Schedule Officers */}
@@ -99,7 +108,7 @@ export default function DashboardPage() {
           trend="up"
           icon="📅"
           color="purple"
-          href="/schedules"
+          href="/schedule"
         />
         
         {/* 4. Working Plan Officer */}
