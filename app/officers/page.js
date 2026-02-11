@@ -10,13 +10,13 @@ export default function OfficersPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: "",
-    email: "",
-    username: "",
-    department: "",
-    role: "officer",
-    status: "active"
-  });
+  full_name: "",
+  email: "",
+  username: "",
+  department: "",
+  role: "officer",
+  status: "TRAINING" // ← HARUS "TRAINING" bukan "active"
+});
 
   useEffect(() => {
     fetchOfficers();
@@ -147,7 +147,7 @@ export default function OfficersPage() {
           <div className="bg-gray-900 p-4 rounded-lg">
             <p className="text-gray-400 text-sm">Active</p>
             <p className="text-2xl font-bold text-green-400">
-              {officers.filter(o => o.status === 'active').length}
+              {officers.filter(o => o.status === 'TRAINING').length}
             </p>
           </div>
           <div className="bg-gray-900 p-4 rounded-lg">
@@ -241,19 +241,37 @@ export default function OfficersPage() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Status</label>
-                  <select
-                    className="w-full p-3 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                  >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="on_leave">On Leave</option>
-                  </select>
-                </div>
-              </div>
+                // Ganti bagian Summary Stats:
+<div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+  <div className="bg-gray-900 p-4 rounded-lg">
+    <p className="text-gray-400 text-sm">Total Officers</p>
+    <p className="text-2xl font-bold">{officers.length}</p>
+  </div>
+  <div className="bg-gray-900 p-4 rounded-lg">
+    <p className="text-gray-400 text-sm">Regular</p>
+    <p className="text-2xl font-bold text-green-400">
+      {officers.filter(o => o.status === 'REGULAR').length}
+    </p>
+  </div>
+  <div className="bg-gray-900 p-4 rounded-lg">
+    <p className="text-gray-400 text-sm">Training</p>
+    <p className="text-2xl font-bold text-blue-400">
+      {officers.filter(o => o.status === 'TRAINING').length}
+    </p>
+  </div>
+  <div className="bg-gray-900 p-4 rounded-lg">
+    <p className="text-gray-400 text-sm">Resigned</p>
+    <p className="text-2xl font-bold text-orange-400">
+      {officers.filter(o => o.status === 'RESIGN').length}
+    </p>
+  </div>
+  <div className="bg-gray-900 p-4 rounded-lg">
+    <p className="text-gray-400 text-sm">Inactive</p>
+    <p className="text-2xl font-bold text-red-400">
+      {officers.filter(o => ['TERMINATED', 'UNPAID_LEAVE'].includes(o.status)).length}
+    </p>
+  </div>
+</div>
 
               <div className="flex space-x-4 pt-4">
                 <button
