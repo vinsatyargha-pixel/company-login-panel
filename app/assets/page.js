@@ -1,4 +1,4 @@
-// app/assets/page.js - FINAL VERSION
+// app/assets/page.js - WITH CUSTOM DATE FILTER
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,43 +14,67 @@ const formatIDR = (amount) => {
   }).format(amount || 0);
 };
 
-// Helper untuk date range
-const getDateRange = (filter) => {
-  const today = new Date();
-  const start = new Date();
-  
-  switch(filter) {
-    case 'month':
-      start.setMonth(today.getMonth() - 1);
-      break;
-    case '6month':
-      start.setMonth(today.getMonth() - 6);
-      break;
-    case 'year':
-      start.setFullYear(today.getFullYear() - 1);
-      break;
-    default: // 'today'
-      return {
-        start: today.toISOString().split('T')[0],
-        end: today.toISOString().split('T')[0]
-      };
-  }
-  
-  return {
-    start: start.toISOString().split('T')[0],
-    end: today.toISOString().split('T')[0]
-  };
-};
-
 export default function AssetsPage() {
   const [assets, setAssets] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState('today');
+  const [dateFilter, setDateFilter] = useState('yesterday'); // Default ke yesterday
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
 
   useEffect(() => {
     fetchData();
-  }, [dateFilter]);
+  }, [dateFilter, customStartDate, customEndDate]);
+
+  const getDateRange = (filter) => {
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    
+    let start = new Date();
+    let end = today;
+    
+    switch(filter) {
+      case 'yesterday':
+        start = yesterday;
+        end = yesterday;
+        break;
+      case 'week':
+        start.setDate(today.getDate() - 7);
+        break;
+      case 'month':
+        start.setDate(today.getDate() - 30);
+        break;
+      case '3month':
+        start.setMonth(today.getMonth() - 3);
+        break;
+      case '6month':
+        start.setMonth(today.getMonth() - 6);
+        break;
+      case 'year':
+        start.setFullYear(today.getFullYear() - 1);
+        break;
+      case 'custom':
+        if (customStartDate && customEndDate) {
+          return {
+            start: customStartDate,
+            end: customEndDate
+          };
+        }
+        // Fallback to yesterday if custom not set
+        start = yesterday;
+        end = yesterday;
+        break;
+      default:
+        start = yesterday;
+        end = yesterday;
+    }
+    
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    };
+  };
 
   const fetchData = async () => {
     try {
@@ -107,6 +131,12 @@ export default function AssetsPage() {
 
   const stats = calculateStats();
 
+  // Get current date range for display
+  const currentDateRange = getDateRange(dateFilter);
+  const displayDateRange = dateFilter === 'custom' && customStartDate && customEndDate 
+    ? `${customStartDate} to ${customEndDate}`
+    : `${currentDateRange.start}${currentDateRange.start !== currentDateRange.end ? ` to ${currentDateRange.end}` : ''}`;
+
   if (loading) {
     return (
       <div className="p-6 min-h-screen flex items-center justify-center">
@@ -134,25 +164,98 @@ export default function AssetsPage() {
         
         <h1 className="text-3xl font-bold text-black">ASSET GROUP-X</h1>
         <p className="text-gray-700 mt-2">Monitoring transaksi deposit & withdrawal</p>
+        <p className="text-sm text-blue-600 mt-1">Date Range: {displayDateRange}</p>
       </div>
 
-      {/* FILTER - SIMPLE */}
+      {/* FILTER - ENHANCED WITH CUSTOM DATE */}
       <div className="mb-8 p-4 border border-gray-300 rounded-lg">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="font-medium text-black">Filter:</span>
-          <select 
-            value={dateFilter}
-            onChange={(e) => setDateFilter(e.target.value)}
-            className="border border-gray-400 rounded px-4 py-2 text-black bg-white"
-          >
-            <option value="today">Hari Ini</option>
-            <option value="month">1 Bulan</option>
-            <option value="6month">6 Bulan</option>
-            <option value="year">1 Tahun</option>
-          </select>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex-1">
+            <span className="font-bold text-black mb-2 block">FILTER DATE RANGE:</span>
+            
+            {/* Quick Filter Buttons */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              <button
+                onClick={() => setDateFilter('yesterday')}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'yesterday' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+              >
+                Kemarin
+              </button>
+              <button
+                onClick={() => setDateFilter('week')}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+              >
+                7 Hari
+              </button>
+              <button
+                onClick={() => setDateFilter('month')}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+              >
+                30 Hari
+              </button>
+              <button
+                onClick={() => setDateFilter('3month')}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === '3month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+              >
+                3 Bulan
+              </button>
+              <button
+                onClick={() => setDateFilter('6month')}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === '6month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+              >
+                6 Bulan
+              </button>
+              <button
+                onClick={() => setDateFilter('year')}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'year' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+              >
+                1 Tahun
+              </button>
+            </div>
+            
+            {/* Custom Date Range */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-3 border-t border-gray-200">
+              <span className="text-gray-700 font-medium">Custom Range:</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => {
+                    setCustomStartDate(e.target.value);
+                    setDateFilter('custom');
+                  }}
+                  className="border border-gray-400 rounded px-3 py-1.5 text-black bg-white"
+                  placeholder="Start date"
+                />
+                <span className="text-gray-700">to</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => {
+                    setCustomEndDate(e.target.value);
+                    setDateFilter('custom');
+                  }}
+                  className="border border-gray-400 rounded px-3 py-1.5 text-black bg-white"
+                  placeholder="End date"
+                />
+                <button
+                  onClick={() => {
+                    const today = new Date().toISOString().split('T')[0];
+                    setCustomStartDate(today);
+                    setCustomEndDate(today);
+                    setDateFilter('custom');
+                  }}
+                  className="px-3 py-1.5 bg-gray-200 text-black rounded text-sm hover:bg-gray-300"
+                >
+                  Today
+                </button>
+              </div>
+            </div>
+          </div>
           
-          <div className="ml-auto text-right">
+          <div className="text-right">
             <div className="text-2xl font-bold text-blue-600">{assets.length} ASSETS</div>
+            <p className="text-sm text-gray-600">in GROUP-X</p>
           </div>
         </div>
       </div>
@@ -234,7 +337,7 @@ export default function AssetsPage() {
         </Link>
       </div>
 
-      {/* ASSETS LIST - SIMPLE TABLE STYLE */}
+      {/* ASSETS LIST */}
       <div className="space-y-6">
         {assets.map(asset => {
           const assetTrans = transactions.filter(t => t.asset_id === asset.id);
