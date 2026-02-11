@@ -10,13 +10,13 @@ export default function OfficersPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-  full_name: "",
-  email: "",
-  username: "",
-  department: "",
-  role: "officer",
-  status: "TRAINING" // ← HARUS "TRAINING" bukan "active"
-});
+    full_name: "",
+    email: "",
+    username: "",
+    department: "",
+    role: "officer",
+    status: "active"
+  });
 
   useEffect(() => {
     fetchOfficers();
@@ -147,7 +147,7 @@ export default function OfficersPage() {
           <div className="bg-gray-900 p-4 rounded-lg">
             <p className="text-gray-400 text-sm">Active</p>
             <p className="text-2xl font-bold text-green-400">
-              {officers.filter(o => o.status === 'TRAINING').length}
+              {officers.filter(o => o.status === 'active').length}
             </p>
           </div>
           <div className="bg-gray-900 p-4 rounded-lg">
