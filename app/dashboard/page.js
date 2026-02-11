@@ -1,4 +1,3 @@
-// app/dashboard/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,7 +6,7 @@ import QuickLinks from '@/components/QuickLinks';
 import LogoutButton from '@/components/LogoutButton';
 import { supabase } from '@/lib/supabase';
 
-export default function DashboardPage() {
+export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     totalAssets: 0,
@@ -21,33 +20,22 @@ export default function DashboardPage() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
-      // 1. Total Assets
       const { count: totalAssets } = await supabase
         .from('assets')
         .select('*', { count: 'exact' });
-      
-      // 2. Active Officers - FIX QUERY
-      // Cari dengan multiple status possibilities
+
       const { count: activeOfficers, error: officersError } = await supabase
         .from('officers')
         .select('*', { count: 'exact' })
         .or('status.eq.TRAINING,status.eq.REGULAR,status.eq.regular,status.eq.training,status.eq.active');
-      
-      if (officersError) {
-        console.error('Officers query error:', officersError);
-      }
-      
-      console.log('Dashboard data:', {
-        totalAssets,
-        activeOfficers,
-      });
-      
+
+      if (officersError) console.error('Officers query error:', officersError);
+
       setDashboardData({
         totalAssets: totalAssets || 0,
         activeOfficers: activeOfficers || 0
       });
-      
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -55,16 +43,14 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard data...</p>
-        </div>
+  if (loading) return (
+    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-600">Loading dashboard data...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50">
@@ -76,9 +62,7 @@ export default function DashboardPage() {
         <LogoutButton />
       </header>
 
-      {/* 4 MAIN MENU CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* 1. Asset Group-X */}
         <DashboardCard
           title="Asset Group-X"
           value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
@@ -88,8 +72,6 @@ export default function DashboardPage() {
           color="blue"
           href="/assets"
         />
-        
-        {/* 2. Active Officers */}
         <DashboardCard
           title="Active Officers"
           value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
@@ -99,8 +81,6 @@ export default function DashboardPage() {
           color="green"
           href="/officers"
         />
-        
-        {/* 3. Schedule Officers */}
         <DashboardCard
           title="Schedule Officers"
           value="Calendar"
@@ -110,8 +90,6 @@ export default function DashboardPage() {
           color="purple"
           href="/schedule"
         />
-        
-        {/* 4. Working Plan Officer */}
         <DashboardCard
           title="Working Plan Officer"
           value="Planner"
@@ -123,13 +101,11 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* QUICK ACCESS SECTION */}
       <div className="mb-8">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Access</h2>
         <QuickLinks />
       </div>
 
-      {/* RECENT ACTIVITY */}
       <div className="bg-white rounded-xl shadow p-6">
         <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
         <div className="space-y-4">
