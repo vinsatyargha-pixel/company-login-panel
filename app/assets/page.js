@@ -1,4 +1,4 @@
-// app/assets/page.js - MINIMAL VERSION
+// app/assets/page.js - FINAL VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,6 +12,34 @@ const formatIDR = (amount) => {
     currency: 'IDR',
     minimumFractionDigits: 0,
   }).format(amount || 0);
+};
+
+// Helper untuk date range
+const getDateRange = (filter) => {
+  const today = new Date();
+  const start = new Date();
+  
+  switch(filter) {
+    case 'month':
+      start.setMonth(today.getMonth() - 1);
+      break;
+    case '6month':
+      start.setMonth(today.getMonth() - 6);
+      break;
+    case 'year':
+      start.setFullYear(today.getFullYear() - 1);
+      break;
+    default: // 'today'
+      return {
+        start: today.toISOString().split('T')[0],
+        end: today.toISOString().split('T')[0]
+      };
+  }
+  
+  return {
+    start: start.toISOString().split('T')[0],
+    end: today.toISOString().split('T')[0]
+  };
 };
 
 export default function AssetsPage() {
@@ -28,6 +56,7 @@ export default function AssetsPage() {
     try {
       setLoading(true);
       
+      // Fetch assets
       const { data: assetsData } = await supabase
         .from('assets')
         .select('*')
@@ -35,14 +64,18 @@ export default function AssetsPage() {
       
       setAssets(assetsData || []);
 
-      const today = new Date().toISOString().split('T')[0];
+      // Determine date range
+      const dateRange = getDateRange(dateFilter);
+
+      // Fetch transactions within date range
       const { data: transactionsData } = await supabase
         .from('transactions')
         .select(`
           *,
           asset:assets(asset_code, asset_name, wlb_code)
         `)
-        .gte('transaction_date', today)
+        .gte('transaction_date', dateRange.start)
+        .lte('transaction_date', dateRange.end)
         .order('transaction_date', { ascending: false });
       
       setTransactions(transactionsData || []);
@@ -54,7 +87,7 @@ export default function AssetsPage() {
     }
   };
 
-  // Calculate stats - SIMPLIFIED
+  // Calculate overall stats
   const calculateStats = () => {
     const stats = {
       deposit: { approved: 0, rejected: 0, failed: 0 },
@@ -87,8 +120,18 @@ export default function AssetsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-white">
-      {/* HEADER - BLACK & WHITE */}
+      {/* HEADER WITH BACK BUTTON */}
       <div className="mb-8">
+        <button
+          onClick={() => window.history.back()}
+          className="flex items-center text-blue-600 hover:text-blue-800 mb-4 font-medium"
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          BACK
+        </button>
+        
         <h1 className="text-3xl font-bold text-black">ASSET GROUP-X</h1>
         <p className="text-gray-700 mt-2">Monitoring transaksi deposit & withdrawal</p>
       </div>
