@@ -82,13 +82,13 @@ export default function DashboardPage() {
         
         {/* 2. Active Officers */}
         <DashboardCard
-          title="Active Officers"
-          value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
-          change={2.1}
-          trend="up"
-          icon="👤"
-          color="green"
-          href="/officers/active" // LINK ke halaman Active Officers
+        title="Active Officers"
+        value={`${activeOfficersCount} Officers`}
+        change={2.1}
+        trend="up"
+        icon="👤"
+        color="green"
+        href="/officers/active"
         />
         
         {/* 3. Schedule Officers */}
