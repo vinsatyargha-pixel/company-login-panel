@@ -11,76 +11,45 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   // ⭐⭐⭐ HANYA INI YANG DIUBAH ⭐⭐⭐
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
+  // app/login/page.js - Update handleLogin
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError("");
 
-    try {
-      // 1. HARDCODED VALIDATION - HANYA EMAIL & PASSWORD INI YANG BISA
-      const validCredentials = [
-        { email: "admin@magnigroupx.com", password: "admin123" },
-        { email: "supervisor@magnigroupx.com", password: "super123" },
-        { email: "officer@magnigroupx.com", password: "officer123" }
-      ];
+  try {
+    // Supabase Auth login
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password: password.trim(),
+    });
 
-      // 2. Cek apakah email valid
-      if (!email.includes('@magnigroupx.com')) {
-        throw new Error('Hanya email @magnigroupx.com yang diizinkan');
-      }
+    if (error || !data.user) throw new Error(error?.message || "Login gagal");
 
-      // 3. Cek apakah credentials sesuai
-      const isValid = validCredentials.some(
-        cred => cred.email === email && cred.password === password
-      );
+    // Optional: ambil role dari table users
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email.trim())
+      .single();
 
-      if (!isValid) {
-        throw new Error('Email atau password salah');
-      }
+    // simpan di localStorage
+    localStorage.setItem("magni_user", JSON.stringify({
+      id: data.user.id,
+      email: data.user.email,
+      role: userProfile?.role || "officer",
+      full_name: userProfile?.full_name || "",
+    }));
 
-      // 4. JIKA VALID, simpan ke database (track login)
-      await supabase
-        .from('login_attempts')
-        .insert([{
-          email: email,
-          status: 'success',
-          ip_address: 'web',
-          user_agent: navigator.userAgent
-        }]);
+    // redirect ke dashboard
+    window.location.href = "/dashboard";
 
-      // 5. Set authentication
-      localStorage.setItem("magni_auth", "true");
-      localStorage.setItem("magni_user", email);
-      
-      const token = "magni-auth-" + Date.now();
-      document.cookie = `auth-token=${token}; path=/; max-age=86400; SameSite=Lax`;
-      document.cookie = `magni-user=${email}; path=/; max-age=86400`;
-
-      // 6. Redirect
-      setTimeout(() => {
-        window.location.href = "/dashboard";
-      }, 200);
-
-    } catch (err) {
-      console.error("Login error:", err);
-      
-      // Simpan failed attempt ke database
-      await supabase
-        .from('login_attempts')
-        .insert([{
-          email: email,
-          status: 'failed',
-          error_message: err.message,
-          ip_address: 'web'
-        }]);
-      
-      // Tampilkan error (opsional)
-      alert(`Login gagal: ${err.message}`);
-      
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
   // ⭐⭐⭐ SAMPAI SINI ⭐⭐⭐
 
   // CSS glowing X TETAP SAMA PERSIS ↓
