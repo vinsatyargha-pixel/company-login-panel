@@ -71,18 +71,14 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* 1. Asset Group-X */}
         <DashboardCard
-  title="Active Officers"
-  value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
-  change={2.1}
-  trend="up"
-  icon="👤"
-  color="green"
-  href="/officers"
-  // Tambahkan ini untuk debug
-  onClick={(e) => {
-    console.log('Navigating to /officers');
-  }}
-/>
+          title="Asset Group-X"
+          value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
+          change={12.5}
+          trend="up"
+          icon="🚚"
+          color="blue"
+          href="/assets"
+        />
         
         {/* 2. Active Officers */}
         <DashboardCard
