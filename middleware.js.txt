@@ -1,32 +1,31 @@
 // middleware.js
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
 
 export function middleware(request) {
   const { pathname } = request.nextUrl;
-  
-  // Public routes
-  const publicPaths = ['/login', '/', '/api', '/_next', '/favicon.ico'];
-  const isPublicPath = publicPaths.some(path => 
-    pathname === path || pathname.startsWith(path + '/')
+
+  // daftar route publik
+  const publicPaths = ["/login", "/", "/api", "/_next", "/favicon.ico"];
+  const isPublicPath = publicPaths.some(
+    (path) => pathname === path || pathname.startsWith(path + "/")
   );
-  
-  // Cek cookie auth-token
-  const cookieToken = request.cookies.get('auth-token')?.value;
-  
-  // Jika route TIDAK public dan TIDAK ada cookie
+
+  // ambil cookie auth-token
+  const cookieToken = request.cookies.get("auth-token")?.value;
+
+  // jika route PRIVATE tapi tidak ada cookie -> redirect ke login
   if (!isPublicPath && !cookieToken) {
-    console.log(`🔒 Middleware: No auth cookie for ${pathname}, redirecting to login`);
-    return NextResponse.redirect(new URL('/login', request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
-  
-  // Jika SUDAH login tapi akses /login
-  if (pathname === '/login' && cookieToken) {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+
+  // jika sudah login tapi akses /login -> redirect ke dashboard
+  if (pathname === "/login" && cookieToken) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
-  
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };

@@ -11,14 +11,12 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   // ⭐⭐⭐ HANYA INI YANG DIUBAH ⭐⭐⭐
-  // app/login/page.js - Update handleLogin
-const handleLogin = async (e) => {
+  const handleLogin = async (e) => {
   e.preventDefault();
   setIsLoading(true);
   setError("");
 
   try {
-    // Supabase Auth login
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password: password.trim(),
@@ -26,30 +24,34 @@ const handleLogin = async (e) => {
 
     if (error || !data.user) throw new Error(error?.message || "Login gagal");
 
-    // Optional: ambil role dari table users
     const { data: userProfile } = await supabase
       .from("users")
       .select("*")
       .eq("email", email.trim())
       .single();
 
-    // simpan di localStorage
-    localStorage.setItem("magni_user", JSON.stringify({
-      id: data.user.id,
-      email: data.user.email,
-      role: userProfile?.role || "officer",
-      full_name: userProfile?.full_name || "",
-    }));
+    localStorage.setItem(
+      "magni_user",
+      JSON.stringify({
+        id: data.user.id,
+        email: data.user.email,
+        role: userProfile?.role || "officer",
+        full_name: userProfile?.full_name || "",
+      })
+    );
+
+    // ⭐ Tambahkan cookie auth-token
+    document.cookie = `auth-token=${data.user.id}; path=/; max-age=${60 * 60 * 24}`;
 
     // redirect ke dashboard
     window.location.href = "/dashboard";
-
   } catch (err) {
     alert(err.message);
   } finally {
     setIsLoading(false);
   }
 };
+
   // ⭐⭐⭐ SAMPAI SINI ⭐⭐⭐
 
   // CSS glowing X TETAP SAMA PERSIS ↓
