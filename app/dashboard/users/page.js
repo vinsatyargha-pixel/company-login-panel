@@ -19,7 +19,19 @@ export default function UserManagementPage() {
   });
 
   // Get current user from localStorage
-  const currentUser = JSON.parse(localStorage.getItem("magni_user") || "{}");
+  const [currentUser, setCurrentUser] = useState(null);
+
+useEffect(() => {
+  if (typeof window !== "undefined") {
+    const user = JSON.parse(localStorage.getItem("magni_user") || "{}");
+    setCurrentUser(user);
+
+    if (user.role !== "admin") {
+      alert("Hanya admin yang bisa mengakses halaman ini");
+      window.location.href = "/dashboard";
+    }
+  }
+}, []);
 
   useEffect(() => {
     if (currentUser.role !== 'admin') {
@@ -162,18 +174,28 @@ export default function UserManagementPage() {
           </div>
           
           <div className="bg-white p-4 rounded-lg shadow mb-6">
-            <p className="text-sm text-gray-600">
-              Logged in as: <span className="font-bold text-blue-600">{currentUser.email}</span>
-              <span className={`ml-4 px-2 py-1 rounded text-xs ${
-                currentUser.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                currentUser.role === 'supervisor' ? 'bg-green-100 text-green-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {currentUser.role?.toUpperCase()}
-              </span>
-            </p>
-          </div>
-        </div>
+  <p className="text-sm text-gray-600">
+    Logged in as:{" "}
+    <span className="font-bold text-blue-600">
+      {currentUser?.email || "Loading..."}
+    </span>
+
+    {currentUser?.role && (
+      <span
+        className={`ml-4 px-2 py-1 rounded text-xs ${
+          currentUser.role === "admin"
+            ? "bg-purple-100 text-purple-800"
+            : currentUser.role === "supervisor"
+            ? "bg-green-100 text-green-800"
+            : "bg-gray-100 text-gray-800"
+        }`}
+      >
+        {currentUser.role.toUpperCase()}
+      </span>
+    )}
+  </p>
+</div>
+
 
         {/* ADD USER MODAL */}
         {showForm && (
