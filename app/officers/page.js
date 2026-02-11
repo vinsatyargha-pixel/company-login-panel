@@ -3,7 +3,6 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function OfficersPage() {
@@ -11,11 +10,12 @@ export default function OfficersPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    join_date: "",
-    gender: "MALE",
-    nationality: "INDONESIA",
-    status: "TRAINING" // Default: TRAINING
+    full_name: "",
+    email: "",
+    username: "",
+    department: "",
+    role: "officer",
+    status: "active"
   });
 
   useEffect(() => {
@@ -27,8 +27,8 @@ export default function OfficersPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from('officers')
-        .select('*')
-        .order('name');
+        .select('id, full_name, email, username, department, role, status, created_at')
+        .order('full_name');
       
       if (error) throw error;
       setOfficers(data || []);
@@ -44,36 +44,35 @@ export default function OfficersPage() {
     e.preventDefault();
     
     try {
-      // Validasi data
-      if (!formData.name.trim()) {
-        alert("Name is required");
+      if (!formData.full_name.trim()) {
+        alert("Full name is required");
         return;
       }
 
       const { error } = await supabase
         .from('officers')
         .insert([{
-          name: formData.name.trim(),
-          join_date: formData.join_date || new Date().toISOString().split('T')[0],
-          gender: formData.gender,
-          nationality: formData.nationality,
+          full_name: formData.full_name.trim(),
+          email: formData.email || null,
+          username: formData.username || formData.email?.split('@')[0] || '',
+          department: formData.department || null,
+          role: formData.role,
           status: formData.status,
           created_at: new Date().toISOString()
         }]);
       
       if (error) throw error;
       
-      // Reset form
       setShowForm(false);
       setFormData({
-        name: "",
-        join_date: "",
-        gender: "MALE",
-        nationality: "INDONESIA",
-        status: "TRAINING"
+        full_name: "",
+        email: "",
+        username: "",
+        department: "",
+        role: "officer",
+        status: "active"
       });
       
-      // Refresh data
       fetchOfficers();
       alert("Officer added successfully!");
       
@@ -115,7 +114,7 @@ export default function OfficersPage() {
 
   return (
     <div className="min-h-screen bg-black text-white p-4 md:p-8">
-      {/* HEADER WITH BACK BUTTON */}
+      {/* HEADER */}
       <div className="max-w-6xl mx-auto mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
@@ -139,34 +138,34 @@ export default function OfficersPage() {
           </button>
         </div>
 
-        {/* SUMMARY STATS */}
+        {/* STATS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-gray-900 p-4 rounded-lg">
             <p className="text-gray-400 text-sm">Total Officers</p>
             <p className="text-2xl font-bold">{officers.length}</p>
           </div>
           <div className="bg-gray-900 p-4 rounded-lg">
-            <p className="text-gray-400 text-sm">Regular</p>
+            <p className="text-gray-400 text-sm">Active</p>
             <p className="text-2xl font-bold text-green-400">
-              {officers.filter(o => o.status === 'REGULAR').length}
-            </p>
-          </div>
-          <div className="bg-gray-900 p-4 rounded-lg">
-            <p className="text-gray-400 text-sm">Training</p>
-            <p className="text-2xl font-bold text-blue-400">
-              {officers.filter(o => o.status === 'TRAINING').length}
+              {officers.filter(o => o.status === 'active').length}
             </p>
           </div>
           <div className="bg-gray-900 p-4 rounded-lg">
             <p className="text-gray-400 text-sm">Inactive</p>
             <p className="text-2xl font-bold text-red-400">
-              {officers.filter(o => ['RESIGN', 'TERMINATED', 'DIRUMAHKAN'].includes(o.status)).length}
+              {officers.filter(o => o.status === 'inactive').length}
+            </p>
+          </div>
+          <div className="bg-gray-900 p-4 rounded-lg">
+            <p className="text-gray-400 text-sm">Admins</p>
+            <p className="text-2xl font-bold text-purple-400">
+              {officers.filter(o => o.role === 'admin').length}
             </p>
           </div>
         </div>
       </div>
 
-      {/* ADD OFFICER MODAL */}
+      {/* MODAL ADD */}
       {showForm && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 p-6 md:p-8 rounded-2xl w-full max-w-md border border-gray-700">
@@ -187,62 +186,73 @@ export default function OfficersPage() {
                   type="text"
                   placeholder="Enter full name"
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
                   required
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Join Date</label>
+                <label className="block text-sm text-gray-400 mb-2">Email</label>
                 <input
-                  type="date"
+                  type="email"
+                  placeholder="email@example.com"
                   className="w-full p-3 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
-                  value={formData.join_date}
-                  onChange={(e) => setFormData({...formData, join_date: e.target.value})}
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Username</label>
+                <input
+                  type="text"
+                  placeholder="Username"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                  value={formData.username}
+                  onChange={(e) => setFormData({...formData, username: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Department</label>
+                <input
+                  type="text"
+                  placeholder="Department"
+                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
+                  value={formData.department}
+                  onChange={(e) => setFormData({...formData, department: e.target.value})}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Gender</label>
+                  <label className="block text-sm text-gray-400 mb-2">Role</label>
                   <select
                     className="w-full p-3 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
-                    value={formData.gender}
-                    onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                    value={formData.role}
+                    onChange={(e) => setFormData({...formData, role: e.target.value})}
                   >
-                    <option value="MALE">Male</option>
-                    <option value="FEMALE">Female</option>
+                    <option value="officer">Officer</option>
+                    <option value="supervisor">Supervisor</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-400 mb-2">Nationality</label>
+                  <label className="block text-sm text-gray-400 mb-2">Status</label>
                   <select
                     className="w-full p-3 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
-                    value={formData.nationality}
-                    onChange={(e) => setFormData({...formData, nationality: e.target.value})}
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
                   >
-                    <option value="INDONESIA">Indonesia</option>
-                    <option value="OTHER">Other</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="on_leave">On Leave</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Status</label>
-                <select
-                  className="w-full p-3 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500"
-                  value={formData.status}
-                  onChange={(e) => setFormData({...formData, status: e.target.value})}
-                >
-                  <option value="TRAINING">Training</option>
-                  <option value="REGULAR">Regular</option>
-                  <option value="RESIGN">Resign</option>
-                  <option value="TERMINATED">Terminated</option>
-                  <option value="DIRUMAHKAN">Dirumahkan</option>
-                </select>
               </div>
 
               <div className="flex space-x-4 pt-4">
@@ -265,16 +275,16 @@ export default function OfficersPage() {
         </div>
       )}
 
-      {/* OFFICERS TABLE */}
+      {/* TABLE */}
       <div className="max-w-6xl mx-auto">
         <div className="bg-gray-900/50 rounded-xl border border-gray-800 overflow-x-auto">
           <table className="w-full min-w-[800px]">
             <thead className="bg-gray-900">
               <tr>
-                <th className="p-4 text-left text-gray-300 font-medium">Name</th>
-                <th className="p-4 text-left text-gray-300 font-medium">Join Date</th>
-                <th className="p-4 text-left text-gray-300 font-medium">Gender</th>
-                <th className="p-4 text-left text-gray-300 font-medium">Nationality</th>
+                <th className="p-4 text-left text-gray-300 font-medium">Full Name</th>
+                <th className="p-4 text-left text-gray-300 font-medium">Email</th>
+                <th className="p-4 text-left text-gray-300 font-medium">Department</th>
+                <th className="p-4 text-left text-gray-300 font-medium">Role</th>
                 <th className="p-4 text-left text-gray-300 font-medium">Status</th>
                 <th className="p-4 text-left text-gray-300 font-medium">Actions</th>
               </tr>
@@ -289,27 +299,31 @@ export default function OfficersPage() {
               ) : (
                 officers.map((officer) => (
                   <tr key={officer.id} className="border-b border-gray-800 hover:bg-gray-900/30">
-                    <td className="p-4 font-medium">{officer.name || "-"}</td>
-                    <td className="p-4">{officer.join_date || "-"}</td>
-                    <td className="p-4">{officer.gender || "-"}</td>
-                    <td className="p-4">{officer.nationality || "-"}</td>
+                    <td className="p-4 font-medium">{officer.full_name || "-"}</td>
+                    <td className="p-4">{officer.email || "-"}</td>
+                    <td className="p-4">{officer.department || "-"}</td>
                     <td className="p-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        officer.status === 'REGULAR' ? 'bg-green-900/50 text-green-400' :
-                        officer.status === 'TRAINING' ? 'bg-blue-900/50 text-blue-400' :
-                        officer.status === 'RESIGN' ? 'bg-orange-900/50 text-orange-400' :
-                        officer.status === 'TERMINATED' ? 'bg-red-900/50 text-red-400' :
+                        officer.role === 'admin' ? 'bg-purple-900/50 text-purple-400' :
+                        officer.role === 'manager' ? 'bg-blue-900/50 text-blue-400' :
+                        officer.role === 'supervisor' ? 'bg-green-900/50 text-green-400' :
                         'bg-gray-800 text-gray-400'
                       }`}>
-                        {officer.status || "UNKNOWN"}
+                        {officer.role || "officer"}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        officer.status === 'active' ? 'bg-green-900/50 text-green-400' :
+                        officer.status === 'inactive' ? 'bg-red-900/50 text-red-400' :
+                        'bg-yellow-900/50 text-yellow-400'
+                      }`}>
+                        {officer.status || "active"}
                       </span>
                     </td>
                     <td className="p-4">
                       <div className="flex space-x-2">
-                        <button 
-                          onClick={() => {/* TODO: Edit function */}}
-                          className="px-3 py-1 bg-gray-800 rounded text-sm hover:bg-gray-700"
-                        >
+                        <button className="px-3 py-1 bg-gray-800 rounded text-sm hover:bg-gray-700">
                           Edit
                         </button>
                         <button 
