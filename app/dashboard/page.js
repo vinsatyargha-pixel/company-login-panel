@@ -1,37 +1,64 @@
 // app/dashboard/page.js
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import DashboardCard from '@/components/DashboardCard';
 import QuickLinks from '@/components/QuickLinks';
 import LogoutButton from '@/components/LogoutButton';
+import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
-  const router = useRouter();
-  
-  useEffect(() => {
-    // Cek auth
-    const token = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('auth-token='))
-      ?.split('=')[1];
-    
-    if (!token) {
-      router.push('/login');
-    }
-  }, [router]);
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState({
+    totalAssets: 0,
+    activeOfficers: 0,
+    // Tambah data lain jika perlu
+  });
 
-  const dashboardData = {
-    totalAsset: 1250000,
-    transactionVolume: 15430,
-    activeOfficers: 212,
-    scheduleCoverage: 94.5
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // 1. Total Assets di GROUP-X
+      const { count: totalAssets } = await supabase
+        .from('assets')
+        .select('*', { count: 'exact' });
+      
+      // 2. Active Officers (REGULAR + TRAINING)
+      const { count: activeOfficers } = await supabase
+        .from('officers')
+        .select('*', { count: 'exact' })
+        .in('status', ['REGULAR', 'TRAINING']);
+      
+      setDashboardData({
+        totalAssets: totalAssets || 0,
+        activeOfficers: activeOfficers || 0
+      });
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50">
-      {/* HEADER DENGAN LOGOUT BUTTON */}
       <header className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">GROUP-X Dashboard</h1>
@@ -40,87 +67,73 @@ export default function DashboardPage() {
         <LogoutButton />
       </header>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      {/* 4 MAIN MENU CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* 1. Asset Group-X */}
         <DashboardCard
-          title="Total Asset (XLY)"
-          value={`$${(dashboardData.totalAsset / 1000000).toFixed(1)}M`}
-          change={+12.5}
+          title="Asset Group-X"
+          value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
+          change={12.5}
           trend="up"
-          icon="💰"
+          icon="🚚"
           color="blue"
+          href="/assets" // LINK ke halaman Asset Group-X
         />
-        <DashboardCard
-          title="Transaction Volume"
-          value={`${(dashboardData.transactionVolume / 1000).toFixed(1)}K TX`}
-          change={-3.2}
-          trend="down"
-          icon="📊"
-          color="green"
-        />
+        
+        {/* 2. Active Officers */}
         <DashboardCard
           title="Active Officers"
-          value={dashboardData.activeOfficers.toString()}
-          change={+2.1}
+          value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
+          change={2.1}
           trend="up"
-          icon="👥"
-          color="purple"
+          icon="👤"
+          color="green"
+          href="/officers/active" // LINK ke halaman Active Officers
         />
+        
+        {/* 3. Schedule Officers */}
         <DashboardCard
-          title="Schedule Coverage"
-          value={`${dashboardData.scheduleCoverage}%`}
-          change={+0.5}
+          title="Schedule Officers"
+          value="Calendar"
+          change={0.5}
           trend="up"
           icon="📅"
+          color="purple"
+          href="/schedules" // LINK ke halaman Schedule
+        />
+        
+        {/* 4. Working Plan Officer */}
+        <DashboardCard
+          title="Working Plan Officer"
+          value="Planner"
+          change={1.2}
+          trend="up"
+          icon="📋"
           color="orange"
+          href="/working-plans" // LINK ke halaman Working Plan
         />
       </div>
 
-      {/* Quick Links */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Quick Access</h2>
+      {/* QUICK ACCESS SECTION */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Access</h2>
         <QuickLinks />
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Activity</h2>
+      {/* RECENT ACTIVITY */}
+      <div className="bg-white rounded-xl shadow p-6">
+        <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
         <div className="space-y-4">
-          {[
-            { icon: '➕', text: 'New transaction batch processed', time: '10 min ago', user: 'System' },
-            { icon: '👋', text: 'Tamara Halim joined GROUP-X', time: '2 hours ago', user: 'Admin' },
-            { icon: '📝', text: 'Schedule updated for March 15', time: '1 day ago', user: 'Manager' },
-            { icon: '✅', text: 'Monthly report generated', time: '2 days ago', user: 'System' },
-            { icon: '⚠️', text: 'Alert: Low coverage on March 20', time: '3 days ago', user: 'Monitor' },
-          ].map((activity, idx) => (
-            <div key={idx} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-              <span className="text-2xl">{activity.icon}</span>
-              <div className="flex-1">
-                <p className="text-gray-800 font-medium">{activity.text}</p>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-gray-500">by {activity.user}</span>
-                  <span className="text-gray-400">•</span>
-                  <span className="text-gray-500">{activity.time}</span>
-                </div>
-              </div>
-            </div>
-          ))}
+          <div className="border-l-4 border-blue-500 pl-4 py-2">
+            <p className="font-medium">New transaction batch processed</p>
+            <p className="text-sm text-gray-500">by System • 10 min ago</p>
+          </div>
+          <div className="border-l-4 border-green-500 pl-4 py-2">
+            <p className="font-medium">Tamara Halim joined GROUP-X</p>
+            <p className="text-sm text-gray-500">by Admin • 2 hours ago</p>
+          </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="mt-10 pt-6 border-t border-gray-200 text-center">
-        <p className="text-gray-500 text-sm">
-          © 2025 GROUP-X Dashboard • <span className="font-medium">gerbangmagnix.vercel.app</span> • Version 3.0
-        </p>
-        <p className="text-gray-400 text-xs mt-1">
-          Last updated: {new Date().toLocaleDateString('id-ID', { 
-            day: 'numeric', 
-            month: 'long', 
-            year: 'numeric' 
-          })}
-        </p>
-      </footer>
     </div>
   );
 }

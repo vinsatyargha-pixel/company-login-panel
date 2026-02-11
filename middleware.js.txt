@@ -4,35 +4,29 @@ import { NextResponse } from 'next/server';
 export function middleware(request) {
   const { pathname } = request.nextUrl;
   
-  // Public routes yang boleh diakses tanpa login
-  const publicPaths = ['/login', '/', '/_next', '/favicon.ico'];
-  const isPublicPath = publicPaths.some(path => pathname.startsWith(path));
+  // Public routes
+  const publicPaths = ['/login', '/', '/api', '/_next', '/favicon.ico'];
+  const isPublicPath = publicPaths.some(path => 
+    pathname === path || pathname.startsWith(path + '/')
+  );
   
-  // Cek jika user sudah login (simpan di cookie/localStorage)
-  const hasToken = request.cookies.get('auth-token')?.value;
+  // Cek cookie auth-token
+  const cookieToken = request.cookies.get('auth-token')?.value;
   
-  // Jika mencoba akses protected route tanpa token
-  if (!isPublicPath && !hasToken) {
+  // Jika route TIDAK public dan TIDAK ada cookie
+  if (!isPublicPath && !cookieToken) {
+    console.log(`🔒 Middleware: No auth cookie for ${pathname}, redirecting to login`);
     return NextResponse.redirect(new URL('/login', request.url));
   }
   
-  // Jika sudah login tapi akses login page, redirect ke dashboard
-  if (pathname === '/login' && hasToken) {
+  // Jika SUDAH login tapi akses /login
+  if (pathname === '/login' && cookieToken) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
   
   return NextResponse.next();
 }
 
-// Konfigurasi matcher untuk middleware
 export const config = {
-  matcher: [
-    /*
-     * Match semua request kecuali:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
