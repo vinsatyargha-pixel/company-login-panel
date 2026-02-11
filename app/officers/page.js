@@ -1,4 +1,4 @@
-// app/officers/page.js - COMPLETE WITH EDIT
+// app/officers/page.js - COMPLETE FIXED VERSION
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,7 +9,7 @@ export default function OfficersPage() {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingOfficer, setEditingOfficer] = useState(null); // ← EDIT STATE
+  const [editingOfficer, setEditingOfficer] = useState(null);
   
   const [formData, setFormData] = useState({
     full_name: "",
@@ -42,7 +42,6 @@ export default function OfficersPage() {
     }
   };
 
-  // EDIT FUNCTION
   const handleEdit = (officer) => {
     setEditingOfficer(officer);
     setFormData({
@@ -66,7 +65,7 @@ export default function OfficersPage() {
       }
 
       if (editingOfficer) {
-        // UPDATE
+        // UPDATE - TANPA updated_at
         const { error } = await supabase
           .from('officers')
           .update({
@@ -75,15 +74,15 @@ export default function OfficersPage() {
             username: formData.username || formData.email?.split('@')[0] || '',
             department: formData.department || null,
             role: formData.role,
-            status: formData.status,
-            updated_at: new Date().toISOString()
+            status: formData.status
+            // TIDAK ADA updated_at di sini
           })
           .eq('id', editingOfficer.id);
         
         if (error) throw error;
         alert("Officer updated successfully!");
       } else {
-        // INSERT
+        // INSERT NEW
         const { error } = await supabase
           .from('officers')
           .insert([{
