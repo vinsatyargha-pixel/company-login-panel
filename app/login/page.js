@@ -1,34 +1,87 @@
-// app/login/page.js - HANYA TAMBAHIN DI handleLogin
+// app/login/page.js - HANYA UPDATE handleLogin SAJA
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("admin@magnigroupx.com");
   const [password, setPassword] = useState("");
-  // TAMBAH INI ↓
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e) => {
+  // ⭐⭐⭐ HANYA INI YANG DIUBAH ⭐⭐⭐
+  const handleLogin = async (e) => {
     e.preventDefault();
-    
-    // TAMBAH INI ↓ - Loading state
     setIsLoading(true);
-    
-    // YANG SUDAH ADA ↓
-    localStorage.setItem("magni_auth", "true");
-    
-    // TAMBAH INI ↓ - Set cookie untuk middleware
-    const token = "magni-auth-" + Date.now();
-    document.cookie = `auth-token=${token}; path=/; max-age=86400; SameSite=Lax`;
-    
-    // TAMBAH INI ↓ - Delay biar cookie kebaca
-    setTimeout(() => {
-      window.location.href = "/dashboard";
-    }, 200);
-    
-    // JANGAN DIHAPUS YANG LAIN - CSS dan tampilan tetap sama
+    setError("");
+
+    try {
+      // 1. HARDCODED VALIDATION - HANYA EMAIL & PASSWORD INI YANG BISA
+      const validCredentials = [
+        { email: "admin@magnigroupx.com", password: "admin123" },
+        { email: "supervisor@magnigroupx.com", password: "super123" },
+        { email: "officer@magnigroupx.com", password: "officer123" }
+      ];
+
+      // 2. Cek apakah email valid
+      if (!email.includes('@magnigroupx.com')) {
+        throw new Error('Hanya email @magnigroupx.com yang diizinkan');
+      }
+
+      // 3. Cek apakah credentials sesuai
+      const isValid = validCredentials.some(
+        cred => cred.email === email && cred.password === password
+      );
+
+      if (!isValid) {
+        throw new Error('Email atau password salah');
+      }
+
+      // 4. JIKA VALID, simpan ke database (track login)
+      await supabase
+        .from('login_attempts')
+        .insert([{
+          email: email,
+          status: 'success',
+          ip_address: 'web',
+          user_agent: navigator.userAgent
+        }]);
+
+      // 5. Set authentication
+      localStorage.setItem("magni_auth", "true");
+      localStorage.setItem("magni_user", email);
+      
+      const token = "magni-auth-" + Date.now();
+      document.cookie = `auth-token=${token}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `magni-user=${email}; path=/; max-age=86400`;
+
+      // 6. Redirect
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 200);
+
+    } catch (err) {
+      console.error("Login error:", err);
+      
+      // Simpan failed attempt ke database
+      await supabase
+        .from('login_attempts')
+        .insert([{
+          email: email,
+          status: 'failed',
+          error_message: err.message,
+          ip_address: 'web'
+        }]);
+      
+      // Tampilkan error (opsional)
+      alert(`Login gagal: ${err.message}`);
+      
+    } finally {
+      setIsLoading(false);
+    }
   };
+  // ⭐⭐⭐ SAMPAI SINI ⭐⭐⭐
 
   // CSS glowing X TETAP SAMA PERSIS ↓
   const addStyles = () => {
@@ -173,7 +226,7 @@ export default function LoginPage() {
               className="login-input"
               placeholder="admin@magnigroupx.com"
               required
-              disabled={isLoading} // TAMBAH INI
+              disabled={isLoading}
             />
           </div>
           
@@ -186,16 +239,15 @@ export default function LoginPage() {
               className="login-input"
               placeholder="••••••••"
               required
-              disabled={isLoading} // TAMBAH INI
+              disabled={isLoading}
             />
           </div>
           
           <button 
             type="submit" 
             className="login-btn"
-            disabled={isLoading} // TAMBAH INI
+            disabled={isLoading}
           >
-            {/* TAMBAH INI ↓ */}
             {isLoading ? "AUTHENTICATING..." : "LOGIN"}
           </button>
         </form>
