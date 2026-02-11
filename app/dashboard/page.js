@@ -77,18 +77,18 @@ export default function DashboardPage() {
           trend="up"
           icon="🚚"
           color="blue"
-          href="/assets" // LINK ke halaman Asset Group-X
+          href="/assets"
         />
         
         {/* 2. Active Officers */}
         <DashboardCard
-        title="Active Officers"
-        value={`${activeOfficersCount} Officers`}
-        change={2.1}
-        trend="up"
-        icon="👤"
-        color="green"
-        href="/officers/active"
+          title="Active Officers"
+          value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
+          change={2.1}
+          trend="up"
+          icon="👤"
+          color="green"
+          href="/officers"  // Ganti dengan route yang sesuai
         />
         
         {/* 3. Schedule Officers */}
@@ -99,7 +99,7 @@ export default function DashboardPage() {
           trend="up"
           icon="📅"
           color="purple"
-          href="/schedules" // LINK ke halaman Schedule
+          href="/schedules"
         />
         
         {/* 4. Working Plan Officer */}
@@ -110,7 +110,7 @@ export default function DashboardPage() {
           trend="up"
           icon="📋"
           color="orange"
-          href="/working-plans" // LINK ke halaman Working Plan
+          href="/working-plans"
         />
       </div>
 
