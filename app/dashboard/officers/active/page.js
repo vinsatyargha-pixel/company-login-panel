@@ -22,27 +22,17 @@ export default function ActiveOfficersPage() {
     let query = supabase
       .from('officers')
       .select('*')
+      .eq('employment_status', 'ACTIVE')  // 🔥 SUDAH BISA!
       .order('name', { ascending: true });
+
+    if (filter !== 'ALL') {
+      query = query.eq('status', filter);  // 🔥 REGULAR / TRAINING
+    }
 
     const { data, error } = await query;
     
     if (error) throw error;
-    
-    // 🔥 FILTER: REGULER + TRAINING = ACTIVE
-    const activeOfficers = data.filter(o => 
-      o.status?.toUpperCase() === 'REGULAR' || 
-      o.status?.toUpperCase() === 'REGULER' ||
-      o.status?.toUpperCase() === 'TRAINING'
-    );
-    
-    setOfficers(activeOfficers || []);
-    
-    // 🔥 STATISTIK BERDASARKAN ACTIVE OFFICERS
-    const stats = {
-      total: activeOfficers.length,
-      regular: activeOfficers.filter(o => o.status?.toUpperCase() === 'REGULAR' || o.status?.toUpperCase() === 'REGULER').length,
-      training: activeOfficers.filter(o => o.status?.toUpperCase() === 'TRAINING').length,
-    };
+    setOfficers(data || []);
     
   } catch (error) {
     console.error('Error fetching officers:', error);

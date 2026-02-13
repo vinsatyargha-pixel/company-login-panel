@@ -56,19 +56,14 @@ export default function SchedulePage() {
   const fetchOfficers = async () => {
   const { data, error } = await supabase
     .from("officers")
-    .select("id, name, status")
+    .select("id, name, status, department, employee_id")
+    .eq("employment_status", "ACTIVE")  // 🔥 SUDAH BISA PAKAI INI!
     .order("name");
 
   console.log("OFFICERS DATA:", data);
 
   if (!error && data) {
-    // 🔥 FILTER: REGULER + TRAINING = ACTIVE
-    const activeOfficers = data.filter(o => 
-      o.status?.toUpperCase() === 'REGULAR' || 
-      o.status?.toUpperCase() === 'REGULER' ||
-      o.status?.toUpperCase() === 'TRAINING'
-    );
-    setOfficers(activeOfficers);
+    setOfficers(data);
   }
 };
 
