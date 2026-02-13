@@ -1,4 +1,3 @@
-// middleware.js
 import { NextResponse } from "next/server";
 
 export function middleware(request) {
@@ -28,8 +27,6 @@ export function middleware(request) {
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",  // 🔥 HANYA DASHBOARD YANG DIPROTEKSI!
-    "/schedule/:path*",   // 🔥 KALO MASIH PAKE /schedule
-    "/officers/:path*",   // 🔥 DAN HALAMAN LAIN YANG BUTUH LOGIN
+    "/dashboard/:path*",  // ✅ CUMA INI DOANG YANG DIPERLUKAN!
   ]
 };
