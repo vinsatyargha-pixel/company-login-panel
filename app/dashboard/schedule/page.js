@@ -54,23 +54,23 @@ export default function SchedulePage() {
 
   // ✅ SINGLE FETCH OFFICERS - TIDAK DUPLIKAT!
   const fetchOfficers = async () => {
-    const { data, error } = await supabase
-      .from("officers")
-      .select("id, name, status")
-      .order("name");
+  const { data, error } = await supabase
+    .from("officers")
+    .select("id, name, status")
+    .order("name");
 
-    console.log("OFFICERS DATA:", data);
+  console.log("OFFICERS DATA:", data);
 
-    if (!error && data) {
-      const activeOfficers = data.filter(o => 
-        o.status?.toUpperCase() === 'ACTIVE' || 
-        o.status?.toUpperCase() === 'REGULAR' ||
-        o.status?.toUpperCase() === 'REGULER' ||
-        o.status?.toUpperCase() === 'TRAINING'
-      );
-      setOfficers(activeOfficers);
-    }
-  };
+  if (!error && data) {
+    // 🔥 FILTER: REGULER + TRAINING = ACTIVE
+    const activeOfficers = data.filter(o => 
+      o.status?.toUpperCase() === 'REGULAR' || 
+      o.status?.toUpperCase() === 'REGULER' ||
+      o.status?.toUpperCase() === 'TRAINING'
+    );
+    setOfficers(activeOfficers);
+  }
+};
 
   // ✅ FETCH SCHEDULES - HAPUS group_id!
   const fetchSchedules = async () => {

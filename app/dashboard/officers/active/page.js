@@ -16,32 +16,41 @@ export default function ActiveOfficersPage() {
   }, [filter]);
 
   const fetchOfficers = async () => {
-    try {
-      setLoading(true);
-      
-      let query = supabase
-        .from('officers')
-        .select('*')
-        .eq('employment_status', 'ACTIVE') // Hanya yang aktif
-        .order('name', { ascending: true });
+  try {
+    setLoading(true);
+    
+    let query = supabase
+      .from('officers')
+      .select('*')
+      .order('name', { ascending: true });
 
-      // Apply status filter
-      if (filter !== 'ALL') {
-        query = query.eq('status', filter);
-      }
-
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      setOfficers(data || []);
-      
-    } catch (error) {
-      console.error('Error fetching officers:', error);
-      setOfficers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    // 🔥 FILTER: REGULER + TRAINING = ACTIVE
+    const activeOfficers = data.filter(o => 
+      o.status?.toUpperCase() === 'REGULAR' || 
+      o.status?.toUpperCase() === 'REGULER' ||
+      o.status?.toUpperCase() === 'TRAINING'
+    );
+    
+    setOfficers(activeOfficers || []);
+    
+    // 🔥 STATISTIK BERDASARKAN ACTIVE OFFICERS
+    const stats = {
+      total: activeOfficers.length,
+      regular: activeOfficers.filter(o => o.status?.toUpperCase() === 'REGULAR' || o.status?.toUpperCase() === 'REGULER').length,
+      training: activeOfficers.filter(o => o.status?.toUpperCase() === 'TRAINING').length,
+    };
+    
+  } catch (error) {
+    console.error('Error fetching officers:', error);
+    setOfficers([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Filter officers by search
   const filteredOfficers = search.trim() === ''
