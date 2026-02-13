@@ -53,94 +53,129 @@ export default function SchedulePage() {
   };
 
   const fetchOfficers = async () => {
-    const { data, error } = await supabase
-      .from("officers")
-      .select("id, name, status")
-      .eq("employment_status", "ACTIVE")
-      .order("name");
+  const { data, error } = await supabase
+    .from("officers")
+    .select("id, name, status")
+    // 🔥 COMMENT DULU YANG INI:
+    // .eq("employment_status", "ACTIVE")
+    .order("name");
 
-    if (!error && data) {
-      setOfficers(data);
-    }
-  };
+  console.log("OFFICERS DATA:", data); // CEK DI CONSOLE
+  console.log("OFFICERS ERROR:", error);
+
+  if (!error && data) {
+    // FILTER MANUAL DULU:
+    const activeOfficers = data.filter(o => 
+      o.status?.toUpperCase() === 'ACTIVE' || 
+      o.status?.toUpperCase() === 'REGULAR' ||
+      o.status?.toUpperCase() === 'TRAINING'
+    );
+    setOfficers(activeOfficers);
+  }
+};
 
   const fetchSchedules = async () => {
-    setLoading(true);
+  setLoading(true);
+  
+  let query = supabase
+    .from("schedules")
+    .select(`
+      *,
+      officer:officers(name, status)
+    `)
+    .order("date", { ascending: true });
+
+  if (viewMode === "day") {
+    query = query.eq("date", selectedDate);
+  } else if (viewMode === "week") {
+    const startDate = new Date(selectedDate);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 7);
     
-    let query = supabase
-      .from("schedules")
-      .select(`
-        *,
-        officer:officers(name, status, group_id)
-      `)
-      .order("date", { ascending: true });
+    query = query
+      .gte("date", startDate.toISOString().split("T")[0])
+      .lt("date", endDate.toISOString().split("T")[0]);
+  }
 
-    if (viewMode === "day") {
-      query = query.eq("date", selectedDate);
-    } else if (viewMode === "week") {
-      const startDate = new Date(selectedDate);
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 7);
-      
-      query = query
-        .gte("date", startDate.toISOString().split("T")[0])
-        .lt("date", endDate.toISOString().split("T")[0]);
-    }
+  if (filterStatus !== "ALL") {
+    query = query.eq("shift_type", filterStatus);
+  }
 
-    if (filterStatus !== "ALL") {
-      query = query.eq("shift_type", filterStatus);
-    }
+  const { data, error } = await query;
 
-    const { data, error } = await query;
+  if (!error && data) {
+    setSchedules(data);
+  } else {
+    console.error("Error fetching schedules:", error);
+  }
+  
+  setLoading(false);
+};
 
-    if (!error && data) {
-      setSchedules(data);
-    } else {
-      console.error("Error fetching schedules:", error);
-    }
-    
-    setLoading(false);
-  };
+const fetchOfficers = async () => {
+  const { data, error } = await supabase
+    .from("officers")
+    .select("id, name, status")
+    // .eq("employment_status", "ACTIVE")  // 🔥 COMMENT SAMPE KOLOMNYA ADA
+    .order("name");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!formData.officer_id) {
-      alert("Please select an officer");
-      return;
-    }
+  console.log("OFFICERS DATA:", data); // CEK DI CONSOLE
 
-    const { data, error } = await supabase
-      .from("schedules")
-      .insert([formData])
-      .select();
+  if (!error && data) {
+    // FILTER MANUAL: ambil yang statusnya ACTIVE/REGULAR/TRAINING
+    const activeOfficers = data.filter(o => 
+      o.status?.toUpperCase() === 'ACTIVE' || 
+      o.status?.toUpperCase() === 'REGULAR' ||
+      o.status?.toUpperCase() === 'REGULER' ||
+      o.status?.toUpperCase() === 'TRAINING'
+    );
+    setOfficers(activeOfficers);
+  }
+};
 
-    if (error) {
-      console.error("Insert error:", error);
-      alert("Error: " + error.message);
-    } else {
-      console.log("✅ Schedule added:", data);
-      setShowForm(false);
-      setFormData({
-        officer_id: "",
-        date: new Date().toISOString().split("T")[0],
-        shift_type: "PAGI",
-        notes: "",
-      });
-      fetchSchedules();
-      alert("Schedule added successfully!");
-    }
-  };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!formData.officer_id) {
+    alert("Please select an officer");
+    return;
+  }
 
-  const deleteSchedule = async (id) => {
-    if (!confirm("Delete this schedule entry?")) return;
+  const { data, error } = await supabase
+    .from("schedules")
+    .insert([formData])
+    .select();
 
-    const { error } = await supabase.from("schedules").delete().eq("id", id);
+  if (error) {
+    console.error("Insert error:", error);
+    alert("Error: " + error.message);
+  } else {
+    console.log("✅ Schedule added:", data);
+    setShowForm(false);
+    setFormData({
+      officer_id: "",
+      date: new Date().toISOString().split("T")[0],
+      shift_type: "PAGI",
+      notes: "",
+    });
+    fetchSchedules();
+    alert("Schedule added successfully!");
+  }
+};
 
-    if (!error) {
-      fetchSchedules();
-    }
-  };
+const deleteSchedule = async (id) => {
+  if (!confirm("Delete this schedule entry?")) return;
+
+  const { error } = await supabase
+    .from("schedules")
+    .delete()
+    .eq("id", id);
+
+  if (!error) {
+    fetchSchedules();
+  }
+};
+
 
   const exportToCSV = () => {
     const headers = ["Date", "Officer", "Shift Type", "Notes"];
