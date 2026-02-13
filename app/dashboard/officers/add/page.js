@@ -1,7 +1,7 @@
-// app/dashboard/officers/add/page.js
+// app/officers/add/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -24,18 +24,6 @@ export default function AddOfficerPage() {
     panel_id: '',
     telegram_id: ''
   });
-
-  // Auth check
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) {
-      router.push("/login");
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -77,7 +65,7 @@ export default function AddOfficerPage() {
       if (error) throw error;
 
       alert('Officer berhasil ditambahkan!');
-      router.push('/dashboard/officers/active');
+      router.push('/officers/active');
       router.refresh();
       
     } catch (error) {
@@ -89,11 +77,11 @@ export default function AddOfficerPage() {
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto min-h-screen bg-gray-50">
+    <div className="p-6 max-w-2xl mx-auto min-h-screen bg-white">
       {/* HEADER WITH BACK BUTTON */}
       <div className="mb-8">
         <button
-          onClick={() => router.back()}
+          onClick={() => window.history.back()}
           className="flex items-center text-blue-600 hover:text-blue-800 mb-4 font-medium"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,18 +90,18 @@ export default function AddOfficerPage() {
           BACK
         </button>
         
-        <h1 className="text-3xl font-bold text-gray-900">ADD NEW OFFICER</h1>
-        <p className="text-gray-600 mt-2">Tambahkan officer baru ke GROUP-X</p>
+        <h1 className="text-3xl font-bold text-black">ADD NEW OFFICER</h1>
+        <p className="text-gray-700 mt-2">Tambahkan officer baru ke GROUP-X</p>
       </div>
 
       {/* FORM */}
-      <div className="bg-white rounded-xl shadow p-6">
+      <div className="border border-gray-300 rounded-lg p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Employee ID <span className="text-red-600">*</span>
               </label>
               <input
@@ -122,13 +110,13 @@ export default function AddOfficerPage() {
                 value={formData.employee_id}
                 onChange={handleChange}
                 placeholder="OFF-001"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Full Name <span className="text-red-600">*</span>
               </label>
               <input
@@ -137,7 +125,7 @@ export default function AddOfficerPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="John Doe"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
                 required
               />
             </div>
@@ -146,7 +134,7 @@ export default function AddOfficerPage() {
           {/* Contact Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Email
               </label>
               <input
@@ -155,12 +143,12 @@ export default function AddOfficerPage() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="john@groupx.id"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Phone
               </label>
               <input
@@ -169,7 +157,7 @@ export default function AddOfficerPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+62 812-3456-7890"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
               />
             </div>
           </div>
@@ -177,14 +165,14 @@ export default function AddOfficerPage() {
           {/* Department & Position */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Department
               </label>
               <select
                 name="department"
                 value={formData.department}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
               >
                 <option value="">Select Department</option>
                 <option value="Operations">Operations</option>
@@ -197,7 +185,7 @@ export default function AddOfficerPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Position
               </label>
               <input
@@ -206,7 +194,7 @@ export default function AddOfficerPage() {
                 value={formData.position}
                 onChange={handleChange}
                 placeholder="Staff, Supervisor, etc"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
               />
             </div>
           </div>
@@ -214,14 +202,14 @@ export default function AddOfficerPage() {
           {/* Status & Join Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Status
               </label>
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
               >
                 <option value="REGULAR">REGULAR</option>
                 <option value="TRAINING">TRAINING</option>
@@ -229,7 +217,7 @@ export default function AddOfficerPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Join Date <span className="text-red-600">*</span>
               </label>
               <input
@@ -237,7 +225,7 @@ export default function AddOfficerPage() {
                 name="join_date"
                 value={formData.join_date}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
                 required
               />
             </div>
@@ -246,14 +234,14 @@ export default function AddOfficerPage() {
           {/* Additional Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Gender
               </label>
               <select
                 name="gender"
                 value={formData.gender}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
               >
                 <option value="">Select Gender</option>
                 <option value="Male">Male</option>
@@ -262,7 +250,7 @@ export default function AddOfficerPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Nationality
               </label>
               <input
@@ -271,7 +259,7 @@ export default function AddOfficerPage() {
                 value={formData.nationality}
                 onChange={handleChange}
                 placeholder="Indonesian"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
               />
             </div>
           </div>
@@ -279,7 +267,7 @@ export default function AddOfficerPage() {
           {/* IDs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Panel ID
               </label>
               <input
@@ -288,12 +276,12 @@ export default function AddOfficerPage() {
                 value={formData.panel_id}
                 onChange={handleChange}
                 placeholder="Panel ID"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">
+              <label className="block text-sm font-bold text-black mb-2">
                 Telegram ID
               </label>
               <input
@@ -302,24 +290,24 @@ export default function AddOfficerPage() {
                 value={formData.telegram_id}
                 onChange={handleChange}
                 placeholder="@username"
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                className="w-full border border-gray-400 rounded px-4 py-3 text-black bg-white"
               />
             </div>
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-4 pt-6 border-t border-gray-200">
+          <div className="flex gap-4 pt-6 border-t border-gray-300">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition disabled:opacity-50"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded disabled:opacity-50"
             >
               {loading ? 'ADDING...' : 'ADD OFFICER'}
             </button>
             <button
               type="button"
-              onClick={() => router.push('/dashboard/officers/active')}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-900 font-bold py-3 px-6 rounded-lg transition"
+              onClick={() => router.push('/officers/active')}
+              className="flex-1 bg-gray-300 hover:bg-gray-400 text-black font-bold py-3 px-6 rounded"
             >
               CANCEL
             </button>
