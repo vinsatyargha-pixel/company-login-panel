@@ -14,7 +14,7 @@ export default function SchedulePage() {
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
-  const [viewMode, setViewMode] = useState("day"); // 'day', 'week', 'month'
+  const [viewMode, setViewMode] = useState("day");
   const [filterStatus, setFilterStatus] = useState("ALL");
   const [formData, setFormData] = useState({
     officer_id: "",
@@ -25,7 +25,6 @@ export default function SchedulePage() {
 
   const router = useRouter();
 
-  // Shift types
   const shiftTypes = [
     { value: "PAGI", label: "PAGI (09:00 - 21:00)", color: "bg-green-900/50 text-blue-400" },
     { value: "SIANG", label: "SIANG (14:00 - 02:00)", color: "bg-yellow-900/50 text-black-400" },
@@ -40,7 +39,6 @@ export default function SchedulePage() {
     { value: "ABSEN", label: "ABSEN", color: "bg-red text-white" },
   ];
 
-  // Auth check & fetch data
   useEffect(() => {
     checkAuth();
     fetchOfficers();
@@ -77,7 +75,6 @@ export default function SchedulePage() {
       `)
       .order("date", { ascending: true });
 
-    // Filter by date
     if (viewMode === "day") {
       query = query.eq("date", selectedDate);
     } else if (viewMode === "week") {
@@ -90,7 +87,6 @@ export default function SchedulePage() {
         .lt("date", endDate.toISOString().split("T")[0]);
     }
 
-    // Filter by status
     if (filterStatus !== "ALL") {
       query = query.eq("shift_type", filterStatus);
     }
@@ -114,36 +110,27 @@ export default function SchedulePage() {
       return;
     }
 
-    const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  if (!formData.officer_id) {
-    alert("Please select an officer");
-    return;
-  }
+    const { data, error } = await supabase
+      .from("schedules")
+      .insert([formData])
+      .select();
 
-  // 🔥 TAMBAH .select() BIAR RETURN DATA
-  const { data, error } = await supabase
-    .from("schedules")
-    .insert([formData])
-    .select();
-
-  if (error) {
-    console.error("Insert error:", error);
-    alert("Error: " + error.message);
-  } else {
-    console.log("✅ Schedule added:", data); // BISA DICEK DI CONSOLE
-    setShowForm(false);
-    setFormData({
-      officer_id: "",
-      date: new Date().toISOString().split("T")[0],
-      shift_type: "PAGI",
-      notes: "",
-    });
-    fetchSchedules(); // REFRESH TABLE
-    alert("Schedule added successfully!");
-  }
-};
+    if (error) {
+      console.error("Insert error:", error);
+      alert("Error: " + error.message);
+    } else {
+      console.log("✅ Schedule added:", data);
+      setShowForm(false);
+      setFormData({
+        officer_id: "",
+        date: new Date().toISOString().split("T")[0],
+        shift_type: "PAGI",
+        notes: "",
+      });
+      fetchSchedules();
+      alert("Schedule added successfully!");
+    }
+  };
 
   const deleteSchedule = async (id) => {
     if (!confirm("Delete this schedule entry?")) return;
@@ -270,9 +257,9 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* Shift */}
+      {/* Shift Legend */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Shift</h3>
+        <h3 className="text-lg font-semibold mb-4">Shift Legend</h3>
         <div className="flex flex-wrap gap-2">
           {shiftTypes.map((shift) => (
             <div
@@ -537,7 +524,7 @@ export default function SchedulePage() {
           👥 Officers
         </Link>
         <Link
-          href="/schedule"
+          href="/dashboard/schedule"
           className="px-4 py-2 bg-cyan-900/30 hover:bg-cyan-800/30 rounded-lg transition"
         >
           📅 Schedule
