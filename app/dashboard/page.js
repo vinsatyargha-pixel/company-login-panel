@@ -63,43 +63,43 @@ export default function DashboardContent() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <DashboardCard
-          title="Asset Group-X"
-          value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
-          change={12.5}
-          trend="up"
-          icon="🚚"
-          color="blue"
-          href="/assets"
-        />
-        <DashboardCard
-          title="Active Officers"
-          value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
-          change={2.1}
-          trend="up"
-          icon="👤"
-          color="green"
-          href="/officers"
-        />
-        <DashboardCard
-          title="Schedule Officers"
-          value="Calendar"
-          change={0.5}
-          trend="up"
-          icon="📅"
-          color="purple"
-          href="/dashboard/schedule"
-        />
-        <DashboardCard
-          title="Working Plan Officer"
-          value="Planner"
-          change={1.2}
-          trend="up"
-          icon="📋"
-          color="orange"
-          href="/working-plans"
-        />
-      </div>
+  <DashboardCard
+    title="Asset Group-X"
+    value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
+    change={12.5}
+    trend="up"
+    icon="🚚"
+    color="blue"
+    href="/dashboard/assets"  // ✅ FIXED!
+  />
+  <DashboardCard
+    title="Active Officers"
+    value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
+    change={2.1}
+    trend="up"
+    icon="👤"
+    color="green"
+    href="/dashboard/officers/active"  // ✅ FIXED!
+  />
+  <DashboardCard
+    title="Schedule Officers"
+    value="Calendar"
+    change={0.5}
+    trend="up"
+    icon="📅"
+    color="purple"
+    href="/dashboard/schedule"  // ✅ UDAH BENER
+  />
+  <DashboardCard
+    title="Working Plan Officer"
+    value="Planner"
+    change={1.2}
+    trend="up"
+    icon="📋"
+    color="orange"
+    href="/dashboard/working-plans"  // ✅ FIXED!
+  />
+</div>
 
       <div className="mb-8">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Access</h2>
