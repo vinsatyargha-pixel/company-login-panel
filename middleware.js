@@ -27,5 +27,9 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/dashboard/:path*",  // 🔥 HANYA DASHBOARD YANG DIPROTEKSI!
+    "/schedule/:path*",   // 🔥 KALO MASIH PAKE /schedule
+    "/officers/:path*",   // 🔥 DAN HALAMAN LAIN YANG BUTUH LOGIN
+  ]
 };
