@@ -88,7 +88,7 @@ export default function DashboardContent() {
           trend="up"
           icon="📅"
           color="purple"
-          href="/schedule"
+          href="/dashboard/schedule"
         />
         <DashboardCard
           title="Working Plan Officer"
