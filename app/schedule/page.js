@@ -58,6 +58,7 @@ export default function SchedulePage() {
     const { data, error } = await supabase
       .from("officers")
       .select("id, name, status")
+      .eq("employment_status", "ACTIVE")
       .order("name");
 
     if (!error && data) {
@@ -113,22 +114,36 @@ export default function SchedulePage() {
       return;
     }
 
-    const { error } = await supabase.from("schedules").insert([formData]);
+    const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!formData.officer_id) {
+    alert("Please select an officer");
+    return;
+  }
 
-    if (error) {
-      alert("Error: " + error.message);
-    } else {
-      setShowForm(false);
-      setFormData({
-        officer_id: "",
-        date: new Date().toISOString().split("T")[0],
-        shift_type: "PAGI",
-        notes: "",
-      });
-      fetchSchedules();
-      alert("Schedule added successfully!");
-    }
-  };
+  // 🔥 TAMBAH .select() BIAR RETURN DATA
+  const { data, error } = await supabase
+    .from("schedules")
+    .insert([formData])
+    .select();
+
+  if (error) {
+    console.error("Insert error:", error);
+    alert("Error: " + error.message);
+  } else {
+    console.log("✅ Schedule added:", data); // BISA DICEK DI CONSOLE
+    setShowForm(false);
+    setFormData({
+      officer_id: "",
+      date: new Date().toISOString().split("T")[0],
+      shift_type: "PAGI",
+      notes: "",
+    });
+    fetchSchedules(); // REFRESH TABLE
+    alert("Schedule added successfully!");
+  }
+};
 
   const deleteSchedule = async (id) => {
     if (!confirm("Delete this schedule entry?")) return;
@@ -255,9 +270,9 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* Shift Legend */}
+      {/* Shift */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Shift Legend</h3>
+        <h3 className="text-lg font-semibold mb-4">Shift</h3>
         <div className="flex flex-wrap gap-2">
           {shiftTypes.map((shift) => (
             <div
