@@ -161,14 +161,18 @@ export default function ActiveOfficersPage() {
         </div>
       )}
 
-      {/* HEADER */}
+      {/* HEADER - FIXED BACK BUTTON */}
       <div className="mb-8">
-        <button onClick={() => router.back()} className="flex items-center text-blue-600 hover:text-blue-800 mb-4 font-medium">
+        <button 
+          onClick={() => router.push('/dashboard')} 
+          className="flex items-center text-blue-600 hover:text-blue-800 mb-4 font-medium transition-all"
+        >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
           </svg>
-          BACK
+          BACK TO DASHBOARD
         </button>
+        
         <h1 className="text-3xl font-bold text-black">ACTIVE OFFICERS</h1>
         <p className="text-gray-700 mt-2">Daftar officer aktif di GROUP-X</p>
       </div>
@@ -315,8 +319,8 @@ export default function ActiveOfficersPage() {
 
       {/* OFFICERS TABLE */}
       <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-        {/* Table Header */}
-        <div className="bg-gradient-to-r from-gray-100 to-gray-50 grid grid-cols-12 gap-2 px-4 py-3 border-b border-gray-300 font-bold text-gray-700 text-sm">
+        {/* Table Header - 13 KOLOM (termasuk BANK ACCOUNT) */}
+        <div className="bg-gradient-to-r from-gray-100 to-gray-50 grid grid-cols-13 gap-2 px-4 py-3 border-b border-gray-300 font-bold text-gray-700 text-sm">
           <div className="col-span-1 flex items-center gap-1">#</div>
           <div className="col-span-2 flex items-center gap-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,6 +340,7 @@ export default function ActiveOfficersPage() {
           <div className="col-span-1">JOIN DATE</div>
           <div className="col-span-1">NATION</div>
           <div className="col-span-1">GENDER</div>
+          <div className="col-span-1">BANK ACCOUNT</div>
           <div className="col-span-1">PHONE/TELE</div>
           <div className="col-span-1">ROOM</div>
           <div className="col-span-1">ACTION</div>
@@ -345,7 +350,7 @@ export default function ActiveOfficersPage() {
         <div className="divide-y divide-gray-200">
           {filteredOfficers.length > 0 ? (
             filteredOfficers.map((officer, index) => (
-              <div key={officer.id} className="grid grid-cols-12 gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-black">
+              <div key={officer.id} className="grid grid-cols-13 gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-black">
                 <div className="col-span-1 text-black font-medium">{index + 1}</div>
                 
                 <div className="col-span-2">
@@ -382,6 +387,38 @@ export default function ActiveOfficersPage() {
                 <div className="col-span-1 text-black font-medium">{formatDate(officer.join_date)}</div>
                 <div className="col-span-1 text-black font-medium">{officer.nationality || '-'}</div>
                 <div className="col-span-1 text-black font-medium">{officer.gender || '-'}</div>
+                
+                {/* BANK ACCOUNT - Format: 123456789 | ABA | LINK QR */}
+                <div className="col-span-1">
+                  {officer.bank_account ? (
+                    <div className="flex flex-col text-xs">
+                      {officer.bank_account.split('|').map((item, i) => {
+                        const trimmed = item.trim();
+                        if (trimmed.startsWith('http')) {
+                          return (
+                            <a 
+                              key={i}
+                              href={trimmed} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                              title="Click to view QR"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                              QR
+                            </a>
+                          );
+                        } else {
+                          return <span key={i} className="text-black font-medium">{trimmed}</span>;
+                        }
+                      })}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 italic">-</span>
+                  )}
+                </div>
                 
                 {/* Phone & Telegram */}
                 <div className="col-span-1">
