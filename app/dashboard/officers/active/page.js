@@ -174,7 +174,7 @@ export default function ActiveOfficersPage() {
       </div>
 
       {/* STATS CARDS */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-6">
         <div className="bg-blue-50 border border-blue-200 rounded p-2">
           <div className="text-xs font-bold text-blue-800">TOTAL</div>
           <div className="text-lg font-bold text-blue-700">{stats.total}</div>
@@ -196,7 +196,7 @@ export default function ActiveOfficersPage() {
           <div className="text-lg font-bold text-rose-700">{stats.terminate}</div>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded p-2">
-          <div className="text-xs font-bold text-purple-800">CHANGE GRP</div>
+          <div className="text-xs font-bold text-purple-800">CHANGE GROUP</div>
           <div className="text-lg font-bold text-purple-700">{stats.changeGroup}</div>
         </div>
       </div>
@@ -211,7 +211,7 @@ export default function ActiveOfficersPage() {
             <button onClick={() => setFilter('TRAINING')} className={`px-2 py-1 rounded ${filter === 'TRAINING' ? 'bg-yellow-500 text-white' : 'bg-yellow-50 text-yellow-800 hover:bg-yellow-100'}`}>TRAINING ({stats.training})</button>
             <button onClick={() => setFilter('RESIGN')} className={`px-2 py-1 rounded ${filter === 'RESIGN' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-800 hover:bg-red-100'}`}>RESIGN ({stats.resign})</button>
             <button onClick={() => setFilter('TERMINATE')} className={`px-2 py-1 rounded ${filter === 'TERMINATE' ? 'bg-rose-700 text-white' : 'bg-rose-50 text-rose-800 hover:bg-rose-100'}`}>TERMINATE ({stats.terminate})</button>
-            <button onClick={() => setFilter('CHANGE GROUP')} className={`px-2 py-1 rounded ${filter === 'CHANGE GROUP' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-800 hover:bg-purple-100'}`}>CHANGE GRP ({stats.changeGroup})</button>
+            <button onClick={() => setFilter('CHANGE GROUP')} className={`px-2 py-1 rounded ${filter === 'CHANGE GROUP' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-800 hover:bg-purple-100'}`}>CHANGE GROUP ({stats.changeGroup})</button>
           </div>
 
           <div className="flex flex-1 gap-2">
@@ -249,7 +249,7 @@ export default function ActiveOfficersPage() {
         </div>
       </div>
 
-      {/* OFFICERS TABLE - BLACK TEXT */}
+      {/* OFFICERS TABLE */}
       <div className="border border-gray-300 rounded-lg overflow-x-auto bg-white">
         <table className="w-full text-sm">
           <thead className="bg-gradient-to-r from-gray-100 to-gray-50 border-b border-gray-300">
