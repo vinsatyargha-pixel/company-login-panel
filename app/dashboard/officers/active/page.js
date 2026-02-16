@@ -173,7 +173,7 @@ export default function ActiveOfficersPage() {
         <p className="text-gray-600 text-sm mt-1">Daftar officer aktif di GROUP-X</p>
       </div>
 
-      {/* STATS CARDS - COMPACT */}
+      {/* STATS CARDS */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-6">
         <div className="bg-blue-50 border border-blue-200 rounded p-2">
           <div className="text-xs font-bold text-blue-800">TOTAL</div>
@@ -192,30 +192,28 @@ export default function ActiveOfficersPage() {
           <div className="text-lg font-bold text-red-700">{stats.resign}</div>
         </div>
         <div className="bg-rose-50 border border-rose-200 rounded p-2">
-          <div className="text-xs font-bold text-rose-800">TERM</div>
+          <div className="text-xs font-bold text-rose-800">TERMINATED</div>
           <div className="text-lg font-bold text-rose-700">{stats.terminate}</div>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded p-2">
-          <div className="text-xs font-bold text-purple-800">CHANGE</div>
+          <div className="text-xs font-bold text-purple-800">CHANGE GRP</div>
           <div className="text-lg font-bold text-purple-700">{stats.changeGroup}</div>
         </div>
       </div>
 
-      {/* FILTER & SEARCH - COMPACT */}
+      {/* FILTER & SEARCH */}
       <div className="mb-4 p-3 border border-gray-300 rounded-lg bg-white">
         <div className="flex flex-col md:flex-row gap-3">
-          {/* Status Filter */}
-          <div className="flex flex-wrap items-center gap-1 text-xs">
-            <span className="font-bold text-gray-700 mr-1">Status:</span>
-            <button onClick={() => setFilter('ALL')} className={`px-2 py-1 rounded ${filter === 'ALL' ? 'bg-gray-800 text-white' : 'bg-gray-100 hover:bg-gray-200'}`}>ALL({stats.total})</button>
-            <button onClick={() => setFilter('REGULAR')} className={`px-2 py-1 rounded ${filter === 'REGULAR' ? 'bg-green-600 text-white' : 'bg-green-50 hover:bg-green-100'}`}>REG({stats.regular})</button>
-            <button onClick={() => setFilter('TRAINING')} className={`px-2 py-1 rounded ${filter === 'TRAINING' ? 'bg-yellow-500 text-white' : 'bg-yellow-50 hover:bg-yellow-100'}`}>TR({stats.training})</button>
-            <button onClick={() => setFilter('RESIGN')} className={`px-2 py-1 rounded ${filter === 'RESIGN' ? 'bg-red-600 text-white' : 'bg-red-50 hover:bg-red-100'}`}>RS({stats.resign})</button>
-            <button onClick={() => setFilter('TERMINATE')} className={`px-2 py-1 rounded ${filter === 'TERMINATE' ? 'bg-rose-700 text-white' : 'bg-rose-50 hover:bg-rose-100'}`}>TM({stats.terminate})</button>
-            <button onClick={() => setFilter('CHANGE GROUP')} className={`px-2 py-1 rounded ${filter === 'CHANGE GROUP' ? 'bg-purple-600 text-white' : 'bg-purple-50 hover:bg-purple-100'}`}>CG({stats.changeGroup})</button>
+          <div className="flex flex-wrap items-center gap-1 text-sm">
+            <span className="font-bold text-black mr-1">Status:</span>
+            <button onClick={() => setFilter('ALL')} className={`px-2 py-1 rounded ${filter === 'ALL' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-black hover:bg-gray-200'}`}>ALL ({stats.total})</button>
+            <button onClick={() => setFilter('REGULAR')} className={`px-2 py-1 rounded ${filter === 'REGULAR' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-800 hover:bg-green-100'}`}>REGULAR ({stats.regular})</button>
+            <button onClick={() => setFilter('TRAINING')} className={`px-2 py-1 rounded ${filter === 'TRAINING' ? 'bg-yellow-500 text-white' : 'bg-yellow-50 text-yellow-800 hover:bg-yellow-100'}`}>TRAINING ({stats.training})</button>
+            <button onClick={() => setFilter('RESIGN')} className={`px-2 py-1 rounded ${filter === 'RESIGN' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-800 hover:bg-red-100'}`}>RESIGN ({stats.resign})</button>
+            <button onClick={() => setFilter('TERMINATE')} className={`px-2 py-1 rounded ${filter === 'TERMINATE' ? 'bg-rose-700 text-white' : 'bg-rose-50 text-rose-800 hover:bg-rose-100'}`}>TERMINATE ({stats.terminate})</button>
+            <button onClick={() => setFilter('CHANGE GROUP')} className={`px-2 py-1 rounded ${filter === 'CHANGE GROUP' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-800 hover:bg-purple-100'}`}>CHANGE GRP ({stats.changeGroup})</button>
           </div>
 
-          {/* Search & Add */}
           <div className="flex flex-1 gap-2">
             <div className="relative flex-1">
               <input
@@ -223,7 +221,7 @@ export default function ActiveOfficersPage() {
                 placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 text-sm"
+                className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 text-sm text-black"
               />
               <svg className="w-4 h-4 absolute left-2 top-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -242,7 +240,7 @@ export default function ActiveOfficersPage() {
       {/* LISTING NAME */}
       <div className="mb-3">
         <div className="bg-gray-100 border border-gray-300 rounded-lg p-2">
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm text-black">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -251,11 +249,11 @@ export default function ActiveOfficersPage() {
         </div>
       </div>
 
-      {/* OFFICERS TABLE - COMPACT & EFFICIENT */}
+      {/* OFFICERS TABLE - BLACK TEXT */}
       <div className="border border-gray-300 rounded-lg overflow-x-auto bg-white">
-        <table className="w-full text-xs">
+        <table className="w-full text-sm">
           <thead className="bg-gradient-to-r from-gray-100 to-gray-50 border-b border-gray-300">
-            <tr className="text-gray-700 font-bold">
+            <tr className="text-black font-bold">
               <th className="px-2 py-2 text-left">#</th>
               <th className="px-2 py-2 text-left">NAME & EMAIL</th>
               <th className="px-2 py-2 text-left">DEPT</th>
@@ -274,19 +272,18 @@ export default function ActiveOfficersPage() {
             {filteredOfficers.length > 0 ? (
               filteredOfficers.map((officer, index) => (
                 <tr key={officer.id} className="hover:bg-gray-50">
-                  <td className="px-2 py-2 align-top">{index + 1}</td>
+                  <td className="px-2 py-2 align-top text-black">{index + 1}</td>
                   
-                  {/* NAME & EMAIL - stacked */}
                   <td className="px-2 py-2">
                     <div className="font-bold text-black">{officer.full_name || '-'}</div>
-                    <div className="text-gray-600 text-[10px] truncate max-w-[120px]">{officer.email || '-'}</div>
+                    <div className="text-gray-600 text-xs truncate max-w-[150px]">{officer.email || '-'}</div>
                   </td>
                   
-                  <td className="px-2 py-2 align-top">{officer.department || '-'}</td>
+                  <td className="px-2 py-2 align-top text-black">{officer.department || '-'}</td>
                   
-                  {/* STATUS - with dot */}
+                  {/* STATUS - FULL TEXT */}
                   <td className="px-2 py-2 align-top">
-                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
                       officer.status === 'REGULAR' ? 'bg-green-100 text-green-800' :
                       officer.status === 'TRAINING' ? 'bg-yellow-100 text-yellow-800' :
                       officer.status === 'RESIGN' ? 'bg-red-100 text-red-800' :
@@ -294,7 +291,7 @@ export default function ActiveOfficersPage() {
                       officer.status === 'CHANGE GROUP' ? 'bg-purple-100 text-purple-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
+                      <span className={`w-2 h-2 rounded-full ${
                         officer.status === 'REGULAR' ? 'bg-green-500' :
                         officer.status === 'TRAINING' ? 'bg-yellow-500' :
                         officer.status === 'RESIGN' ? 'bg-red-500' :
@@ -302,16 +299,16 @@ export default function ActiveOfficersPage() {
                         officer.status === 'CHANGE GROUP' ? 'bg-purple-500' :
                         'bg-gray-500'
                       }`}></span>
-                      {officer.status?.substring(0, 3) || '-'}
+                      {officer.status || '-'}
                     </span>
                   </td>
                   
-                  <td className="px-2 py-2 align-top font-mono">{officer.panel_id || '-'}</td>
-                  <td className="px-2 py-2 align-top">{formatDate(officer.join_date)}</td>
-                  <td className="px-2 py-2 align-top">{officer.nationality?.substring(0, 3) || '-'}</td>
-                  <td className="px-2 py-2 align-top">{officer.gender?.charAt(0) || '-'}</td>
+                  <td className="px-2 py-2 align-top font-mono text-black">{officer.panel_id || '-'}</td>
+                  <td className="px-2 py-2 align-top text-black">{formatDate(officer.join_date)}</td>
+                  <td className="px-2 py-2 align-top text-black">{officer.nationality || '-'}</td>
+                  <td className="px-2 py-2 align-top text-black">{officer.gender || '-'}</td>
                   
-                  {/* BANK ACCOUNT - stacked */}
+                  {/* BANK ACCOUNT */}
                   <td className="px-2 py-2">
                     {officer.bank_account ? (
                       <div className="flex flex-col gap-0.5">
@@ -319,7 +316,7 @@ export default function ActiveOfficersPage() {
                           const trimmed = item.trim();
                           if (trimmed.startsWith('http')) {
                             return (
-                              <a key={i} href={trimmed} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 flex items-center gap-0.5 text-[10px]">
+                              <a key={i} href={trimmed} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 flex items-center gap-0.5 text-xs">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                 </svg>
@@ -327,33 +324,33 @@ export default function ActiveOfficersPage() {
                               </a>
                             );
                           }
-                          return <span key={i} className="text-[10px]">{trimmed}</span>;
+                          return <span key={i} className="text-xs text-black">{trimmed}</span>;
                         })}
                       </div>
                     ) : '-'}
                   </td>
                   
-                  {/* PHONE/TELE - stacked */}
+                  {/* PHONE/TELE */}
                   <td className="px-2 py-2">
                     <div className="flex flex-col gap-0.5">
-                      {officer.phone && <span className="text-[10px]">{officer.phone}</span>}
+                      {officer.phone && <span className="text-xs text-black">{officer.phone}</span>}
                       {officer.telegram_id && (
-                        <span className="text-[10px] text-blue-600">@{officer.telegram_id.replace('@', '')}</span>
+                        <span className="text-xs text-blue-600">@{officer.telegram_id.replace('@', '')}</span>
                       )}
-                      {!officer.phone && !officer.telegram_id && '-'}
+                      {!officer.phone && !officer.telegram_id && <span className="text-xs text-gray-400">-</span>}
                     </div>
                   </td>
                   
                   {/* ROOM */}
                   <td className="px-2 py-2">
-                    <span className={`px-1 py-0.5 rounded text-[10px] font-bold ${
-                      officer.room === 'UNMESS' ? 'bg-gray-200' : 'bg-blue-100 text-blue-800'
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
+                      officer.room === 'UNMESS' ? 'bg-gray-200 text-gray-700' : 'bg-blue-100 text-blue-800'
                     }`}>
-                      {officer.room === 'UNMESS' ? 'U' : officer.room || '-'}
+                      {officer.room || '-'}
                     </span>
                   </td>
                   
-                  {/* ACTION - compact buttons without extra space */}
+                  {/* ACTION BUTTONS */}
                   <td className="px-2 py-2">
                     <div className="flex gap-1">
                       <button
@@ -361,7 +358,7 @@ export default function ActiveOfficersPage() {
                         className="text-white bg-blue-600 hover:bg-blue-700 p-1 rounded"
                         title="Edit"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
@@ -370,7 +367,7 @@ export default function ActiveOfficersPage() {
                         className="text-white bg-red-600 hover:bg-red-700 p-1 rounded"
                         title="Delete"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
@@ -380,8 +377,8 @@ export default function ActiveOfficersPage() {
               ))
             ) : (
               <tr>
-                <td colSpan="12" className="px-6 py-8 text-center">
-                  <p className="text-gray-500">No officers found</p>
+                <td colSpan="12" className="px-6 py-8 text-center text-black">
+                  No officers found
                 </td>
               </tr>
             )}
@@ -390,7 +387,7 @@ export default function ActiveOfficersPage() {
       </div>
 
       {/* FOOTER */}
-      <div className="mt-4 p-2 border border-gray-300 rounded-lg bg-gray-50 text-xs">
+      <div className="mt-4 p-2 border border-gray-300 rounded-lg bg-gray-50 text-sm text-black">
         <div className="flex justify-between">
           <span>Showing {filteredOfficers.length} of {stats.total} officers</span>
           <span>{new Date().toLocaleDateString('id-ID')}</span>
@@ -401,10 +398,10 @@ export default function ActiveOfficersPage() {
       {showDeleteModal && officerToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-sm w-full p-4">
-            <h3 className="text-lg font-bold mb-2">Hapus Officer?</h3>
-            <p className="text-sm mb-4">Yakin ingin menghapus {officerToDelete.full_name}?</p>
+            <h3 className="text-lg font-bold text-black mb-2">Hapus Officer?</h3>
+            <p className="text-sm text-black mb-4">Yakin ingin menghapus {officerToDelete.full_name}?</p>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowDeleteModal(false)} className="px-3 py-1 border rounded text-sm">Batal</button>
+              <button onClick={() => setShowDeleteModal(false)} className="px-3 py-1 border rounded text-sm text-black hover:bg-gray-100">Batal</button>
               <button onClick={handleDeleteConfirm} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Hapus</button>
             </div>
           </div>
