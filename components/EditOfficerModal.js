@@ -19,6 +19,7 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
     telegram_id: officer.telegram_id || '',
     room: officer.room || '',
     group_id: officer.group_id || '',
+    bank_account: officer.bank_account || '',
     notes: officer.notes || ''
   });
 
@@ -26,12 +27,14 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
   const [errors, setErrors] = useState({});
 
   const departments = [
-    'CS DP WD',
     'CAPTAIN',
-    'SECURITY',
-    'MAINTENANCE',
-    'ADMIN',
-    'MANAGER'
+    'AM',
+    'CS DP WD',
+    'HRD',
+    'LAUNDRY',
+    'IT',
+    'HEAD OPS',
+    'OWNER'
   ];
 
   const statusOptions = [
@@ -41,6 +44,8 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
     'TERMINATE',
     'CHANGE GROUP'
   ];
+
+  const genderOptions = ['Male', 'Female'];
 
   const validateForm = () => {
     const newErrors = {};
@@ -229,8 +234,9 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
                     className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white"
                   >
                     <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
+                    {genderOptions.map(gender => (
+                      <option key={gender} value={gender}>{gender}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -277,9 +283,22 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
                     onChange={handleChange}
                     className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white"
                     placeholder="4 digit number or UNMESS"
-                    pattern="^([0-9]{4}|UNMESS)?$"
                   />
                   <p className="text-xs text-gray-500 mt-1">Format: 4 digit angka atau UNMESS</p>
+                </div>
+
+                {/* BANK ACCOUNT - TAMBAHAN BARU */}
+                <div>
+                  <label className="block text-sm font-bold text-black mb-1">Bank Account</label>
+                  <input
+                    type="text"
+                    name="bank_account"
+                    value={formData.bank_account}
+                    onChange={handleChange}
+                    className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white"
+                    placeholder="123456789 | ABA | https://link.qr"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Format: Nomor | Bank | Link QR</p>
                 </div>
 
                 <div>
