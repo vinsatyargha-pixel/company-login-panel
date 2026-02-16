@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import DashboardCard from '@/components/DashboardCard';
+import DashboardCardWithClaw from '@/components/DashboardCardWithClaw'; // ✅ UDAH BENAR
 import QuickLinks from '@/components/QuickLinks';
 import LogoutButton from '@/components/LogoutButton';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
@@ -67,7 +67,7 @@ export default function DashboardContent() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* PROFILE CARD - FINAL VERSION */}
+          {/* PROFILE CARD */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -77,7 +77,6 @@ export default function DashboardContent() {
             <div>
               <div className="text-sm font-medium text-gray-900">{user?.email || 'Loading...'}</div>
               <div className="text-xs text-gray-500">
-                {/* ROLE DARI TABLE USERS */}
                 {userJobRole || 'Staff'}
                 {isAdmin && <span className="ml-1 text-blue-600 font-bold">(Admin)</span>}
               </div>
@@ -96,39 +95,32 @@ export default function DashboardContent() {
         </div>
       </header>
 
+      {/* DASHBOARD CARDS - UDAH PAKE DashboardCardWithClaw */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <DashboardCard
+        <DashboardCardWithClaw
           title="Asset Group-X"
           value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
-          change={12.5}
-          trend="up"
           icon="🚚"
           color="blue"
           href="/dashboard/assets"
         />
-        <DashboardCard
+        <DashboardCardWithClaw
           title="Active Officers"
           value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
-          change={2.1}
-          trend="up"
           icon="👤"
           color="green"
           href="/dashboard/officers/active"
         />
-        <DashboardCard
+        <DashboardCardWithClaw
           title="Schedule Officers"
           value="Calendar"
-          change={0.5}
-          trend="up"
           icon="📅"
           color="purple"
           href="/dashboard/schedule"
         />
-        <DashboardCard
+        <DashboardCardWithClaw
           title="Working Plan Officer"
           value="Planner"
-          change={1.2}
-          trend="up"
           icon="📋"
           color="orange"
           href="/dashboard/working-plans"
