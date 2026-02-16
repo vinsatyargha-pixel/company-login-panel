@@ -1,21 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';  // ← TAMBAH useEffect
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';    // ← TAMBAH useAuth
+import { useAuth } from '@/hooks/useAuth';
 
 export default function EditOfficerModal({ officer, onClose, onUpdate }) {
-  // 🔥 CEK ADMIN PAKAI useAuth
   const { isAdmin } = useAuth();
-
-  // 🔥 REDIRECT KALAU BUKAN ADMIN
-  useEffect(() => {
-    if (!isAdmin) {
-      alert('You do not have permission to edit officers');
-      onClose();
-    }
-  }, [isAdmin, onClose]);
-
   const [formData, setFormData] = useState({
     full_name: officer.full_name || '',
     email: officer.email || '',
@@ -38,11 +28,20 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
+  // Proteksi admin
+  useEffect(() => {
+    if (!isAdmin) {
+      alert('You do not have permission to edit officers');
+      onClose();
+    }
+  }, [isAdmin, onClose]);
+
   const departments = [
     'CAPTAIN',
     'AM',
     'CS DP WD',
     'HRD',
+    'PIC',
     'LAUNDRY',
     'IT',
     'HEAD OPS',
@@ -108,7 +107,7 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
     }
   };
 
-  // Kalau bukan admin, modal ga usah di-render (tapi useEffect udah handle close)
+  // Kalau bukan admin, jangan render modal
   if (!isAdmin) return null;
 
   return (

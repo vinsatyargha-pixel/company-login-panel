@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function AddOfficerPage() {
   const router = useRouter();
+  const { isAdmin } = useAuth(); // ← CEK ADMIN
+  
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
@@ -25,10 +28,17 @@ export default function AddOfficerPage() {
     passport_number: '',
     group_id: '',
     notes: '',
-    bank_account: '' // Tambah field bank account
+    bank_account: ''
   });
 
   const [errors, setErrors] = useState({});
+
+  // Redirect kalau bukan admin
+  useEffect(() => {
+    if (!isAdmin) {
+      router.push('/dashboard/officers/active');
+    }
+  }, [isAdmin, router]);
 
   // Department options
   const departments = [
@@ -36,6 +46,7 @@ export default function AddOfficerPage() {
     'AM',
     'CS DP WD',
     'HRD',
+    'PIC',
     'LAUNDRY',
     'IT',
     'HEAD OPS',
@@ -77,7 +88,6 @@ export default function AddOfficerPage() {
       ...prev,
       [name]: value
     }));
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -131,9 +141,14 @@ export default function AddOfficerPage() {
     }
   };
 
+  // Kalau bukan admin, jangan render apa-apa (redirect sudah di useEffect)
+  if (!isAdmin) {
+    return null;
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto min-h-screen bg-white">
-      {/* HEADER - FIXED BACK BUTTON (pake Link) */}
+      {/* HEADER */}
       <div className="mb-8">
         <Link
           href="/dashboard/officers/active"
@@ -217,7 +232,7 @@ export default function AddOfficerPage() {
                 </select>
               </div>
 
-              {/* Role / Position */}
+              {/* Position */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Position</label>
                 <input
@@ -332,7 +347,7 @@ export default function AddOfficerPage() {
                 <p className="text-xs text-gray-600 mt-1 font-medium">Format: 4 digit angka atau UNMESS</p>
               </div>
 
-              {/* Bank Account - TAMBAHAN BARU */}
+              {/* Bank Account */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Bank Account</label>
                 <input
@@ -343,7 +358,7 @@ export default function AddOfficerPage() {
                   className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white font-medium focus:outline-none focus:border-black"
                   placeholder="123456789 | ABA | https://link.qr"
                 />
-                <p className="text-xs text-gray-600 mt-1 font-medium">Format: Nomor | Bank | Link QR (pisahkan dengan |)</p>
+                <p className="text-xs text-gray-600 mt-1 font-medium">Format: Nomor | Bank | Link QR</p>
               </div>
             </div>
           </div>
@@ -387,7 +402,7 @@ export default function AddOfficerPage() {
             ></textarea>
           </div>
 
-          {/* Form Actions - FIXED CANCEL BUTTON */}
+          {/* Form Actions */}
           <div className="mt-8 flex justify-end gap-4">
             <Link
               href="/dashboard/officers/active"
