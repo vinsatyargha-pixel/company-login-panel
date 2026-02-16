@@ -13,44 +13,45 @@ export function useAuth() {
   }, []);
 
   const getUser = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
 
-      if (user?.email) {
-        // 1. Ambil role dari public.users (Staff/Admin)
-        const { data: userData } = await supabase
-          .from('users')
-          .select('role')
-          .eq('email', user.email)
-          .maybeSingle();
+    if (user?.email) {
+      // 1. Ambil role dari public.users (Staff/Admin)
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('email', user.email)
+        .maybeSingle();
 
-        if (userData) {
-          setUserJobRole(userData.role);
-        }
-
-        // 2. Ambil data dari officers (optional)
-        const { data: officer } = await supabase
-          .from('officers')
-          .select('*')
-          .eq('email', user.email)
-          .maybeSingle();
-
-        if (officer) {
-          setOfficerData(officer);
-        }
-
-        // 3. TENTUKAN AKSES BERDASARKAN ROLE DARI users.table
-        // Kalau role di users = 'Admin', maka isAdmin = true
-        const isUserAdmin = userData?.role === 'Admin';
-        setAccessRole(isUserAdmin ? 'admin' : 'user');
+      // 🔥 TAMBAHKAN CONSOLE.LOG DI SINI
+      if (userData) {
+        console.log('🔥 User role from DB:', userData.role);
+        setUserJobRole(userData.role);
       }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
+
+      // 2. Ambil data dari officers (optional)
+      const { data: officer } = await supabase
+        .from('officers')
+        .select('*')
+        .eq('email', user.email)
+        .maybeSingle();
+
+      if (officer) {
+        setOfficerData(officer);
+      }
+
+      // 3. Tentukan akses berdasarkan role dari users.table
+      const isUserAdmin = userData?.role === 'Admin';
+      setAccessRole(isUserAdmin ? 'admin' : 'user');
     }
-  };
+  } catch (error) {
+    console.error('Error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return { 
     user,
