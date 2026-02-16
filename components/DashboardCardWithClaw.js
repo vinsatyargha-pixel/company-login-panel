@@ -36,7 +36,7 @@ export default function DashboardCardWithClaw({
       setIsScratched(false);
       if (href) window.location.href = href;
       else if (onClick) onClick(e);
-    }, 500);
+    }, 550);
   };
 
   return (
@@ -48,129 +48,132 @@ export default function DashboardCardWithClaw({
           hover:shadow-md transition-shadow cursor-pointer
         `}
         animate={{
-          scale: isScratched ? [1, 0.96, 0.98, 1] : 1,
-          rotate: isScratched ? [0, -1, 1, 0] : 0,
+          scale: isScratched ? [1, 0.94, 0.98, 1] : 1,
+          rotate: isScratched ? [0, -1.2, 1.2, 0] : 0,
           filter: isScratched 
-            ? ["brightness(1)", "brightness(0.85)", "brightness(1)"] 
+            ? ["brightness(1)", "brightness(0.75)", "brightness(1)"] 
             : "brightness(1)"
         }}
-        transition={{ duration: 0.4 }}
+        transition={{ duration: 0.45 }}
       >
 
-        {/* 🔥 REALISTIC CLAW X */}
+        {/* REALISTIC CLAW X */}
         {isScratched && (
-          <div className="absolute inset-0 pointer-events-none z-20 overflow-hidden">
+          <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
 
-            {/* Slash 1 (\) */}
-            <motion.div
-              className="absolute inset-0"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 1, 1, 0] }}
-              transition={{ duration: 0.5 }}
-            >
-              <svg className="w-full h-full" viewBox="0 0 400 200">
-                <path
-                  d="M70 20 L330 180"
-                  stroke="#7f1d1d"
-                  strokeWidth="16"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-                <path
-                  d="M80 20 L340 180"
-                  stroke="#dc2626"
-                  strokeWidth="12"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-                <path
-                  d="M90 20 L350 180"
-                  stroke="#fecaca"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-              </svg>
-            </motion.div>
+            <svg className="w-full h-full" viewBox="0 0 400 200">
 
-            {/* Slash 2 (/) */}
-            <motion.div
-              className="absolute inset-0"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 1, 1, 0] }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              <svg className="w-full h-full" viewBox="0 0 400 200">
-                <path
-                  d="M330 20 L70 180"
-                  stroke="#7f1d1d"
-                  strokeWidth="16"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-                <path
-                  d="M340 20 L80 180"
-                  stroke="#dc2626"
-                  strokeWidth="12"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-                <path
-                  d="M350 20 L90 180"
-                  stroke="#fecaca"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                  fill="none"
-                />
-              </svg>
-            </motion.div>
+              {/* TEXTURE FILTER */}
+              <defs>
+                <filter id="rough">
+                  <feTurbulence type="turbulence" baseFrequency="0.9" numOctaves="2" result="noise"/>
+                  <feDisplacementMap in="SourceGraphic" in2="noise" scale="8"/>
+                </filter>
+              </defs>
 
-            {/* Blood impact center */}
-            {[...Array(10)].map((_, i) => (
+              {/* ===== SLASH 1 (\) ===== */}
+              {/* Deep shadow cut */}
+              <path
+                d="M60 10 Q200 120 340 190"
+                stroke="#3f0d0d"
+                strokeWidth="26"
+                strokeLinecap="round"
+                fill="none"
+                filter="url(#rough)"
+              />
+
+              {/* Main torn flesh */}
+              <path
+                d="M70 10 Q210 120 350 190"
+                stroke="#7f1d1d"
+                strokeWidth="18"
+                strokeLinecap="round"
+                fill="none"
+              />
+
+              {/* Inner raw cut */}
+              <path
+                d="M80 10 Q220 120 360 190"
+                stroke="#dc2626"
+                strokeWidth="10"
+                strokeLinecap="round"
+                fill="none"
+              />
+
+              {/* ===== SLASH 2 (/) ===== */}
+              <path
+                d="M340 10 Q200 120 60 190"
+                stroke="#3f0d0d"
+                strokeWidth="26"
+                strokeLinecap="round"
+                fill="none"
+                filter="url(#rough)"
+              />
+
+              <path
+                d="M350 10 Q210 120 70 190"
+                stroke="#7f1d1d"
+                strokeWidth="18"
+                strokeLinecap="round"
+                fill="none"
+              />
+
+              <path
+                d="M360 10 Q220 120 80 190"
+                stroke="#dc2626"
+                strokeWidth="10"
+                strokeLinecap="round"
+                fill="none"
+              />
+
+            </svg>
+
+            {/* BLOOD SPLASH CENTER */}
+            {[...Array(12)].map((_, i) => (
               <motion.div
                 key={i}
-                className="absolute bg-red-700 rounded-full"
+                className="absolute bg-red-800 rounded-full"
                 style={{
-                  width: `${5 + Math.random() * 8}px`,
-                  height: `${5 + Math.random() * 8}px`,
-                  left: `${45 + Math.random() * 10}%`,
-                  top: `${40 + Math.random() * 15}%`,
+                  width: `${6 + Math.random() * 10}px`,
+                  height: `${6 + Math.random() * 10}px`,
+                  left: `${46 + Math.random() * 8}%`,
+                  top: `${38 + Math.random() * 12}%`,
                 }}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{
-                  scale: [0, 1.4, 0.8],
+                  scale: [0, 1.5, 0.9],
                   opacity: [0, 1, 0],
-                  y: [0, 25 + Math.random() * 15],
+                  y: [0, 35 + Math.random() * 20],
                 }}
-                transition={{ duration: 0.6, delay: i * 0.05 }}
+                transition={{ duration: 0.7, delay: i * 0.04 }}
               />
             ))}
 
-            {/* Blood drips */}
-            {[...Array(5)].map((_, i) => (
+            {/* BLOOD DRIP */}
+            {[...Array(6)].map((_, i) => (
               <motion.div
                 key={`drip-${i}`}
-                className="absolute w-1 bg-red-800 rounded-full"
+                className="absolute w-[3px] bg-red-900 rounded-full"
                 style={{
-                  left: `${47 + i * 2}%`,
+                  left: `${48 + i * 2}%`,
                   top: `45%`,
                 }}
                 initial={{ height: 0, opacity: 0 }}
                 animate={{
-                  height: [0, 30 + Math.random() * 25],
+                  height: [0, 40 + Math.random() * 30],
                   opacity: [0, 1, 0],
                 }}
-                transition={{ duration: 0.8, delay: 0.2 + i * 0.1 }}
+                transition={{ duration: 0.9, delay: 0.25 + i * 0.08 }}
               />
             ))}
 
           </div>
         )}
 
-        {/* Content */}
+        {/* CONTENT */}
         <motion.div
           animate={{
-            opacity: isScratched ? [1, 0.4, 1] : 1,
+            opacity: isScratched ? [1, 0.3, 1] : 1,
           }}
           transition={{ duration: 0.4 }}
           className="relative z-0"
