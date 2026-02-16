@@ -155,151 +155,187 @@ export default function ActiveOfficersPage() {
       </div>
 
       {/* STATS OVERVIEW */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
-        <div className="border border-gray-300 rounded-lg p-4 bg-white">
-          <h3 className="text-sm font-bold text-black mb-1">TOTAL</h3>
-          <div className="text-3xl font-bold text-black">{stats.total}</div>
-          <p className="text-xs text-gray-600">Active Officers</p>
-        </div>
+      {/* STATS OVERVIEW - WITH COLORS */}
+<div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
+  {/* TOTAL - Blue */}
+  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between">
+      <h3 className="text-sm font-bold text-blue-800 uppercase tracking-wider">TOTAL</h3>
+      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    </div>
+    <div className="text-3xl font-bold text-blue-700 mt-2">{stats.total}</div>
+    <p className="text-xs text-blue-600 font-medium mt-1">Active Officers</p>
+  </div>
 
-        <div className="border border-gray-300 rounded-lg p-4 bg-white">
-          <h3 className="text-sm font-bold text-black mb-1">REGULAR</h3>
-          <div className="text-3xl font-bold text-black">{stats.regular}</div>
-          <p className="text-xs text-gray-600">Full Status</p>
-        </div>
+  {/* REGULAR - Green */}
+  <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between">
+      <h3 className="text-sm font-bold text-green-800 uppercase tracking-wider">REGULAR</h3>
+      <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div className="text-3xl font-bold text-green-700 mt-2">{stats.regular}</div>
+    <p className="text-xs text-green-600 font-medium mt-1">Full Status</p>
+  </div>
 
-        <div className="border border-gray-300 rounded-lg p-4 bg-white">
-          <h3 className="text-sm font-bold text-black mb-1">TRAINING</h3>
-          <div className="text-3xl font-bold text-black">{stats.training}</div>
-          <p className="text-xs text-gray-600">In Training</p>
-        </div>
+  {/* TRAINING - Yellow/Orange */}
+  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between">
+      <h3 className="text-sm font-bold text-yellow-800 uppercase tracking-wider">TRAINING</h3>
+      <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+      </svg>
+    </div>
+    <div className="text-3xl font-bold text-yellow-700 mt-2">{stats.training}</div>
+    <p className="text-xs text-yellow-600 font-medium mt-1">In Training</p>
+  </div>
 
-        <div className="border border-gray-300 rounded-lg p-4 bg-white">
-          <h3 className="text-sm font-bold text-black mb-1">RESIGN</h3>
-          <div className="text-3xl font-bold text-black">{stats.resign}</div>
-          <p className="text-xs text-gray-600">Total Resign</p>
-        </div>
+  {/* RESIGN - Red */}
+  <div className="bg-red-50 border border-red-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between">
+      <h3 className="text-sm font-bold text-red-800 uppercase tracking-wider">RESIGN</h3>
+      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <div className="text-3xl font-bold text-red-700 mt-2">{stats.resign}</div>
+    <p className="text-xs text-red-600 font-medium mt-1">Total Resign</p>
+  </div>
 
-        <div className="border border-gray-300 rounded-lg p-4 bg-white">
-          <h3 className="text-sm font-bold text-black mb-1">TERMINATED</h3>
-          <div className="text-3xl font-bold text-black">{stats.terminate}</div>
-          <p className="text-xs text-gray-600">Total Terminated</p>
-        </div>
+  {/* TERMINATED - Red/Dark Red */}
+  <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between">
+      <h3 className="text-sm font-bold text-rose-800 uppercase tracking-wider">TERMINATED</h3>
+      <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+      </svg>
+    </div>
+    <div className="text-3xl font-bold text-rose-700 mt-2">{stats.terminate}</div>
+    <p className="text-xs text-rose-600 font-medium mt-1">Total Terminated</p>
+  </div>
 
-        <div className="border border-gray-300 rounded-lg p-4 bg-white">
-          <h3 className="text-sm font-bold text-black mb-1">CHANGE GROUP</h3>
-          <div className="text-3xl font-bold text-black">{stats.changeGroup}</div>
-          <p className="text-xs text-gray-600">Total Change Group</p>
-        </div>
-      </div>
+  {/* CHANGE GROUP - Purple */}
+  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center justify-between">
+      <h3 className="text-sm font-bold text-purple-800 uppercase tracking-wider">CHANGE GROUP</h3>
+      <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+      </svg>
+    </div>
+    <div className="text-3xl font-bold text-purple-700 mt-2">{stats.changeGroup}</div>
+    <p className="text-xs text-purple-600 font-medium mt-1">Total Change Group</p>
+  </div>
+</div>
 
       {/* FILTER & SEARCH SECTION */}
       <div className="mb-8 p-4 border border-gray-300 rounded-lg bg-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-4">
-              {/* Status Filter */}
-              <div>
-                <span className="font-bold text-black mr-2">Status:</span>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  <button
-                    onClick={() => setFilter('ALL')}
-                    className={`px-4 py-2 rounded font-medium ${
-                      filter === 'ALL' 
-                        ? 'bg-black text-white' 
-                        : 'bg-gray-200 text-black hover:bg-gray-300'
-                    }`}
-                  >
-                    ALL ({stats.total})
-                  </button>
-                  <button
-                    onClick={() => setFilter('REGULAR')}
-                    className={`px-4 py-2 rounded font-medium ${
-                      filter === 'REGULAR' 
-                        ? 'bg-black text-white' 
-                        : 'bg-gray-200 text-black hover:bg-gray-300'
-                    }`}
-                  >
-                    REGULAR ({stats.regular})
-                  </button>
-                  <button
-                    onClick={() => setFilter('TRAINING')}
-                    className={`px-4 py-2 rounded font-medium ${
-                      filter === 'TRAINING' 
-                        ? 'bg-black text-white' 
-                        : 'bg-gray-200 text-black hover:bg-gray-300'
-                    }`}
-                  >
-                    TRAINING ({stats.training})
-                  </button>
-                  <button
-                    onClick={() => setFilter('RESIGN')}
-                    className={`px-4 py-2 rounded font-medium ${
-                      filter === 'RESIGN' 
-                        ? 'bg-black text-white' 
-                        : 'bg-gray-200 text-black hover:bg-gray-300'
-                    }`}
-                  >
-                    RESIGN ({stats.resign})
-                  </button>
-                  <button
-                    onClick={() => setFilter('TERMINATE')}
-                    className={`px-4 py-2 rounded font-medium ${
-                      filter === 'TERMINATE' 
-                        ? 'bg-black text-white' 
-                        : 'bg-gray-200 text-black hover:bg-gray-300'
-                    }`}
-                  >
-                    TERMINATE ({stats.terminate})
-                  </button>
-                  <button
-                    onClick={() => setFilter('CHANGE GROUP')}
-                    className={`px-4 py-2 rounded font-medium ${
-                      filter === 'CHANGE GROUP' 
-                        ? 'bg-black text-white' 
-                        : 'bg-gray-200 text-black hover:bg-gray-300'
-                    }`}
-                  >
-                    CHANGE GROUP ({stats.changeGroup})
-                  </button>
-                </div>
-              </div>
+              {/* Status Filter - WITH COLORS */}
+<div>
+  <span className="font-bold text-gray-700 mr-3">Status:</span>
+  <div className="flex flex-wrap gap-2 mt-1">
+    <button
+      onClick={() => setFilter('ALL')}
+      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+        filter === 'ALL' 
+          ? 'bg-gray-800 text-white shadow-md ring-2 ring-gray-300 ring-offset-1' 
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow'
+      }`}
+    >
+      ALL ({stats.total})
+    </button>
+    <button
+      onClick={() => setFilter('REGULAR')}
+      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+        filter === 'REGULAR' 
+          ? 'bg-green-600 text-white shadow-md ring-2 ring-green-300 ring-offset-1' 
+          : 'bg-green-50 text-green-700 hover:bg-green-100 hover:shadow'
+      }`}
+    >
+      REGULAR ({stats.regular})
+    </button>
+    <button
+      onClick={() => setFilter('TRAINING')}
+      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+        filter === 'TRAINING' 
+          ? 'bg-yellow-500 text-white shadow-md ring-2 ring-yellow-300 ring-offset-1' 
+          : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100 hover:shadow'
+      }`}
+    >
+      TRAINING ({stats.training})
+    </button>
+    <button
+      onClick={() => setFilter('RESIGN')}
+      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+        filter === 'RESIGN' 
+          ? 'bg-red-600 text-white shadow-md ring-2 ring-red-300 ring-offset-1' 
+          : 'bg-red-50 text-red-700 hover:bg-red-100 hover:shadow'
+      }`}
+    >
+      RESIGN ({stats.resign})
+    </button>
+    <button
+      onClick={() => setFilter('TERMINATE')}
+      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+        filter === 'TERMINATE' 
+          ? 'bg-rose-700 text-white shadow-md ring-2 ring-rose-300 ring-offset-1' 
+          : 'bg-rose-50 text-rose-700 hover:bg-rose-100 hover:shadow'
+      }`}
+    >
+      TERMINATE ({stats.terminate})
+    </button>
+    <button
+      onClick={() => setFilter('CHANGE GROUP')}
+      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+        filter === 'CHANGE GROUP' 
+          ? 'bg-purple-600 text-white shadow-md ring-2 ring-purple-300 ring-offset-1' 
+          : 'bg-purple-50 text-purple-700 hover:bg-purple-100 hover:shadow'
+      }`}
+    >
+      CHANGE GROUP ({stats.changeGroup})
+    </button>
+  </div>
+</div>
 
               {/* Search Box */}
-              <div className="flex-1 min-w-[300px]">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search by name, email, ID, department, role, panel ID..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full border border-gray-400 rounded pl-10 pr-4 py-2 text-black bg-white font-medium"
-                  />
-                  <svg 
-                    className="w-5 h-5 absolute left-3 top-2.5 text-gray-600"
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
+<div className="flex-1 min-w-[300px]">
+  <div className="relative">
+    <input
+      type="text"
+      placeholder="🔍 Search by name, email, ID, department, role, panel ID..."
+      value={search}
+      onChange={(e) => setSearch(e.target.value)}
+      className="w-full border border-gray-300 rounded-lg pl-12 pr-4 py-3 text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+    />
+    <svg 
+      className="w-5 h-5 absolute left-4 top-3.5 text-gray-500"
+      fill="none" 
+      stroke="currentColor" 
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  </div>
+</div>
 
           {/* Add Officer Button */}
-          <div>
-            <Link
-              href="/dashboard/officers/add"
-              className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white font-bold px-6 py-2.5 rounded"
-            >
-              <span className="text-xl">+</span>
-              ADD OFFICER
-            </Link>
-          </div>
-        </div>
-      </div>
+<div>
+  <Link
+    href="/dashboard/officers/add"
+    className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+  >
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+    </svg>
+    <span>ADD OFFICER</span>
+    <span className="text-xl">+</span>
+  </Link>
+</div>
 
       {/* LISTING NAME */}
       <div className="mb-6">
@@ -316,21 +352,31 @@ export default function ActiveOfficersPage() {
 
       {/* OFFICERS LIST */}
       <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
-        {/* Table Header */}
-        <div className="bg-gray-100 grid grid-cols-12 gap-2 px-4 py-3 border-b border-gray-300 font-bold text-black text-sm">
-          <div className="col-span-1">#</div>
-          <div className="col-span-2">FULL NAME & EMAIL</div>
-          <div className="col-span-1">DEPARTMENT</div>
-          <div className="col-span-1">ROLE</div>
-          <div className="col-span-1">STATUS</div>
-          <div className="col-span-1">ID PANEL</div>
-          <div className="col-span-1">JOIN DATE</div>
-          <div className="col-span-1">NATIONALITY</div>
-          <div className="col-span-1">GENDER</div>
-          <div className="col-span-1">PHONE/TELE</div>
-          <div className="col-span-1">ROOM</div>
-          <div className="col-span-1">ACTION</div>
-        </div>
+        {/* Table Header - WITH ICONS */}
+<div className="bg-gradient-to-r from-gray-100 to-gray-50 grid grid-cols-12 gap-2 px-4 py-3 border-b border-gray-300 font-bold text-gray-700 text-sm">
+  <div className="col-span-1 flex items-center gap-1">#</div>
+  <div className="col-span-2 flex items-center gap-1">
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+    NAME & EMAIL
+  </div>
+  <div className="col-span-1 flex items-center gap-1">
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+    DEPT
+  </div>
+  <div className="col-span-1">ROLE</div>
+  <div className="col-span-1">STATUS</div>
+  <div className="col-span-1">ID PANEL</div>
+  <div className="col-span-1">JOIN DATE</div>
+  <div className="col-span-1">NATION</div>
+  <div className="col-span-1">GENDER</div>
+  <div className="col-span-1">PHONE/TELE</div>
+  <div className="col-span-1">ROOM</div>
+  <div className="col-span-1">ACTION</div>
+</div>
 
         {/* Table Body */}
         <div className="divide-y divide-gray-200">
@@ -351,18 +397,27 @@ export default function ActiveOfficersPage() {
                 
                 <div className="col-span-1 text-black truncate font-medium">{officer.role || '-'}</div>
                 
-                <div className="col-span-1">
-                  <span className={`px-2 py-1 rounded-full text-xs font-bold inline-block ${
-                    officer.status === 'REGULAR' ? 'bg-green-200 text-black' :
-                    officer.status === 'TRAINING' ? 'bg-yellow-200 text-black' :
-                    officer.status === 'RESIGN' ? 'bg-red-200 text-black' :
-                    officer.status === 'TERMINATE' ? 'bg-red-300 text-black' :
-                    officer.status === 'CHANGE GROUP' ? 'bg-purple-200 text-black' :
-                    'bg-gray-200 text-black'
-                  }`}>
-                    {officer.status || '-'}
-                  </span>
-                </div>
+                {/* STATUS BADGE WITH COLORS */}
+<div className="col-span-1">
+  <span className={`px-3 py-1.5 rounded-full text-xs font-bold inline-flex items-center gap-1 shadow-sm ${
+    officer.status === 'REGULAR' ? 'bg-green-100 text-green-800 border border-green-300' :
+    officer.status === 'TRAINING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' :
+    officer.status === 'RESIGN' ? 'bg-red-100 text-red-800 border border-red-300' :
+    officer.status === 'TERMINATE' ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+    officer.status === 'CHANGE GROUP' ? 'bg-purple-100 text-purple-800 border border-purple-300' :
+    'bg-gray-100 text-gray-800 border border-gray-300'
+  }`}>
+    <span className={`w-2 h-2 rounded-full ${
+      officer.status === 'REGULAR' ? 'bg-green-500' :
+      officer.status === 'TRAINING' ? 'bg-yellow-500' :
+      officer.status === 'RESIGN' ? 'bg-red-500' :
+      officer.status === 'TERMINATE' ? 'bg-rose-500' :
+      officer.status === 'CHANGE GROUP' ? 'bg-purple-500' :
+      'bg-gray-500'
+    }`}></span>
+    {officer.status || '-'}
+  </span>
+</div>
                 
                 <div className="col-span-1 text-black font-mono font-medium">{officer.panel_id || '-'}</div>
                 
@@ -399,30 +454,43 @@ export default function ActiveOfficersPage() {
                   </div>
                 </div>
                 
-                {/* ROOM */}
-                <div className="col-span-1">
-                  <span className={`px-2 py-1 rounded text-xs font-bold ${
-                    officer.room === 'UNMESS' 
-                      ? 'bg-gray-200 text-black' 
-                      : 'bg-blue-100 text-black'
-                  }`}>
-                    {officer.room || '-'}
-                  </span>
-                </div>
+                {/* ROOM - WITH COLOR */}
+<div className="col-span-1">
+  <span className={`px-2 py-1 rounded-lg text-xs font-bold inline-flex items-center gap-1 ${
+    officer.room === 'UNMESS' 
+      ? 'bg-gray-200 text-gray-700' 
+      : 'bg-blue-100 text-blue-800 border border-blue-200'
+  }`}>
+    {officer.room === 'UNMESS' ? (
+      <>
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+        UNMESS
+      </>
+    ) : officer.room ? (
+      <>
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+        {officer.room}
+      </>
+    ) : '-'}
+  </span>
+</div>
                 
-                {/* ACTION */}
-                <div className="col-span-1">
-                  <button
-                    onClick={(e) => handleEditClick(officer, e)}
-                    className="text-black hover:text-gray-700 font-bold text-xs flex items-center gap-1 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    EDIT
-                  </button>
-                </div>
-              </div>
+                {/* ACTION BUTTON - BLUE */}
+<div className="col-span-1">
+  <button
+    onClick={(e) => handleEditClick(officer, e)}
+    className="text-white bg-blue-600 hover:bg-blue-700 font-medium text-xs py-2 px-3 rounded-lg flex items-center gap-1.5 shadow-sm hover:shadow transition-all transform hover:-translate-y-0.5"
+  >
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+    EDIT
+  </button>
+</div>
             ))
           ) : (
             <div className="px-6 py-12 text-center">
