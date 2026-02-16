@@ -102,10 +102,10 @@ export default function ActiveOfficersPage() {
 
   if (loading) {
     return (
-      <div className="p-6 min-h-screen flex items-center justify-center">
+      <div className="p-6 min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
-          <p className="mt-4 text-black">Loading officers...</p>
+          <p className="mt-4 text-black font-medium">Loading officers...</p>
         </div>
       </div>
     );
@@ -115,8 +115,8 @@ export default function ActiveOfficersPage() {
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-white">
       {/* NOTIFICATION */}
       {notification && (
-        <div className={`mb-6 p-4 rounded-lg flex items-center justify-between ${
-          notification.type === 'success' ? 'bg-green-100 border border-green-400' : 'bg-red-100 border border-red-400'
+        <div className={`mb-6 p-4 rounded-lg flex items-center justify-between border ${
+          notification.type === 'success' ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'
         }`}>
           <div className="flex items-center gap-3">
             <svg className={`w-6 h-6 ${notification.type === 'success' ? 'text-green-600' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +130,7 @@ export default function ActiveOfficersPage() {
               {notification.message}
             </span>
           </div>
-          <button onClick={() => setNotification(null)} className="text-gray-500 hover:text-gray-700">
+          <button onClick={() => setNotification(null)} className="text-gray-600 hover:text-gray-800">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -154,87 +154,111 @@ export default function ActiveOfficersPage() {
         <p className="text-gray-700 mt-2">Daftar officer aktif di GROUP-X</p>
       </div>
 
-      {/* STATS OVERVIEW - UPDATED */}
+      {/* STATS OVERVIEW */}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-8">
-        <div className="border border-gray-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-black mb-2">TOTAL</h3>
-          <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
-          <p className="text-sm text-gray-600">Active Officers (Regular + Training)</p>
+        <div className="border border-gray-300 rounded-lg p-4 bg-white">
+          <h3 className="text-sm font-bold text-black mb-1">TOTAL</h3>
+          <div className="text-3xl font-bold text-black">{stats.total}</div>
+          <p className="text-xs text-gray-600">Active Officers</p>
         </div>
 
-        <div className="border border-gray-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-black mb-2">REGULAR</h3>
-          <div className="text-3xl font-bold text-green-600">{stats.regular}</div>
-          <p className="text-sm text-gray-600">Total Officer Regular</p>
+        <div className="border border-gray-300 rounded-lg p-4 bg-white">
+          <h3 className="text-sm font-bold text-black mb-1">REGULAR</h3>
+          <div className="text-3xl font-bold text-black">{stats.regular}</div>
+          <p className="text-xs text-gray-600">Full Status</p>
         </div>
 
-        <div className="border border-gray-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-black mb-2">TRAINING</h3>
-          <div className="text-3xl font-bold text-yellow-600">{stats.training}</div>
-          <p className="text-sm text-gray-600">Total Officer Training</p>
+        <div className="border border-gray-300 rounded-lg p-4 bg-white">
+          <h3 className="text-sm font-bold text-black mb-1">TRAINING</h3>
+          <div className="text-3xl font-bold text-black">{stats.training}</div>
+          <p className="text-xs text-gray-600">In Training</p>
         </div>
 
-        <div className="border border-gray-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-black mb-2">RESIGN</h3>
-          <div className="text-3xl font-bold text-red-600">{stats.resign}</div>
-          <p className="text-sm text-gray-600">Total Officer Resign</p>
+        <div className="border border-gray-300 rounded-lg p-4 bg-white">
+          <h3 className="text-sm font-bold text-black mb-1">RESIGN</h3>
+          <div className="text-3xl font-bold text-black">{stats.resign}</div>
+          <p className="text-xs text-gray-600">Total Resign</p>
         </div>
 
-        <div className="border border-gray-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-black mb-2">TERMINATED</h3>
-          <div className="text-3xl font-bold text-red-800">{stats.terminate}</div>
-          <p className="text-sm text-gray-600">Total Officer Terminated</p>
+        <div className="border border-gray-300 rounded-lg p-4 bg-white">
+          <h3 className="text-sm font-bold text-black mb-1">TERMINATED</h3>
+          <div className="text-3xl font-bold text-black">{stats.terminate}</div>
+          <p className="text-xs text-gray-600">Total Terminated</p>
         </div>
 
-        <div className="border border-gray-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-black mb-2">CHANGE GROUP</h3>
-          <div className="text-3xl font-bold text-purple-600">{stats.changeGroup}</div>
-          <p className="text-sm text-gray-600">Total Officer Change Group</p>
+        <div className="border border-gray-300 rounded-lg p-4 bg-white">
+          <h3 className="text-sm font-bold text-black mb-1">CHANGE GROUP</h3>
+          <div className="text-3xl font-bold text-black">{stats.changeGroup}</div>
+          <p className="text-xs text-gray-600">Total Change Group</p>
         </div>
       </div>
 
       {/* FILTER & SEARCH SECTION */}
-      <div className="mb-8 p-4 border border-gray-300 rounded-lg">
+      <div className="mb-8 p-4 border border-gray-300 rounded-lg bg-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-4">
-              {/* Status Filter - UPDATED */}
+              {/* Status Filter */}
               <div>
-                <span className="font-medium text-black mr-2">Status:</span>
+                <span className="font-bold text-black mr-2">Status:</span>
                 <div className="flex flex-wrap gap-2 mt-1">
                   <button
                     onClick={() => setFilter('ALL')}
-                    className={`px-4 py-2 rounded ${filter === 'ALL' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                    className={`px-4 py-2 rounded font-medium ${
+                      filter === 'ALL' 
+                        ? 'bg-black text-white' 
+                        : 'bg-gray-200 text-black hover:bg-gray-300'
+                    }`}
                   >
                     ALL ({stats.total})
                   </button>
                   <button
                     onClick={() => setFilter('REGULAR')}
-                    className={`px-4 py-2 rounded ${filter === 'REGULAR' ? 'bg-green-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                    className={`px-4 py-2 rounded font-medium ${
+                      filter === 'REGULAR' 
+                        ? 'bg-black text-white' 
+                        : 'bg-gray-200 text-black hover:bg-gray-300'
+                    }`}
                   >
                     REGULAR ({stats.regular})
                   </button>
                   <button
                     onClick={() => setFilter('TRAINING')}
-                    className={`px-4 py-2 rounded ${filter === 'TRAINING' ? 'bg-yellow-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                    className={`px-4 py-2 rounded font-medium ${
+                      filter === 'TRAINING' 
+                        ? 'bg-black text-white' 
+                        : 'bg-gray-200 text-black hover:bg-gray-300'
+                    }`}
                   >
                     TRAINING ({stats.training})
                   </button>
                   <button
                     onClick={() => setFilter('RESIGN')}
-                    className={`px-4 py-2 rounded ${filter === 'RESIGN' ? 'bg-red-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                    className={`px-4 py-2 rounded font-medium ${
+                      filter === 'RESIGN' 
+                        ? 'bg-black text-white' 
+                        : 'bg-gray-200 text-black hover:bg-gray-300'
+                    }`}
                   >
                     RESIGN ({stats.resign})
                   </button>
                   <button
                     onClick={() => setFilter('TERMINATE')}
-                    className={`px-4 py-2 rounded ${filter === 'TERMINATE' ? 'bg-red-800 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                    className={`px-4 py-2 rounded font-medium ${
+                      filter === 'TERMINATE' 
+                        ? 'bg-black text-white' 
+                        : 'bg-gray-200 text-black hover:bg-gray-300'
+                    }`}
                   >
                     TERMINATE ({stats.terminate})
                   </button>
                   <button
                     onClick={() => setFilter('CHANGE GROUP')}
-                    className={`px-4 py-2 rounded ${filter === 'CHANGE GROUP' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                    className={`px-4 py-2 rounded font-medium ${
+                      filter === 'CHANGE GROUP' 
+                        ? 'bg-black text-white' 
+                        : 'bg-gray-200 text-black hover:bg-gray-300'
+                    }`}
                   >
                     CHANGE GROUP ({stats.changeGroup})
                   </button>
@@ -249,10 +273,10 @@ export default function ActiveOfficersPage() {
                     placeholder="Search by name, email, ID, department, role, panel ID..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full border border-gray-400 rounded pl-10 pr-4 py-2 text-black bg-white"
+                    className="w-full border border-gray-400 rounded pl-10 pr-4 py-2 text-black bg-white font-medium"
                   />
                   <svg 
-                    className="w-5 h-5 absolute left-3 top-2.5 text-gray-400"
+                    className="w-5 h-5 absolute left-3 top-2.5 text-gray-600"
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
@@ -268,7 +292,7 @@ export default function ActiveOfficersPage() {
           <div>
             <Link
               href="/dashboard/officers/add"
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-2.5 rounded"
+              className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white font-bold px-6 py-2.5 rounded"
             >
               <span className="text-xl">+</span>
               ADD OFFICER
@@ -277,21 +301,21 @@ export default function ActiveOfficersPage() {
         </div>
       </div>
 
-      {/* LISTING NAME (replaces BY DEPARTMENT) */}
+      {/* LISTING NAME */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-black mb-4">LISTING NAME</h2>
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex items-center gap-2 text-blue-800">
+        <div className="bg-gray-100 border border-gray-300 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-black font-medium">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="font-medium">Total Listing: {filteredOfficers.length} officers</span>
+            <span>Total Listing: {filteredOfficers.length} officers</span>
           </div>
         </div>
       </div>
 
-      {/* OFFICERS LIST - COMPLETE TABLE */}
-      <div className="border border-gray-300 rounded-lg overflow-hidden">
+      {/* OFFICERS LIST */}
+      <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
         {/* Table Header */}
         <div className="bg-gray-100 grid grid-cols-12 gap-2 px-4 py-3 border-b border-gray-300 font-bold text-black text-sm">
           <div className="col-span-1">#</div>
@@ -303,7 +327,7 @@ export default function ActiveOfficersPage() {
           <div className="col-span-1">JOIN DATE</div>
           <div className="col-span-1">NATIONALITY</div>
           <div className="col-span-1">GENDER</div>
-          <div className="col-span-1">PHONE</div>
+          <div className="col-span-1">PHONE/TELE</div>
           <div className="col-span-1">ROOM</div>
           <div className="col-span-1">ACTION</div>
         </div>
@@ -314,54 +338,83 @@ export default function ActiveOfficersPage() {
             filteredOfficers.map((officer, index) => (
               <div 
                 key={officer.id} 
-                className="grid grid-cols-12 gap-2 px-4 py-3 hover:bg-gray-50 text-sm"
+                className="grid grid-cols-12 gap-2 px-4 py-3 hover:bg-gray-50 text-sm text-black"
               >
-                <div className="col-span-1 text-gray-700">{index + 1}</div>
+                <div className="col-span-1 text-black font-medium">{index + 1}</div>
                 
                 <div className="col-span-2">
-                  <div className="font-medium text-black">{officer.full_name || '-'}</div>
-                  <div className="text-xs text-gray-600 truncate">{officer.email || '-'}</div>
+                  <div className="font-bold text-black">{officer.full_name || '-'}</div>
+                  <div className="text-xs text-gray-700 truncate">{officer.email || '-'}</div>
                 </div>
                 
-                <div className="col-span-1 truncate">{officer.department || '-'}</div>
+                <div className="col-span-1 text-black truncate font-medium">{officer.department || '-'}</div>
                 
-                <div className="col-span-1 truncate">{officer.role || '-'}</div>
+                <div className="col-span-1 text-black truncate font-medium">{officer.role || '-'}</div>
                 
                 <div className="col-span-1">
                   <span className={`px-2 py-1 rounded-full text-xs font-bold inline-block ${
-                    officer.status === 'REGULAR' ? 'bg-green-100 text-green-800' :
-                    officer.status === 'TRAINING' ? 'bg-yellow-100 text-yellow-800' :
-                    officer.status === 'RESIGN' ? 'bg-red-100 text-red-800' :
-                    officer.status === 'TERMINATE' ? 'bg-red-200 text-red-900' :
-                    officer.status === 'CHANGE GROUP' ? 'bg-purple-100 text-purple-800' :
-                    'bg-gray-100 text-gray-800'
+                    officer.status === 'REGULAR' ? 'bg-green-200 text-black' :
+                    officer.status === 'TRAINING' ? 'bg-yellow-200 text-black' :
+                    officer.status === 'RESIGN' ? 'bg-red-200 text-black' :
+                    officer.status === 'TERMINATE' ? 'bg-red-300 text-black' :
+                    officer.status === 'CHANGE GROUP' ? 'bg-purple-200 text-black' :
+                    'bg-gray-200 text-black'
                   }`}>
                     {officer.status || '-'}
                   </span>
                 </div>
                 
-                <div className="col-span-1 font-mono">{officer.panel_id || '-'}</div>
+                <div className="col-span-1 text-black font-mono font-medium">{officer.panel_id || '-'}</div>
                 
-                <div className="col-span-1">{formatDate(officer.join_date)}</div>
+                <div className="col-span-1 text-black font-medium">{formatDate(officer.join_date)}</div>
                 
-                <div className="col-span-1">{officer.nationality || '-'}</div>
+                <div className="col-span-1 text-black font-medium">{officer.nationality || '-'}</div>
                 
-                <div className="col-span-1">{officer.gender || '-'}</div>
+                <div className="col-span-1 text-black font-medium">{officer.gender || '-'}</div>
                 
-                <div className="col-span-1 truncate">{officer.phone || '-'}</div>
-                
+                {/* PHONE & TELEGRAM - DIGABUNG */}
                 <div className="col-span-1">
-                  <span className={`px-2 py-1 rounded text-xs font-mono ${
-                    officer.room === 'UNMESS' ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-800'
+                  <div className="flex flex-col">
+                    {officer.phone ? (
+                      <div className="flex items-center gap-1 text-black font-medium">
+                        <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span className="text-xs">{officer.phone}</span>
+                      </div>
+                    ) : null}
+                    
+                    {officer.telegram_id ? (
+                      <div className="flex items-center gap-1 text-black font-medium mt-1">
+                        <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                        <span className="text-xs">@{officer.telegram_id.replace('@', '')}</span>
+                      </div>
+                    ) : null}
+                    
+                    {!officer.phone && !officer.telegram_id && (
+                      <span className="text-xs text-gray-500 italic">-</span>
+                    )}
+                  </div>
+                </div>
+                
+                {/* ROOM */}
+                <div className="col-span-1">
+                  <span className={`px-2 py-1 rounded text-xs font-bold ${
+                    officer.room === 'UNMESS' 
+                      ? 'bg-gray-200 text-black' 
+                      : 'bg-blue-100 text-black'
                   }`}>
                     {officer.room || '-'}
                   </span>
                 </div>
                 
+                {/* ACTION */}
                 <div className="col-span-1">
                   <button
                     onClick={(e) => handleEditClick(officer, e)}
-                    className="text-blue-600 hover:text-blue-800 font-medium text-xs flex items-center gap-1"
+                    className="text-black hover:text-gray-700 font-bold text-xs flex items-center gap-1 bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -374,17 +427,17 @@ export default function ActiveOfficersPage() {
           ) : (
             <div className="px-6 py-12 text-center">
               <div className="w-16 h-16 border-2 border-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.67 3.623a9.953 9.953 0 01-6.67 2.574 9.953 9.953 0 01-6.67-2.574" />
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-black mb-2">NO OFFICERS FOUND</h3>
-              <p className="text-gray-700 mb-6">
+              <p className="text-gray-700 mb-6 font-medium">
                 {search ? 'Try different search terms' : 'Add your first officer'}
               </p>
               <Link
                 href="/dashboard/officers/add"
-                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded"
+                className="inline-flex items-center gap-2 bg-black hover:bg-gray-800 text-white font-bold px-6 py-3 rounded"
               >
                 <span className="text-xl">+</span>
                 ADD FIRST OFFICER
@@ -397,12 +450,12 @@ export default function ActiveOfficersPage() {
       {/* SUMMARY FOOTER */}
       <div className="mt-6 p-4 border border-gray-300 rounded-lg bg-gray-50">
         <div className="flex justify-between items-center">
-          <div>
-            <span className="font-bold text-black">Showing:</span>
-            <span className="ml-2 text-blue-600">{filteredOfficers.length}</span>
+          <div className="text-black font-medium">
+            <span className="font-bold">Showing:</span>
+            <span className="ml-2 text-black">{filteredOfficers.length}</span>
             <span className="text-gray-700"> of {stats.total} officers</span>
           </div>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-700 font-medium">
             Last updated: {new Date().toLocaleString('id-ID')}
           </div>
         </div>
