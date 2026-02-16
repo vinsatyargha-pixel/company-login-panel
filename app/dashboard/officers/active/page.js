@@ -14,6 +14,8 @@ export default function ActiveOfficersPage() {
   const [search, setSearch] = useState('');
   const [selectedOfficer, setSelectedOfficer] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [officerToDelete, setOfficerToDelete] = useState(null);
   const [notification, setNotification] = useState(null);
 
   useEffect(() => {
@@ -90,6 +92,35 @@ export default function ActiveOfficersPage() {
     setOfficers(officers.map(o => o.id === updatedOfficer.id ? updatedOfficer : o));
     setShowEditModal(false);
     showNotification('success', 'Data officer berhasil diupdate');
+  };
+
+  // DELETE HANDLERS
+  const handleDeleteClick = (officer, e) => {
+    e.stopPropagation();
+    setOfficerToDelete(officer);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!officerToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('officers')
+        .delete()
+        .eq('id', officerToDelete.id);
+
+      if (error) throw error;
+
+      setOfficers(officers.filter(o => o.id !== officerToDelete.id));
+      setShowDeleteModal(false);
+      setOfficerToDelete(null);
+      showNotification('success', 'Officer berhasil dihapus');
+      
+    } catch (error) {
+      console.error('Error deleting officer:', error);
+      showNotification('error', 'Gagal menghapus officer');
+    }
   };
 
   if (loading) {
@@ -196,7 +227,7 @@ export default function ActiveOfficersPage() {
         <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-rose-800 uppercase tracking-wider">TERMINATED</h3>
-          <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
           </div>
@@ -220,7 +251,6 @@ export default function ActiveOfficersPage() {
       {/* FILTER & SEARCH SECTION */}
       <div className="mb-8 p-4 border border-gray-300 rounded-lg bg-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {/* Left side - Status filters and search */}
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-4">
               {/* Status Filter */}
@@ -401,17 +431,33 @@ export default function ActiveOfficersPage() {
                   </span>
                 </div>
                 
-                {/* Action Button */}
+                {/* ACTION BUTTONS */}
                 <div className="col-span-1">
-                  <button
-                    onClick={(e) => handleEditClick(officer, e)}
-                    className="text-white bg-blue-600 hover:bg-blue-700 font-medium text-xs py-2 px-3 rounded-lg flex items-center gap-1.5 shadow-sm hover:shadow transition-all transform hover:-translate-y-0.5"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    EDIT
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {/* EDIT BUTTON */}
+                    <button
+                      onClick={(e) => handleEditClick(officer, e)}
+                      className="text-white bg-blue-600 hover:bg-blue-700 font-medium text-xs py-2 px-2 rounded-lg flex items-center gap-1 shadow-sm hover:shadow transition-all transform hover:-translate-y-0.5"
+                      title="Edit"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      EDIT
+                    </button>
+                    
+                    {/* DELETE BUTTON */}
+                    <button
+                      onClick={(e) => handleDeleteClick(officer, e)}
+                      className="text-white bg-red-600 hover:bg-red-700 font-medium text-xs py-2 px-2 rounded-lg flex items-center gap-1 shadow-sm hover:shadow transition-all transform hover:-translate-y-0.5"
+                      title="Delete"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      DEL
+                    </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -448,6 +494,50 @@ export default function ActiveOfficersPage() {
           </div>
         </div>
       </div>
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {showDeleteModal && officerToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-black">Hapus Officer</h3>
+                <p className="text-gray-600 text-sm">Tindakan ini tidak bisa dibatalkan</p>
+              </div>
+            </div>
+            
+            <p className="text-gray-700 mb-6">
+              Apakah Anda yakin ingin menghapus <span className="font-bold">{officerToDelete.full_name}</span>?
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setOfficerToDelete(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Ya, Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* EDIT MODAL */}
       {showEditModal && selectedOfficer && (
