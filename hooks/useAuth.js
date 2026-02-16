@@ -18,7 +18,7 @@ export function useAuth() {
       setUser(user);
 
       if (user?.email) {
-        // 1. Ambil role dari public.users (untuk tampilan)
+        // 1. Ambil role dari public.users (Staff/Admin)
         const { data: userData } = await supabase
           .from('users')
           .select('role')
@@ -29,7 +29,7 @@ export function useAuth() {
           setUserJobRole(userData.role);
         }
 
-        // 2. Ambil data dari officers (untuk akses edit)
+        // 2. Ambil data dari officers (optional)
         const { data: officer } = await supabase
           .from('officers')
           .select('*')
@@ -38,8 +38,12 @@ export function useAuth() {
 
         if (officer) {
           setOfficerData(officer);
-          setAccessRole(officer.access_role || 'user');
         }
+
+        // 3. TENTUKAN AKSES BERDASARKAN ROLE DARI users.table
+        // Kalau role di users = 'Admin', maka isAdmin = true
+        const isUserAdmin = userData?.role === 'Admin';
+        setAccessRole(isUserAdmin ? 'admin' : 'user');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -52,8 +56,8 @@ export function useAuth() {
     user,
     officerData,
     userJobRole,    // Staff/Admin (untuk tampilan)
-    accessRole,     // admin/user (untuk akses)
+    accessRole,     // admin/user (untuk akses) - berdasarkan users.role
     loading, 
-    isAdmin: accessRole === 'admin'  // HAK EDIT berdasarkan access_role
+    isAdmin: accessRole === 'admin'  // HAK EDIT berdasarkan role di users
   };
 }
