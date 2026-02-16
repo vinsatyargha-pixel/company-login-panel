@@ -36,7 +36,7 @@ export default function DashboardCard({
       setIsScratched(false);
       if (href) window.location.href = href;
       else if (onClick) onClick(e);
-    }, 600);
+    }, 400);
   };
 
   return (
@@ -48,90 +48,80 @@ export default function DashboardCard({
           hover:shadow-md transition-shadow cursor-pointer
         `}
         animate={{
-          scale: isScratched ? [1, 0.97, 0.98, 0.96, 1] : 1,
-          rotate: isScratched ? [0, -0.8, 0.8, -0.5, 0.5, 0] : 0,
+          scale: isScratched ? [1, 0.97, 0.98, 1] : 1,
+          rotate: isScratched ? [0, -0.5, 0.5, 0] : 0,
         }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.3 }}
       >
-        {/* X Claw Marks Animation */}
+        {/* X Claw Marks */}
         {isScratched && (
-          <div className="absolute inset-0 pointer-events-none">
-            {/* First slash (kiri atas ke kanan bawah) */}
+          <div className="absolute inset-0 pointer-events-none z-10">
+            {/* Slash kiri (\) */}
             <motion.div
               className="absolute w-full h-full"
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 1, 0.8, 0] }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.3 }}
             >
               <svg className="w-full h-full" viewBox="0 0 400 200">
                 <path
-                  d="M50 30 L350 170"
+                  d="M80 30 L320 170"
                   stroke="#dc2626"
                   strokeWidth="8"
                   strokeLinecap="round"
-                  filter="url(#glow)"
+                  fill="none"
                 />
                 <path
-                  d="M70 30 L370 170"
+                  d="M100 30 L340 170"
                   stroke="#b91c1c"
                   strokeWidth="6"
                   strokeLinecap="round"
-                />
-                <path
-                  d="M30 30 L330 170"
-                  stroke="#7f1d1d"
-                  strokeWidth="4"
-                  strokeLinecap="round"
+                  fill="none"
                 />
               </svg>
             </motion.div>
 
-            {/* Second slash (kanan atas ke kiri bawah) - muncul sedikit lebih lambat */}
+            {/* Slash kanan (/) */}
             <motion.div
-              className="absolute inset-0 w-full h-full"
+              className="absolute w-full h-full"
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 1, 0.8, 0] }}
-              transition={{ duration: 0.4, delay: 0.15 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
             >
               <svg className="w-full h-full" viewBox="0 0 400 200">
                 <path
-                  d="M350 30 L50 170"
+                  d="M320 30 L80 170"
                   stroke="#dc2626"
                   strokeWidth="8"
                   strokeLinecap="round"
-                  filter="url(#glow)"
+                  fill="none"
                 />
                 <path
-                  d="M370 30 L70 170"
+                  d="M340 30 L100 170"
                   stroke="#b91c1c"
                   strokeWidth="6"
                   strokeLinecap="round"
-                />
-                <path
-                  d="M330 30 L30 170"
-                  stroke="#7f1d1d"
-                  strokeWidth="4"
-                  strokeLinecap="round"
+                  fill="none"
                 />
               </svg>
             </motion.div>
 
-            {/* Blood drops */}
-            {[...Array(8)].map((_, i) => (
+            {/* Darah */}
+            {[...Array(5)].map((_, i) => (
               <motion.div
                 key={i}
-                className="absolute w-2 h-2 bg-red-600 rounded-full"
+                className="absolute w-1.5 h-1.5 bg-red-600 rounded-full"
                 style={{
                   left: `${30 + Math.random() * 40}%`,
-                  top: `${40 + Math.random() * 40}%`,
+                  top: `${40 + Math.random() * 30}%`,
                 }}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{
-                  scale: [0, 1.5, 1, 0.5, 0],
-                  opacity: [0, 0.8, 0.6, 0.3, 0],
-                  y: [0, 20, 40],
+                  scale: [0, 1.5, 0],
+                  opacity: [0, 0.8, 0],
+                  y: [0, 15],
                 }}
-                transition={{ duration: 0.8, delay: i * 0.05 }}
+                transition={{ duration: 0.4, delay: i * 0.05 }}
               />
             ))}
           </div>
@@ -140,9 +130,10 @@ export default function DashboardCard({
         {/* Konten Card */}
         <motion.div
           animate={{
-            opacity: isScratched ? [1, 0.5, 0.7, 0.4, 1] : 1,
+            opacity: isScratched ? [1, 0.5, 1] : 1,
           }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.3 }}
+          className="relative z-0"
         >
           <div className="flex items-start justify-between mb-4">
             <div className={`p-3 rounded-lg ${iconBgClasses[color]}`}>
@@ -154,19 +145,6 @@ export default function DashboardCard({
           <div className="text-2xl font-bold text-gray-900">{value}</div>
           <p className="text-gray-500 text-sm mt-2">Updated just now</p>
         </motion.div>
-
-        {/* Filter untuk efek glow */}
-        <svg className="absolute w-0 h-0">
-          <defs>
-            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-        </svg>
       </motion.div>
     </Link>
   );
