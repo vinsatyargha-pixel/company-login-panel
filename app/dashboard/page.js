@@ -10,7 +10,6 @@ import { supabase } from '@/lib/supabase';
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
-  const [officerData, setOfficerData] = useState(null);
   const [showResetModal, setShowResetModal] = useState(false);
   const [dashboardData, setDashboardData] = useState({
     totalAssets: 0,
@@ -20,24 +19,12 @@ export default function DashboardContent() {
   const { user, userJobRole, isAdmin } = useAuth();
 
   useEffect(() => {
-    fetchUserAndData();
+    fetchDashboardData();
   }, []);
 
-  const fetchUserAndData = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
-      if (user?.email) {
-        const { data: officer, error: officerError } = await supabase
-          .from('officers')
-          .select('*')
-          .eq('email', user.email)
-          .maybeSingle();
-
-        if (!officerError && officer) {
-          setOfficerData(officer);
-        }
-      }
 
       const { count: totalAssets } = await supabase
         .from('assets')
@@ -80,6 +67,7 @@ export default function DashboardContent() {
         </div>
         
         <div className="flex items-center gap-4">
+          {/* PROFILE CARD - FINAL VERSION */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,8 +77,8 @@ export default function DashboardContent() {
             <div>
               <div className="text-sm font-medium text-gray-900">{user?.email || 'Loading...'}</div>
               <div className="text-xs text-gray-500">
-                {officerData?.department || 'No Department'}
-                {userJobRole && <span className="ml-1">- {userJobRole}</span>}
+                {/* ROLE DARI TABLE USERS */}
+                {userJobRole || 'Staff'}
                 {isAdmin && <span className="ml-1 text-blue-600 font-bold">(Admin)</span>}
               </div>
               <button
