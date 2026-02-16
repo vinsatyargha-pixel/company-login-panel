@@ -36,7 +36,7 @@ export default function DashboardCardWithClaw({
       setIsScratched(false);
       if (href) window.location.href = href;
       else if (onClick) onClick(e);
-    }, 550);
+    }, 600);
   };
 
   return (
@@ -54,114 +54,97 @@ export default function DashboardCardWithClaw({
             ? ["brightness(1)", "brightness(0.75)", "brightness(1)"] 
             : "brightness(1)"
         }}
-        transition={{ duration: 0.45 }}
+        transition={{ duration: 0.5 }}
       >
 
         {/* REALISTIC CLAW X */}
         {isScratched && (
           <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
 
-            <svg className="w-full h-full" viewBox="0 0 400 200">
+            <svg className="w-full h-full" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
 
               {/* TEXTURE FILTER */}
               <defs>
                 <filter id="rough">
-                  <feTurbulence type="turbulence" baseFrequency="0.9" numOctaves="2" result="noise"/>
-                  <feDisplacementMap in="SourceGraphic" in2="noise" scale="8"/>
+                  <feTurbulence type="fractalNoise" baseFrequency="0.18" numOctaves="2" result="noise" />
+                  <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" />
                 </filter>
               </defs>
 
-              {/* ===== SLASH 1 (\) ===== */}
-              {/* Deep shadow cut */}
-              <path
-                d="M60 10 Q200 120 340 190"
-                stroke="#3f0d0d"
-                strokeWidth="26"
-                strokeLinecap="round"
-                fill="none"
-                filter="url(#rough)"
-              />
+              {/* SLASH 1 (\) with layered rough paths */}
+              {[...Array(5)].map((_, i) => {
+                const offset = i * 5;
+                return (
+                  <path
+                    key={`slash-left-${i}`}
+                    d={`M${60 + offset} 10 Q 200 120 ${340 + offset} 190`}
+                    stroke="#7b1a1a"
+                    strokeWidth={18 - i * 3}
+                    strokeLinecap="round"
+                    strokeDasharray={i % 2 === 0 ? "12 6" : "6 4"}
+                    filter="url(#rough)"
+                    opacity={0.7 - i * 0.1}
+                    fill="none"
+                  />
+                );
+              })}
 
-              {/* Main torn flesh */}
-              <path
-                d="M70 10 Q210 120 350 190"
-                stroke="#7f1d1d"
-                strokeWidth="18"
-                strokeLinecap="round"
-                fill="none"
-              />
-
-              {/* Inner raw cut */}
-              <path
-                d="M80 10 Q220 120 360 190"
-                stroke="#dc2626"
-                strokeWidth="10"
-                strokeLinecap="round"
-                fill="none"
-              />
-
-              {/* ===== SLASH 2 (/) ===== */}
-              <path
-                d="M340 10 Q200 120 60 190"
-                stroke="#3f0d0d"
-                strokeWidth="26"
-                strokeLinecap="round"
-                fill="none"
-                filter="url(#rough)"
-              />
-
-              <path
-                d="M350 10 Q210 120 70 190"
-                stroke="#7f1d1d"
-                strokeWidth="18"
-                strokeLinecap="round"
-                fill="none"
-              />
-
-              <path
-                d="M360 10 Q220 120 80 190"
-                stroke="#dc2626"
-                strokeWidth="10"
-                strokeLinecap="round"
-                fill="none"
-              />
+              {/* SLASH 2 (/) with layered rough paths */}
+              {[...Array(5)].map((_, i) => {
+                const offset = i * 5;
+                return (
+                  <path
+                    key={`slash-right-${i}`}
+                    d={`M${340 - offset} 10 Q 200 120 ${60 - offset} 190`}
+                    stroke="#7b1a1a"
+                    strokeWidth={18 - i * 3}
+                    strokeLinecap="round"
+                    strokeDasharray={i % 2 === 0 ? "12 6" : "6 4"}
+                    filter="url(#rough)"
+                    opacity={0.7 - i * 0.1}
+                    fill="none"
+                  />
+                );
+              })}
 
             </svg>
 
             {/* BLOOD SPLASH CENTER */}
-            {[...Array(12)].map((_, i) => (
+            {[...Array(14)].map((_, i) => (
               <motion.div
-                key={i}
-                className="absolute bg-red-800 rounded-full"
+                key={`blood-drop-${i}`}
+                className="absolute bg-red-900 rounded-full"
                 style={{
-                  width: `${6 + Math.random() * 10}px`,
-                  height: `${6 + Math.random() * 10}px`,
-                  left: `${46 + Math.random() * 8}%`,
-                  top: `${38 + Math.random() * 12}%`,
+                  width: `${6 + Math.random() * 9}px`,
+                  height: `${6 + Math.random() * 9}px`,
+                  left: `${43 + Math.random() * 14}%`,
+                  top: `${37 + Math.random() * 14}%`,
+                  filter: `drop-shadow(0 0 5px rgba(220,20,60,0.8))`,
                 }}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{
-                  scale: [0, 1.5, 0.9],
-                  opacity: [0, 1, 0],
-                  y: [0, 35 + Math.random() * 20],
+                  scale: [0, 1.3, 1, 0],
+                  opacity: [0, 1, 0.6, 0],
+                  y: [0, 15 + Math.random() * 20]
                 }}
-                transition={{ duration: 0.7, delay: i * 0.04 }}
+                transition={{ duration: 0.7, delay: i * 0.05 }}
               />
             ))}
 
             {/* BLOOD DRIP */}
-            {[...Array(6)].map((_, i) => (
+            {[...Array(8)].map((_, i) => (
               <motion.div
-                key={`drip-${i}`}
-                className="absolute w-[3px] bg-red-900 rounded-full"
+                key={`blood-drip-${i}`}
+                className="absolute w-[2.5px] bg-red-800 rounded-full"
                 style={{
-                  left: `${48 + i * 2}%`,
-                  top: `45%`,
+                  left: `${44 + i * 2}%`,
+                  top: `42%`,
+                  filter: `drop-shadow(0 0 4px rgba(139,0,0,0.7))`,
                 }}
                 initial={{ height: 0, opacity: 0 }}
                 animate={{
-                  height: [0, 40 + Math.random() * 30],
-                  opacity: [0, 1, 0],
+                  height: [0, 30 + Math.random() * 25],
+                  opacity: [0, 1, 0]
                 }}
                 transition={{ duration: 0.9, delay: 0.25 + i * 0.08 }}
               />
