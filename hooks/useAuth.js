@@ -27,11 +27,15 @@ export function useAuth() {
 
         if (userData) {
           console.log('🔥 User role from DB:', userData.role);
+          
+          // Simpan persis seperti di database untuk tampilan
           setUserJobRole(userData.role);
           
-          // 🔥 FIX: Case insensitive comparison
-          const userRole = userData.role || '';
-          const isUserAdmin = userRole.toUpperCase() === 'ADMIN';
+          // 🔥 FIX PALING AMAN: case insensitive
+          const roleUpper = (userData.role || '').toUpperCase().trim();
+          const isUserAdmin = roleUpper === 'ADMIN';
+          
+          console.log('🔑 Is Admin?', isUserAdmin);
           setAccessRole(isUserAdmin ? 'admin' : 'user');
         }
 
