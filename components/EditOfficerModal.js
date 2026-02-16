@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
 
 export default function EditOfficerModal({ officer, onClose, onUpdate }) {
-  const { isAdmin } = useAuth();
   const [formData, setFormData] = useState({
     full_name: officer.full_name || '',
     email: officer.email || '',
@@ -27,14 +25,6 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
-  // Proteksi admin
-  useEffect(() => {
-    if (!isAdmin) {
-      alert('You do not have permission to edit officers');
-      onClose();
-    }
-  }, [isAdmin, onClose]);
 
   const departments = [
     'CAPTAIN',
@@ -107,14 +97,10 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
     }
   };
 
-  // Kalau bukan admin, jangan render modal
-  if (!isAdmin) return null;
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-          {/* Modal Header */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-black">Edit Officer</h2>
             <button
@@ -127,7 +113,6 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
             </button>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column */}
@@ -301,7 +286,6 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
                   <p className="text-xs text-gray-500 mt-1">Format: 4 digit angka atau UNMESS</p>
                 </div>
 
-                {/* BANK ACCOUNT */}
                 <div>
                   <label className="block text-sm font-bold text-black mb-1">Bank Account</label>
                   <input
@@ -328,7 +312,6 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
               </div>
             </div>
 
-            {/* Notes */}
             <div className="mt-6">
               <label className="block text-sm font-bold text-black mb-1">Notes</label>
               <textarea
@@ -341,7 +324,6 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
               ></textarea>
             </div>
 
-            {/* Form Actions */}
             <div className="mt-8 flex justify-end gap-4">
               <button
                 type="button"

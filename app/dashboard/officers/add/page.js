@@ -1,15 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth';
 
 export default function AddOfficerPage() {
   const router = useRouter();
-  const { isAdmin } = useAuth(); // ← CEK ADMIN
-  
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
@@ -33,14 +30,6 @@ export default function AddOfficerPage() {
 
   const [errors, setErrors] = useState({});
 
-  // Redirect kalau bukan admin
-  useEffect(() => {
-    if (!isAdmin) {
-      router.push('/dashboard/officers/active');
-    }
-  }, [isAdmin, router]);
-
-  // Department options
   const departments = [
     'CAPTAIN',
     'AM',
@@ -53,7 +42,6 @@ export default function AddOfficerPage() {
     'OWNER'
   ];
 
-  // Status options
   const statusOptions = [
     'REGULAR',
     'TRAINING',
@@ -62,10 +50,8 @@ export default function AddOfficerPage() {
     'CHANGE GROUP'
   ];
 
-  // Gender options
   const genderOptions = ['Male', 'Female'];
 
-  // Validate form
   const validateForm = () => {
     const newErrors = {};
     
@@ -81,7 +67,6 @@ export default function AddOfficerPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle input change
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -96,7 +81,6 @@ export default function AddOfficerPage() {
     }
   };
 
-  // Handle submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -105,7 +89,6 @@ export default function AddOfficerPage() {
     setLoading(true);
     
     try {
-      // Cek apakah email sudah ada
       const { data: existingEmail, error: checkError } = await supabase
         .from('officers')
         .select('email')
@@ -118,7 +101,6 @@ export default function AddOfficerPage() {
         return;
       }
 
-      // Insert new officer
       const { data, error } = await supabase
         .from('officers')
         .insert([{
@@ -130,7 +112,6 @@ export default function AddOfficerPage() {
 
       if (error) throw error;
 
-      // Redirect ke halaman active officers dengan pesan sukses
       router.push('/dashboard/officers/active?success=Officer added successfully');
       
     } catch (error) {
@@ -141,14 +122,8 @@ export default function AddOfficerPage() {
     }
   };
 
-  // Kalau bukan admin, jangan render apa-apa (redirect sudah di useEffect)
-  if (!isAdmin) {
-    return null;
-  }
-
   return (
     <div className="p-6 max-w-4xl mx-auto min-h-screen bg-white">
-      {/* HEADER */}
       <div className="mb-8">
         <Link
           href="/dashboard/officers/active"
@@ -164,14 +139,11 @@ export default function AddOfficerPage() {
         <p className="text-gray-700 mt-2 font-medium">Tambahkan officer baru ke GROUP-X</p>
       </div>
 
-      {/* FORM CARD */}
       <div className="border border-gray-300 rounded-lg p-6 bg-white">
         <form onSubmit={handleSubmit}>
-          {/* 2 Column Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* LEFT COLUMN */}
             <div className="space-y-4">
-              {/* Full Name */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">
                   Full Name <span className="text-red-500">*</span>
@@ -187,7 +159,6 @@ export default function AddOfficerPage() {
                 {errors.full_name && <p className="text-red-500 text-xs mt-1 font-medium">{errors.full_name}</p>}
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">
                   Email <span className="text-red-500">*</span>
@@ -203,7 +174,6 @@ export default function AddOfficerPage() {
                 {errors.email && <p className="text-red-500 text-xs mt-1 font-medium">{errors.email}</p>}
               </div>
 
-              {/* Phone */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Phone</label>
                 <input
@@ -216,7 +186,6 @@ export default function AddOfficerPage() {
                 />
               </div>
 
-              {/* Department */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Department</label>
                 <select
@@ -232,7 +201,6 @@ export default function AddOfficerPage() {
                 </select>
               </div>
 
-              {/* Position */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Position</label>
                 <input
@@ -245,7 +213,6 @@ export default function AddOfficerPage() {
                 />
               </div>
 
-              {/* Join Date */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">
                   Join Date <span className="text-red-500">*</span>
@@ -263,7 +230,6 @@ export default function AddOfficerPage() {
 
             {/* RIGHT COLUMN */}
             <div className="space-y-4">
-              {/* Status */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Status</label>
                 <select
@@ -278,7 +244,6 @@ export default function AddOfficerPage() {
                 </select>
               </div>
 
-              {/* Nationality */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Nationality</label>
                 <input
@@ -291,7 +256,6 @@ export default function AddOfficerPage() {
                 />
               </div>
 
-              {/* Gender */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Gender</label>
                 <select
@@ -307,7 +271,6 @@ export default function AddOfficerPage() {
                 </select>
               </div>
 
-              {/* Panel ID */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Panel ID</label>
                 <input
@@ -320,7 +283,6 @@ export default function AddOfficerPage() {
                 />
               </div>
 
-              {/* Telegram ID */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Telegram ID</label>
                 <input
@@ -333,7 +295,6 @@ export default function AddOfficerPage() {
                 />
               </div>
 
-              {/* Room */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Room</label>
                 <input
@@ -347,7 +308,6 @@ export default function AddOfficerPage() {
                 <p className="text-xs text-gray-600 mt-1 font-medium">Format: 4 digit angka atau UNMESS</p>
               </div>
 
-              {/* Bank Account */}
               <div>
                 <label className="block text-sm font-bold text-black mb-1">Bank Account</label>
                 <input
@@ -363,7 +323,6 @@ export default function AddOfficerPage() {
             </div>
           </div>
 
-          {/* Additional Fields */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-bold text-black mb-1">Passport Number</label>
@@ -389,7 +348,6 @@ export default function AddOfficerPage() {
             </div>
           </div>
 
-          {/* Notes */}
           <div className="mt-6">
             <label className="block text-sm font-bold text-black mb-1">Notes</label>
             <textarea
@@ -402,7 +360,6 @@ export default function AddOfficerPage() {
             ></textarea>
           </div>
 
-          {/* Form Actions */}
           <div className="mt-8 flex justify-end gap-4">
             <Link
               href="/dashboard/officers/active"
@@ -433,7 +390,6 @@ export default function AddOfficerPage() {
         </form>
       </div>
 
-      {/* INFO CARD */}
       <div className="mt-6 p-4 border border-gray-300 rounded-lg bg-gray-50">
         <div className="flex items-start gap-3">
           <svg className="w-6 h-6 text-black flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
