@@ -1,9 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';  // ← TAMBAH useEffect
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';    // ← TAMBAH useAuth
 
 export default function EditOfficerModal({ officer, onClose, onUpdate }) {
+  // 🔥 CEK ADMIN PAKAI useAuth
+  const { isAdmin } = useAuth();
+
+  // 🔥 REDIRECT KALAU BUKAN ADMIN
+  useEffect(() => {
+    if (!isAdmin) {
+      alert('You do not have permission to edit officers');
+      onClose();
+    }
+  }, [isAdmin, onClose]);
+
   const [formData, setFormData] = useState({
     full_name: officer.full_name || '',
     email: officer.email || '',
@@ -95,6 +107,9 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
       setLoading(false);
     }
   };
+
+  // Kalau bukan admin, modal ga usah di-render (tapi useEffect udah handle close)
+  if (!isAdmin) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -287,7 +302,7 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
                   <p className="text-xs text-gray-500 mt-1">Format: 4 digit angka atau UNMESS</p>
                 </div>
 
-                {/* BANK ACCOUNT - TAMBAHAN BARU */}
+                {/* BANK ACCOUNT */}
                 <div>
                   <label className="block text-sm font-bold text-black mb-1">Bank Account</label>
                   <input
@@ -314,7 +329,7 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
               </div>
             </div>
 
-            {/* Notes - Full Width */}
+            {/* Notes */}
             <div className="mt-6">
               <label className="block text-sm font-bold text-black mb-1">Notes</label>
               <textarea
