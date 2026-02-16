@@ -18,28 +18,34 @@ export function useAuth() {
       setUser(user);
 
       if (user?.email) {
-        // 1. Ambil role dari public.users
-        const { data: userData } = await supabase
+        // 1. Coba cari dengan exact match dulu
+        let { data: userData } = await supabase
           .from('users')
           .select('role')
           .eq('email', user.email)
           .maybeSingle();
 
+        // 2. Kalau ga ketemu, coba case insensitive
+        if (!userData) {
+          const { data: userDataInsensitive } = await supabase
+            .from('users')
+            .select('role')
+            .ilike('email', user.email)
+            .maybeSingle();
+          
+          userData = userDataInsensitive;
+        }
+
         if (userData) {
           console.log('🔥 User role from DB:', userData.role);
-          
-          // Simpan persis seperti di database untuk tampilan
           setUserJobRole(userData.role);
           
-          // 🔥 FIX PALING AMAN: case insensitive
           const roleUpper = (userData.role || '').toUpperCase().trim();
           const isUserAdmin = roleUpper === 'ADMIN';
-          
-          console.log('🔑 Is Admin?', isUserAdmin);
           setAccessRole(isUserAdmin ? 'admin' : 'user');
         }
 
-        // 2. Ambil data dari officers (optional)
+        // 3. Ambil data dari officers (optional)
         const { data: officer } = await supabase
           .from('officers')
           .select('*')
