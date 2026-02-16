@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 
 export default function DashboardCard({ 
@@ -11,7 +12,7 @@ export default function DashboardCard({
   href = null,
   onClick = null
 }) {
-  const [clawState, setClawState] = useState('idle'); // idle, scratching, torn
+  const [isScratched, setIsScratched] = useState(false);
 
   const colorClasses = {
     blue: 'border-l-blue-500',
@@ -29,208 +30,197 @@ export default function DashboardCard({
 
   const handleClick = (e) => {
     e.preventDefault();
-    
-    setClawState('scratching');
-    
-    // Animasi bertahap
-    setTimeout(() => setClawState('torn'), 350);
+    setIsScratched(true);
     
     setTimeout(() => {
-      setClawState('idle');
+      setIsScratched(false);
       if (href) window.location.href = href;
       else if (onClick) onClick(e);
-    }, 600);
+    }, 700);
   };
 
-  const XClawMarks = () => (
-    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 200" preserveAspectRatio="none">
-      
-      {/* BLOOD EFFECT (background merah) */}
-      {clawState !== 'idle' && (
-        <>
-          {/* Efek darah di sekitar cakaran */}
-          <radialGradient id="bloodGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-            <stop offset="0%" stopColor="#dc2626" stopOpacity="0.3" />
-            <stop offset="70%" stopColor="#991b1b" stopOpacity="0.1" />
-            <stop offset="100%" stopColor="#7f1d1d" stopOpacity="0" />
-          </radialGradient>
-          <circle cx="200" cy="100" r="80" fill="url(#bloodGradient)" className="animate-blood" />
-        </>
-      )}
+  // Path untuk cakaran yang lebih realistis (organic)
+  const clawPaths = [
+    // Cakaran kiri atas (tajam)
+    "M60,40 Q80,60 70,100 Q60,140 90,160",
+    "M80,30 Q100,50 95,90 Q90,130 120,150",
+    "M40,50 Q65,70 55,110 Q45,150 75,170",
+    
+    // Cakaran kanan bawah (menyilang)
+    "M300,40 Q280,80 310,120 Q330,150 290,170",
+    "M320,30 Q300,70 330,110 Q350,140 310,160",
+    "M280,50 Q260,90 290,130 Q310,160 270,180",
+    
+    // Cakaran tengah (X)
+    "M150,30 Q170,80 130,130 Q110,160 160,180",
+    "M230,30 Q210,80 250,130 Q270,160 220,180",
+  ];
 
-      {/* LAYER 1 - X Kiri (slash kiri) - muncul pertama */}
-      <g className={clawState === 'scratching' ? 'animate-claw-left' : 'opacity-0'}>
-        {/* 3 garis sejajar membentuk \ (slash kiri) */}
-        <path d="M80 30 L180 170" stroke="#dc2626" strokeWidth="8" fill="none" 
-          strokeLinecap="round" filter="url(#clawTexture)" opacity="0.9" />
-        <path d="M100 30 L200 170" stroke="#b91c1c" strokeWidth="10" fill="none" 
-          strokeLinecap="round" filter="url(#clawTexture)" opacity="0.8" />
-        <path d="M120 30 L220 170" stroke="#7f1d1d" strokeWidth="6" fill="none" 
-          strokeLinecap="round" filter="url(#clawTexture)" opacity="0.7" />
-        
-        {/* Tetesan darah kecil */}
-        <circle cx="150" cy="100" r="5" fill="#dc2626" className="animate-blood-drop" />
-        <circle cx="180" cy="130" r="3" fill="#b91c1c" className="animate-blood-drop" />
-      </g>
+  return (
+    <Link href={href} onClick={handleClick} className="block relative">
+      <motion.div
+        className={`
+          relative bg-white p-6 rounded-xl shadow-sm border border-gray-200 
+          ${colorClasses[color]} border-l-4 overflow-hidden
+          hover:shadow-md transition-shadow cursor-pointer
+        `}
+        animate={{
+          scale: isScratched ? [1, 0.98, 0.97, 0.98, 1] : 1,
+          rotate: isScratched ? [0, -0.5, 0.5, -0.3, 0.3, 0] : 0,
+        }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Efek darah blur background */}
+        <AnimatePresence>
+          {isScratched && (
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Blood splatter background */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-red-500/20 via-red-600/10 to-transparent"
+                animate={{
+                  scale: [1, 1.2, 1],
+                  opacity: [0, 0.5, 0],
+                }}
+                transition={{ duration: 0.6 }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* LAYER 2 - X Kanan (slash kanan) - muncul kedua */}
-      <g className={clawState === 'scratching' ? 'animate-claw-right' : 'opacity-0'}>
-        {/* 3 garis sejajar membentuk / (slash kanan) */}
-        <path d="M280 30 L180 170" stroke="#dc2626" strokeWidth="8" fill="none" 
-          strokeLinecap="round" filter="url(#clawTexture)" opacity="0.9" />
-        <path d="M260 30 L160 170" stroke="#b91c1c" strokeWidth="10" fill="none" 
-          strokeLinecap="round" filter="url(#clawTexture)" opacity="0.8" />
-        <path d="M240 30 L140 170" stroke="#7f1d1d" strokeWidth="6" fill="none" 
-          strokeLinecap="round" filter="url(#clawTexture)" opacity="0.7" />
-        
-        <circle cx="220" cy="100" r="4" fill="#dc2626" className="animate-blood-drop" />
-        <circle cx="190" cy="140" r="6" fill="#b91c1c" className="animate-blood-drop" />
-      </g>
+        {/* SVG Container untuk cakaran */}
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          viewBox="0 0 400 200"
+          preserveAspectRatio="none"
+        >
+          <AnimatePresence>
+            {isScratched && clawPaths.map((path, index) => (
+              <motion.path
+                key={index}
+                d={path}
+                stroke={index < 3 ? "#dc2626" : index < 6 ? "#b91c1c" : "#7f1d1d"}
+                strokeWidth={[4, 5, 3, 6, 4, 5, 7, 5][index]}
+                fill="none"
+                strokeLinecap="round"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ 
+                  pathLength: 1, 
+                  opacity: [0, 0.9, 0.6, 0.3, 0],
+                  x: [0, -2, 2, -1, 1, 0],
+                  y: [0, -1, 1, -2, 2, 0],
+                }}
+                transition={{
+                  pathLength: { duration: 0.3, delay: index * 0.03 },
+                  opacity: { duration: 0.6, delay: index * 0.03 },
+                  x: { duration: 0.4, repeat: 2 },
+                  y: { duration: 0.4, repeat: 2 },
+                }}
+                style={{
+                  filter: "drop-shadow(0 0 2px rgba(185, 28, 28, 0.5))",
+                }}
+              />
+            ))}
+          </AnimatePresence>
 
-      {/* LAYER 3 - X Kiri Lagi (tumpuk lebih tebal) - muncul ketiga */}
-      <g className={clawState === 'torn' ? 'animate-claw-left-late' : 'opacity-0'}>
-        {/* Tambahan cakaran lebih tebal di kiri */}
-        <path d="M70 40 L160 160" stroke="#7f1d1d" strokeWidth="12" fill="none" 
-          strokeLinecap="round" filter="url(#clawTexture)" opacity="0.6" />
-        <path d="M140 30 L230 170" stroke="#991b1b" strokeWidth="9" fill="none" 
-          strokeLinecap="round" filter="url(#clawTexture)" opacity="0.7" />
-        
-        {/* Efek percikan darah */}
-        <circle cx="130" cy="95" r="8" fill="#dc2626" className="animate-blood-splash" />
-        <circle cx="200" cy="120" r="6" fill="#b91c1c" className="animate-blood-splash" />
-      </g>
+          {/* Efek tetesan darah */}
+          <AnimatePresence>
+            {isScratched && [...Array(12)].map((_, i) => (
+              <motion.circle
+                key={`blood-${i}`}
+                cx={50 + Math.random() * 300}
+                cy={30 + Math.random() * 140}
+                r={2 + Math.random() * 4}
+                fill="#dc2626"
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{
+                  scale: [0, 1.5, 1, 0.5, 0],
+                  opacity: [0, 0.8, 0.6, 0.3, 0],
+                  y: [0, 10, 20, 30, 40],
+                  x: [0, (Math.random() - 0.5) * 10],
+                }}
+                transition={{
+                  duration: 0.8,
+                  delay: i * 0.02,
+                  ease: "easeOut"
+                }}
+              />
+            ))}
+          </AnimatePresence>
+        </svg>
 
-      {/* Efek sobekan X di background */}
-      {clawState === 'torn' && (
-        <g opacity="0.3">
-          <path d="M0 0 L400 200" stroke="#7f1d1d" strokeWidth="3" strokeDasharray="10 10" />
-          <path d="M400 0 L0 200" stroke="#7f1d1d" strokeWidth="3" strokeDasharray="10 10" />
-        </g>
-      )}
+        {/* Efek robekan (tear lines) */}
+        <AnimatePresence>
+          {isScratched && (
+            <>
+              <motion.div
+                className="absolute w-full h-0.5 bg-gradient-to-r from-transparent via-red-400/30 to-transparent top-1/2"
+                initial={{ scaleX: 0, opacity: 0 }}
+                animate={{ scaleX: [0, 1.2, 1], opacity: [0, 0.5, 0] }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+              />
+              <motion.div
+                className="absolute h-full w-0.5 bg-gradient-to-b from-transparent via-red-400/30 to-transparent left-1/2"
+                initial={{ scaleY: 0, opacity: 0 }}
+                animate={{ scaleY: [0, 1.2, 1], opacity: [0, 0.5, 0] }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+              />
+            </>
+          )}
+        </AnimatePresence>
 
-      {/* Filter untuk tekstur kasar */}
-      <defs>
-        <filter id="clawTexture" x="-20%" y="-20%" width="140%" height="140%">
-          <feTurbulence baseFrequency="0.03" numOctaves="3" result="turbulence" />
-          <feDisplacementMap in2="turbulence" in="SourceGraphic" scale="3" />
-          <feGaussianBlur stdDeviation="0.8" />
-        </filter>
-      </defs>
-    </svg>
-  );
-
-  const CardContent = () => (
-    <div className={`
-      relative bg-white p-6 rounded-xl shadow-sm border border-gray-200 
-      ${colorClasses[color]} border-l-4 
-      hover:shadow-md transition-shadow 
-      ${href || onClick ? 'cursor-pointer' : ''}
-      overflow-hidden
-      ${clawState !== 'idle' ? 'scale-[0.96]' : ''}
-      transition-all duration-200
-    `}>
-      
-      {/* X Claw Marks Container */}
-      <div className="absolute inset-0 z-20">
-        <XClawMarks />
-      </div>
-
-      <style jsx>{`
-        .animate-claw-left {
-          animation: scratchLeft 0.2s ease-out forwards;
-        }
-        .animate-claw-right {
-          animation: scratchRight 0.2s ease-out 0.15s forwards;
-        }
-        .animate-claw-left-late {
-          animation: scratchLeftLate 0.2s ease-out 0.35s forwards;
-        }
-        .animate-blood-drop {
-          animation: bloodDrop 0.4s ease-out forwards;
-        }
-        .animate-blood-splash {
-          animation: bloodSplash 0.5s ease-out forwards;
-        }
-        .animate-blood {
-          animation: bloodPulse 0.6s ease-out forwards;
-        }
-
-        @keyframes scratchLeft {
-          0% { transform: translate(-30px, -20px) scale(0.2) rotate(-5deg); opacity: 0; }
-          40% { transform: translate(0, 0) scale(1.1) rotate(-2deg); opacity: 1; }
-          100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0.7; }
-        }
-
-        @keyframes scratchRight {
-          0% { transform: translate(30px, 20px) scale(0.2) rotate(5deg); opacity: 0; }
-          40% { transform: translate(0, 0) scale(1.1) rotate(2deg); opacity: 1; }
-          100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0.7; }
-        }
-
-        @keyframes scratchLeftLate {
-          0% { transform: translate(-20px, 10px) scale(0.3) rotate(-3deg); opacity: 0; }
-          40% { transform: translate(0, 0) scale(1.1) rotate(-1deg); opacity: 1; }
-          100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0.6; }
-        }
-
-        @keyframes bloodDrop {
-          0% { transform: scale(1) translate(0, 0); opacity: 1; }
-          100% { transform: scale(0.5) translate(10px, 20px); opacity: 0; }
-        }
-
-        @keyframes bloodSplash {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(2); opacity: 0.5; }
-          100% { transform: scale(0); opacity: 0; }
-        }
-
-        @keyframes bloodPulse {
-          0% { opacity: 0; transform: scale(0.5); }
-          50% { opacity: 0.6; transform: scale(1.2); }
-          100% { opacity: 0; transform: scale(1.5); }
-        }
-      `}</style>
-
-      {/* Konten Utama */}
-      <div className={`relative z-10 transition-all duration-200 ${
-        clawState !== 'idle' ? 'opacity-20 blur-[3px]' : 'opacity-100'
-      }`}>
-        <div className="flex items-start justify-between mb-4">
-          <div className={`p-3 rounded-lg ${iconBgClasses[color]}`}>
-            <div className="text-2xl">{icon}</div>
+        {/* Konten Card (dengan efek tergores) */}
+        <motion.div
+          className="relative z-10"
+          animate={{
+            opacity: isScratched ? [1, 0.6, 0.8, 0.5, 1] : 1,
+            filter: isScratched ? [
+              "blur(0px)",
+              "blur(2px)",
+              "blur(1px)",
+              "blur(3px)",
+              "blur(0px)"
+            ] : "blur(0px)",
+          }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="flex items-start justify-between mb-4">
+            <div className={`p-3 rounded-lg ${iconBgClasses[color]}`}>
+              <div className="text-2xl">{icon}</div>
+            </div>
           </div>
-        </div>
-        
-        <h3 className="text-gray-600 text-sm font-medium mb-2">{title}</h3>
-        <div className="text-2xl font-bold text-gray-900">{value}</div>
-        <p className="text-gray-500 text-sm mt-2">Updated just now</p>
-        
-        {(href || onClick) && (
-          <div className="absolute bottom-4 right-4 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        )}
-      </div>
-    </div>
+          
+          <h3 className="text-gray-600 text-sm font-medium mb-2">{title}</h3>
+          <div className="text-2xl font-bold text-gray-900">{value}</div>
+          <p className="text-gray-500 text-sm mt-2">Updated just now</p>
+          
+          {(href || onClick) && (
+            <div className="absolute bottom-4 right-4 text-gray-400">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Efek getaran tambahan */}
+        <AnimatePresence>
+          {isScratched && (
+            <motion.div
+              className="absolute inset-0 bg-red-500/5"
+              animate={{
+                opacity: [0, 0.2, 0.1, 0.3, 0],
+              }}
+              transition={{ duration: 0.5 }}
+            />
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </Link>
   );
-
-  if (href) {
-    return (
-      <Link href={href} onClick={handleClick} className="block">
-        <CardContent />
-      </Link>
-    );
-  }
-
-  if (onClick) {
-    return (
-      <div onClick={handleClick} className="block">
-        <CardContent />
-      </div>
-    );
-  }
-
-  return <CardContent />;
 }
