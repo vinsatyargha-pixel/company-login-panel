@@ -5,7 +5,7 @@ import DashboardCard from '@/components/DashboardCard';
 import QuickLinks from '@/components/QuickLinks';
 import LogoutButton from '@/components/LogoutButton';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
-import { useAuth } from '@/hooks/useAuth';  // ← TAMBAH IMPORT
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 
 export default function DashboardContent() {
@@ -17,7 +17,6 @@ export default function DashboardContent() {
     activeOfficers: 0,
   });
 
-  // PAKAI USE AUTH
   const { user, userJobRole, isAdmin } = useAuth();
 
   useEffect(() => {
@@ -28,7 +27,6 @@ export default function DashboardContent() {
     try {
       setLoading(true);
       
-      // Fetch officer data based on email (karena user sudah dari useAuth)
       if (user?.email) {
         const { data: officer, error: officerError } = await supabase
           .from('officers')
@@ -41,7 +39,6 @@ export default function DashboardContent() {
         }
       }
 
-      // Fetch dashboard stats
       const { count: totalAssets } = await supabase
         .from('assets')
         .select('*', { count: 'exact' });
@@ -76,7 +73,6 @@ export default function DashboardContent() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50">
-      {/* HEADER dengan Profile Card */}
       <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">GROUP-X Dashboard</h1>
@@ -84,7 +80,6 @@ export default function DashboardContent() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* PROFILE CARD - FIXED */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,7 +89,6 @@ export default function DashboardContent() {
             <div>
               <div className="text-sm font-medium text-gray-900">{user?.email || 'Loading...'}</div>
               <div className="text-xs text-gray-500">
-                {/* DEPARTMENT + JOB ROLE + ACCESS LEVEL */}
                 {officerData?.department || 'No Department'}
                 {userJobRole && <span className="ml-1">- {userJobRole}</span>}
                 {isAdmin && <span className="ml-1 text-blue-600 font-bold">(Admin)</span>}
@@ -114,7 +108,6 @@ export default function DashboardContent() {
         </div>
       </header>
 
-      {/* DASHBOARD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <DashboardCard
           title="Asset Group-X"
@@ -154,13 +147,11 @@ export default function DashboardContent() {
         />
       </div>
 
-      {/* QUICK ACCESS */}
       <div className="mb-8">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Access</h2>
         <QuickLinks />
       </div>
 
-      {/* RECENT ACTIVITY */}
       <div className="bg-white rounded-xl shadow p-6">
         <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
         <div className="space-y-4">
@@ -175,7 +166,6 @@ export default function DashboardContent() {
         </div>
       </div>
 
-      {/* RESET PASSWORD MODAL */}
       {showResetModal && (
         <ResetPasswordModal
           user={user}
