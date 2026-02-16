@@ -1,9 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';  // ← IMPORT
 
 export default function EditOfficerModal({ officer, onClose, onUpdate }) {
+  const { isAdmin } = useAuth();  // ← AMBIL isAdmin
+
+  // Redirect kalau bukan admin
+  useEffect(() => {
+    if (!isAdmin) {
+      alert('You do not have permission to edit officers');
+      onClose();
+    }
+  }, [isAdmin, onClose]);
+
+  // Kalau bukan admin, jangan render
+  if (!isAdmin) return null;
+
   const [formData, setFormData] = useState({
     full_name: officer.full_name || '',
     email: officer.email || '',

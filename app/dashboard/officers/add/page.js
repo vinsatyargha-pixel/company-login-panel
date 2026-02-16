@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function AddOfficerPage() {
   const router = useRouter();
+  const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '',
@@ -29,6 +31,16 @@ export default function AddOfficerPage() {
   });
 
   const [errors, setErrors] = useState({});
+
+  // Redirect kalau bukan admin
+  useEffect(() => {
+    if (!isAdmin) {
+      router.push('/dashboard/officers/active');
+    }
+  }, [isAdmin, router]);
+
+  // Kalau bukan admin, jangan render apa-apa
+  if (!isAdmin) return null;
 
   const departments = [
     'CAPTAIN',
