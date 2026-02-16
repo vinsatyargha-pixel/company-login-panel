@@ -318,19 +318,19 @@ export default function ActiveOfficersPage() {
       <div className="border border-gray-300 rounded-lg overflow-hidden bg-white">
         {/* Table Header */}
         <div className="bg-gray-100 grid grid-cols-12 gap-2 px-4 py-3 border-b border-gray-300 font-bold text-black text-sm">
-          <div className="col-span-1">#</div>
-          <div className="col-span-2">FULL NAME & EMAIL</div>
-          <div className="col-span-1">DEPARTMENT</div>
-          <div className="col-span-1">ROLE</div>
-          <div className="col-span-1">STATUS</div>
-          <div className="col-span-1">ID PANEL</div>
-          <div className="col-span-1">JOIN DATE</div>
-          <div className="col-span-1">NATIONALITY</div>
-          <div className="col-span-1">GENDER</div>
-          <div className="col-span-1">PHONE/TELE</div>
-          <div className="col-span-1">ROOM</div>
-          <div className="col-span-1">ACTION</div>
-        </div>
+  <div className="col-span-1">#</div>
+  <div className="col-span-2">FULL NAME & EMAIL</div>
+  <div className="col-span-1">DEPARTMENT</div>
+  <div className="col-span-1">ROLE</div>
+  <div className="col-span-1">STATUS</div>
+  <div className="col-span-1">ID PANEL</div>
+  <div className="col-span-1">JOIN DATE</div>
+  <div className="col-span-1">NATIONALITY</div>
+  <div className="col-span-1">GENDER</div>
+  <div className="col-span-1">PHONE/TELE</div>  {/* ← ini digabung */}
+  <div className="col-span-1">ROOM</div>
+  <div className="col-span-1">ACTION</div>
+</div>
 
         {/* Table Body */}
         <div className="divide-y divide-gray-200">
@@ -373,31 +373,35 @@ export default function ActiveOfficersPage() {
                 <div className="col-span-1 text-black font-medium">{officer.gender || '-'}</div>
                 
                 {/* PHONE & TELEGRAM - DIGABUNG */}
-                <div className="col-span-1">
-                  <div className="flex flex-col">
-                    {officer.phone ? (
-                      <div className="flex items-center gap-1 text-black font-medium">
-                        <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                        <span className="text-xs">{officer.phone}</span>
-                      </div>
-                    ) : null}
-                    
-                    {officer.telegram_id ? (
-                      <div className="flex items-center gap-1 text-black font-medium mt-1">
-                        <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                        </svg>
-                        <span className="text-xs">@{officer.telegram_id.replace('@', '')}</span>
-                      </div>
-                    ) : null}
-                    
-                    {!officer.phone && !officer.telegram_id && (
-                      <span className="text-xs text-gray-500 italic">-</span>
-                    )}
-                  </div>
-                </div>
+                {/* PHONE & TELEGRAM - DIGABUNG JADI SATU KOLOM */}
+<div className="col-span-1">
+  <div className="flex flex-col gap-1">
+    {/* Phone */}
+    {officer.phone ? (
+      <div className="flex items-center gap-1 text-black font-medium text-xs">
+        <svg className="w-3.5 h-3.5 text-gray-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+        </svg>
+        <span className="truncate">{officer.phone}</span>
+      </div>
+    ) : null}
+    
+    {/* Telegram */}
+    {officer.telegram_id ? (
+      <div className="flex items-center gap-1 text-black font-medium text-xs">
+        <svg className="w-3.5 h-3.5 text-gray-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+        </svg>
+        <span className="truncate">@{officer.telegram_id.replace('@', '')}</span>
+      </div>
+    ) : null}
+    
+    {/* Kalau kosong semua */}
+    {!officer.phone && !officer.telegram_id && (
+      <span className="text-xs text-gray-500 italic">-</span>
+    )}
+  </div>
+</div>
                 
                 {/* ROOM */}
                 <div className="col-span-1">
