@@ -1,22 +1,18 @@
-'use client';  // ← PENTING: Tambah ini karena pake useState
+'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';  // ← Tambah ini
+import { useState } from 'react';
 
 export default function DashboardCard({ 
   title, 
   value, 
-  change, 
-  trend, 
   icon, 
   color = 'blue',
   href = null,
   onClick = null
 }) {
-  // State untuk animasi claw
-  const [clawState, setClawState] = useState('idle'); // idle, left, right, tear
+  const [clawState, setClawState] = useState('idle');
 
-  // Warna classes (TETAP SAMA)
   const colorClasses = {
     blue: 'border-l-blue-500',
     green: 'border-l-green-500',
@@ -31,11 +27,9 @@ export default function DashboardCard({
     orange: 'bg-orange-50 text-orange-600'
   };
 
-  // Handler untuk klik dengan animasi
   const handleClick = (e) => {
     e.preventDefault();
     
-    // Jalankan animasi
     setClawState('left');
     
     setTimeout(() => {
@@ -49,7 +43,6 @@ export default function DashboardCard({
     setTimeout(() => {
       setClawState('idle');
       
-      // Navigasi atau panggil onClick asli
       if (href) {
         window.location.href = href;
       } else if (onClick) {
@@ -58,7 +51,6 @@ export default function DashboardCard({
     }, 400);
   };
 
-  // Card content dengan animasi
   const CardContent = () => (
     <div className={`
       relative bg-white p-6 rounded-xl shadow-sm border border-gray-200 
@@ -85,10 +77,6 @@ export default function DashboardCard({
                 animation: 'clawLeft 0.15s ease-out forwards'
               }}
             />
-            <circle cx="45" cy="50" r="2" fill="#b91c1c" className="animate-particle">
-              <animate attributeName="opacity" values="1;0" dur="0.3s" />
-              <animate attributeName="r" values="2;6" dur="0.3s" />
-            </circle>
           </svg>
         </div>
       )}
@@ -108,10 +96,6 @@ export default function DashboardCard({
                 animation: 'clawRight 0.15s ease-out forwards'
               }}
             />
-            <circle cx="70" cy="50" r="2" fill="#7f1d1d" className="animate-particle">
-              <animate attributeName="opacity" values="1;0" dur="0.3s" />
-              <animate attributeName="r" values="2;5" dur="0.3s" />
-            </circle>
           </svg>
         </div>
       )}
@@ -121,21 +105,10 @@ export default function DashboardCard({
         <div className="absolute inset-0 z-10 pointer-events-none">
           <div className="absolute w-full h-0.5 bg-gradient-to-r from-transparent via-red-400 to-transparent top-1/2 animate-tear" />
           <div className="absolute h-full w-0.5 bg-gradient-to-b from-transparent via-red-400 to-transparent left-1/2 animate-tear" />
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute w-1 h-1 bg-red-500 rounded-full"
-              style={{
-                top: `${20 + Math.random() * 60}%`,
-                left: `${20 + Math.random() * 60}%`,
-                animation: `particle ${0.3 + Math.random() * 0.2}s ease-out forwards`
-              }}
-            />
-          ))}
         </div>
       )}
 
-      {/* Konten Utama (TETAP SAMA) */}
+      {/* Konten Utama (TANPA PERSENTASE) */}
       <div className={`transition-all duration-200 ${
         clawState !== 'idle' ? 'opacity-40 blur-[1px]' : 'opacity-100'
       }`}>
@@ -143,9 +116,7 @@ export default function DashboardCard({
           <div className={`p-3 rounded-lg ${iconBgClasses[color]}`}>
             <div className="text-2xl">{icon}</div>
           </div>
-          <div className={`px-3 py-1 rounded-full text-xs font-medium ${trend === 'up' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            {trend === 'up' ? '↗' : '↘'} {change > 0 ? '+' : ''}{change}%
-          </div>
+          {/* PERSENTASE DIHAPUS! */}
         </div>
         
         <h3 className="text-gray-600 text-sm font-medium mb-2">{title}</h3>
@@ -161,72 +132,26 @@ export default function DashboardCard({
         )}
       </div>
 
-      {/* Keyframes Animasi (inline style) */}
       <style jsx>{`
         @keyframes clawLeft {
-          0% {
-            transform: translate(-20px, -20px) scale(0.5) rotate(-10deg);
-            opacity: 0;
-          }
-          50% {
-            transform: translate(0, 0) scale(1.1) rotate(-5deg);
-            opacity: 0.9;
-          }
-          100% {
-            transform: translate(0, 0) scale(1) rotate(0deg);
-            opacity: 0;
-          }
+          0% { transform: translate(-20px, -20px) scale(0.5) rotate(-10deg); opacity: 0; }
+          50% { transform: translate(0, 0) scale(1.1) rotate(-5deg); opacity: 0.9; }
+          100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0; }
         }
-        
         @keyframes clawRight {
-          0% {
-            transform: translate(20px, 20px) scale(0.5) rotate(10deg);
-            opacity: 0;
-          }
-          50% {
-            transform: translate(0, 0) scale(1.1) rotate(5deg);
-            opacity: 0.9;
-          }
-          100% {
-            transform: translate(0, 0) scale(1) rotate(0deg);
-            opacity: 0;
-          }
+          0% { transform: translate(20px, 20px) scale(0.5) rotate(10deg); opacity: 0; }
+          50% { transform: translate(0, 0) scale(1.1) rotate(5deg); opacity: 0.9; }
+          100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0; }
         }
-        
         @keyframes tear {
-          0% {
-            transform: scaleX(0);
-            opacity: 0;
-          }
-          50% {
-            transform: scaleX(1.2);
-            opacity: 0.8;
-          }
-          100% {
-            transform: scaleX(1);
-            opacity: 0;
-          }
-        }
-        
-        @keyframes particle {
-          0% {
-            transform: scale(1) translate(0, 0);
-            opacity: 1;
-          }
-          100% {
-            transform: scale(0) translate(${Math.random() * 40 - 20}px, ${Math.random() * 40 - 20}px);
-            opacity: 0;
-          }
-        }
-        
-        .animate-particle {
-          animation: particle 0.3s ease-out forwards;
+          0% { transform: scaleX(0); opacity: 0; }
+          50% { transform: scaleX(1.2); opacity: 0.8; }
+          100% { transform: scaleX(1); opacity: 0; }
         }
       `}</style>
     </div>
   );
 
-  // Render dengan Link atau div (TETAP SAMA)
   if (href) {
     return (
       <Link href={href} onClick={handleClick} className="block">
