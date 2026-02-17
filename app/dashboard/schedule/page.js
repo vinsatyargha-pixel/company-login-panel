@@ -8,23 +8,94 @@ export default function SchedulePage() {
   const { isAdmin, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [schedules, setSchedules] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('February');
   const [monthBefore, setMonthBefore] = useState('January');
-  const [dashboardData, setDashboardData] = useState([]);
+  
+  // DATA LENGKAP dari screenshot lo
+  const scheduleData = [
+    {
+      no: 1,
+      nationality: '',
+      joinDate: '01-May-2023',
+      officerName: 'Lie Fung Kien (Vini)',
+      prorate: 0,
+      day: 26,
+      shifts: {
+        '21': 'P', '22': 'P', '23': 'P', '24': 'P', '25': 'P', '26': 'P', '27': 'P', '28': 'P', '29': 'P', '30': 'P', '31': 'P',
+        '1': 'P', '2': 'P', '3': 'P', '4': 'P', '5': 'P', '6': 'P', '7': 'P', '8': 'P', '9': 'P', '10': 'P', '11': 'P', '12': 'P', '13': 'P', '14': 'P', '15': 'P', '16': 'P', '17': 'P', '18': 'P', '19': 'P', '20': 'P'
+      },
+      totals: { OFF: 4, SAKIT: 1, IZIN: 0, ABSEN: 0, CUTI: 6, SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0 }
+    },
+    {
+      no: 2,
+      nationality: '',
+      joinDate: '01-Apr-2024',
+      officerName: 'Ronaldo Ichwan',
+      prorate: 0,
+      day: 27,
+      shifts: {
+        '21': 'P', '22': 'P', '23': 'P', '24': 'P', '25': 'P', '26': 'P', '27': 'P', '28': 'P', '29': 'P', '30': 'P', '31': 'P',
+        '1': 'P', '2': 'P', '3': 'P', '4': 'P', '5': 'P', '6': 'P', '7': 'P', '8': 'P', '9': 'P', '10': 'P', '11': 'P', '12': 'P', '13': 'P', '14': 'P', '15': 'P', '16': 'P', '17': 'P', '18': 'P', '19': 'P', '20': 'P'
+      },
+      totals: { OFF: 4, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0 }
+    },
+    {
+      no: 3,
+      nationality: '',
+      joinDate: '28-Mar-2022',
+      officerName: 'Mushollina Nul Hakim',
+      prorate: 0,
+      day: 27,
+      shifts: {
+        '21': 'P', '22': 'P', '23': 'P', '24': 'P', '25': 'P', '26': 'P', '27': 'P', '28': 'P', '29': 'P', '30': 'P', '31': 'P',
+        '1': 'P', '2': 'P', '3': 'P', '4': 'P', '5': 'P', '6': 'P', '7': 'P', '8': 'P', '9': 'P', '10': 'P', '11': 'P', '12': 'P', '13': 'P', '14': 'P', '15': 'P', '16': 'P', '17': 'P', '18': 'P', '19': 'P', '20': 'P'
+      },
+      totals: { OFF: 4, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0 }
+    },
+    {
+      no: 4,
+      nationality: '',
+      joinDate: '23-Mar-2021',
+      officerName: 'Sulaeman',
+      prorate: 0,
+      day: 27,
+      shifts: {
+        '21': 'M', '22': 'M', '23': 'M', '24': 'M', '25': 'M', '26': 'M', '27': 'M', '28': 'M', '29': 'M', '30': 'M', '31': 'M',
+        '1': 'M', '2': 'M', '3': 'M', '4': 'M', '5': 'M', '6': 'M', '7': 'M', '8': 'M', '9': 'M', '10': 'M', '11': 'M', '12': 'M', '13': 'M', '14': 'M', '15': 'M', '16': 'M', '17': 'M', '18': 'M', '19': 'M', '20': 'M'
+      },
+      totals: { OFF: 4, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0 }
+    },
+    {
+      no: 5,
+      nationality: '',
+      joinDate: '13-May-2024',
+      officerName: 'Goldie Mountana',
+      prorate: 0,
+      day: 27,
+      shifts: {
+        '21': 'M', '22': 'M', '23': 'M', '24': 'M', '25': 'M', '26': 'M', '27': 'M', '28': 'M', '29': 'M', '30': 'M', '31': 'M',
+        '1': 'M', '2': 'M', '3': 'M', '4': 'M', '5': 'M', '6': 'M', '7': 'M', '8': 'M', '9': 'M', '10': 'M', '11': 'M', '12': 'M', '13': 'M', '14': 'M', '15': 'M', '16': 'M', '17': 'M', '18': 'M', '19': 'M', '20': 'M'
+      },
+      totals: { OFF: 4, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0 }
+    },
+    {
+      no: 6,
+      nationality: '',
+      joinDate: '18-Sep-2022',
+      officerName: 'Achmad Naufal Zakiy',
+      prorate: 0,
+      day: 27,
+      shifts: {
+        '21': 'M', '22': 'M', '23': 'M', '24': 'M', '25': 'M', '26': 'M', '27': 'M', '28': 'M', '29': 'M', '30': 'M', '31': 'M',
+        '1': 'M', '2': 'M', '3': 'M', '4': 'M', '5': 'M', '6': 'M', '7': 'M', '8': 'M', '9': 'M', '10': 'M', '11': 'M', '12': 'M', '13': 'M', '14': 'M', '15': 'M', '16': 'M', '17': 'M', '18': 'M', '19': 'M', '20': 'M'
+      },
+      totals: { OFF: 4, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0 }
+    }
+  ];
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  const officers = [
-    { name: 'Sulaeman', key: 'sulaeman' },
-    { name: 'Goldie Mountana', key: 'goldie' },
-    { name: 'Achmad Naufal Zakiy', key: 'zakiy' },
-    { name: 'Mushollina Nul Hakim', key: 'hakim' },
-    { name: 'Lie Fung Kien (Vini)', key: 'vini' },
-    { name: 'Ronaldo Ichwan', key: 'ronaldo' }
   ];
 
   const getDateColumns = () => {
@@ -42,13 +113,18 @@ export default function SchedulePage() {
 
   const dateColumns = getDateColumns();
 
+  const totalColumns = [
+    'OFF', 'SAKIT', 'IZIN', 'ABSEN', 'CUTI', 'SPECIAL',
+    'UNPAID LEAVE', 'DIRUMAHKAN', 'RESIGN', 'TERMINATED', 'BELUM JOIN'
+  ];
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
     if (mounted && !authLoading) {
-      fetchSchedules();
+      setLoading(false);
     }
   }, [mounted, authLoading]);
 
@@ -58,98 +134,6 @@ export default function SchedulePage() {
     setMonthBefore(months[prevIndex]);
   }, [selectedMonth]);
 
-  const fetchSchedules = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/schedules');
-      const data = await res.json();
-      
-      if (data.success) {
-        setSchedules(data.data);
-        processDashboardData(data.data);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const processDashboardData = (rawData) => {
-    // Filter data untuk bulan yang dipilih dan bulan sebelumnya
-    const filteredData = rawData.filter(item => {
-      const itemMonth = item.monthRundown;
-      return itemMonth === selectedMonth || itemMonth === monthBefore;
-    });
-
-    // Group by officer
-    const officerMap = {};
-    officers.forEach(officer => {
-      officerMap[officer.name] = {
-        name: officer.name,
-        shifts: {},
-        joinDate: '',
-        nationality: '',
-        prorate: 0
-      };
-    });
-
-    // Isi shifts berdasarkan tanggal
-    filteredData.forEach(item => {
-      const date = new Date(item.dateRundown);
-      const day = date.getDate();
-      const month = item.monthRundown;
-      const dateKey = `${month}-${day}`;
-      
-      officers.forEach(officer => {
-        const shift = item.officers?.[officer.key];
-        if (shift && officerMap[officer.name]) {
-          officerMap[officer.name].shifts[dateKey] = shift;
-        }
-      });
-    });
-
-    // Hitung totals per officer
-    const dashboard = Object.values(officerMap).map(officer => {
-      const totals = {
-        OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0,
-        SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0,
-        RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
-      };
-
-      dateColumns.forEach(col => {
-        const dateKey = `${col.month}-${col.day}`;
-        const shift = officer.shifts[dateKey] || '';
-        
-        if (shift === 'OFF') totals.OFF++;
-        else if (shift === 'SAKIT') totals.SAKIT++;
-        else if (shift === 'IZIN') totals.IZIN++;
-        else if (shift === 'ABSEN') totals.ABSEN++;
-        else if (shift === 'CUTI') totals.CUTI++;
-        else if (shift === 'SPECIAL') totals.SPECIAL++;
-        else if (shift === 'UNPAID LEAVE') totals['UNPAID LEAVE']++;
-        else if (shift === 'DIRUMAHKAN') totals.DIRUMAHKAN++;
-        else if (shift === 'RESIGN') totals.RESIGN++;
-        else if (shift === 'TERMINATED') totals.TERMINATED++;
-        else if (shift === 'BELUM JOIN') totals['BELUM JOIN']++;
-      });
-
-      return {
-        ...officer,
-        totals
-      };
-    });
-
-    setDashboardData(dashboard);
-  };
-
-  const getShiftForDate = (officerName, dateCol) => {
-    const officer = dashboardData.find(o => o.name === officerName);
-    if (!officer) return '-';
-    const dateKey = `${dateCol.month}-${dateCol.day}`;
-    return officer.shifts[dateKey] || '-';
-  };
-
   const getShiftStyle = (shift) => {
     switch(shift) {
       case 'P': return 'bg-blue-100 text-blue-800 font-bold';
@@ -157,17 +141,9 @@ export default function SchedulePage() {
       case 'OFF': return 'bg-gray-200 text-gray-800';
       case 'SAKIT': return 'bg-red-100 text-red-800';
       case 'CUTI': return 'bg-yellow-100 text-yellow-800';
-      case 'HOTEL': return 'bg-green-100 text-green-800';
-      case 'ALPHA': return 'bg-indigo-100 text-indigo-800';
-      case 'FOXTROT': return 'bg-pink-100 text-pink-800';
       default: return 'bg-white text-gray-700';
     }
   };
-
-  const totalColumns = [
-    'OFF', 'SAKIT', 'IZIN', 'ABSEN', 'CUTI', 'SPECIAL',
-    'UNPAID LEAVE', 'DIRUMAHKAN', 'RESIGN', 'TERMINATED', 'BELUM JOIN'
-  ];
 
   if (!mounted || authLoading || loading) {
     return (
@@ -257,37 +233,33 @@ export default function SchedulePage() {
           
           <tbody>
             {/* Data per officer */}
-            {officers.map((officer, rowIdx) => {
-              const officerData = dashboardData.find(d => d.name === officer.name) || { totals: {} };
-              
-              return (
-                <tr key={rowIdx} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-2 py-1 border-r border-gray-200 text-center text-black">{rowIdx + 1}</td>
-                  <td className="px-2 py-1 border-r border-gray-200 text-black">-</td>
-                  <td className="px-2 py-1 border-r border-gray-200 text-black">-</td>
-                  <td className="px-2 py-1 border-r border-gray-200 font-medium text-black">{officer.name}</td>
-                  <td className="px-2 py-1 border-r border-gray-200 text-center text-black">0</td>
-                  <td className="px-2 py-1 border-r border-gray-200 text-center text-black">-</td>
-                  
-                  {/* Shift per tanggal */}
-                  {dateColumns.map((date, idx) => {
-                    const shift = getShiftForDate(officer.name, date);
-                    return (
-                      <td key={idx} className={`px-1 py-1 border-r border-gray-200 text-center ${getShiftStyle(shift)} text-black`}>
-                        {shift}
-                      </td>
-                    );
-                  })}
-                  
-                  {/* Totals */}
-                  {totalColumns.map((col, idx) => (
-                    <td key={idx} className="px-2 py-1 border-r border-gray-200 text-right font-medium text-black">
-                      {officerData.totals?.[col] || 0}
+            {scheduleData.map((officer) => (
+              <tr key={officer.no} className="border-b border-gray-200 hover:bg-gray-50">
+                <td className="px-2 py-1 border-r border-gray-200 text-center text-black">{officer.no}</td>
+                <td className="px-2 py-1 border-r border-gray-200 text-black">{officer.nationality}</td>
+                <td className="px-2 py-1 border-r border-gray-200 text-black">{officer.joinDate}</td>
+                <td className="px-2 py-1 border-r border-gray-200 font-medium text-black">{officer.officerName}</td>
+                <td className="px-2 py-1 border-r border-gray-200 text-center text-black">{officer.prorate}</td>
+                <td className="px-2 py-1 border-r border-gray-200 text-center text-black">{officer.day}</td>
+                
+                {/* Shift per tanggal */}
+                {dateColumns.map((date, idx) => {
+                  const shift = officer.shifts[date.day] || '-';
+                  return (
+                    <td key={idx} className={`px-1 py-1 border-r border-gray-200 text-center ${getShiftStyle(shift)} text-black`}>
+                      {shift}
                     </td>
-                  ))}
-                </tr>
-              );
-            })}
+                  );
+                })}
+                
+                {/* Totals */}
+                {totalColumns.map((col, idx) => (
+                  <td key={idx} className="px-2 py-1 border-r border-gray-200 text-right font-medium text-black">
+                    {officer.totals[col] || 0}
+                  </td>
+                ))}
+              </tr>
+            ))}
             
             {/* Baris Total PAGI/SIANG/MALAM */}
             <tr className="bg-gray-50 font-bold border-t border-gray-300">
@@ -300,8 +272,8 @@ export default function SchedulePage() {
             <tr>
               <td colSpan="6" className="px-2 py-1 text-right text-black">PAGI</td>
               {dateColumns.map((_, idx) => {
-                const pagiCount = officers.filter(officer => {
-                  const shift = getShiftForDate(officer.name, dateColumns[idx]);
+                const pagiCount = scheduleData.filter(officer => {
+                  const shift = officer.shifts[dateColumns[idx].day];
                   return shift === 'P';
                 }).length;
                 
@@ -318,8 +290,8 @@ export default function SchedulePage() {
             <tr>
               <td colSpan="6" className="px-2 py-1 text-right text-black">SIANG</td>
               {dateColumns.map((_, idx) => {
-                const siangCount = officers.filter(officer => {
-                  const shift = getShiftForDate(officer.name, dateColumns[idx]);
+                const siangCount = scheduleData.filter(officer => {
+                  const shift = officer.shifts[dateColumns[idx].day];
                   return shift === 'S';
                 }).length;
                 
@@ -336,8 +308,8 @@ export default function SchedulePage() {
             <tr>
               <td colSpan="6" className="px-2 py-1 text-right text-black">MALAM</td>
               {dateColumns.map((_, idx) => {
-                const malamCount = officers.filter(officer => {
-                  const shift = getShiftForDate(officer.name, dateColumns[idx]);
+                const malamCount = scheduleData.filter(officer => {
+                  const shift = officer.shifts[dateColumns[idx].day];
                   return shift === 'M';
                 }).length;
                 
@@ -353,7 +325,7 @@ export default function SchedulePage() {
         </table>
       </div>
 
-      {/* LEGEND */}
+      {/* LEGEND - CLEAN */}
       <div className="mt-4 p-3 bg-gray-50 border border-gray-300 rounded text-xs">
         <div className="flex flex-wrap gap-4 text-black">
           <span><span className="inline-block w-3 h-3 bg-blue-100"></span> P = PAGI</span>
@@ -361,9 +333,6 @@ export default function SchedulePage() {
           <span><span className="inline-block w-3 h-3 bg-gray-200"></span> OFF</span>
           <span><span className="inline-block w-3 h-3 bg-red-100"></span> SAKIT</span>
           <span><span className="inline-block w-3 h-3 bg-yellow-100"></span> CUTI</span>
-          <span><span className="inline-block w-3 h-3 bg-green-100"></span> HOTEL</span>
-          <span><span className="inline-block w-3 h-3 bg-indigo-100"></span> ALPHA</span>
-          <span><span className="inline-block w-3 h-3 bg-pink-100"></span> FOXTROT</span>
         </div>
       </div>
     </div>
