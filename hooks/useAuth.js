@@ -17,7 +17,7 @@ export function useAuth() {
       setUser(user);
 
       if (user?.email) {
-        // Cari di tabel users (case insensitive)
+        // CASE INSENSITIVE - pakai ilike
         const { data: userData } = await supabase
           .from('users')
           .select('role')
@@ -25,7 +25,6 @@ export function useAuth() {
           .maybeSingle();
 
         if (userData) {
-          console.log('🔥 Role dari DB:', userData.role);
           setRole(userData.role || 'Staff');
         }
 
@@ -52,7 +51,6 @@ export function useAuth() {
     officerData,
     role,
     loading, 
-    // Admin kalau role = 'Admin' atau 'ADMIN' (case insensitive)
-    isAdmin: role?.toUpperCase() === 'ADMIN'
+    isAdmin: role === 'Admin' || role === 'ADMIN'
   };
 }
