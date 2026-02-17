@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import DashboardCardWithClaw from '@/components/dashboardcardwithclaw';
 
 export default function DashboardCard({ 
   title, 

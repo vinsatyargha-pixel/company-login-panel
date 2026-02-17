@@ -1,3 +1,4 @@
+// dashboard/officers/active/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import EditOfficerModal from '@/components/EditOfficerModal';
+import QRCodeModal from '@/components/QRCodeModal'; // Import komponen QR
 import { useAuth } from '@/hooks/useAuth';
 
 export default function ActiveOfficersPage() {
@@ -19,6 +21,10 @@ export default function ActiveOfficersPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [officerToDelete, setOfficerToDelete] = useState(null);
   const [notification, setNotification] = useState(null);
+  
+  // State untuk QR Code
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedQR, setSelectedQR] = useState({ url: '', name: '' });
 
   useEffect(() => {
     fetchOfficers();
@@ -45,6 +51,30 @@ export default function ActiveOfficersPage() {
   const showNotification = (type, message) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3000);
+  };
+
+  // Fungsi untuk handle klik QR
+  const handleQRClick = (url, name, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedQR({ url, name });
+    setShowQRModal(true);
+  };
+
+  // Fungsi untuk parse bank account
+  const parseBankAccount = (bankAccount) => {
+    if (!bankAccount) return { text: null, qrUrl: null };
+    
+    const parts = bankAccount.split('|').map(item => item.trim());
+    
+    // Cari URL QR (yang mengandung http)
+    const qrUrl = parts.find(part => part.startsWith('http'));
+    
+    // Ambil teks lainnya (bukan URL)
+    const textParts = parts.filter(part => !part.startsWith('http'));
+    const text = textParts.join(' | ');
+    
+    return { text, qrUrl };
   };
 
   const filteredOfficers = officers.filter(officer => {
@@ -292,114 +322,121 @@ export default function ActiveOfficersPage() {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredOfficers.length > 0 ? (
-              filteredOfficers.map((officer, index) => (
-                <tr key={officer.id} className="hover:bg-gray-50">
-                  <td className="px-2 py-2 align-top text-black">{index + 1}</td>
-                  
-                  <td className="px-2 py-2">
-                    <div className="font-bold text-black">{officer.full_name || '-'}</div>
-                    <div className="text-gray-600 text-xs truncate max-w-[150px]">{officer.email || '-'}</div>
-                  </td>
-                  
-                  <td className="px-2 py-2 align-top text-black">{officer.department || '-'}</td>
-                  
-                  <td className="px-2 py-2 align-top">
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
-                      officer.status === 'REGULAR' ? 'bg-green-100 text-green-800' :
-                      officer.status === 'TRAINING' ? 'bg-yellow-100 text-yellow-800' :
-                      officer.status === 'RESIGN' ? 'bg-red-100 text-red-800' :
-                      officer.status === 'TERMINATE' ? 'bg-rose-100 text-rose-800' :
-                      officer.status === 'CHANGE GROUP' ? 'bg-purple-100 text-purple-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      <span className={`w-2 h-2 rounded-full ${
-                        officer.status === 'REGULAR' ? 'bg-green-500' :
-                        officer.status === 'TRAINING' ? 'bg-yellow-500' :
-                        officer.status === 'RESIGN' ? 'bg-red-500' :
-                        officer.status === 'TERMINATE' ? 'bg-rose-500' :
-                        officer.status === 'CHANGE GROUP' ? 'bg-purple-500' :
-                        'bg-gray-500'
-                      }`}></span>
-                      {officer.status || '-'}
-                    </span>
-                  </td>
-                  
-                  <td className="px-2 py-2 align-top font-mono text-black">{officer.panel_id || '-'}</td>
-                  <td className="px-2 py-2 align-top text-black">{formatDate(officer.join_date)}</td>
-                  <td className="px-2 py-2 align-top text-black">{officer.nationality || '-'}</td>
-                  <td className="px-2 py-2 align-top text-black">{officer.gender || '-'}</td>
-                  
-                  {/* BANK ACCOUNT */}
-                  <td className="px-2 py-2">
-                    {officer.bank_account ? (
+              filteredOfficers.map((officer, index) => {
+                const { text: bankText, qrUrl } = parseBankAccount(officer.bank_account);
+                
+                return (
+                  <tr key={officer.id} className="hover:bg-gray-50">
+                    <td className="px-2 py-2 align-top text-black">{index + 1}</td>
+                    
+                    <td className="px-2 py-2">
+                      <div className="font-bold text-black">{officer.full_name || '-'}</div>
+                      <div className="text-gray-600 text-xs truncate max-w-[150px]">{officer.email || '-'}</div>
+                    </td>
+                    
+                    <td className="px-2 py-2 align-top text-black">{officer.department || '-'}</td>
+                    
+                    <td className="px-2 py-2 align-top">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
+                        officer.status === 'REGULAR' ? 'bg-green-100 text-green-800' :
+                        officer.status === 'TRAINING' ? 'bg-yellow-100 text-yellow-800' :
+                        officer.status === 'RESIGN' ? 'bg-red-100 text-red-800' :
+                        officer.status === 'TERMINATE' ? 'bg-rose-100 text-rose-800' :
+                        officer.status === 'CHANGE GROUP' ? 'bg-purple-100 text-purple-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${
+                          officer.status === 'REGULAR' ? 'bg-green-500' :
+                          officer.status === 'TRAINING' ? 'bg-yellow-500' :
+                          officer.status === 'RESIGN' ? 'bg-red-500' :
+                          officer.status === 'TERMINATE' ? 'bg-rose-500' :
+                          officer.status === 'CHANGE GROUP' ? 'bg-purple-500' :
+                          'bg-gray-500'
+                        }`}></span>
+                        {officer.status || '-'}
+                      </span>
+                    </td>
+                    
+                    <td className="px-2 py-2 align-top font-mono text-black">{officer.panel_id || '-'}</td>
+                    <td className="px-2 py-2 align-top text-black">{formatDate(officer.join_date)}</td>
+                    <td className="px-2 py-2 align-top text-black">{officer.nationality || '-'}</td>
+                    <td className="px-2 py-2 align-top text-black">{officer.gender || '-'}</td>
+                    
+                    {/* BANK ACCOUNT - DENGAN QR CODE */}
+                    <td className="px-2 py-2">
+                      {bankText || qrUrl ? (
+                        <div className="flex flex-col gap-1">
+                          {/* Text Bank Account */}
+                          {bankText && (
+                            <span className="text-xs text-black">{bankText}</span>
+                          )}
+                          
+                          {/* QR Code Link */}
+                          {qrUrl && (
+                            <button
+                              onClick={(e) => handleQRClick(qrUrl, officer.full_name, e)}
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium group"
+                            >
+                              <svg className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                              </svg>
+                              Lihat QR Code
+                            </button>
+                          )}
+                        </div>
+                      ) : '-'}
+                    </td>
+                    
+                    {/* PHONE/TELE */}
+                    <td className="px-2 py-2">
                       <div className="flex flex-col gap-0.5">
-                        {officer.bank_account.split('|').map((item, i) => {
-                          const trimmed = item.trim();
-                          if (trimmed.startsWith('http')) {
-                            return (
-                              <a key={i} href={trimmed} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 flex items-center gap-0.5 text-xs">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                </svg>
-                                QR
-                              </a>
-                            );
-                          }
-                          return <span key={i} className="text-xs text-black">{trimmed}</span>;
-                        })}
+                        {officer.phone && <span className="text-xs text-black">{officer.phone}</span>}
+                        {officer.telegram_id && (
+                          <span className="text-xs text-blue-600">@{officer.telegram_id.replace('@', '')}</span>
+                        )}
+                        {!officer.phone && !officer.telegram_id && <span className="text-xs text-gray-400">-</span>}
                       </div>
-                    ) : '-'}
-                  </td>
-                  
-                  {/* PHONE/TELE */}
-                  <td className="px-2 py-2">
-                    <div className="flex flex-col gap-0.5">
-                      {officer.phone && <span className="text-xs text-black">{officer.phone}</span>}
-                      {officer.telegram_id && (
-                        <span className="text-xs text-blue-600">@{officer.telegram_id.replace('@', '')}</span>
+                    </td>
+                    
+                    {/* ROOM */}
+                    <td className="px-2 py-2">
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
+                        officer.room === 'UNMESS' ? 'bg-gray-200 text-gray-700' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {officer.room || '-'}
+                      </span>
+                    </td>
+                    
+                    {/* ACTION BUTTONS */}
+                    <td className="px-2 py-2">
+                      {isAdmin ? (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={(e) => handleEditClick(officer, e)}
+                            className="text-white bg-blue-600 hover:bg-blue-700 p-1 rounded"
+                            title="Edit"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteClick(officer, e)}
+                            className="text-white bg-red-600 hover:bg-red-700 p-1 rounded"
+                            title="Delete"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">-</span>
                       )}
-                      {!officer.phone && !officer.telegram_id && <span className="text-xs text-gray-400">-</span>}
-                    </div>
-                  </td>
-                  
-                  {/* ROOM */}
-                  <td className="px-2 py-2">
-                    <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                      officer.room === 'UNMESS' ? 'bg-gray-200 text-gray-700' : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {officer.room || '-'}
-                    </span>
-                  </td>
-                  
-                  {/* ACTION BUTTONS - PROTEKSI ADMIN */}
-                  <td className="px-2 py-2">
-                    {isAdmin ? (
-                      <div className="flex gap-1">
-                        <button
-                          onClick={(e) => handleEditClick(officer, e)}
-                          className="text-white bg-blue-600 hover:bg-blue-700 p-1 rounded"
-                          title="Edit"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteClick(officer, e)}
-                          className="text-white bg-red-600 hover:bg-red-700 p-1 rounded"
-                          title="Delete"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-xs">-</span>
-                    )}
-                  </td>
-                </tr>
-              ))
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan="12" className="px-6 py-8 text-center text-black">
@@ -419,7 +456,15 @@ export default function ActiveOfficersPage() {
         </div>
       </div>
 
-      {/* MODALS */}
+      {/* QR CODE MODAL */}
+      <QRCodeModal
+        isOpen={showQRModal}
+        onClose={() => setShowQRModal(false)}
+        imageUrl={selectedQR.url}
+        name={selectedQR.name}
+      />
+
+      {/* DELETE MODAL */}
       {showDeleteModal && officerToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-sm w-full p-4">
@@ -433,6 +478,7 @@ export default function ActiveOfficersPage() {
         </div>
       )}
 
+      {/* EDIT MODAL */}
       {showEditModal && selectedOfficer && (
         <EditOfficerModal
           officer={selectedOfficer}
