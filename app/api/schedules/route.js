@@ -3,23 +3,24 @@ import Papa from 'papaparse';
 
 export async function GET() {
   try {
-    // Ambil CSV dari Google Sheets
-    const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRy3CioVKz96SqTPH3ZntSMp9wcTRDnx47AoUclojCuIFkhclspY93Pa9Jmoki4DDBJzk3ThjDnu10M/pub?gid=0&single=true&output=csv');
+    // PAKE LINK PUBLIKASI, BUKAN LINK EDITOR!
+    const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRy3CioVKz96SqTPH3ZntSMp9wcTRDnx47AoUclojCuIFkhclspY93Pa9Jmoki4DDBJzk3ThjDnu10M/pub?gid=2104674118&single=true&output=csv');
     const csvText = await response.text();
     
-    // Parse CSV dengan PapaParse
+    console.log('CSV length:', csvText.length); // Debug
+    
     const result = Papa.parse(csvText, { 
       header: true, 
       skipEmptyLines: true,
       transformHeader: (h) => h.trim()
     });
     
-    // Filter data yang valid (punya DATE RUNDOWN)
+    console.log('Parsed rows:', result.data.length); // Debug
+    
     const validData = result.data.filter(row => 
       row['DATE RUNDOWN'] && row['DATE RUNDOWN'].trim() !== ''
     );
     
-    // Transform ke format yang lebih konsisten
     const schedules = validData.map(row => ({
       monthRundown: row['MONTH RUNDOWN'] || '',
       dateRundown: row['DATE RUNDOWN'] || '',
