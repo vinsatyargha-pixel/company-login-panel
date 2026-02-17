@@ -29,11 +29,13 @@ export default function SchedulePage() {
 
   const getDateColumns = () => {
     const columns = [];
+    // Tanggal 21-31 bulan sebelumnya
     for (let day = 21; day <= 31; day++) {
-      columns.push({ day, month: monthBefore, type: 'prev' });
+      columns.push({ day, month: monthBefore });
     }
+    // Tanggal 1-20 bulan yang dipilih
     for (let day = 1; day <= 20; day++) {
-      columns.push({ day, month: selectedMonth, type: 'current' });
+      columns.push({ day, month: selectedMonth });
     }
     return columns;
   };
@@ -74,40 +76,26 @@ export default function SchedulePage() {
   };
 
   const processDashboardData = (rawData) => {
-  console.log('📊 Raw data:', rawData.length);
-  console.log('📅 Selected month:', selectedMonth);
-  console.log('📅 Month before:', monthBefore);
-  
-  // Filter data untuk bulan yang dipilih dan bulan sebelumnya
-  const filteredData = rawData.filter(item => {
-    const itemMonth = item.monthRundown;
-    // Cek apakah itemMonth cocok dengan selectedMonth atau monthBefore
-    // (case insensitive)
-    const match = itemMonth?.toLowerCase() === selectedMonth.toLowerCase() || 
-                  itemMonth?.toLowerCase() === monthBefore.toLowerCase();
-    if (match) {
-      console.log('✅ Match:', item.dateRundown, itemMonth);
-    }
-    return match;
-  });
+    // Filter data untuk bulan yang dipilih dan bulan sebelumnya
+    const filteredData = rawData.filter(item => {
+      const itemMonth = item.monthRundown;
+      return itemMonth === selectedMonth || itemMonth === monthBefore;
+    });
 
-  console.log('🎯 Filtered data:', filteredData.length);
+    // Group by officer
+    const officerMap = {};
+    officers.forEach(officer => {
+      officerMap[officer.name] = {
+        name: officer.name,
+        shifts: {},
+        joinDate: '',
+        nationality: '',
+        prorate: 0
+      };
+    });
 
-  // Group by officer
-  const officerMap = {};
-  officers.forEach(officer => {
-    officerMap[officer.name] = {
-      name: officer.name,
-      shifts: {},
-      joinDate: '',
-      nationality: '',
-      prorate: 0
-    };
-  });
-
-  // Isi shifts berdasarkan tanggal
-  filteredData.forEach(item => {
-    try {
+    // Isi shifts berdasarkan tanggal
+    filteredData.forEach(item => {
       const date = new Date(item.dateRundown);
       const day = date.getDate();
       const month = item.monthRundown;
@@ -119,50 +107,47 @@ export default function SchedulePage() {
           officerMap[officer.name].shifts[dateKey] = shift;
         }
       });
-    } catch (e) {
-      console.error('Error processing item:', item, e);
-    }
-  });
-
-  // Hitung totals per officer
-  const dashboard = Object.values(officerMap).map(officer => {
-    const totals = {
-      OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0,
-      SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0,
-      RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
-    };
-
-    dateColumns.forEach(col => {
-      const dateKey = `${col.month}-${col.day}`;
-      const shift = officer.shifts[dateKey] || '';
-      
-      if (shift === 'OFF') totals.OFF++;
-      else if (shift === 'SAKIT') totals.SAKIT++;
-      else if (shift === 'IZIN') totals.IZIN++;
-      else if (shift === 'ABSEN') totals.ABSEN++;
-      else if (shift === 'CUTI') totals.CUTI++;
-      else if (shift === 'SPECIAL') totals.SPECIAL++;
-      else if (shift === 'UNPAID LEAVE') totals['UNPAID LEAVE']++;
-      else if (shift === 'DIRUMAHKAN') totals.DIRUMAHKAN++;
-      else if (shift === 'RESIGN') totals.RESIGN++;
-      else if (shift === 'TERMINATED') totals.TERMINATED++;
-      else if (shift === 'BELUM JOIN') totals['BELUM JOIN']++;
     });
 
-    return {
-      ...officer,
-      totals
-    };
-  });
+    // Hitung totals per officer
+    const dashboard = Object.values(officerMap).map(officer => {
+      const totals = {
+        OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0,
+        SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0,
+        RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
+      };
 
-  console.log('📊 Dashboard data:', dashboard.length);
-  setDashboardData(dashboard);
-};
+      dateColumns.forEach(col => {
+        const dateKey = `${col.month}-${col.day}`;
+        const shift = officer.shifts[dateKey] || '';
+        
+        if (shift === 'OFF') totals.OFF++;
+        else if (shift === 'SAKIT') totals.SAKIT++;
+        else if (shift === 'IZIN') totals.IZIN++;
+        else if (shift === 'ABSEN') totals.ABSEN++;
+        else if (shift === 'CUTI') totals.CUTI++;
+        else if (shift === 'SPECIAL') totals.SPECIAL++;
+        else if (shift === 'UNPAID LEAVE') totals['UNPAID LEAVE']++;
+        else if (shift === 'DIRUMAHKAN') totals.DIRUMAHKAN++;
+        else if (shift === 'RESIGN') totals.RESIGN++;
+        else if (shift === 'TERMINATED') totals.TERMINATED++;
+        else if (shift === 'BELUM JOIN') totals['BELUM JOIN']++;
+      });
+
+      return {
+        ...officer,
+        totals
+      };
+    });
+
+    setDashboardData(dashboard);
+  };
 
   const getShiftForDate = (officerName, dateCol) => {
-    const dateKey = `${dateCol.month}-${dateCol.day}`;
     const officer = dashboardData.find(o => o.name === officerName);
-    return officer?.shifts[dateKey] || '';
+    if (!officer) return '-';
+    const dateKey = `${dateCol.month}-${dateCol.day}`;
+    return officer.shifts[dateKey] || '-';
   };
 
   const getShiftStyle = (shift) => {
@@ -242,7 +227,7 @@ export default function SchedulePage() {
       <div className="border border-gray-300 rounded overflow-x-auto bg-white shadow-sm">
         <table className="w-full text-xs border-collapse">
           <thead>
-            {/* Header utama - TAMBAH TEXT-BLACK */}
+            {/* Header utama */}
             <tr className="bg-gray-100 border-b border-gray-300">
               <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">No</th>
               <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">NATIONALITY</th>
@@ -254,7 +239,7 @@ export default function SchedulePage() {
               <th className="px-2 py-1 text-center font-bold text-black" colSpan={totalColumns.length}>TOTAL</th>
             </tr>
             
-            {/* Header tanggal - TAMBAH TEXT-BLACK */}
+            {/* Header tanggal */}
             <tr className="bg-gray-50 border-b border-gray-300">
               {dateColumns.map((date, idx) => (
                 <th key={idx} className="px-1 py-1 text-center font-medium text-black border-r border-gray-300 min-w-[30px]">
@@ -271,7 +256,7 @@ export default function SchedulePage() {
           </thead>
           
           <tbody>
-            {/* Data per officer - TAMBAH TEXT-BLACK */}
+            {/* Data per officer */}
             {officers.map((officer, rowIdx) => {
               const officerData = dashboardData.find(d => d.name === officer.name) || { totals: {} };
               
@@ -284,17 +269,17 @@ export default function SchedulePage() {
                   <td className="px-2 py-1 border-r border-gray-200 text-center text-black">0</td>
                   <td className="px-2 py-1 border-r border-gray-200 text-center text-black">-</td>
                   
-                  {/* Shift per tanggal - text-black sudah include di getShiftStyle */}
+                  {/* Shift per tanggal */}
                   {dateColumns.map((date, idx) => {
                     const shift = getShiftForDate(officer.name, date);
                     return (
-                      <td key={idx} className={`px-1 py-1 border-r border-gray-200 text-center ${getShiftStyle(shift)}`}>
-                        {shift || '-'}
+                      <td key={idx} className={`px-1 py-1 border-r border-gray-200 text-center ${getShiftStyle(shift)} text-black`}>
+                        {shift}
                       </td>
                     );
                   })}
                   
-                  {/* Totals - TAMBAH TEXT-BLACK */}
+                  {/* Totals */}
                   {totalColumns.map((col, idx) => (
                     <td key={idx} className="px-2 py-1 border-r border-gray-200 text-right font-medium text-black">
                       {officerData.totals?.[col] || 0}
@@ -304,14 +289,14 @@ export default function SchedulePage() {
               );
             })}
             
-            {/* Baris Total PAGI/SIANG/MALAM - TAMBAH TEXT-BLACK */}
+            {/* Baris Total PAGI/SIANG/MALAM */}
             <tr className="bg-gray-50 font-bold border-t border-gray-300">
               <td colSpan="6" className="px-2 py-1 text-right text-black">TOTAL OFFICER PER DAY</td>
               <td colSpan={dateColumns.length} className="px-2 py-1"></td>
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
-            {/* Hitung total PAGI per tanggal - TAMBAH TEXT-BLACK */}
+            {/* Hitung total PAGI per tanggal */}
             <tr>
               <td colSpan="6" className="px-2 py-1 text-right text-black">PAGI</td>
               {dateColumns.map((_, idx) => {
@@ -329,7 +314,7 @@ export default function SchedulePage() {
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
-            {/* Hitung total SIANG per tanggal - TAMBAH TEXT-BLACK */}
+            {/* Hitung total SIANG per tanggal */}
             <tr>
               <td colSpan="6" className="px-2 py-1 text-right text-black">SIANG</td>
               {dateColumns.map((_, idx) => {
@@ -347,7 +332,7 @@ export default function SchedulePage() {
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
-            {/* Hitung total MALAM per tanggal - TAMBAH TEXT-BLACK */}
+            {/* Hitung total MALAM per tanggal */}
             <tr>
               <td colSpan="6" className="px-2 py-1 text-right text-black">MALAM</td>
               {dateColumns.map((_, idx) => {
@@ -368,7 +353,7 @@ export default function SchedulePage() {
         </table>
       </div>
 
-      {/* LEGEND - TAMBAH TEXT-BLACK */}
+      {/* LEGEND */}
       <div className="mt-4 p-3 bg-gray-50 border border-gray-300 rounded text-xs">
         <div className="flex flex-wrap gap-4 text-black">
           <span><span className="inline-block w-3 h-3 bg-blue-100"></span> P = PAGI</span>

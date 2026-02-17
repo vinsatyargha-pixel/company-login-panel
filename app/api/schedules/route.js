@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Data manual dari CSV lo (sementara sampai Google Sheets connect)
+    // Data schedule 2026 (January - February sample)
     const schedules = [
-      // JANUARY 2026
+      // JANUARY 2026 (21-31)
       { monthRundown: "January", dateRundown: "2026-01-21", officers: { sulaeman: "P", goldie: "M", zakiy: "OFF", hakim: "P", vini: "M", ronaldo: "CUTI" } },
       { monthRundown: "January", dateRundown: "2026-01-22", officers: { sulaeman: "M", goldie: "P", zakiy: "P", hakim: "OFF", vini: "M", ronaldo: "SAKIT" } },
       { monthRundown: "January", dateRundown: "2026-01-23", officers: { sulaeman: "OFF", goldie: "M", zakiy: "M", hakim: "P", vini: "P", ronaldo: "P" } },
@@ -17,7 +17,7 @@ export async function GET() {
       { monthRundown: "January", dateRundown: "2026-01-30", officers: { sulaeman: "P", goldie: "M", zakiy: "P", hakim: "OFF", vini: "P", ronaldo: "M" } },
       { monthRundown: "January", dateRundown: "2026-01-31", officers: { sulaeman: "M", goldie: "P", zakiy: "OFF", hakim: "P", vini: "OFF", ronaldo: "P" } },
       
-      // FEBRUARY 2026
+      // FEBRUARY 2026 (1-20)
       { monthRundown: "February", dateRundown: "2026-02-01", officers: { sulaeman: "P", goldie: "M", zakiy: "P", hakim: "M", vini: "P", ronaldo: "OFF" } },
       { monthRundown: "February", dateRundown: "2026-02-02", officers: { sulaeman: "M", goldie: "P", zakiy: "OFF", hakim: "P", vini: "M", ronaldo: "P" } },
       { monthRundown: "February", dateRundown: "2026-02-03", officers: { sulaeman: "P", goldie: "OFF", zakiy: "M", hakim: "P", vini: "P", ronaldo: "M" } },
