@@ -25,18 +25,8 @@ export function useAuth() {
           .maybeSingle();
 
         if (userData) {
+          console.log('🔥 Role asli:', userData.role);
           setRole(userData.role || 'Staff');
-        }
-
-        // Ambil data dari officers (optional)
-        const { data: officer } = await supabase
-          .from('officers')
-          .select('*')
-          .ilike('email', user.email)
-          .maybeSingle();
-
-        if (officer) {
-          setOfficerData(officer);
         }
       }
     } catch (error) {
@@ -46,11 +36,18 @@ export function useAuth() {
     }
   };
 
+  // Tentukan admin berdasarkan role
+  const isUserAdmin = role === 'Admin' || role === 'ADMIN' || role === 'admin';
+  
+  // Return role yang sudah dibersihkan
+  const displayRole = isUserAdmin ? 'Admin' : 'Staff';
+
   return { 
     user,
     officerData,
-    role,
+    role: displayRole,  // ← ini yang ditampilkan jadi 'Admin' bukan 'Staff'
+    originalRole: role, // ← kalau perlu role asli
     loading, 
-    isAdmin: role === 'Admin' || role === 'ADMIN'
+    isAdmin: isUserAdmin
   };
 }
