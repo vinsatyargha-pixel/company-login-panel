@@ -17,11 +17,11 @@ export function useAuth() {
       setUser(user);
 
       if (user?.email) {
-        // PAKAI ILIKE - CASE INSENSITIVE!
+        // Cari di tabel users (case insensitive)
         const { data: userData } = await supabase
           .from('users')
           .select('role')
-          .ilike('email', user.email)  // <-- ini kuncinya!
+          .ilike('email', user.email)
           .maybeSingle();
 
         if (userData) {
@@ -33,7 +33,7 @@ export function useAuth() {
         const { data: officer } = await supabase
           .from('officers')
           .select('*')
-          .ilike('email', user.email)  // case insensitive juga
+          .ilike('email', user.email)
           .maybeSingle();
 
         if (officer) {
@@ -52,6 +52,7 @@ export function useAuth() {
     officerData,
     role,
     loading, 
-    isAdmin: role === 'Admin'  // Tetap compare dengan 'Admin'
+    // Admin kalau role = 'Admin' atau 'ADMIN' (case insensitive)
+    isAdmin: role?.toUpperCase() === 'ADMIN'
   };
 }
