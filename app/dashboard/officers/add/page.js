@@ -32,14 +32,12 @@ export default function AddOfficerPage() {
 
   const [errors, setErrors] = useState({});
 
-  // Redirect kalau bukan admin
   useEffect(() => {
     if (!isAdmin) {
       router.push('/dashboard/officers/active');
     }
   }, [isAdmin, router]);
 
-  // Kalau bukan admin, jangan render apa-apa
   if (!isAdmin) return null;
 
   const departments = [
