@@ -10,18 +10,19 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(true);
   const [schedules, setSchedules] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('January');
-  const [officers, setOfficers] = useState([
+  
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const officers = [
     { key: 'sulaeman', name: 'Sulaeman' },
     { key: 'goldie', name: 'Goldie' },
     { key: 'zakiy', name: 'Zakiy' },
     { key: 'hakim', name: 'Hakim' },
     { key: 'vini', name: 'Vini' },
     { key: 'ronaldo', name: 'Ronaldo' }
-  ]);
-
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
   useEffect(() => {
@@ -42,11 +43,9 @@ export default function SchedulePage() {
       
       if (data.success) {
         setSchedules(data.data);
-      } else {
-        console.error('Failed to fetch:', data.error);
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error fetching schedules:', error);
     } finally {
       setLoading(false);
     }
@@ -90,6 +89,7 @@ export default function SchedulePage() {
     }
   };
 
+  // Filter berdasarkan bulan
   const filteredSchedules = schedules.filter(s => {
     if (!s.dateRundown) return false;
     const month = s.monthRundown || '';
