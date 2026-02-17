@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function EditOfficerModal({ officer, onClose, onUpdate }) {
   const { isAdmin } = useAuth();
   
-  // STATE LENGKAP - semua field dari database
   const [formData, setFormData] = useState({
     full_name: officer?.full_name || '',
     email: officer?.email || '',
@@ -30,7 +29,6 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // CEK ADMIN
   if (!isAdmin || !officer) return null;
 
   const departments = ['CAPTAIN', 'AM', 'CS DP WD', 'HRD', 'PIC', 'LAUNDRY', 'IT', 'HEAD OPS', 'OWNER'];

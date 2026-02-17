@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function ActiveOfficersPage() {
   const router = useRouter();
-  const { isAdmin } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,10 +26,10 @@ export default function ActiveOfficersPage() {
   }, []);
 
   useEffect(() => {
-    if (mounted) {
+    if (mounted && !authLoading) {
       fetchOfficers();
     }
-  }, [mounted]);
+  }, [mounted, authLoading]);
 
   const fetchOfficers = async () => {
     try {
@@ -141,7 +141,7 @@ export default function ActiveOfficersPage() {
     }
   };
 
-  if (!mounted || loading) {
+  if (!mounted || authLoading || loading) {
     return (
       <div className="p-6 min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">

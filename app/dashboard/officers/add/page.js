@@ -10,18 +10,14 @@ export default function AddOfficerPage() {
   const router = useRouter();
   const { isAdmin, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true);
   
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (mounted && !authLoading) {
-      setPageLoading(false);
-      if (!isAdmin) {
-        router.push('/dashboard/officers/active');
-      }
+    if (mounted && !authLoading && !isAdmin) {
+      router.push('/dashboard/officers/active');
     }
   }, [mounted, authLoading, isAdmin, router]);
 
@@ -31,7 +27,6 @@ export default function AddOfficerPage() {
     phone: '',
     department: '',
     role: '',
-    position: '',
     join_date: new Date().toISOString().split('T')[0],
     nationality: '',
     gender: '',
@@ -48,8 +43,7 @@ export default function AddOfficerPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // TUNGGU SAMPE MOUNTED DAN AUTH SELESAI
-  if (!mounted || authLoading || pageLoading) {
+  if (!mounted || authLoading) {
     return (
       <div className="p-6 min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
@@ -60,7 +54,6 @@ export default function AddOfficerPage() {
     );
   }
 
-  // KALO BUKAN ADMIN, JANGAN RENDER APAPUN (UDAH DIRECT DI ATAS)
   if (!isAdmin) return null;
 
   const departments = [
@@ -122,7 +115,7 @@ export default function AddOfficerPage() {
     setLoading(true);
     
     try {
-      const { data: existingEmail, error: checkError } = await supabase
+      const { data: existingEmail } = await supabase
         .from('officers')
         .select('email')
         .eq('email', formData.email)
@@ -134,14 +127,13 @@ export default function AddOfficerPage() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('officers')
         .insert([{
           ...formData,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
-        }])
-        .select();
+        }]);
 
       if (error) throw error;
 
@@ -235,11 +227,11 @@ export default function AddOfficerPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-black mb-1">Position</label>
+                <label className="block text-sm font-bold text-black mb-1">Role / Jabatan</label>
                 <input
                   type="text"
-                  name="position"
-                  value={formData.position}
+                  name="role"
+                  value={formData.role}
                   onChange={handleChange}
                   className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white font-medium focus:outline-none focus:border-black"
                   placeholder="Staff, Supervisor, etc"
