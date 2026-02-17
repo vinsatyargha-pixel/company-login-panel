@@ -2,12 +2,17 @@ import { NextResponse } from 'next/server';
 import Papa from 'papaparse';
 
 export async function GET() {
+  console.log('🚀 API called');
+  
   try {
-    // PAKE LINK PUBLIKASI, BUKAN LINK EDITOR!
-    const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRy3CioVKz96SqTPH3ZntSMp9wcTRDnx47AoUclojCuIFkhclspY93Pa9Jmoki4DDBJzk3ThjDnu10M/pub?gid=2104674118&single=true&output=csv');
-    const csvText = await response.text();
+    console.log('📡 Fetching CSV...');
+    const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRy3CioVKz96SqTPH3ZntSMp9wcTRDnx47AoUclojCuIFkhclspY93Pa9Jmoki4DDBJzk3ThjDnu10M/pub?output=csv');
     
-    console.log('CSV length:', csvText.length); // Debug
+    console.log('📡 Response status:', response.status);
+    
+    const csvText = await response.text();
+    console.log('📄 CSV length:', csvText.length);
+    console.log('📄 CSV preview:', csvText.substring(0, 200));
     
     const result = Papa.parse(csvText, { 
       header: true, 
@@ -15,11 +20,14 @@ export async function GET() {
       transformHeader: (h) => h.trim()
     });
     
-    console.log('Parsed rows:', result.data.length); // Debug
+    console.log('📊 Parsed rows:', result.data.length);
+    console.log('📊 First row:', result.data[0]);
     
     const validData = result.data.filter(row => 
       row['DATE RUNDOWN'] && row['DATE RUNDOWN'].trim() !== ''
     );
+    
+    console.log('✅ Valid rows:', validData.length);
     
     const schedules = validData.map(row => ({
       monthRundown: row['MONTH RUNDOWN'] || '',
@@ -39,6 +47,8 @@ export async function GET() {
       years: row['YEARS'] || ''
     }));
     
+    console.log('🎉 Final schedules count:', schedules.length);
+    
     return NextResponse.json({ 
       success: true, 
       total: schedules.length,
@@ -46,7 +56,7 @@ export async function GET() {
     });
     
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('❌ API Error:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message 
