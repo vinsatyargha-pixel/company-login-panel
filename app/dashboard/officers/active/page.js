@@ -82,9 +82,11 @@ export default function ActiveOfficersPage() {
   };
 
   const handleEditClick = (officer, e) => {
+    e.preventDefault();
     e.stopPropagation();
+    
     if (!isAdmin) {
-      showNotification('error', 'You do not have permission to edit');
+      showNotification('error', 'You do not have permission to edit officers');
       return;
     }
     setSelectedOfficer(officer);
@@ -98,9 +100,11 @@ export default function ActiveOfficersPage() {
   };
 
   const handleDeleteClick = (officer, e) => {
+    e.preventDefault();
     e.stopPropagation();
+    
     if (!isAdmin) {
-      showNotification('error', 'You do not have permission to delete');
+      showNotification('error', 'You do not have permission to delete officers');
       return;
     }
     setOfficerToDelete(officer);
@@ -377,8 +381,9 @@ export default function ActiveOfficersPage() {
                       <div className="flex gap-1">
                         <button
                           onClick={(e) => handleEditClick(officer, e)}
-                          className="text-white bg-blue-600 hover:bg-blue-700 p-1 rounded"
+                          className="text-white bg-blue-600 hover:bg-blue-700 p-1 rounded cursor-pointer"
                           title="Edit"
+                          type="button"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -386,8 +391,9 @@ export default function ActiveOfficersPage() {
                         </button>
                         <button
                           onClick={(e) => handleDeleteClick(officer, e)}
-                          className="text-white bg-red-600 hover:bg-red-700 p-1 rounded"
+                          className="text-white bg-red-600 hover:bg-red-700 p-1 rounded cursor-pointer"
                           title="Delete"
+                          type="button"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
