@@ -8,8 +8,23 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function AddOfficerPage() {
   const router = useRouter();
-  const { isAdmin } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const { isAdmin, loading: authLoading } = useAuth();
+  const [mounted, setMounted] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !authLoading) {
+      setPageLoading(false);
+      if (!isAdmin) {
+        router.push('/dashboard/officers/active');
+      }
+    }
+  }, [mounted, authLoading, isAdmin, router]);
+
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -30,14 +45,22 @@ export default function AddOfficerPage() {
     bank_account: ''
   });
 
+  const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
-  useEffect(() => {
-    if (!isAdmin) {
-      router.push('/dashboard/officers/active');
-    }
-  }, [isAdmin, router]);
+  // TUNGGU SAMPE MOUNTED DAN AUTH SELESAI
+  if (!mounted || authLoading || pageLoading) {
+    return (
+      <div className="p-6 min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
+          <p className="mt-4 text-black font-medium">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
+  // KALO BUKAN ADMIN, JANGAN RENDER APAPUN (UDAH DIRECT DI ATAS)
   if (!isAdmin) return null;
 
   const departments = [
@@ -409,7 +432,6 @@ export default function AddOfficerPage() {
             <h3 className="font-bold text-black">Informasi</h3>
             <p className="text-sm text-gray-700 mt-1 font-medium">
               Field dengan tanda <span className="text-red-500 font-bold">*</span> wajib diisi. 
-              Employee ID tidak diperlukan (akan digenerate otomatis).
             </p>
           </div>
         </div>
