@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
-  const [userJobRole, setUserJobRole] = useState('Staff');
+  const [userJobRole, setUserJobRole] = useState(null);
   const [officerData, setOfficerData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -17,16 +17,15 @@ export function useAuth() {
       setUser(user);
 
       if (user?.email) {
-        // CASE INSENSITIVE - pakai ilike
         const { data: userData } = await supabase
           .from('users')
           .select('role')
           .ilike('email', user.email)
           .maybeSingle();
 
-        if (userData) {
+        if (userData?.role) {
           console.log('🔥 Role asli:', userData.role);
-          setUserJobRole(userData.role || 'Staff');
+          setUserJobRole(userData.role);
         }
       }
     } catch (error) {
@@ -36,9 +35,8 @@ export function useAuth() {
     }
   };
 
-  // Tentukan admin berdasarkan role
-  const isAdmin = userJobRole === 'Admin' || userJobRole === 'ADMIN' || userJobRole === 'admin';
-  
+  const isAdmin = userJobRole?.toLowerCase() === 'admin';
+
   return { 
     user,
     officerData,
