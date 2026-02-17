@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function EditOfficerModal({ officer, onClose, onUpdate }) {
   const { isAdmin } = useAuth();
+  
+  // LANGSUNG CEK ADMIN
+  if (!isAdmin) {
+    return null;
+  }
+
   const [formData, setFormData] = useState({
     full_name: officer.full_name || '',
     email: officer.email || '',
@@ -24,16 +30,9 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
     bank_account: officer.bank_account || '',
     notes: officer.notes || ''
   });
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (!isAdmin) {
-      onClose();
-    }
-  }, [isAdmin, onClose]);
-
-  if (!isAdmin) return null;
 
   const departments = ['CAPTAIN', 'AM', 'CS DP WD', 'HRD', 'PIC', 'LAUNDRY', 'IT', 'HEAD OPS', 'OWNER'];
   const statusOptions = ['REGULAR', 'TRAINING', 'RESIGN', 'TERMINATE', 'CHANGE GROUP'];
@@ -60,19 +59,27 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!validateForm()) return;
+    
     setLoading(true);
     
     try {
       const { data, error } = await supabase
         .from('officers')
-        .update({ ...formData, updated_at: new Date().toISOString() })
+        .update({
+          ...formData,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', officer.id)
         .select()
         .single();
 
       if (error) throw error;
+      
       onUpdate(data);
+      onClose();
+      
     } catch (error) {
       console.error('Error updating officer:', error);
       alert('Failed to update officer. Please try again.');
@@ -95,7 +102,6 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
           </div>
 
           <form onSubmit={handleSubmit}>
-            {/* Form content - sama seperti sebelumnya */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column */}
               <div className="space-y-4">
@@ -192,7 +198,12 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
                     <span>Saving...</span>
                   </>
                 ) : (
-                  <span>Update Officer</span>
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Update Officer</span>
+                  </>
                 )}
               </button>
             </div>

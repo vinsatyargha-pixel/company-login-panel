@@ -92,8 +92,6 @@ export default function ActiveOfficersPage() {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('✏️ Edit clicked - isAdmin:', isAdmin);
-    
     if (!isAdmin) {
       showNotification('error', 'You do not have permission to edit officers');
       return;
@@ -113,13 +111,10 @@ export default function ActiveOfficersPage() {
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('🗑️ Delete clicked - isAdmin:', isAdmin);
-    
     if (!isAdmin) {
       showNotification('error', 'You do not have permission to delete officers');
       return;
     }
-    
     setOfficerToDelete(officer);
     setShowDeleteModal(true);
   };
@@ -146,7 +141,6 @@ export default function ActiveOfficersPage() {
     }
   };
 
-  // Jangan render sampai mounted di client
   if (!mounted || loading) {
     return (
       <div className="p-6 min-h-screen flex items-center justify-center bg-white">
@@ -439,7 +433,7 @@ export default function ActiveOfficersPage() {
         </div>
       </div>
 
-      {/* MODALS */}
+      {/* DELETE MODAL */}
       {showDeleteModal && officerToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-sm w-full p-4">
@@ -453,6 +447,7 @@ export default function ActiveOfficersPage() {
         </div>
       )}
 
+      {/* EDIT MODAL */}
       {showEditModal && selectedOfficer && (
         <EditOfficerModal
           officer={selectedOfficer}
