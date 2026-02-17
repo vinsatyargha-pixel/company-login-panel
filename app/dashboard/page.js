@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import DashboardCardWithClaw from '@/components/DashboardCardWithClaw'; // ✅ UDAH BENAR
+import DashboardCard from '@/components/DashboardCard'; // ✅ UDAH BENAR
 import QuickLinks from '@/components/QuickLinks';
 import LogoutButton from '@/components/LogoutButton';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
@@ -94,30 +94,30 @@ export default function DashboardContent() {
         </div>
       </header>
 
-      {/* DASHBOARD CARDS - UDAH PAKE DashboardCardWithClaw */}
+      {/* DASHBOARD CARDS - UDAH PAKE DashboardCard */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <DashboardCardWithClaw
+        <DashboardCard
           title="Asset Group-X"
           value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
           icon="🚚"
           color="blue"
           href="/dashboard/assets"
         />
-        <DashboardCardWithClaw
+        <DashboardCard
           title="Active Officers"
           value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
           icon="👤"
           color="green"
           href="/dashboard/officers/active"
         />
-        <DashboardCardWithClaw
+        <DashboardCard
           title="Schedule Officers"
           value="Calendar"
           icon="📅"
           color="purple"
           href="/dashboard/schedule"
         />
-        <DashboardCardWithClaw
+        <DashboardCard
           title="Working Plan Officer"
           value="Planner"
           icon="📋"
