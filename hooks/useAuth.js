@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export function useAuth() {
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState('Staff');
+  const [userJobRole, setUserJobRole] = useState('Staff');
   const [officerData, setOfficerData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,7 +26,7 @@ export function useAuth() {
 
         if (userData) {
           console.log('🔥 Role asli:', userData.role);
-          setRole(userData.role || 'Staff');
+          setUserJobRole(userData.role || 'Staff');
         }
       }
     } catch (error) {
@@ -37,17 +37,14 @@ export function useAuth() {
   };
 
   // Tentukan admin berdasarkan role
-  const isUserAdmin = role === 'Admin' || role === 'ADMIN' || role === 'admin';
+  const isAdmin = userJobRole === 'Admin' || userJobRole === 'ADMIN' || userJobRole === 'admin';
   
-  // Return role yang sudah dibersihkan
-  const displayRole = isUserAdmin ? 'Admin' : 'Staff';
-
   return { 
     user,
     officerData,
-    role: displayRole,  // ← ini yang ditampilkan jadi 'Admin' bukan 'Staff'
-    originalRole: role, // ← kalau perlu role asli
+    userJobRole,
+    role: userJobRole, // biar kompatibel
     loading, 
-    isAdmin: isUserAdmin
+    isAdmin
   };
 }

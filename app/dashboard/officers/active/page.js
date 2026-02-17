@@ -9,7 +9,9 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function ActiveOfficersPage() {
   const router = useRouter();
-  const { isAdmin } = useAuth();
+  const { isAdmin, role } = useAuth();
+  console.log('🔥 ActiveOfficersPage - isAdmin:', isAdmin);
+  console.log('🔥 ActiveOfficersPage - role:', role);
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
