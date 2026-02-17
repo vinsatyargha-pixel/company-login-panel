@@ -1,53 +1,44 @@
 import { NextResponse } from 'next/server';
-import Papa from 'papaparse';
 
 export async function GET() {
-  console.log('🚀 API called');
-  
   try {
-    console.log('📡 Fetching CSV...');
-    const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRy3CioVKz96SqTPH3ZntSMp9wcTRDnx47AoUclojCuIFkhclspY93Pa9Jmoki4DDBJzk3ThjDnu10M/pub?output=csv');
-    
-    console.log('📡 Response status:', response.status);
-    
-    const csvText = await response.text();
-    console.log('📄 CSV length:', csvText.length);
-    console.log('📄 CSV preview:', csvText.substring(0, 200));
-    
-    const result = Papa.parse(csvText, { 
-      header: true, 
-      skipEmptyLines: true,
-      transformHeader: (h) => h.trim()
-    });
-    
-    console.log('📊 Parsed rows:', result.data.length);
-    console.log('📊 First row:', result.data[0]);
-    
-    const validData = result.data.filter(row => 
-      row['DATE RUNDOWN'] && row['DATE RUNDOWN'].trim() !== ''
-    );
-    
-    console.log('✅ Valid rows:', validData.length);
-    
-    const schedules = validData.map(row => ({
-      monthRundown: row['MONTH RUNDOWN'] || '',
-      dateRundown: row['DATE RUNDOWN'] || '',
-      date: row['DATE'] || '',
-      month: row['MONTH'] || '',
-      officers: {
-        sulaeman: row['Sulaeman'] || '',
-        goldie: row['Goldie Mountana'] || '',
-        zakiy: row['Achmad Naufal Zakiy'] || '',
-        hakim: row['Mushollina Nul Hakim'] || '',
-        vini: row['Lie Fung Kien (Vini)'] || '',
-        ronaldo: row['Ronaldo Ichwan'] || ''
-      },
-      notes: row['NOTE/CATATAN LAIN2'] || '',
-      helper: row['HELPER'] || '',
-      years: row['YEARS'] || ''
-    }));
-    
-    console.log('🎉 Final schedules count:', schedules.length);
+    // Data manual dari CSV lo (sementara sampai Google Sheets connect)
+    const schedules = [
+      // JANUARY 2026
+      { monthRundown: "January", dateRundown: "2026-01-21", officers: { sulaeman: "P", goldie: "M", zakiy: "OFF", hakim: "P", vini: "M", ronaldo: "CUTI" } },
+      { monthRundown: "January", dateRundown: "2026-01-22", officers: { sulaeman: "M", goldie: "P", zakiy: "P", hakim: "OFF", vini: "M", ronaldo: "SAKIT" } },
+      { monthRundown: "January", dateRundown: "2026-01-23", officers: { sulaeman: "OFF", goldie: "M", zakiy: "M", hakim: "P", vini: "P", ronaldo: "P" } },
+      { monthRundown: "January", dateRundown: "2026-01-24", officers: { sulaeman: "P", goldie: "OFF", zakiy: "P", hakim: "M", vini: "OFF", ronaldo: "M" } },
+      { monthRundown: "January", dateRundown: "2026-01-25", officers: { sulaeman: "M", goldie: "P", zakiy: "OFF", hakim: "P", vini: "M", ronaldo: "P" } },
+      { monthRundown: "January", dateRundown: "2026-01-26", officers: { sulaeman: "P", goldie: "M", zakiy: "P", hakim: "OFF", vini: "P", ronaldo: "OFF" } },
+      { monthRundown: "January", dateRundown: "2026-01-27", officers: { sulaeman: "M", goldie: "P", zakiy: "M", hakim: "P", vini: "OFF", ronaldo: "M" } },
+      { monthRundown: "January", dateRundown: "2026-01-28", officers: { sulaeman: "P", goldie: "OFF", zakiy: "P", hakim: "M", vini: "P", ronaldo: "P" } },
+      { monthRundown: "January", dateRundown: "2026-01-29", officers: { sulaeman: "OFF", goldie: "P", zakiy: "M", hakim: "P", vini: "M", ronaldo: "OFF" } },
+      { monthRundown: "January", dateRundown: "2026-01-30", officers: { sulaeman: "P", goldie: "M", zakiy: "P", hakim: "OFF", vini: "P", ronaldo: "M" } },
+      { monthRundown: "January", dateRundown: "2026-01-31", officers: { sulaeman: "M", goldie: "P", zakiy: "OFF", hakim: "P", vini: "OFF", ronaldo: "P" } },
+      
+      // FEBRUARY 2026
+      { monthRundown: "February", dateRundown: "2026-02-01", officers: { sulaeman: "P", goldie: "M", zakiy: "P", hakim: "M", vini: "P", ronaldo: "OFF" } },
+      { monthRundown: "February", dateRundown: "2026-02-02", officers: { sulaeman: "M", goldie: "P", zakiy: "OFF", hakim: "P", vini: "M", ronaldo: "P" } },
+      { monthRundown: "February", dateRundown: "2026-02-03", officers: { sulaeman: "P", goldie: "OFF", zakiy: "M", hakim: "P", vini: "P", ronaldo: "M" } },
+      { monthRundown: "February", dateRundown: "2026-02-04", officers: { sulaeman: "OFF", goldie: "P", zakiy: "P", hakim: "M", vini: "OFF", ronaldo: "P" } },
+      { monthRundown: "February", dateRundown: "2026-02-05", officers: { sulaeman: "P", goldie: "M", zakiy: "M", hakim: "P", vini: "P", ronaldo: "OFF" } },
+      { monthRundown: "February", dateRundown: "2026-02-06", officers: { sulaeman: "M", goldie: "P", zakiy: "P", hakim: "OFF", vini: "M", ronaldo: "P" } },
+      { monthRundown: "February", dateRundown: "2026-02-07", officers: { sulaeman: "P", goldie: "OFF", zakiy: "P", hakim: "M", vini: "P", ronaldo: "M" } },
+      { monthRundown: "February", dateRundown: "2026-02-08", officers: { sulaeman: "OFF", goldie: "P", zakiy: "M", hakim: "P", vini: "OFF", ronaldo: "P" } },
+      { monthRundown: "February", dateRundown: "2026-02-09", officers: { sulaeman: "P", goldie: "M", zakiy: "P", hakim: "M", vini: "P", ronaldo: "OFF" } },
+      { monthRundown: "February", dateRundown: "2026-02-10", officers: { sulaeman: "M", goldie: "P", zakiy: "OFF", hakim: "P", vini: "M", ronaldo: "P" } },
+      { monthRundown: "February", dateRundown: "2026-02-11", officers: { sulaeman: "P", goldie: "OFF", zakiy: "P", hakim: "M", vini: "P", ronaldo: "M" } },
+      { monthRundown: "February", dateRundown: "2026-02-12", officers: { sulaeman: "OFF", goldie: "P", zakiy: "M", hakim: "P", vini: "OFF", ronaldo: "P" } },
+      { monthRundown: "February", dateRundown: "2026-02-13", officers: { sulaeman: "P", goldie: "M", zakiy: "P", hakim: "M", vini: "P", ronaldo: "OFF" } },
+      { monthRundown: "February", dateRundown: "2026-02-14", officers: { sulaeman: "M", goldie: "P", zakiy: "OFF", hakim: "P", vini: "M", ronaldo: "P" } },
+      { monthRundown: "February", dateRundown: "2026-02-15", officers: { sulaeman: "P", goldie: "OFF", zakiy: "P", hakim: "M", vini: "P", ronaldo: "M" } },
+      { monthRundown: "February", dateRundown: "2026-02-16", officers: { sulaeman: "OFF", goldie: "P", zakiy: "M", hakim: "P", vini: "OFF", ronaldo: "P" } },
+      { monthRundown: "February", dateRundown: "2026-02-17", officers: { sulaeman: "P", goldie: "M", zakiy: "P", hakim: "M", vini: "P", ronaldo: "OFF" } },
+      { monthRundown: "February", dateRundown: "2026-02-18", officers: { sulaeman: "M", goldie: "P", zakiy: "OFF", hakim: "P", vini: "M", ronaldo: "P" } },
+      { monthRundown: "February", dateRundown: "2026-02-19", officers: { sulaeman: "P", goldie: "OFF", zakiy: "P", hakim: "M", vini: "P", ronaldo: "M" } },
+      { monthRundown: "February", dateRundown: "2026-02-20", officers: { sulaeman: "OFF", goldie: "P", zakiy: "M", hakim: "P", vini: "OFF", ronaldo: "P" } }
+    ];
     
     return NextResponse.json({ 
       success: true, 
@@ -56,7 +47,6 @@ export async function GET() {
     });
     
   } catch (error) {
-    console.error('❌ API Error:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message 

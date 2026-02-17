@@ -93,46 +93,6 @@ export default function SchedulePage() {
 
   console.log('🎯 Filtered data:', filteredData.length);
 
-  // Kalo filteredData kosong, kasih dummy data untuk test
-  if (filteredData.length === 0) {
-    console.log('⚠️ No data found, using dummy data');
-    
-    // Generate dummy data untuk test
-    const dummyData = [];
-    for (let day = 21; day <= 31; day++) {
-      dummyData.push({
-        monthRundown: monthBefore,
-        dateRundown: `2026-${monthBefore === 'January' ? '01' : '02'}-${day}`,
-        officers: {
-          sulaeman: day % 2 === 0 ? 'P' : 'M',
-          goldie: day % 3 === 0 ? 'OFF' : 'P',
-          zakiy: day % 4 === 0 ? 'CUTI' : 'M',
-          hakim: 'P',
-          vini: 'M',
-          ronaldo: day % 5 === 0 ? 'SAKIT' : 'P'
-        }
-      });
-    }
-    for (let day = 1; day <= 20; day++) {
-      dummyData.push({
-        monthRundown: selectedMonth,
-        dateRundown: `2026-${selectedMonth === 'February' ? '02' : '03'}-${day}`,
-        officers: {
-          sulaeman: day % 2 === 0 ? 'M' : 'P',
-          goldie: day % 3 === 0 ? 'P' : 'OFF',
-          zakiy: 'M',
-          hakim: day % 4 === 0 ? 'CUTI' : 'P',
-          vini: day % 5 === 0 ? 'SAKIT' : 'M',
-          ronaldo: 'P'
-        }
-      });
-    }
-    
-    // Pake dummy data
-    filteredData.push(...dummyData);
-    console.log('📦 Dummy data added:', dummyData.length);
-  }
-
   // Group by officer
   const officerMap = {};
   officers.forEach(officer => {
