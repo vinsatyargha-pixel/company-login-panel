@@ -98,6 +98,7 @@ export default function ActiveOfficersPage() {
       showNotification('error', 'You do not have permission to edit officers');
       return;
     }
+    
     setSelectedOfficer(officer);
     setShowEditModal(true);
   };
@@ -118,6 +119,7 @@ export default function ActiveOfficersPage() {
       showNotification('error', 'You do not have permission to delete officers');
       return;
     }
+    
     setOfficerToDelete(officer);
     setShowDeleteModal(true);
   };
@@ -254,7 +256,7 @@ export default function ActiveOfficersPage() {
               </svg>
             </div>
             
-            {/* ADD BUTTON - PROTEKSI ADMIN */}
+            {/* ADD BUTTON */}
             {isAdmin ? (
               <Link
                 href="/dashboard/officers/add"
@@ -387,13 +389,13 @@ export default function ActiveOfficersPage() {
                     </span>
                   </td>
                   
-                  {/* ACTION BUTTONS - PROTEKSI ADMIN */}
+                  {/* ACTION BUTTONS */}
                   <td className="px-2 py-2">
                     {isAdmin ? (
                       <div className="flex gap-1">
                         <button
                           onClick={(e) => handleEditClick(officer, e)}
-                          className="text-white bg-blue-600 hover:bg-blue-700 p-1 rounded cursor-pointer"
+                          className="text-white bg-blue-600 hover:bg-blue-700 p-1.5 rounded-md transition-colors"
                           title="Edit"
                           type="button"
                         >
@@ -403,7 +405,7 @@ export default function ActiveOfficersPage() {
                         </button>
                         <button
                           onClick={(e) => handleDeleteClick(officer, e)}
-                          className="text-white bg-red-600 hover:bg-red-700 p-1 rounded cursor-pointer"
+                          className="text-white bg-red-600 hover:bg-red-700 p-1.5 rounded-md transition-colors"
                           title="Delete"
                           type="button"
                         >
