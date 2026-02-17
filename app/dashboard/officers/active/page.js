@@ -92,6 +92,8 @@ export default function ActiveOfficersPage() {
     e.preventDefault();
     e.stopPropagation();
     
+    console.log('✏️ Edit clicked - isAdmin:', isAdmin);
+    
     if (!isAdmin) {
       showNotification('error', 'You do not have permission to edit officers');
       return;
@@ -109,6 +111,8 @@ export default function ActiveOfficersPage() {
   const handleDeleteClick = (officer, e) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    console.log('🗑️ Delete clicked - isAdmin:', isAdmin);
     
     if (!isAdmin) {
       showNotification('error', 'You do not have permission to delete officers');
