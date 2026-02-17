@@ -1,16 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
 
-export default function EditOfficerModal({ officer, onClose, onUpdate }) {
-  const { isAdmin } = useAuth();
-  
-  // LANGSUNG CEK ADMIN
-  if (!isAdmin) {
-    return null;
-  }
+export default function EditOfficerModal({ officer, onClose, onUpdated }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    position: '',
+    email: ''
+  });
+
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (officer) {
+      setFormData({
+        name: officer.name || '',
+        position: officer.position || '',
+        email: officer.email || ''
+      });
+    }
+  }, [officer]);
+
+  if (!officer) return null; // ini aman
+
 
   const [formData, setFormData] = useState({
     full_name: officer.full_name || '',
@@ -57,158 +70,80 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
     }
   };
 
-  const handleSubmit = async (e) => {
+    const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) return;
-    
     setLoading(true);
-    
-    try {
-      const { data, error } = await supabase
-        .from('officers')
-        .update({
-          ...formData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', officer.id)
-        .select()
-        .single();
 
-      if (error) throw error;
-      
-      onUpdate(data);
+    const { error } = await supabase
+      .from('officers')
+      .update(formData)
+      .eq('id', officer.id);
+
+    if (!error) {
+      onUpdated();
       onClose();
-      
-    } catch (error) {
-      console.error('Error updating officer:', error);
-      alert('Failed to update officer. Please try again.');
-    } finally {
-      setLoading(false);
+    } else {
+      console.error(error);
     }
+
+    setLoading(false);
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-black">Edit Officer</h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
+
+    return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg w-full max-w-md">
+        <h2 className="text-lg font-bold mb-4">Edit Officer</h2>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) =>
+              setFormData({ ...formData, name: e.target.value })
+            }
+            className="w-full border p-2 rounded"
+            placeholder="Name"
+          />
+
+          <input
+            type="text"
+            value={formData.position}
+            onChange={(e) =>
+              setFormData({ ...formData, position: e.target.value })
+            }
+            className="w-full border p-2 rounded"
+            placeholder="Position"
+          />
+
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
+            className="w-full border p-2 rounded"
+            placeholder="Email"
+          />
+
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-300 rounded"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              {loading ? 'Saving...' : 'Save'}
             </button>
           </div>
-
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Full Name <span className="text-red-500">*</span></label>
-                  <input type="text" name="full_name" value={formData.full_name} onChange={handleChange} className={`w-full border ${errors.full_name ? 'border-red-500' : 'border-gray-400'} rounded px-4 py-2 text-black bg-white`} />
-                  {errors.full_name && <p className="text-red-500 text-xs mt-1">{errors.full_name}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Email <span className="text-red-500">*</span></label>
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} className={`w-full border ${errors.email ? 'border-red-500' : 'border-gray-400'} rounded px-4 py-2 text-black bg-white`} />
-                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Department</label>
-                  <select name="department" value={formData.department} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white">
-                    <option value="">Select Department</option>
-                    {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Role</label>
-                  <input type="text" name="role" value={formData.role} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" placeholder="e.g., Officer, Manager" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Status</label>
-                  <select name="status" value={formData.status} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white">
-                    {statusOptions.map(status => <option key={status} value={status}>{status}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Panel ID</label>
-                  <input type="text" name="panel_id" value={formData.panel_id} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" placeholder="e.g., PN-001" />
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Join Date</label>
-                  <input type="date" name="join_date" value={formData.join_date} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Nationality</label>
-                  <input type="text" name="nationality" value={formData.nationality} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" placeholder="e.g., Indonesian" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Gender</label>
-                  <select name="gender" value={formData.gender} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white">
-                    <option value="">Select Gender</option>
-                    {genderOptions.map(gender => <option key={gender} value={gender}>{gender}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Phone</label>
-                  <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" placeholder="e.g., +62xxx" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Passport Number</label>
-                  <input type="text" name="passport_number" value={formData.passport_number} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Telegram ID</label>
-                  <input type="text" name="telegram_id" value={formData.telegram_id} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Room</label>
-                  <input type="text" name="room" value={formData.room} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" placeholder="4 digit number or UNMESS" />
-                  <p className="text-xs text-gray-500 mt-1">Format: 4 digit angka atau UNMESS</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Bank Account</label>
-                  <input type="text" name="bank_account" value={formData.bank_account} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" placeholder="123456789 | ABA | https://link.qr" />
-                  <p className="text-xs text-gray-500 mt-1">Format: Nomor | Bank | Link QR</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-black mb-1">Group ID</label>
-                  <input type="text" name="group_id" value={formData.group_id} onChange={handleChange} className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <label className="block text-sm font-bold text-black mb-1">Notes</label>
-              <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" className="w-full border border-gray-400 rounded px-4 py-2 text-black bg-white" placeholder="Additional notes..."></textarea>
-            </div>
-
-            <div className="mt-8 flex justify-end gap-4">
-              <button type="button" onClick={onClose} className="px-6 py-2.5 border border-gray-400 rounded text-black hover:bg-gray-100 font-medium">Cancel</button>
-              <button type="submit" disabled={loading} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium flex items-center gap-2 disabled:opacity-50">
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    <span>Update Officer</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
+        </form>
       </div>
     </div>
   );
