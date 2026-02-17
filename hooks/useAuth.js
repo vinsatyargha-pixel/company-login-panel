@@ -43,7 +43,7 @@ export function useAuth() {
     user,
     officerData,
     userJobRole,
-    role: userJobRole, // biar kompatibel
+    role: userJobRole,
     loading, 
     isAdmin
   };

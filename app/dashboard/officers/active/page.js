@@ -9,9 +9,8 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function ActiveOfficersPage() {
   const router = useRouter();
-  const { isAdmin, role } = useAuth();
-  console.log('🔥 ActiveOfficersPage - isAdmin:', isAdmin);
-  console.log('🔥 ActiveOfficersPage - role:', role);
+  const { isAdmin } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
@@ -23,8 +22,14 @@ export default function ActiveOfficersPage() {
   const [notification, setNotification] = useState(null);
 
   useEffect(() => {
-    fetchOfficers();
+    setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      fetchOfficers();
+    }
+  }, [mounted]);
 
   const fetchOfficers = async () => {
     try {
@@ -135,7 +140,8 @@ export default function ActiveOfficersPage() {
     }
   };
 
-  if (loading) {
+  // Jangan render sampai mounted di client
+  if (!mounted || loading) {
     return (
       <div className="p-6 min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
