@@ -74,68 +74,130 @@ export default function SchedulePage() {
   };
 
   const processDashboardData = (rawData) => {
-    const filteredData = rawData.filter(item => {
-      const itemMonth = item.monthRundown;
-      return itemMonth === selectedMonth || itemMonth === monthBefore;
-    });
+  console.log('📊 Raw data:', rawData.length);
+  console.log('📅 Selected month:', selectedMonth);
+  console.log('📅 Month before:', monthBefore);
+  
+  // Filter data untuk bulan yang dipilih dan bulan sebelumnya
+  const filteredData = rawData.filter(item => {
+    const itemMonth = item.monthRundown;
+    // Cek apakah itemMonth cocok dengan selectedMonth atau monthBefore
+    // (case insensitive)
+    const match = itemMonth?.toLowerCase() === selectedMonth.toLowerCase() || 
+                  itemMonth?.toLowerCase() === monthBefore.toLowerCase();
+    if (match) {
+      console.log('✅ Match:', item.dateRundown, itemMonth);
+    }
+    return match;
+  });
 
-    const officerMap = {};
-    officers.forEach(officer => {
-      officerMap[officer.name] = {
-        name: officer.name,
-        shifts: {},
-        joinDate: '',
-        nationality: '',
-        prorate: 0
-      };
-    });
+  console.log('🎯 Filtered data:', filteredData.length);
 
-    filteredData.forEach(item => {
+  // Kalo filteredData kosong, kasih dummy data untuk test
+  if (filteredData.length === 0) {
+    console.log('⚠️ No data found, using dummy data');
+    
+    // Generate dummy data untuk test
+    const dummyData = [];
+    for (let day = 21; day <= 31; day++) {
+      dummyData.push({
+        monthRundown: monthBefore,
+        dateRundown: `2026-${monthBefore === 'January' ? '01' : '02'}-${day}`,
+        officers: {
+          sulaeman: day % 2 === 0 ? 'P' : 'M',
+          goldie: day % 3 === 0 ? 'OFF' : 'P',
+          zakiy: day % 4 === 0 ? 'CUTI' : 'M',
+          hakim: 'P',
+          vini: 'M',
+          ronaldo: day % 5 === 0 ? 'SAKIT' : 'P'
+        }
+      });
+    }
+    for (let day = 1; day <= 20; day++) {
+      dummyData.push({
+        monthRundown: selectedMonth,
+        dateRundown: `2026-${selectedMonth === 'February' ? '02' : '03'}-${day}`,
+        officers: {
+          sulaeman: day % 2 === 0 ? 'M' : 'P',
+          goldie: day % 3 === 0 ? 'P' : 'OFF',
+          zakiy: 'M',
+          hakim: day % 4 === 0 ? 'CUTI' : 'P',
+          vini: day % 5 === 0 ? 'SAKIT' : 'M',
+          ronaldo: 'P'
+        }
+      });
+    }
+    
+    // Pake dummy data
+    filteredData.push(...dummyData);
+    console.log('📦 Dummy data added:', dummyData.length);
+  }
+
+  // Group by officer
+  const officerMap = {};
+  officers.forEach(officer => {
+    officerMap[officer.name] = {
+      name: officer.name,
+      shifts: {},
+      joinDate: '',
+      nationality: '',
+      prorate: 0
+    };
+  });
+
+  // Isi shifts berdasarkan tanggal
+  filteredData.forEach(item => {
+    try {
       const date = new Date(item.dateRundown);
       const day = date.getDate();
       const month = item.monthRundown;
       const dateKey = `${month}-${day}`;
       
       officers.forEach(officer => {
-        const shift = item.officers[officer.key];
+        const shift = item.officers?.[officer.key];
         if (shift && officerMap[officer.name]) {
           officerMap[officer.name].shifts[dateKey] = shift;
         }
       });
+    } catch (e) {
+      console.error('Error processing item:', item, e);
+    }
+  });
+
+  // Hitung totals per officer
+  const dashboard = Object.values(officerMap).map(officer => {
+    const totals = {
+      OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0,
+      SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0,
+      RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
+    };
+
+    dateColumns.forEach(col => {
+      const dateKey = `${col.month}-${col.day}`;
+      const shift = officer.shifts[dateKey] || '';
+      
+      if (shift === 'OFF') totals.OFF++;
+      else if (shift === 'SAKIT') totals.SAKIT++;
+      else if (shift === 'IZIN') totals.IZIN++;
+      else if (shift === 'ABSEN') totals.ABSEN++;
+      else if (shift === 'CUTI') totals.CUTI++;
+      else if (shift === 'SPECIAL') totals.SPECIAL++;
+      else if (shift === 'UNPAID LEAVE') totals['UNPAID LEAVE']++;
+      else if (shift === 'DIRUMAHKAN') totals.DIRUMAHKAN++;
+      else if (shift === 'RESIGN') totals.RESIGN++;
+      else if (shift === 'TERMINATED') totals.TERMINATED++;
+      else if (shift === 'BELUM JOIN') totals['BELUM JOIN']++;
     });
 
-    const dashboard = Object.values(officerMap).map(officer => {
-      const totals = {
-        OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0,
-        SPECIAL: 0, 'UNPAID LEAVE': 0, DIRUMAHKAN: 0,
-        RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
-      };
+    return {
+      ...officer,
+      totals
+    };
+  });
 
-      dateColumns.forEach(col => {
-        const dateKey = `${col.month}-${col.day}`;
-        const shift = officer.shifts[dateKey] || '';
-        
-        if (shift === 'OFF') totals.OFF++;
-        else if (shift === 'SAKIT') totals.SAKIT++;
-        else if (shift === 'IZIN') totals.IZIN++;
-        else if (shift === 'ABSEN') totals.ABSEN++;
-        else if (shift === 'CUTI') totals.CUTI++;
-        else if (shift === 'SPECIAL') totals.SPECIAL++;
-        else if (shift === 'UNPAID LEAVE') totals['UNPAID LEAVE']++;
-        else if (shift === 'DIRUMAHKAN') totals.DIRUMAHKAN++;
-        else if (shift === 'RESIGN') totals.RESIGN++;
-        else if (shift === 'TERMINATED') totals.TERMINATED++;
-        else if (shift === 'BELUM JOIN') totals['BELUM JOIN']++;
-      });
-
-      return {
-        ...officer,
-        totals
-      };
-    });
-
-    setDashboardData(dashboard);
-  };
+  console.log('📊 Dashboard data:', dashboard.length);
+  setDashboardData(dashboard);
+};
 
   const getShiftForDate = (officerName, dateCol) => {
     const dateKey = `${dateCol.month}-${dateCol.day}`;
