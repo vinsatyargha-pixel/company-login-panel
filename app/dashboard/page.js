@@ -95,36 +95,41 @@ export default function DashboardContent() {
       </header>
 
       {/* DASHBOARD CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <DashboardCard
-        title="Asset Group-X"
-        value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
-        icon="💎"
-        color="gold"
-        href="/dashboard/assets"
-        />
-        <DashboardCard
-          title="Active Officers"
-          value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
-          icon="👤"
-          color="gold"
-          href="/dashboard/officers/active"
-        />
-        <DashboardCard
-          title="Schedule Officers"
-          value="Calendar"
-          icon="📅"
-          color="gold"
-          href="/dashboard/schedule"
-        />
-        <DashboardCard
-          title="Working Plan Officer"
-          value="Planner"
-          icon="📋"
-          color="gold"
-          href="/dashboard/working-plans"
-        />
-      </div>
+      {/* DASHBOARD CARDS - SEMUA NEON GLOW */}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <DashboardCard
+    title="Asset Group-X"
+    value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
+    icon="💎"
+    color="gold"
+    href="/dashboard/assets"
+    className="border-2 border-[#FFD700] shadow-[0_0_15px_#FFD700] hover:shadow-[0_0_30px_#FFD700] transition-all duration-300 bg-[#0B1A33]"
+  />
+  <DashboardCard
+    title="Active Officers"
+    value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
+    icon="👤"
+    color="gold"
+    href="/dashboard/officers/active"
+    className="border-2 border-[#FFD700] shadow-[0_0_15px_#FFD700] hover:shadow-[0_0_30px_#FFD700] transition-all duration-300 bg-[#0B1A33]"
+  />
+  <DashboardCard
+    title="Schedule Officers"
+    value="Calendar"
+    icon="📅"
+    color="gold"
+    href="/dashboard/schedule"
+    className="border-2 border-[#FFD700] shadow-[0_0_15px_#FFD700] hover:shadow-[0_0_30px_#FFD700] transition-all duration-300 bg-[#0B1A33]"
+  />
+  <DashboardCard
+    title="Working Plan Officer"
+    value="Planner"
+    icon="📋"
+    color="gold"
+    href="/dashboard/working-plans"
+    className="border-2 border-[#FFD700] shadow-[0_0_15px_#FFD700] hover:shadow-[0_0_30px_#FFD700] transition-all duration-300 bg-[#0B1A33]"
+  />
+</div>
 
       <div className="mb-8">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">Quick Access</h2>
