@@ -214,17 +214,28 @@ export default function SchedulePage() {
         </select>
       </div>
 
-      <div className="mb-4 p-3 bg-gray-50 border border-gray-300 rounded flex flex-wrap items-center gap-4">
-  <span className="font-medium text-black">Pilih Bulan:</span>
-  <select
-    value={selectedMonth}
-    onChange={(e) => setSelectedMonth(e.target.value)}
-    className="border border-gray-300 rounded px-3 py-1 text-sm bg-white text-black"
-  >
-    {months.map(month => (
-      <option key={month} value={month}>{month}</option>
-    ))}
-  </select>
+      <div className="mb-4 p-3 bg-gray-50 border border-gray-300 rounded flex flex-wrap items-center justify-between">
+  <div className="flex items-center gap-4">
+    <span className="font-medium text-black">Pilih Bulan:</span>
+    <select
+      value={selectedMonth}
+      onChange={(e) => setSelectedMonth(e.target.value)}
+      className="border border-gray-300 rounded px-3 py-1 text-sm bg-white text-black"
+    >
+      {months.map(month => (
+        <option key={month} value={month}>{month}</option>
+      ))}
+    </select>
+  </div>
+  
+  <div className="flex items-center gap-6 text-sm text-black">
+    <span className="font-medium">
+      Month Before: <span className="font-bold">{monthBefore}</span>
+    </span>
+    <span className="font-medium">
+      Month Now: <span className="font-bold">{selectedMonth}</span>
+    </span>
+  </div>
 </div>
 
 {/* Informasi Month Before & Month Now dipisah ke kiri dan kanan */}
