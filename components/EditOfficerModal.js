@@ -54,6 +54,7 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (!validateForm()) return;
     
     setLoading(true);
@@ -75,8 +76,8 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
       onClose();
       
     } catch (error) {
-      console.error('Error updating officer:', error);
-      alert('Gagal mengupdate officer');
+      console.error('Error:', error);
+      alert(error.message || 'Gagal mengupdate officer');
     } finally {
       setLoading(false);
     }
