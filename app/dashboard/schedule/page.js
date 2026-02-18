@@ -104,63 +104,6 @@ export default function SchedulePage() {
     }
   };
 
-  const transformScheduleData = (rawData) => {
-  const officerMap = {};
-  officerList.forEach((officer) => {
-    officerMap[officer.full_name] = {
-      joinDate: officer.join_date || '-',
-      shifts: {}
-    };
-  });
-
-  rawData.forEach(row => {
-    const date = row.DATE;
-    if (!date) return;
-    
-    Object.keys(officerMap).forEach(officerName => {
-      const shiftCode = row[officerName];
-      if (shiftCode && shiftCode.trim() !== '') {
-        officerMap[officerName].shifts[date] = shiftCode;
-      }
-    });
-  });
-
-  return officerList.map((officer, index) => {
-    const shifts = officerMap[officer.full_name]?.shifts || {};
-    const totals = calculateTotals(shifts);
-    
-    // Hitung PRORATE = 4 - total OFF
-    const prorate = Math.max(0, 4 - (totals.OFF || 0));
-    
-    // Hitung DAY = total hari yang ada shift - (OFF + SAKIT + IZIN + ABSEN + DIRUMAHKAN + UNPAID LEAVE)
-    const totalDays = Object.keys(shifts).length;
-    const nonWorkingDays = (totals.OFF || 0) + (totals.SAKIT || 0) + (totals.IZIN || 0) + 
-                           (totals.ABSEN || 0) + (totals.DIRUMAHKAN || 0) + (totals.UNPAID LEAVE || 0);
-    const day = totalDays - nonWorkingDays;
-    
-    return {
-      no: index + 1,
-      joinDate: officer.join_date || '-',
-      officerName: officer.full_name,
-      prorate: prorate,
-      day: day,
-      shifts: shifts,
-      totals: totals
-    };
-  });
-};
-
-    return officerList.map((officer, index) => ({
-      no: index + 1,
-      joinDate: officer.join_date || '-',
-      officerName: officer.full_name,
-      prorate: 0,
-      day: 27,
-      shifts: officerMap[officer.full_name]?.shifts || {},
-      totals: calculateTotals(officerMap[officer.full_name]?.shifts || {})
-    }));
-  };
-
   const calculateTotals = (shifts) => {
     const totals = {
       OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0,
@@ -174,6 +117,52 @@ export default function SchedulePage() {
     });
     
     return totals;
+  };
+
+  const transformScheduleData = (rawData) => {
+    const officerMap = {};
+    officerList.forEach((officer) => {
+      officerMap[officer.full_name] = {
+        joinDate: officer.join_date || '-',
+        shifts: {}
+      };
+    });
+
+    rawData.forEach(row => {
+      const date = row.DATE;
+      if (!date) return;
+      
+      Object.keys(officerMap).forEach(officerName => {
+        const shiftCode = row[officerName];
+        if (shiftCode && shiftCode.trim() !== '') {
+          officerMap[officerName].shifts[date] = shiftCode;
+        }
+      });
+    });
+
+    return officerList.map((officer, index) => {
+      const shifts = officerMap[officer.full_name]?.shifts || {};
+      const totals = calculateTotals(shifts);
+      
+      // Hitung PRORATE = 4 - total OFF
+      const prorate = Math.max(0, 4 - (totals.OFF || 0));
+      
+      // Hitung DAY = total hari kerja (tanpa OFF, SAKIT, IZIN, ABSEN, DIRUMAHKAN, UNPAID LEAVE)
+      const totalDays = Object.keys(shifts).length;
+      const nonWorkingDays = (totals.OFF || 0) + (totals.SAKIT || 0) + (totals.IZIN || 0) + 
+                             (totals.ABSEN || 0) + (totals.DIRUMAHKAN || 0) + (totals.UNPAID LEAVE || 0);
+      const day = totalDays - nonWorkingDays;
+      
+      return {
+        no: index + 1,
+        joinDate: officer.join_date || '-',
+        officerName: officer.full_name,
+        prorate: prorate,
+        day: day,
+        shifts: shifts,
+        totals: totals
+      };
+    });
   };
 
   const getDateColumns = () => {
@@ -273,10 +262,10 @@ export default function SchedulePage() {
             <tr className="bg-gray-100 border-b border-gray-300">
               {/* STICKY COLUMNS - No, JOIN DATE, OFFICER NAME, PRORATE, DAY */}
               <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: 0, minWidth: '50px' }}>No</th>
-<th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '50px', minWidth: '100px' }}>JOIN DATE</th>
-<th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '150px', minWidth: '150px' }}>OFFICER NAME</th>
-<th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '300px', minWidth: '60px' }}>PRORATE</th>
-<th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '360px', minWidth: '50px' }}>DAY</th>
+              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '50px', minWidth: '100px' }}>JOIN DATE</th>
+              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '150px', minWidth: '150px' }}>OFFICER NAME</th>
+              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '300px', minWidth: '60px' }}>PRORATE</th>
+              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '360px', minWidth: '50px' }}>DAY</th>
               
               {/* DATES - Normal (tidak sticky) */}
               <th className="px-2 py-1 text-center font-bold text-black border-r border-gray-300 relative" colSpan={dateColumns.length}>
@@ -312,10 +301,10 @@ export default function SchedulePage() {
               <tr key={officer.no} className="border-b border-gray-200 hover:bg-gray-50">
                 {/* STICKY COLUMNS - Data officer */}
                 <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>{officer.no}</td>
-<td className="px-2 py-1 border-r border-gray-200 sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '50px' }}>{officer.joinDate}</td>
-<td className="px-2 py-1 border-r border-gray-200 font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '150px' }}>{officer.officerName}</td>
-<td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '300px' }}>{officer.prorate}</td>
-<td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '360px' }}>{officer.day}</td>
+                <td className="px-2 py-1 border-r border-gray-200 sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '50px' }}>{officer.joinDate}</td>
+                <td className="px-2 py-1 border-r border-gray-200 font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '150px' }}>{officer.officerName}</td>
+                <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '300px' }}>{officer.prorate}</td>
+                <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '360px' }}>{officer.day}</td>
                 
                 {/* Shift per tanggal - normal */}
                 {dateColumns.map((date, idx) => {
@@ -341,13 +330,13 @@ export default function SchedulePage() {
             
             {/* STICKY untuk baris total */}
             <tr className="bg-gray-50 font-bold border-t border-gray-300">
-              <td colSpan="5" className="px-2 py-1 text-right sticky left-0 bg-gray-50 z-10" style={{ left: 0 }}>TOTAL OFFICER PER DAY</td>
+              <td colSpan="5" className="px-2 py-1 text-right sticky left-0 bg-gray-50 z-10 font-bold text-black" style={{ left: 0 }}>TOTAL OFFICER PER DAY</td>
               <td colSpan={dateColumns.length} className="px-2 py-1"></td>
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10" style={{ left: 0 }}>PAGI</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>PAGI</td>
               {dateColumns.map((date, idx) => {
                 const pagiCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
@@ -363,7 +352,7 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10" style={{ left: 0 }}>SIANG</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>SIANG</td>
               {dateColumns.map((date, idx) => {
                 const siangCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
@@ -379,7 +368,7 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10" style={{ left: 0 }}>MALAM</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>MALAM</td>
               {dateColumns.map((date, idx) => {
                 const malamCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
