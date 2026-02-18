@@ -4,40 +4,30 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 
-// MAP WARNA BG SESUAI SPESIFIKASI LO
+// MAP WARNA BG SESUAI SPESIFIKASI
 const shiftStyles = {
-  'P': 'bg-blue-100 text-blue-800 font-bold',       // Pagi (terang)
-  'M': 'bg-purple-900 text-white font-bold',        // Malam (gelap)
-  'S': 'bg-green-300 text-green-900 font-bold',     // Siang (sedang)
-  'OFF': 'bg-gray-900 text-white font-bold',        // Hitam
-  'SAKIT': 'bg-yellow-300 text-yellow-900 font-bold', // Kuning
-  'IZIN': 'bg-blue-300 text-blue-900 font-bold',    // Biru
-  'ABSEN': 'bg-red-500 text-white font-bold',       // Merah
-  'CUTI': 'bg-green-500 text-white font-bold',      // Hijau
-  'SPECIAL': 'bg-pink-300 text-pink-900 font-bold', // Pink
-  'UNPAID LEAVE': 'bg-cyan-300 text-cyan-900 font-bold', // Cyan
-  'DIRUMAHKAN': 'bg-cyan-300 text-cyan-900 font-bold',    // Cyan
-  'RESIGN': 'bg-red-700 text-white font-bold',      // Merah tua
-  'TERMINATED': 'bg-red-900 text-white font-bold',  // Merah lebih tua
-  'BELUM JOIN': 'bg-gray-100 text-gray-700 font-bold', // Putih
-  'default': 'bg-white text-gray-300' // Untuk HOTEL/ALPHA/FOXTROT/LAUNDRY
+  'P': 'bg-blue-100 text-blue-800 font-bold',
+  'M': 'bg-purple-900 text-white font-bold',
+  'S': 'bg-green-300 text-green-900 font-bold',
+  'OFF': 'bg-gray-900 text-white font-bold',
+  'SAKIT': 'bg-yellow-300 text-yellow-900 font-bold',
+  'IZIN': 'bg-blue-300 text-blue-900 font-bold',
+  'ABSEN': 'bg-red-500 text-white font-bold',
+  'CUTI': 'bg-green-500 text-white font-bold',
+  'SPECIAL': 'bg-pink-300 text-pink-900 font-bold',
+  'UNPAID LEAVE': 'bg-cyan-300 text-cyan-900 font-bold',
+  'DIRUMAHKAN': 'bg-cyan-300 text-cyan-900 font-bold',
+  'RESIGN': 'bg-red-700 text-white font-bold',
+  'TERMINATED': 'bg-red-900 text-white font-bold',
+  'BELUM JOIN': 'bg-gray-100 text-gray-700 font-bold',
+  'default': 'bg-white text-gray-300'
 };
 
-// Kode shift valid (yang boleh tampil)
+// Kode shift valid
 const validShifts = [
   'P', 'M', 'S', 'OFF', 'SAKIT', 'IZIN', 'ABSEN', 'CUTI', 
   'SPECIAL', 'UNPAID LEAVE', 'DIRUMAHKAN', 'RESIGN', 
   'TERMINATED', 'BELUM JOIN'
-];
-
-// Data officer dari RUNDOWN (sesuai urutan kolom E-J)
-const officerNames = [
-  'Sulaeman',
-  'Goldie Mountana',
-  'Achmad Naufal Zakiy',
-  'Mushollina Nul Hakim',
-  'Lie Fung Kien (Vini)',
-  'Ronaldo Ichwan'
 ];
 
 export default function SchedulePage() {
@@ -49,8 +39,8 @@ export default function SchedulePage() {
   const [selectedMonth, setSelectedMonth] = useState('February');
   const [monthBefore, setMonthBefore] = useState('January');
   
-  // INI YANG BENAR - SATU AJA
-  const [officerList, setOfficerList] = useState([
+  // HARDCODE OFFICER LIST
+  const [officerList] = useState([
     { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
     { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
     { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' },
@@ -65,24 +55,16 @@ export default function SchedulePage() {
   ];
   
   const years = ['2026', '2027', '2028', '2029', '2030', '2031', '2032'];
-  
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  
-  const years = ['2026', '2027', '2028', '2029', '2030', '2031', '2032'];
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-  if (mounted) {
-    fetchScheduleData();
-    // fetchOfficersFromActive(); // DI-COMMENT ATAU DIHAPUS
-  }
-}, [mounted, selectedYear, selectedMonth]);
+    if (mounted) {
+      fetchScheduleData();
+    }
+  }, [mounted, selectedYear, selectedMonth]);
 
   useEffect(() => {
     const currentIndex = months.indexOf(selectedMonth);
@@ -90,124 +72,78 @@ export default function SchedulePage() {
     setMonthBefore(months[prevIndex]);
   }, [selectedMonth]);
 
-  // Ambil officer dari Active Officers (department CS DP WD)
-  // Ambil officer dari Active Officers (department CS DP WD)
-const fetchOfficersFromActive = async () => {
-  try {
-    const response = await fetch('/api/officers?department=CS DP WD');
-    const data = await response.json();
-    if (data.success && data.officers.length > 0) {
-      console.log('Officers dari API:', data.officers);
-      setOfficerList(data.officers);
-    } else {
-      console.log('Gunakan dummy officers');
-      // DUMMY OFFICER - pake data dari RUNDOWN
-      setOfficerList([
-        { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
-        { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
-        { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' },
-        { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
-        { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
-        { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' }
-      ]);
-    }
-  } catch (error) {
-    console.error('Error fetching officers:', error);
-    // Fallback ke dummy
-    setOfficerList([
-      { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
-      { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
-      { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' },
-      { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
-      { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
-      { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' }
-    ]);
-  }
-};
-
   const fetchScheduleData = async () => {
-  setLoading(true);
-  try {
-    console.log('Fetching data untuk:', selectedYear, selectedMonth);
-    const response = await fetch(`/api/schedule?year=${selectedYear}&month=${selectedMonth}`);
-    const result = await response.json();
-    
-    console.log('API Response:', result); // <-- TAMBAH INI
-    
-    if (result.success) {
-      console.log('Data mentah dari API:', result.data); // <-- TAMBAH INI
-      console.log('Jumlah data:', result.data.length);
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/schedule?year=${selectedYear}&month=${selectedMonth}`);
+      const result = await response.json();
       
-      // Transform data ke format tabel
-      const transformed = transformScheduleData(result.data);
-      console.log('Data setelah transform:', transformed); // <-- TAMBAH INI
-      
-      setScheduleData(transformed);
-    } else {
-      console.error('API error:', result.error);
+      if (result.success) {
+        const transformed = transformScheduleData(result.data);
+        setScheduleData(transformed);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Error:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const transformScheduleData = (rawData) => {
-  console.log('transformScheduleData dimulai dengan rawData:', rawData);
-  console.log('officerList:', officerList);
-  
-  // Map per officer
-  const officerMap = {};
-  officerList.forEach((officer) => {
-    officerMap[officer.full_name] = {
-      joinDate: officer.join_date || '-',
-      shifts: {}
-    };
-  });
-  
-  console.log('officerMap awal:', officerMap);
+    // Map per officer
+    const officerMap = {};
+    officerList.forEach((officer) => {
+      officerMap[officer.full_name] = {
+        joinDate: officer.join_date || '-',
+        shifts: {}
+      };
+    });
 
-  // Isi shifts dari rawData
-  rawData.forEach(row => {
-    const date = row.DATE;
-    if (!date) return;
+    // Isi shifts dari rawData
+    rawData.forEach(row => {
+      const date = row.DATE;
+      if (!date) return;
+      
+      Object.keys(officerMap).forEach(officerName => {
+        const shiftCode = row[officerName];
+        if (shiftCode) {
+          officerMap[officerName].shifts[date] = shiftCode;
+        }
+      });
+    });
+
+    // Convert ke array untuk tabel
+    return officerList.map((officer, index) => ({
+      no: index + 1,
+      joinDate: officer.join_date || '-',
+      officerName: officer.full_name,
+      prorate: 0,
+      day: 27,
+      shifts: officerMap[officer.full_name]?.shifts || {},
+      totals: calculateTotals(officerMap[officer.full_name]?.shifts || {})
+    }));
+  };
+
+  const calculateTotals = (shifts) => {
+    const totals = {
+      OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0,
+      'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
+    };
     
-    console.log('Processing row untuk tanggal:', date, row); // <-- TAMBAH INI
-    
-    Object.keys(officerMap).forEach(officerName => {
-      const shiftCode = row[officerName];
-      if (shiftCode) {
-        console.log(`  - ${officerName}: ${shiftCode}`); // <-- TAMBAH INI
-        officerMap[officerName].shifts[date] = shiftCode;
+    Object.values(shifts).forEach(shift => {
+      if (validShifts.includes(shift) && totals.hasOwnProperty(shift)) {
+        totals[shift] = (totals[shift] || 0) + 1;
       }
     });
-  });
-
-  console.log('officerMap setelah diisi:', officerMap);
-
-  // Convert ke array untuk tabel
-  const result = officerList.map((officer, index) => ({
-    no: index + 1,
-    joinDate: officer.join_date || '-',
-    officerName: officer.full_name,
-    prorate: 0,
-    day: 27,
-    shifts: officerMap[officer.full_name]?.shifts || {},
-    totals: calculateTotals(officerMap[officer.full_name]?.shifts || {})
-  }));
-  
-  console.log('Hasil akhir transform:', result);
-  return result;
-};
+    
+    return totals;
+  };
 
   const getDateColumns = () => {
     const columns = [];
-    // Tanggal 21-31 bulan sebelumnya
     for (let day = 21; day <= 31; day++) {
       columns.push({ day, month: monthBefore });
     }
-    // Tanggal 1-20 bulan yang dipilih
     for (let day = 1; day <= 20; day++) {
       columns.push({ day, month: selectedMonth });
     }
@@ -215,18 +151,17 @@ const fetchOfficersFromActive = async () => {
   };
 
   const getShiftForDate = (shifts, day, month) => {
-  // Map month dari "January" ke "Jan"
-  const monthMap = {
-    'January': 'Jan', 'February': 'Feb', 'March': 'Mar', 'April': 'Apr',
-    'May': 'May', 'June': 'Jun', 'July': 'Jul', 'August': 'Aug',
-    'September': 'Sep', 'October': 'Oct', 'November': 'Nov', 'December': 'Dec'
+    const monthMap = {
+      'January': 'Jan', 'February': 'Feb', 'March': 'Mar', 'April': 'Apr',
+      'May': 'May', 'June': 'Jun', 'July': 'Jul', 'August': 'Aug',
+      'September': 'Sep', 'October': 'Oct', 'November': 'Nov', 'December': 'Dec'
+    };
+    
+    const monthShort = monthMap[month] || month.substring(0, 3);
+    const dateKey = `${day}-${monthShort}`;
+    
+    return shifts[dateKey] || '-';
   };
-  
-  const monthShort = monthMap[month] || month.substring(0, 3);
-  const dateKey = `${day}-${monthShort}`;
-  
-  return shifts[dateKey] || '-';
-};
 
   const getShiftStyle = (shift) => {
     if (!shift || shift === '-' || !validShifts.includes(shift)) {
@@ -236,7 +171,7 @@ const fetchOfficersFromActive = async () => {
   };
 
   const dateColumns = getDateColumns();
-
+  
   const totalColumns = [
     'OFF', 'SAKIT', 'IZIN', 'ABSEN', 'CUTI', 'SPECIAL',
     'UNPAID LEAVE', 'DIRUMAHKAN', 'RESIGN', 'TERMINATED', 'BELUM JOIN'
@@ -255,30 +190,25 @@ const fetchOfficersFromActive = async () => {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto min-h-screen bg-white">
-      {/* BACK BUTTON */}
       <div className="mb-4">
         <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
           ← BACK TO DASHBOARD
         </Link>
       </div>
 
-      {/* HEADER */}
       <div className="mb-4 flex justify-between items-center">
         <h1 className="text-xl font-bold text-black">X-GROUP SCHEDULE {selectedYear}</h1>
-        <div className="flex gap-2">
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="border border-gray-300 rounded px-2 py-1 text-sm bg-white text-black"
-          >
-            {years.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
-          </select>
-        </div>
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+          className="border border-gray-300 rounded px-2 py-1 text-sm bg-white text-black"
+        >
+          {years.map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
       </div>
 
-      {/* MONTH SELECTOR */}
       <div className="mb-4 p-3 bg-gray-50 border border-gray-300 rounded flex flex-wrap items-center gap-4">
         <span className="font-medium text-black">Pilih Bulan:</span>
         <select
@@ -297,7 +227,6 @@ const fetchOfficersFromActive = async () => {
         </div>
       </div>
 
-      {/* SCHEDULE TABLE */}
       <div className="border border-gray-300 rounded overflow-x-auto bg-white shadow-sm">
         <table className="w-full text-xs border-collapse">
           <thead>
@@ -334,7 +263,6 @@ const fetchOfficersFromActive = async () => {
                 <td className="px-2 py-1 border-r border-gray-200 text-center text-black">{officer.prorate}</td>
                 <td className="px-2 py-1 border-r border-gray-200 text-center text-black">{officer.day}</td>
                 
-                {/* Shift per tanggal */}
                 {dateColumns.map((date, idx) => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
                   return (
@@ -347,7 +275,6 @@ const fetchOfficersFromActive = async () => {
                   );
                 })}
                 
-                {/* Totals */}
                 {totalColumns.map((col, idx) => (
                   <td key={idx} className="px-2 py-1 border-r border-gray-200 text-right font-medium text-black">
                     {officer.totals[col] || 0}
@@ -356,14 +283,12 @@ const fetchOfficersFromActive = async () => {
               </tr>
             ))}
             
-            {/* Baris Total PAGI/SIANG/MALAM */}
             <tr className="bg-gray-50 font-bold border-t border-gray-300">
               <td colSpan="5" className="px-2 py-1 text-right text-black">TOTAL OFFICER PER DAY</td>
               <td colSpan={dateColumns.length} className="px-2 py-1"></td>
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
-            {/* Hitung PAGI */}
             <tr>
               <td colSpan="5" className="px-2 py-1 text-right text-black">PAGI</td>
               {dateColumns.map((date, idx) => {
@@ -380,7 +305,6 @@ const fetchOfficersFromActive = async () => {
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
-            {/* Hitung SIANG */}
             <tr>
               <td colSpan="5" className="px-2 py-1 text-right text-black">SIANG</td>
               {dateColumns.map((date, idx) => {
@@ -397,7 +321,6 @@ const fetchOfficersFromActive = async () => {
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
-            {/* Hitung MALAM */}
             <tr>
               <td colSpan="5" className="px-2 py-1 text-right text-black">MALAM</td>
               {dateColumns.map((date, idx) => {
@@ -417,7 +340,6 @@ const fetchOfficersFromActive = async () => {
         </table>
       </div>
 
-      {/* LEGEND */}
       <div className="mt-4 p-3 bg-gray-50 border border-gray-300 rounded text-xs">
         <div className="flex flex-wrap gap-4 text-black">
           <span><span className="inline-block w-3 h-3 bg-blue-100"></span> P = PAGI</span>
