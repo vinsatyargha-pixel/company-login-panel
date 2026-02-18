@@ -78,11 +78,11 @@ export default function SchedulePage() {
   }, []);
 
   useEffect(() => {
-    if (mounted) {
-      fetchScheduleData();
-      fetchOfficersFromActive();
-    }
-  }, [mounted, selectedYear, selectedMonth]);
+  if (mounted) {
+    fetchScheduleData();
+    // fetchOfficersFromActive(); // DI-COMMENT ATAU DIHAPUS
+  }
+}, [mounted, selectedYear, selectedMonth]);
 
   useEffect(() => {
     const currentIndex = months.indexOf(selectedMonth);
