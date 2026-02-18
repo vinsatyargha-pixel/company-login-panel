@@ -23,6 +23,21 @@ const shiftStyles = {
   'default': 'bg-white text-gray-300'
 };
 
+// MAP WARNA UNTUK KOLOM TOTAL
+const totalStyles = {
+  'OFF': 'bg-gray-900 text-white font-bold',
+  'SAKIT': 'bg-yellow-300 text-yellow-900 font-bold',
+  'IZIN': 'bg-blue-300 text-blue-900 font-bold',
+  'ABSEN': 'bg-red-500 text-white font-bold',
+  'CUTI': 'bg-green-500 text-white font-bold',
+  'SPECIAL': 'bg-pink-300 text-pink-900 font-bold',
+  'UNPAID LEAVE': 'bg-cyan-300 text-cyan-900 font-bold',
+  'DIRUMAHKAN': 'bg-cyan-300 text-cyan-900 font-bold',
+  'RESIGN': 'bg-red-700 text-white font-bold',
+  'TERMINATED': 'bg-red-900 text-white font-bold',
+  'BELUM JOIN': 'bg-gray-100 text-gray-700 font-bold'
+};
+
 // Kode shift valid
 const validShifts = [
   'P', 'M', 'S', 'OFF', 'SAKIT', 'IZIN', 'ABSEN', 'CUTI', 
@@ -90,7 +105,6 @@ export default function SchedulePage() {
   };
 
   const transformScheduleData = (rawData) => {
-    // Map per officer
     const officerMap = {};
     officerList.forEach((officer) => {
       officerMap[officer.full_name] = {
@@ -99,7 +113,6 @@ export default function SchedulePage() {
       };
     });
 
-    // Isi shifts dari rawData
     rawData.forEach(row => {
       const date = row.DATE;
       if (!date) return;
@@ -112,7 +125,6 @@ export default function SchedulePage() {
       });
     });
 
-    // Convert ke array untuk tabel
     return officerList.map((officer, index) => ({
       no: index + 1,
       joinDate: officer.join_date || '-',
@@ -140,31 +152,25 @@ export default function SchedulePage() {
   };
 
   const getDateColumns = () => {
-  const columns = [];
-  
-  // Dapatkan jumlah hari di bulan sebelumnya
-  const prevMonthDate = new Date(`${monthBefore} 1, ${selectedYear}`);
-  const prevMonthDays = new Date(selectedYear, prevMonthDate.getMonth() + 1, 0).getDate();
-  
-  // Dapatkan jumlah hari di bulan sekarang
-  const currentMonthDays = new Date(selectedYear, months.indexOf(selectedMonth) + 1, 0).getDate();
-  
-  // Tanggal 21 - akhir bulan sebelumnya
-  for (let day = 21; day <= prevMonthDays; day++) {
-    columns.push({ day, month: monthBefore });
-  }
-  
-  // Tanggal 1 - 20 bulan sekarang (tapi batasin sesuai realita)
-  const maxDay = Math.min(20, currentMonthDays);
-  for (let day = 1; day <= maxDay; day++) {
-    columns.push({ day, month: selectedMonth });
-  }
-  
-  return columns;
-};
+    const columns = [];
+    
+    const prevMonthDate = new Date(`${monthBefore} 1, ${selectedYear}`);
+    const prevMonthDays = new Date(selectedYear, prevMonthDate.getMonth() + 1, 0).getDate();
+    const currentMonthDays = new Date(selectedYear, months.indexOf(selectedMonth) + 1, 0).getDate();
+    
+    for (let day = 21; day <= prevMonthDays; day++) {
+      columns.push({ day, month: monthBefore });
+    }
+    
+    const maxDay = Math.min(20, currentMonthDays);
+    for (let day = 1; day <= maxDay; day++) {
+      columns.push({ day, month: selectedMonth });
+    }
+    
+    return columns;
+  };
 
   const getShiftForDate = (shifts, day, month) => {
-    // LANGSUNG PAKE ANGKA karena di data shifts key-nya angka
     return shifts[day.toString()] || '-';
   };
 
@@ -214,41 +220,28 @@ export default function SchedulePage() {
         </select>
       </div>
 
+      {/* MONTH SELECTOR */}
       <div className="mb-2 flex items-end justify-between">
-  <div className="flex items-center gap-4">
-    <span className="font-medium text-black">Pilih Bulan:</span>
-    <select
-      value={selectedMonth}
-      onChange={(e) => setSelectedMonth(e.target.value)}
-      className="border border-gray-300 rounded px-3 py-1 text-sm bg-white text-black"
-    >
-      {months.map(month => (
-        <option key={month} value={month}>{month}</option>
-      ))}
-    </select>
-  </div>
-  
-  <div className="text-sm text-black mb-1">
-    <span className="mr-6">Month Before: <span className="font-bold">{monthBefore}</span></span>
-    <span>Month Now: <span className="font-bold">{selectedMonth}</span></span>
-  </div>
-</div>
+        <div className="flex items-center gap-4">
+          <span className="font-medium text-black">Pilih Bulan:</span>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-1 text-sm bg-white text-black"
+          >
+            {months.map(month => (
+              <option key={month} value={month}>{month}</option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="text-sm text-black mb-1">
+          <span className="mr-6">Month Before: <span className="font-bold">{monthBefore}</span></span>
+          <span>Month Now: <span className="font-bold">{selectedMonth}</span></span>
+        </div>
+      </div>
 
-{/* Table header dengan tanggal */}
-<div className="border border-gray-300 rounded overflow-x-auto bg-white shadow-sm">
-  {/* ... tabelnya tetap sama ... */}
-</div>
-
-{/* Informasi Month Before & Month Now dipisah ke kiri dan kanan */}
-<div className="mb-2 flex justify-between text-sm text-black px-1">
-  <div className="font-medium">
-    Month Before: <span className="font-bold">{monthBefore}</span>
-  </div>
-  <div className="font-medium">
-    Month Now: <span className="font-bold">{selectedMonth}</span>
-  </div>
-</div>
-
+      {/* TABLE SCHEDULE */}
       <div className="border border-gray-300 rounded overflow-x-auto bg-white shadow-sm">
         <table className="w-full text-xs border-collapse">
           <thead>
@@ -298,7 +291,7 @@ export default function SchedulePage() {
                 })}
                 
                 {totalColumns.map((col, idx) => (
-                  <td key={idx} className="px-2 py-1 border-r border-gray-200 text-right font-medium text-black">
+                  <td key={idx} className={`px-2 py-1 border-r border-gray-200 text-right font-bold ${totalStyles[col] || 'text-black'}`}>
                     {officer.totals[col] || 0}
                   </td>
                 ))}
@@ -312,14 +305,14 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right text-black">PAGI</td>
+              <td colSpan="5" className="px-2 py-1 text-right text-black font-bold">PAGI</td>
               {dateColumns.map((date, idx) => {
                 const pagiCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
                   return shift === 'P';
                 }).length;
                 return (
-                  <td key={idx} className="px-1 py-1 text-center border-r border-gray-200 font-medium text-black">
+                  <td key={idx} className="px-1 py-1 text-center border-r border-gray-200 font-bold text-black">
                     {pagiCount}
                   </td>
                 );
@@ -328,14 +321,14 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right text-black">SIANG</td>
+              <td colSpan="5" className="px-2 py-1 text-right text-black font-bold">SIANG</td>
               {dateColumns.map((date, idx) => {
                 const siangCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
                   return shift === 'S';
                 }).length;
                 return (
-                  <td key={idx} className="px-1 py-1 text-center border-r border-gray-200 font-medium text-black">
+                  <td key={idx} className="px-1 py-1 text-center border-r border-gray-200 font-bold text-black">
                     {siangCount}
                   </td>
                 );
@@ -344,14 +337,14 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right text-black">MALAM</td>
+              <td colSpan="5" className="px-2 py-1 text-right text-black font-bold">MALAM</td>
               {dateColumns.map((date, idx) => {
                 const malamCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
                   return shift === 'M';
                 }).length;
                 return (
-                  <td key={idx} className="px-1 py-1 text-center border-r border-gray-200 font-medium text-black">
+                  <td key={idx} className="px-1 py-1 text-center border-r border-gray-200 font-bold text-black">
                     {malamCount}
                   </td>
                 );
@@ -362,6 +355,7 @@ export default function SchedulePage() {
         </table>
       </div>
 
+      {/* LEGEND */}
       <div className="mt-4 p-3 bg-gray-50 border border-gray-300 rounded text-xs">
         <div className="flex flex-wrap gap-4 text-black">
           <span><span className="inline-block w-3 h-3 bg-blue-100"></span> P = PAGI</span>
