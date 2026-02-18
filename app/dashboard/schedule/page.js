@@ -48,7 +48,23 @@ export default function SchedulePage() {
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedMonth, setSelectedMonth] = useState('February');
   const [monthBefore, setMonthBefore] = useState('January');
-  const [officerList, setOfficerList] = useState([]);
+  
+  // INI YANG BENAR - SATU AJA
+  const [officerList, setOfficerList] = useState([
+    { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
+    { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
+    { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' },
+    { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
+    { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
+    { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' }
+  ]);
+  
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+  const years = ['2026', '2027', '2028', '2029', '2030', '2031', '2032'];
   
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
