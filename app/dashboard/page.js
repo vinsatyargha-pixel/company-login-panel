@@ -93,6 +93,7 @@ export default function DashboardContent() {
         </div>
       </header>
 
+      {/* ROYAL GOLD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <DashboardCard
           title="Asset Group-X"
@@ -100,7 +101,7 @@ export default function DashboardContent() {
           icon="💎"
           color="gold"
           href="/dashboard/assets"
-          className="border-2 border-[#FFD700] shadow-[0_0_15px_#FFD700] hover:shadow-[0_0_30px_#FFD700] bg-[#0B1A33]"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
         />
         <DashboardCard
           title="Active Officers"
@@ -108,7 +109,7 @@ export default function DashboardContent() {
           icon="👤"
           color="gold"
           href="/dashboard/officers/active"
-          className="border-2 border-[#FFD700] shadow-[0_0_15px_#FFD700] hover:shadow-[0_0_30px_#FFD700] bg-[#0B1A33]"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
         />
         <DashboardCard
           title="Schedule Officers"
@@ -116,7 +117,7 @@ export default function DashboardContent() {
           icon="📅"
           color="gold"
           href="/dashboard/schedule"
-          className="border-2 border-[#FFD700] shadow-[0_0_15px_#FFD700] hover:shadow-[0_0_30px_#FFD700] bg-[#0B1A33]"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
         />
         <DashboardCard
           title="Working Plan Officer"
@@ -124,7 +125,7 @@ export default function DashboardContent() {
           icon="📋"
           color="gold"
           href="/dashboard/working-plans"
-          className="border-2 border-[#FFD700] shadow-[0_0_15px_#FFD700] hover:shadow-[0_0_30px_#FFD700] bg-[#0B1A33]"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
         />
       </div>
 
