@@ -214,7 +214,7 @@ export default function SchedulePage() {
         </select>
       </div>
 
-      <div className="mb-4 p-3 bg-gray-50 border border-gray-300 rounded flex flex-wrap items-center justify-between">
+      <div className="mb-2 flex items-end justify-between">
   <div className="flex items-center gap-4">
     <span className="font-medium text-black">Pilih Bulan:</span>
     <select
@@ -228,14 +228,15 @@ export default function SchedulePage() {
     </select>
   </div>
   
-  <div className="flex items-center gap-6 text-sm text-black">
-    <span className="font-medium">
-      Month Before: <span className="font-bold">{monthBefore}</span>
-    </span>
-    <span className="font-medium">
-      Month Now: <span className="font-bold">{selectedMonth}</span>
-    </span>
+  <div className="text-sm text-black mb-1">
+    <span className="mr-6">Month Before: <span className="font-bold">{monthBefore}</span></span>
+    <span>Month Now: <span className="font-bold">{selectedMonth}</span></span>
   </div>
+</div>
+
+{/* Table header dengan tanggal */}
+<div className="border border-gray-300 rounded overflow-x-auto bg-white shadow-sm">
+  {/* ... tabelnya tetap sama ... */}
 </div>
 
 {/* Informasi Month Before & Month Now dipisah ke kiri dan kanan */}
