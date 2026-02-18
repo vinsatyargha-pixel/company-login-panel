@@ -140,17 +140,28 @@ export default function SchedulePage() {
   };
 
   const getDateColumns = () => {
-    const columns = [];
-    // Tanggal 21-31 bulan sebelumnya
-    for (let day = 21; day <= 31; day++) {
-      columns.push({ day, month: monthBefore });
-    }
-    // Tanggal 1-20 bulan yang dipilih
-    for (let day = 1; day <= 20; day++) {
-      columns.push({ day, month: selectedMonth });
-    }
-    return columns;
-  };
+  const columns = [];
+  
+  // Dapatkan jumlah hari di bulan sebelumnya
+  const prevMonthDate = new Date(`${monthBefore} 1, ${selectedYear}`);
+  const prevMonthDays = new Date(selectedYear, prevMonthDate.getMonth() + 1, 0).getDate();
+  
+  // Dapatkan jumlah hari di bulan sekarang
+  const currentMonthDays = new Date(selectedYear, months.indexOf(selectedMonth) + 1, 0).getDate();
+  
+  // Tanggal 21 - akhir bulan sebelumnya
+  for (let day = 21; day <= prevMonthDays; day++) {
+    columns.push({ day, month: monthBefore });
+  }
+  
+  // Tanggal 1 - 20 bulan sekarang (tapi batasin sesuai realita)
+  const maxDay = Math.min(20, currentMonthDays);
+  for (let day = 1; day <= maxDay; day++) {
+    columns.push({ day, month: selectedMonth });
+  }
+  
+  return columns;
+};
 
   const getShiftForDate = (shifts, day, month) => {
     // LANGSUNG PAKE ANGKA karena di data shifts key-nya angka
@@ -204,22 +215,27 @@ export default function SchedulePage() {
       </div>
 
       <div className="mb-4 p-3 bg-gray-50 border border-gray-300 rounded flex flex-wrap items-center gap-4">
-        <span className="font-medium text-black">Pilih Bulan:</span>
-        <select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-1 text-sm bg-white text-black"
-        >
-          {months.map(month => (
-            <option key={month} value={month}>{month}</option>
-          ))}
-        </select>
-        
-        <div className="ml-auto text-sm text-black">
-          <span className="mr-4">Month Before: <span className="font-medium">{monthBefore}</span></span>
-          <span>Month Now: <span className="font-medium">{selectedMonth}</span></span>
-        </div>
-      </div>
+  <span className="font-medium text-black">Pilih Bulan:</span>
+  <select
+    value={selectedMonth}
+    onChange={(e) => setSelectedMonth(e.target.value)}
+    className="border border-gray-300 rounded px-3 py-1 text-sm bg-white text-black"
+  >
+    {months.map(month => (
+      <option key={month} value={month}>{month}</option>
+    ))}
+  </select>
+</div>
+
+{/* Informasi Month Before & Month Now dipisah ke kiri dan kanan */}
+<div className="mb-2 flex justify-between text-sm text-black px-1">
+  <div className="font-medium">
+    Month Before: <span className="font-bold">{monthBefore}</span>
+  </div>
+  <div className="font-medium">
+    Month Now: <span className="font-bold">{selectedMonth}</span>
+  </div>
+</div>
 
       <div className="border border-gray-300 rounded overflow-x-auto bg-white shadow-sm">
         <table className="w-full text-xs border-collapse">
