@@ -248,10 +248,10 @@ export default function SchedulePage() {
             <tr className="bg-gray-100 border-b border-gray-300">
               {/* STICKY COLUMNS - No, JOIN DATE, OFFICER NAME, PRORATE, DAY */}
               <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: 0, minWidth: '50px' }}>No</th>
-              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '50px', minWidth: '100px' }}>JOIN DATE</th>
-              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '150px', minWidth: '150px' }}>OFFICER NAME</th>
-              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '300px', minWidth: '60px' }}>PRORATE</th>
-              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '360px', minWidth: '50px' }}>DAY</th>
+<th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '50px', minWidth: '100px' }}>JOIN DATE</th>
+<th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '150px', minWidth: '150px' }}>OFFICER NAME</th>
+<th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '300px', minWidth: '60px' }}>PRORATE</th>
+<th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '360px', minWidth: '50px' }}>DAY</th>
               
               {/* DATES - Normal (tidak sticky) */}
               <th className="px-2 py-1 text-center font-bold text-black border-r border-gray-300 relative" colSpan={dateColumns.length}>
@@ -286,11 +286,11 @@ export default function SchedulePage() {
             {scheduleData.map((officer) => (
               <tr key={officer.no} className="border-b border-gray-200 hover:bg-gray-50">
                 {/* STICKY COLUMNS - Data officer */}
-                <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10" style={{ left: 0 }}>{officer.no}</td>
-                <td className="px-2 py-1 border-r border-gray-200 sticky left-0 bg-white z-10" style={{ left: '50px' }}>{officer.joinDate}</td>
-                <td className="px-2 py-1 border-r border-gray-200 font-medium sticky left-0 bg-white z-10" style={{ left: '150px' }}>{officer.officerName}</td>
-                <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10" style={{ left: '300px' }}>{officer.prorate}</td>
-                <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10" style={{ left: '360px' }}>{officer.day}</td>
+                <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>{officer.no}</td>
+<td className="px-2 py-1 border-r border-gray-200 sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '50px' }}>{officer.joinDate}</td>
+<td className="px-2 py-1 border-r border-gray-200 font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '150px' }}>{officer.officerName}</td>
+<td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '300px' }}>{officer.prorate}</td>
+<td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '360px' }}>{officer.day}</td>
                 
                 {/* Shift per tanggal - normal */}
                 {dateColumns.map((date, idx) => {
