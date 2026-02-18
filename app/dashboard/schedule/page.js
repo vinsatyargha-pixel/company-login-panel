@@ -54,14 +54,9 @@ export default function SchedulePage() {
   const [selectedMonth, setSelectedMonth] = useState('February');
   const [monthBefore, setMonthBefore] = useState('January');
   
-  const [officerList] = useState([
-    { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
-    { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
-    { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' },
-    { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
-    { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
-    { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' }
-  ]);
+  // OFFICER LIST DARI API
+  const [officerList, setOfficerList] = useState([]);
+  const [officersLoading, setOfficersLoading] = useState(true);
   
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -76,15 +71,57 @@ export default function SchedulePage() {
 
   useEffect(() => {
     if (mounted) {
+      fetchOfficers();
+    }
+  }, [mounted]);
+
+  useEffect(() => {
+    if (mounted && officerList.length > 0) {
       fetchScheduleData();
     }
-  }, [mounted, selectedYear, selectedMonth]);
+  }, [mounted, officerList, selectedYear, selectedMonth]);
 
   useEffect(() => {
     const currentIndex = months.indexOf(selectedMonth);
     const prevIndex = currentIndex === 0 ? 11 : currentIndex - 1;
     setMonthBefore(months[prevIndex]);
   }, [selectedMonth]);
+
+  // AMBIL OFFICER DARI DATABASE (CS DP WD)
+  const fetchOfficers = async () => {
+    setOfficersLoading(true);
+    try {
+      const response = await fetch('/api/officers?department=CS DP WD');
+      const data = await response.json();
+      if (data.success && data.officers.length > 0) {
+        setOfficerList(data.officers);
+      } else {
+        // FALLBACK KE HARDCODE KALO GA ADA DATA
+        console.log('Pakai hardcode officers');
+        setOfficerList([
+          { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
+          { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
+          { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' },
+          { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
+          { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
+          { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' }
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching officers:', error);
+      // FALLBACK KE HARDCODE KALO ERROR
+      setOfficerList([
+        { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
+        { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
+        { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' },
+        { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
+        { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
+        { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' }
+      ]);
+    } finally {
+      setOfficersLoading(false);
+    }
+  };
 
   const fetchScheduleData = async () => {
     setLoading(true);
@@ -152,7 +189,7 @@ export default function SchedulePage() {
         (totals.IZIN || 0) +
         (totals.ABSEN || 0) +
         (totals.DIRUMAHKAN || 0) +
-        (totals["UNPAID LEAVE"] || 0); // PAKAI BRACKET NOTATION!
+        (totals["UNPAID LEAVE"] || 0);
       
       const day = totalDays - nonWorkingDays;
       
@@ -205,7 +242,7 @@ export default function SchedulePage() {
     'UNPAID LEAVE', 'DIRUMAHKAN', 'RESIGN', 'TERMINATED', 'BELUM JOIN'
   ];
 
-  if (!mounted || loading) {
+  if (!mounted || loading || officersLoading) {
     return (
       <div className="p-6 min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
