@@ -104,7 +104,7 @@ export default function SchedulePage() {
     }
   };
 
-  const calculateTotals = (shifts) => {
+    const calculateTotals = (shifts) => {
     const totals = {
       OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0,
       'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
@@ -147,7 +147,7 @@ export default function SchedulePage() {
       // Hitung PRORATE = 4 - total OFF
       const prorate = Math.max(0, 4 - (totals.OFF || 0));
       
-      // Hitung DAY = total hari kerja (tanpa OFF, SAKIT, IZIN, ABSEN, DIRUMAHKAN, UNPAID LEAVE)
+      // Hitung DAY = total hari kerja
       const totalDays = Object.keys(shifts).length;
       const nonWorkingDays = (totals.OFF || 0) + (totals.SAKIT || 0) + (totals.IZIN || 0) + 
                              (totals.ABSEN || 0) + (totals.DIRUMAHKAN || 0) + (totals.UNPAID LEAVE || 0);
@@ -166,6 +166,8 @@ export default function SchedulePage() {
   };
 
   const getDateColumns = () => {
+    // ... sisanya tetap
+  };
     const columns = [];
     
     const prevMonthDate = new Date(`${monthBefore} 1, ${selectedYear}`);
