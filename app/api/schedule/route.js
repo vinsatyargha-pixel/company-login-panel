@@ -16,42 +16,31 @@ export async function GET(request) {
     const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRy3CioVKz96SqTPH3ZntSMp9wcTRDnx47AoUclojCuIFkhclspY93Pa9Jmoki4DDBJzk3ThjDnu10M/pub?gid=0&single=true&output=csv');
     const csvText = await response.text();
     
-    // Split per baris
+    // Split per baris dan hapus baris kosong
     const lines = csvText.split('\n').filter(line => line.trim() !== '');
     
-    // Ambil header (baris pertama) - bersihin dari koma di awal
-    let headerLine = lines[0];
-    // Hapus koma di awal kalo ada
-    if (headerLine.startsWith(',')) {
-      headerLine = headerLine.substring(1);
-    }
-    const headers = headerLine.split(',').map(h => h.trim());
+    // AMBIL HEADER (baris pertama) - pake regex buat split CSV yang bener
+    const headerMatch = lines[0].match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
+    const headers = headerMatch.map(h => h.replace(/^"|"$/g, '').trim());
     
-    console.log('Headers:', headers); // Debug
+    console.log('Headers:', headers);
     
-    // Parse data baris per baris (mulai dari baris ke-2)
+    // Parse data
     const data = [];
     for (let i = 1; i < lines.length; i++) {
-      let line = lines[i];
-      // Hapus koma di awal kalo ada
-      if (line.startsWith(',')) {
-        line = line.substring(1);
-      }
+      const line = lines[i];
+      // Split pake regex yang handle quoted fields
+      const matches = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
+      const values = matches.map(v => v.replace(/^"|"$/g, '').trim());
       
-      const values = line.split(',');
       const row = {};
-      
-      // Map values ke headers
-      headers.forEach((header, index) => {
+      headers.forEach((header, idx) => {
         if (header && header !== '') {
-          row[header] = values[index] || '';
+          row[header] = values[idx] || '';
         }
       });
       
-      // Hanya tambah kalo row punya data
-      if (Object.keys(row).length > 0) {
-        data.push(row);
-      }
+      data.push(row);
     }
     
     // Filter berdasarkan tahun dan bulan
@@ -64,7 +53,7 @@ export async function GET(request) {
       success: true, 
       data: filteredData,
       headers,
-      sampleRow: filteredData[0] || null,
+      sampleRaw: lines[0].substring(0, 100), // Preview raw header
       year, 
       month,
       monthShort,
@@ -76,7 +65,8 @@ export async function GET(request) {
     console.error('Error:', error);
     return NextResponse.json({ 
       success: false, 
-      error: error.message 
+      error: error.message,
+      stack: error.stack 
     }, { status: 500 });
   }
 }
