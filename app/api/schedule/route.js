@@ -11,7 +11,7 @@ export async function GET(request) {
     const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRy3CioVKz96SqTPH3ZntSMp9wcTRDnx47AoUclojCuIFkhclspY93Pa9Jmoki4DDBJzk3ThjDnu10M/pub?gid=0&single=true&output=csv');
     const csvText = await response.text();
     
-    // Parse CSV
+    // Parse CSV pake PapaParse
     const { data } = Papa.parse(csvText, {
       header: true,
       skipEmptyLines: true
@@ -19,22 +19,20 @@ export async function GET(request) {
     
     // Filter data berdasarkan tahun dan bulan
     const filteredData = data.filter(row => {
-      // Baris dengan kolom YEARS dan MONTH
       return row.YEARS === year && row.MONTH === month;
     });
     
-    // Ambil data officer dari CTRL sheet nanti via Active Officers
-    // Sementara pake data dari RUNDOWN langsung
+    console.log('Data ditemukan:', filteredData.length); // Buat debugging
     
     return NextResponse.json({ 
       success: true, 
       data: filteredData,
-      year,
+      year, 
       month 
     });
     
   } catch (error) {
-    console.error('Error fetching schedule:', error);
+    console.error('Error:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message 
