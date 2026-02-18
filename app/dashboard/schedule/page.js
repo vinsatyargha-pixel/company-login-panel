@@ -241,31 +241,39 @@ export default function SchedulePage() {
         </div>
       </div>
 
-      {/* TABLE SCHEDULE */}
-      <div className="border border-gray-300 rounded overflow-x-auto bg-white shadow-sm">
-        <table className="w-full text-xs border-collapse">
+      {/* TABLE SCHEDULE - DENGAN STICKY COLUMNS */}
+      <div className="border border-gray-300 rounded overflow-x-auto bg-white shadow-sm" style={{ maxWidth: '100%', overflowX: 'auto' }}>
+        <table className="w-full text-xs border-collapse" style={{ minWidth: '2000px' }}>
           <thead>
             <tr className="bg-gray-100 border-b border-gray-300">
-              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">No</th>
-              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">JOIN DATE</th>
-              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">OFFICER NAME</th>
-              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">PRORATE</th>
-              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">DAY</th>
+              {/* STICKY COLUMNS - No, JOIN DATE, OFFICER NAME, PRORATE, DAY */}
+              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: 0, minWidth: '50px' }}>No</th>
+              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '50px', minWidth: '100px' }}>JOIN DATE</th>
+              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '150px', minWidth: '150px' }}>OFFICER NAME</th>
+              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '300px', minWidth: '60px' }}>PRORATE</th>
+              <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300 sticky left-0 bg-gray-100 z-20" rowSpan="2" style={{ left: '360px', minWidth: '50px' }}>DAY</th>
+              
+              {/* DATES - Normal (tidak sticky) */}
               <th className="px-2 py-1 text-center font-bold text-black border-r border-gray-300 relative" colSpan={dateColumns.length}>
                 <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xs font-normal text-gray-600">
                   Month Before: {monthBefore}
                 </div>
                 DATES
               </th>
+              
+              {/* TOTAL - Normal */}
               <th className="px-2 py-1 text-center font-bold text-black" colSpan={totalColumns.length}>TOTAL</th>
             </tr>
+            
             <tr className="bg-gray-50 border-b border-gray-300">
+              {/* Kolom tanggal - normal */}
               {dateColumns.map((date, idx) => (
                 <th key={idx} className="px-1 py-1 text-center font-medium text-black border-r border-gray-300 min-w-[30px]">
                   {date.day}<br/>
                   <span className="text-[10px] text-gray-600">{date.month.substring(0,3)}</span>
                 </th>
               ))}
+              {/* Kolom total - normal */}
               {totalColumns.map((col, idx) => (
                 <th key={idx} className="px-1 py-1 text-left font-medium text-black border-r border-gray-300 min-w-[60px]">
                   {col}
@@ -277,12 +285,14 @@ export default function SchedulePage() {
           <tbody>
             {scheduleData.map((officer) => (
               <tr key={officer.no} className="border-b border-gray-200 hover:bg-gray-50">
-                <td className="px-2 py-1 border-r border-gray-200 text-center text-black">{officer.no}</td>
-                <td className="px-2 py-1 border-r border-gray-200 text-black">{officer.joinDate}</td>
-                <td className="px-2 py-1 border-r border-gray-200 font-medium text-black">{officer.officerName}</td>
-                <td className="px-2 py-1 border-r border-gray-200 text-center text-black">{officer.prorate}</td>
-                <td className="px-2 py-1 border-r border-gray-200 text-center text-black">{officer.day}</td>
+                {/* STICKY COLUMNS - Data officer */}
+                <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10" style={{ left: 0 }}>{officer.no}</td>
+                <td className="px-2 py-1 border-r border-gray-200 sticky left-0 bg-white z-10" style={{ left: '50px' }}>{officer.joinDate}</td>
+                <td className="px-2 py-1 border-r border-gray-200 font-medium sticky left-0 bg-white z-10" style={{ left: '150px' }}>{officer.officerName}</td>
+                <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10" style={{ left: '300px' }}>{officer.prorate}</td>
+                <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10" style={{ left: '360px' }}>{officer.day}</td>
                 
+                {/* Shift per tanggal - normal */}
                 {dateColumns.map((date, idx) => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
                   return (
@@ -295,6 +305,7 @@ export default function SchedulePage() {
                   );
                 })}
                 
+                {/* Totals - normal dengan warna */}
                 {totalColumns.map((col, idx) => (
                   <td key={idx} className={`px-2 py-1 border-r border-gray-200 text-right font-bold ${totalStyles[col] || 'text-black'}`}>
                     {officer.totals[col] || 0}
@@ -303,14 +314,15 @@ export default function SchedulePage() {
               </tr>
             ))}
             
+            {/* STICKY untuk baris total */}
             <tr className="bg-gray-50 font-bold border-t border-gray-300">
-              <td colSpan="5" className="px-2 py-1 text-right text-black">TOTAL OFFICER PER DAY</td>
+              <td colSpan="5" className="px-2 py-1 text-right sticky left-0 bg-gray-50 z-10" style={{ left: 0 }}>TOTAL OFFICER PER DAY</td>
               <td colSpan={dateColumns.length} className="px-2 py-1"></td>
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right text-black font-bold">PAGI</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10" style={{ left: 0 }}>PAGI</td>
               {dateColumns.map((date, idx) => {
                 const pagiCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
@@ -326,7 +338,7 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right text-black font-bold">SIANG</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10" style={{ left: 0 }}>SIANG</td>
               {dateColumns.map((date, idx) => {
                 const siangCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
@@ -342,7 +354,7 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right text-black font-bold">MALAM</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10" style={{ left: 0 }}>MALAM</td>
               {dateColumns.map((date, idx) => {
                 const malamCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
