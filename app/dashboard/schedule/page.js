@@ -332,13 +332,17 @@ export default function SchedulePage() {
             
             {/* STICKY untuk baris total */}
             <tr className="bg-gray-50 font-bold border-t border-gray-300">
-              <td colSpan="5" className="px-2 py-1 text-right sticky left-0 bg-gray-50 z-10 font-bold text-black" style={{ left: 0 }}>TOTAL OFFICER PER DAY</td>
+              <td colSpan="5" className="px-2 py-1 text-right sticky left-0 bg-gray-50 z-10 font-bold text-black" style={{ left: 0 }}>
+  TOTAL OFFICER PER DAY
+</td>
               <td colSpan={dateColumns.length} className="px-2 py-1"></td>
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>PAGI</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>
+  PAGI
+</td>
               {dateColumns.map((date, idx) => {
                 const pagiCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
@@ -354,7 +358,9 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>SIANG</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>
+  SIANG
+</td>
               {dateColumns.map((date, idx) => {
                 const siangCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
@@ -370,7 +376,9 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>MALAM</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>
+  MALAM
+</td>
               {dateColumns.map((date, idx) => {
                 const malamCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
