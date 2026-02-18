@@ -195,11 +195,18 @@ const fetchOfficersFromActive = async () => {
   };
 
   const getShiftForDate = (shifts, day, month) => {
-    // Logic buat dapetin shift berdasarkan tanggal
-    // Ini perlu disesuaikan dengan format tanggal di data
-    const dateKey = `${day}-${month}`; // Sementara
-    return shifts[dateKey] || '-';
+  // Map month dari "January" ke "Jan"
+  const monthMap = {
+    'January': 'Jan', 'February': 'Feb', 'March': 'Mar', 'April': 'Apr',
+    'May': 'May', 'June': 'Jun', 'July': 'Jul', 'August': 'Aug',
+    'September': 'Sep', 'October': 'Oct', 'November': 'Nov', 'December': 'Dec'
   };
+  
+  const monthShort = monthMap[month] || month.substring(0, 3);
+  const dateKey = `${day}-${monthShort}`;
+  
+  return shifts[dateKey] || '-';
+};
 
   const getShiftStyle = (shift) => {
     if (!shift || shift === '-' || !validShifts.includes(shift)) {
