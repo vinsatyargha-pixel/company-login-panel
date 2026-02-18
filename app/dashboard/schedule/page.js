@@ -105,25 +105,50 @@ export default function SchedulePage() {
   };
 
   const transformScheduleData = (rawData) => {
-    const officerMap = {};
-    officerList.forEach((officer) => {
-      officerMap[officer.full_name] = {
-        joinDate: officer.join_date || '-',
-        shifts: {}
-      };
-    });
+  const officerMap = {};
+  officerList.forEach((officer) => {
+    officerMap[officer.full_name] = {
+      joinDate: officer.join_date || '-',
+      shifts: {}
+    };
+  });
 
-    rawData.forEach(row => {
-      const date = row.DATE;
-      if (!date) return;
-      
-      Object.keys(officerMap).forEach(officerName => {
-        const shiftCode = row[officerName];
-        if (shiftCode && shiftCode.trim() !== '') {
-          officerMap[officerName].shifts[date] = shiftCode;
-        }
-      });
+  rawData.forEach(row => {
+    const date = row.DATE;
+    if (!date) return;
+    
+    Object.keys(officerMap).forEach(officerName => {
+      const shiftCode = row[officerName];
+      if (shiftCode && shiftCode.trim() !== '') {
+        officerMap[officerName].shifts[date] = shiftCode;
+      }
     });
+  });
+
+  return officerList.map((officer, index) => {
+    const shifts = officerMap[officer.full_name]?.shifts || {};
+    const totals = calculateTotals(shifts);
+    
+    // Hitung PRORATE = 4 - total OFF
+    const prorate = Math.max(0, 4 - (totals.OFF || 0));
+    
+    // Hitung DAY = total hari yang ada shift - (OFF + SAKIT + IZIN + ABSEN + DIRUMAHKAN + UNPAID LEAVE)
+    const totalDays = Object.keys(shifts).length;
+    const nonWorkingDays = (totals.OFF || 0) + (totals.SAKIT || 0) + (totals.IZIN || 0) + 
+                           (totals.ABSEN || 0) + (totals.DIRUMAHKAN || 0) + (totals.UNPAID LEAVE || 0);
+    const day = totalDays - nonWorkingDays;
+    
+    return {
+      no: index + 1,
+      joinDate: officer.join_date || '-',
+      officerName: officer.full_name,
+      prorate: prorate,
+      day: day,
+      shifts: shifts,
+      totals: totals
+    };
+  });
+};
 
     return officerList.map((officer, index) => ({
       no: index + 1,
