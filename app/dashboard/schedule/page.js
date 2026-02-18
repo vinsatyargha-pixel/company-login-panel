@@ -118,7 +118,7 @@ export default function SchedulePage() {
     return totals;
   };
 
-  const transformScheduleData = (rawData) => {
+    const transformScheduleData = (rawData) => {
     const officerMap = {};
     officerList.forEach((officer) => {
       officerMap[officer.full_name] = {
@@ -138,6 +138,35 @@ export default function SchedulePage() {
         }
       });
     });
+
+    // TAMBAHKAN CONSOLE.LOG DI SINI
+    console.log('===== DATA SHIFT PER OFFICER =====');
+    officerList.forEach((officer) => {
+      const shifts = officerMap[officer.full_name]?.shifts || {};
+      console.log(officer.full_name, 'shifts:', shifts);
+    });
+
+    return officerList.map((officer, index) => {
+      const shifts = officerMap[officer.full_name]?.shifts || {};
+      const totals = calculateTotals(shifts);
+      
+      const prorate = Math.max(0, 4 - (totals.OFF || 0));
+      const totalDays = Object.keys(shifts).length;
+      const nonWorkingDays = (totals.OFF || 0) + (totals.SAKIT || 0) + (totals.IZIN || 0) + 
+                             (totals.ABSEN || 0) + (totals.DIRUMAHKAN || 0) + (totals.UNPAID LEAVE || 0);
+      const day = totalDays - nonWorkingDays;
+      
+      return {
+        no: index + 1,
+        joinDate: officer.join_date || '-',
+        officerName: officer.full_name,
+        prorate: prorate,
+        day: day,
+        shifts: shifts,
+        totals: totals
+      };
+    });
+  };
 
     return officerList.map((officer, index) => {
       const shifts = officerMap[officer.full_name]?.shifts || {};
