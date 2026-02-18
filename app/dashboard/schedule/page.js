@@ -130,39 +130,40 @@ const fetchOfficersFromActive = async () => {
   };
 
   const transformScheduleData = (rawData) => {
-    // Map per officer
-    const officerMap = {};
-    officerList.forEach((officer, index) => {
-      officerMap[officer.full_name] = {
-        joinDate: officer.join_date || '-',
-        shifts: {}
-      };
-    });
-
-    // Isi shifts dari rawData
-    rawData.forEach(row => {
-      const date = row.DATE;
-      if (!date) return;
-      
-      officerNames.forEach((officerName, idx) => {
-        const shiftCode = row[officerName];
-        if (shiftCode && officerMap[officerName]) {
-          officerMap[officerName].shifts[date] = shiftCode;
-        }
-      });
-    });
-
-    // Convert ke array untuk tabel
-    return officerList.map((officer, index) => ({
-      no: index + 1,
+  // Map per officer
+  const officerMap = {};
+  officerList.forEach((officer) => {
+    officerMap[officer.full_name] = {
       joinDate: officer.join_date || '-',
-      officerName: officer.full_name,
-      prorate: 0,
-      day: 27,
-      shifts: officerMap[officer.full_name]?.shifts || {},
-      totals: calculateTotals(officerMap[officer.full_name]?.shifts || {})
-    }));
-  };
+      shifts: {}
+    };
+  });
+
+  // Isi shifts dari rawData
+  rawData.forEach(row => {
+    const date = row.DATE;
+    if (!date) return;
+    
+    // Loop pake officerMap keys
+    Object.keys(officerMap).forEach(officerName => {
+      const shiftCode = row[officerName];
+      if (shiftCode) {
+        officerMap[officerName].shifts[date] = shiftCode;
+      }
+    });
+  });
+
+  // Convert ke array untuk tabel
+  return officerList.map((officer, index) => ({
+    no: index + 1,
+    joinDate: officer.join_date || '-',
+    officerName: officer.full_name,
+    prorate: 0,
+    day: 27,
+    shifts: officerMap[officer.full_name]?.shifts || {},
+    totals: calculateTotals(officerMap[officer.full_name]?.shifts || {})
+  }));
+};
 
   const calculateTotals = (shifts) => {
     const totals = {
