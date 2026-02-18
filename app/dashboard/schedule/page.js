@@ -251,7 +251,12 @@ export default function SchedulePage() {
               <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">OFFICER NAME</th>
               <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">PRORATE</th>
               <th className="px-2 py-1 text-left font-bold text-black border-r border-gray-300" rowSpan="2">DAY</th>
-              <th className="px-2 py-1 text-center font-bold text-black border-r border-gray-300" colSpan={dateColumns.length}>DATES</th>
+              <th className="px-2 py-1 text-center font-bold text-black border-r border-gray-300 relative" colSpan={dateColumns.length}>
+                <div className="absolute left-2 top-1/2 transform -translate-y-1/2 text-xs font-normal text-gray-600">
+                  Month Before: {monthBefore}
+                </div>
+                DATES
+              </th>
               <th className="px-2 py-1 text-center font-bold text-black" colSpan={totalColumns.length}>TOTAL</th>
             </tr>
             <tr className="bg-gray-50 border-b border-gray-300">
