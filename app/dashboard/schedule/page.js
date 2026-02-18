@@ -106,7 +106,7 @@ export default function SchedulePage() {
       
       Object.keys(officerMap).forEach(officerName => {
         const shiftCode = row[officerName];
-        if (shiftCode) {
+        if (shiftCode && shiftCode.trim() !== '') {
           officerMap[officerName].shifts[date] = shiftCode;
         }
       });
@@ -141,9 +141,11 @@ export default function SchedulePage() {
 
   const getDateColumns = () => {
     const columns = [];
+    // Tanggal 21-31 bulan sebelumnya
     for (let day = 21; day <= 31; day++) {
       columns.push({ day, month: monthBefore });
     }
+    // Tanggal 1-20 bulan yang dipilih
     for (let day = 1; day <= 20; day++) {
       columns.push({ day, month: selectedMonth });
     }
@@ -151,16 +153,8 @@ export default function SchedulePage() {
   };
 
   const getShiftForDate = (shifts, day, month) => {
-    const monthMap = {
-      'January': 'Jan', 'February': 'Feb', 'March': 'Mar', 'April': 'Apr',
-      'May': 'May', 'June': 'Jun', 'July': 'Jul', 'August': 'Aug',
-      'September': 'Sep', 'October': 'Oct', 'November': 'Nov', 'December': 'Dec'
-    };
-    
-    const monthShort = monthMap[month] || month.substring(0, 3);
-    const dateKey = `${day}-${monthShort}`;
-    
-    return shifts[dateKey] || '-';
+    // LANGSUNG PAKE ANGKA karena di data shifts key-nya angka
+    return shifts[day.toString()] || '-';
   };
 
   const getShiftStyle = (shift) => {
