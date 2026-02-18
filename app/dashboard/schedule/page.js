@@ -110,26 +110,37 @@ const fetchOfficersFromActive = async () => {
 };
 
   const fetchScheduleData = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/schedule?year=${selectedYear}&month=${selectedMonth}`);
-      const result = await response.json();
+  setLoading(true);
+  try {
+    console.log('Fetching data untuk:', selectedYear, selectedMonth);
+    const response = await fetch(`/api/schedule?year=${selectedYear}&month=${selectedMonth}`);
+    const result = await response.json();
+    
+    console.log('API Response:', result); // <-- TAMBAH INI
+    
+    if (result.success) {
+      console.log('Data mentah dari API:', result.data); // <-- TAMBAH INI
+      console.log('Jumlah data:', result.data.length);
       
-      if (result.success) {
-        // Transform data ke format tabel
-        const transformed = transformScheduleData(result.data);
-        setScheduleData(transformed);
-      } else {
-        console.error('API error:', result.error);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
+      // Transform data ke format tabel
+      const transformed = transformScheduleData(result.data);
+      console.log('Data setelah transform:', transformed); // <-- TAMBAH INI
+      
+      setScheduleData(transformed);
+    } else {
+      console.error('API error:', result.error);
     }
-  };
+  } catch (error) {
+    console.error('Error:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const transformScheduleData = (rawData) => {
+  console.log('transformScheduleData dimulai dengan rawData:', rawData);
+  console.log('officerList:', officerList);
+  
   // Map per officer
   const officerMap = {};
   officerList.forEach((officer) => {
@@ -138,23 +149,29 @@ const fetchOfficersFromActive = async () => {
       shifts: {}
     };
   });
+  
+  console.log('officerMap awal:', officerMap);
 
   // Isi shifts dari rawData
   rawData.forEach(row => {
     const date = row.DATE;
     if (!date) return;
     
-    // Loop pake officerMap keys
+    console.log('Processing row untuk tanggal:', date, row); // <-- TAMBAH INI
+    
     Object.keys(officerMap).forEach(officerName => {
       const shiftCode = row[officerName];
       if (shiftCode) {
+        console.log(`  - ${officerName}: ${shiftCode}`); // <-- TAMBAH INI
         officerMap[officerName].shifts[date] = shiftCode;
       }
     });
   });
 
+  console.log('officerMap setelah diisi:', officerMap);
+
   // Convert ke array untuk tabel
-  return officerList.map((officer, index) => ({
+  const result = officerList.map((officer, index) => ({
     no: index + 1,
     joinDate: officer.join_date || '-',
     officerName: officer.full_name,
@@ -163,24 +180,10 @@ const fetchOfficersFromActive = async () => {
     shifts: officerMap[officer.full_name]?.shifts || {},
     totals: calculateTotals(officerMap[officer.full_name]?.shifts || {})
   }));
+  
+  console.log('Hasil akhir transform:', result);
+  return result;
 };
-
-  const calculateTotals = (shifts) => {
-    const totals = {
-      OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0,
-      'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
-    };
-    
-    Object.values(shifts).forEach(shift => {
-      if (validShifts.includes(shift)) {
-        if (totals.hasOwnProperty(shift)) {
-          totals[shift] = (totals[shift] || 0) + 1;
-        }
-      }
-    });
-    
-    return totals;
-  };
 
   const getDateColumns = () => {
     const columns = [];
