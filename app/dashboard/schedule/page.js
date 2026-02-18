@@ -104,7 +104,7 @@ export default function SchedulePage() {
     }
   };
 
-    const calculateTotals = (shifts) => {
+  const calculateTotals = (shifts) => {
     const totals = {
       OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0, SPECIAL: 0,
       'UNPAID LEAVE': 0, DIRUMAHKAN: 0, RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
@@ -166,8 +166,6 @@ export default function SchedulePage() {
   };
 
   const getDateColumns = () => {
-    // ... sisanya tetap
-  };
     const columns = [];
     
     const prevMonthDate = new Date(`${monthBefore} 1, ${selectedYear}`);
@@ -304,7 +302,7 @@ export default function SchedulePage() {
                 {/* STICKY COLUMNS - Data officer */}
                 <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>{officer.no}</td>
                 <td className="px-2 py-1 border-r border-gray-200 sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '50px' }}>{officer.joinDate}</td>
-                <td className="px-2 py-1 border-r border-gray-200 font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '150px' }}>{officer.officerName}</td>
+                <td className="px-2 py-1 border-r border-gray-200 sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '150px' }}>{officer.officerName}</td>
                 <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '300px' }}>{officer.prorate}</td>
                 <td className="px-2 py-1 border-r border-gray-200 text-center sticky left-0 bg-white z-10 font-bold text-black" style={{ left: '360px' }}>{officer.day}</td>
                 
@@ -332,17 +330,13 @@ export default function SchedulePage() {
             
             {/* STICKY untuk baris total */}
             <tr className="bg-gray-50 font-bold border-t border-gray-300">
-              <td colSpan="5" className="px-2 py-1 text-right sticky left-0 bg-gray-50 z-10 font-bold text-black" style={{ left: 0 }}>
-  TOTAL OFFICER PER DAY
-</td>
+              <td colSpan="5" className="px-2 py-1 text-right sticky left-0 bg-gray-50 z-10 font-bold text-black" style={{ left: 0 }}>TOTAL OFFICER PER DAY</td>
               <td colSpan={dateColumns.length} className="px-2 py-1"></td>
               <td colSpan={totalColumns.length} className="px-2 py-1"></td>
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>
-  PAGI
-</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>PAGI</td>
               {dateColumns.map((date, idx) => {
                 const pagiCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
@@ -358,9 +352,7 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>
-  SIANG
-</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>SIANG</td>
               {dateColumns.map((date, idx) => {
                 const siangCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
@@ -376,9 +368,7 @@ export default function SchedulePage() {
             </tr>
             
             <tr>
-              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>
-  MALAM
-</td>
+              <td colSpan="5" className="px-2 py-1 text-right font-bold sticky left-0 bg-white z-10 font-bold text-black" style={{ left: 0 }}>MALAM</td>
               {dateColumns.map((date, idx) => {
                 const malamCount = scheduleData.filter(officer => {
                   const shift = getShiftForDate(officer.shifts, date.day, date.month);
