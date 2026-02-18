@@ -5,6 +5,14 @@ export async function GET(request) {
   const year = searchParams.get('year') || '2026';
   const month = searchParams.get('month') || 'February';
   
+  // Hardcode headers sesuai file CSV lo
+  const HEADERS = [
+    'MONTH RUNDOWN', 'DATE RUNDOWN', 'DATE', 'MONTH',
+    'Sulaeman', 'Goldie Mountana', 'Achmad Naufal Zakiy',
+    'Mushollina Nul Hakim', 'Lie Fung Kien (Vini)', 'Ronaldo Ichwan',
+    'NOTE/CATATAN LAIN2', '', '', 'HELPER', 'YEARS'
+  ];
+  
   const reverseMonthMap = {
     'January': 'Jan', 'February': 'Feb', 'March': 'Mar', 'April': 'Apr',
     'May': 'May', 'June': 'Jun', 'July': 'Jul', 'August': 'Aug',
@@ -16,25 +24,18 @@ export async function GET(request) {
     const response = await fetch('https://docs.google.com/spreadsheets/d/e/2PACX-1vRy3CioVKz96SqTPH3ZntSMp9wcTRDnx47AoUclojCuIFkhclspY93Pa9Jmoki4DDBJzk3ThjDnu10M/pub?gid=0&single=true&output=csv');
     const csvText = await response.text();
     
-    // Split per baris dan hapus baris kosong
+    // Split per baris
     const lines = csvText.split('\n').filter(line => line.trim() !== '');
     
-    // AMBIL HEADER (baris pertama) - pake regex buat split CSV yang bener
-    const headerMatch = lines[0].match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
-    const headers = headerMatch.map(h => h.replace(/^"|"$/g, '').trim());
-    
-    console.log('Headers:', headers);
-    
-    // Parse data
+    // Parse data mulai dari baris ke-2 (index 1) karena baris 1 isinya koma semua
     const data = [];
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
-      // Split pake regex yang handle quoted fields
-      const matches = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || [];
-      const values = matches.map(v => v.replace(/^"|"$/g, '').trim());
+      // Split koma
+      const values = line.split(',').map(v => v.replace(/^"|"$/g, '').trim());
       
       const row = {};
-      headers.forEach((header, idx) => {
+      HEADERS.forEach((header, idx) => {
         if (header && header !== '') {
           row[header] = values[idx] || '';
         }
@@ -52,21 +53,15 @@ export async function GET(request) {
     return NextResponse.json({ 
       success: true, 
       data: filteredData,
-      headers,
-      sampleRaw: lines[0].substring(0, 100), // Preview raw header
       year, 
       month,
       monthShort,
       total: filteredData.length,
-      totalAll: data.length
+      totalAll: data.length,
+      sampleRow: filteredData[0] || data[0] || null
     });
     
   } catch (error) {
-    console.error('Error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message,
-      stack: error.stack 
-    }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
