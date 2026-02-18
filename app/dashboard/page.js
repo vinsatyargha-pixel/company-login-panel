@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import DashboardCard from '@/components/DashboardCard'; // ✅ UDAH BENAR
+import DashboardCard from '@/components/DashboardCard';
 import QuickLinks from '@/components/QuickLinks';
 import LogoutButton from '@/components/LogoutButton';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
@@ -50,97 +50,98 @@ export default function DashboardContent() {
   };
 
   if (loading) return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading dashboard data...</p>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700] mx-auto"></div>
+        <p className="mt-4 text-[#FFD700]">Loading dashboard data...</p>
       </div>
     </div>
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-gray-50">
+    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
       <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">GROUP-X Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome back! Here's your overview for today.</p>
+          <h1 className="text-3xl font-bold text-[#FFD700]">GROUP-X Dashboard</h1>
+          <p className="text-[#A7D8FF] mt-2">Welcome back! Here's your overview for today.</p>
         </div>
         
         <div className="flex items-center gap-4">
-          {/* PROFILE CARD */}
-<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 flex items-center gap-3">
-  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-  </div>
-  <div>
-    <div className="text-sm font-medium text-gray-900">{user?.email || 'Loading...'}</div>
-    <div className="text-xs text-gray-500">
-      {isAdmin ? 'Admin' : userJobRole || 'Staff'}
-    </div>
-    <button
-      onClick={() => setShowResetModal(true)}
-      className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1 flex items-center gap-1"
-    >
-      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-      </svg>
-      Reset password
-    </button>
-  </div>
-</div>
+          {/* PROFILE CARD - NAVY & GOLD */}
+          <div className="bg-[#0B1A33] rounded-lg shadow-lg border border-[#FFD700]/30 p-3 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#FFD700]/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-white">{user?.email || 'Loading...'}</div>
+              <div className="text-xs text-[#A7D8FF]">
+                {isAdmin ? 'Admin' : userJobRole || 'Staff'}
+              </div>
+              <button
+                onClick={() => setShowResetModal(true)}
+                className="text-xs text-[#FFD700] hover:text-[#FFD700]/80 font-medium mt-1 flex items-center gap-1"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Reset password
+              </button>
+            </div>
+          </div>
           <LogoutButton />
         </div>
       </header>
 
-      {/* DASHBOARD CARDS - UDAH PAKE DashboardCard */}
+      {/* DASHBOARD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <DashboardCard
           title="Asset Group-X"
           value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
-          icon="🚚"
-          color="blue"
+          icon="₿"
+          color="gold"
           href="/dashboard/assets"
         />
         <DashboardCard
           title="Active Officers"
           value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
           icon="👤"
-          color="green"
+          color="gold"
           href="/dashboard/officers/active"
         />
         <DashboardCard
           title="Schedule Officers"
           value="Calendar"
           icon="📅"
-          color="purple"
+          color="gold"
           href="/dashboard/schedule"
         />
         <DashboardCard
           title="Working Plan Officer"
           value="Planner"
           icon="📋"
-          color="orange"
+          color="gold"
           href="/dashboard/working-plans"
         />
       </div>
 
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Access</h2>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Quick Access</h2>
         <QuickLinks />
       </div>
 
-      <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
+      {/* RECENT ACTIVITY - NAVY & GOLD */}
+      <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Recent Activity</h2>
         <div className="space-y-4">
-          <div className="border-l-4 border-blue-500 pl-4 py-2">
-            <p className="font-medium">New transaction batch processed</p>
-            <p className="text-sm text-gray-500">by System • 10 min ago</p>
+          <div className="border-l-4 border-[#32CD32] pl-4 py-2">
+            <p className="font-medium text-white">New transaction batch processed</p>
+            <p className="text-sm text-[#A7D8FF]">by System • 10 min ago</p>
           </div>
-          <div className="border-l-4 border-green-500 pl-4 py-2">
-            <p className="font-medium">Tamara Halim joined GROUP-X</p>
-            <p className="text-sm text-gray-500">by Admin • 2 hours ago</p>
+          <div className="border-l-4 border-[#FFD700] pl-4 py-2">
+            <p className="font-medium text-white">Tamara Halim joined GROUP-X</p>
+            <p className="text-sm text-[#A7D8FF]">by Admin • 2 hours ago</p>
           </div>
         </div>
       </div>
