@@ -97,11 +97,11 @@ export default function DashboardContent() {
       {/* DASHBOARD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <DashboardCard
-          title="Asset Group-X"
-          value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
-          icon="₿"
-          color="gold"
-          href="/dashboard/assets"
+        title="Asset Group-X"
+        value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
+        icon="💎"
+        color="gold"
+        href="/dashboard/assets"
         />
         <DashboardCard
           title="Active Officers"
