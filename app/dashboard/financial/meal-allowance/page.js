@@ -653,85 +653,85 @@ export default function MealAllowancePage() {
       </div>
 
       {/* Modal Edit untuk Admin */}
-      {editingOfficer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-[#FFD700] mb-4">
-              Edit {editingOfficer.full_name}
-            </h3>
-            
-            <div className="space-y-4">
-              {/* KASBON */}
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  KASBON ( - )
-                </label>
-                <input
-                  type="number"
-                  value={editForm.kasbon}
-                  onChange={(e) => setEditForm({...editForm, kasbon: parseInt(e.target.value) || 0})}
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                  placeholder="0"
-                />
-              </div>
-              
-              {/* ETC */}
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  ETC ( + / - )
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={editForm.etc_operator}
-                    onChange={(e) => setEditForm({...editForm, etc_operator: e.target.value})}
-                    className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white w-20"
-                  >
-                    <option value="+">+</option>
-                    <option value="-">-</option>
-                  </select>
-                  <input
-                    type="number"
-                    value={editForm.etc}
-                    onChange={(e) => setEditForm({...editForm, etc: parseInt(e.target.value) || 0})}
-                    className="flex-1 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              
-              {/* Keterangan ETC */}
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  Keterangan ETC
-                </label>
-                <input
-                  type="text"
-                  value={editForm.etc_note}
-                  onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})}
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                  placeholder="Misal: Koreksi, Bonus, dll"
-                />
-              </div>
-              
-              {/* Tombol */}
-              <div className="flex gap-2 pt-4">
-                <button
-                  onClick={handleEditSave}
-                  className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80"
-                >
-                  Simpan
-                </button>
-                <button
-                  onClick={() => setEditingOfficer(null)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600"
-                >
-                  Batal
-                </button>
-              </div>
-            </div>
+{editingOfficer && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
+      <h3 className="text-xl font-bold text-[#FFD700] mb-4">
+        Edit {editingOfficer.full_name}
+      </h3>
+      
+      <div className="space-y-4">
+        {/* 1. KASBON */}
+        <div>
+          <label className="text-[#A7D8FF] text-sm block mb-1">
+            KASBON ( - )
+          </label>
+          <input
+            type="number"
+            value={editForm.kasbon}
+            onChange={(e) => setEditForm({...editForm, kasbon: parseInt(e.target.value) || 0})}
+            className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+            placeholder="0"
+          />
+        </div>
+        
+        {/* 2. ETC + OPERATOR */}
+        <div>
+          <label className="text-[#A7D8FF] text-sm block mb-1">
+            ETC ( + / - )
+          </label>
+          <div className="flex gap-2">
+            <select
+              value={editForm.etc_operator}
+              onChange={(e) => setEditForm({...editForm, etc_operator: e.target.value})}
+              className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white w-20"
+            >
+              <option value="+">+</option>
+              <option value="-">-</option>
+            </select>
+            <input
+              type="number"
+              value={editForm.etc}
+              onChange={(e) => setEditForm({...editForm, etc: parseInt(e.target.value) || 0})}
+              className="flex-1 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+              placeholder="0"
+            />
           </div>
         </div>
-      )}
+        
+        {/* 3. KETERANGAN/NOTE */}
+        <div>
+          <label className="text-[#A7D8FF] text-sm block mb-1">
+            Keterangan / Note
+          </label>
+          <input
+            type="text"
+            value={editForm.etc_note}
+            onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})}
+            className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+            placeholder="Misal: Koreksi, Bonus, Denda, dll"
+          />
+        </div>
+        
+        {/* Tombol Simpan & Batal */}
+        <div className="flex gap-2 pt-4">
+          <button
+            onClick={handleEditSave}
+            className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80"
+          >
+            Simpan
+          </button>
+          <button
+            onClick={() => setEditingOfficer(null)}
+            className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600"
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
