@@ -7,7 +7,7 @@ export default function FinancialHomePage() {
     {
       title: 'Meal Allowance',
       description: 'Uang Makan Officer',
-      icon: '🍲',
+      icon: '🍗',
       href: '/dashboard/financial/meal-allowance',
       bgColor: 'bg-orange-500/20',
       textColor: 'text-orange-500'
