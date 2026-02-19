@@ -454,13 +454,24 @@ const getPaymentDate = (month, year) => {
 
       {/* Info periode */}
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
-        <span className="text-[#A7D8FF]">Periode perhitungan: </span>
-        <span className="text-white font-medium">
-          {getPeriodeStart(selectedMonth, selectedYear)} s/d {getPeriodeEnd(selectedMonth, selectedYear)}
-        </span>
-        <span className="ml-4 text-[#A7D8FF]">Pembayaran: </span>
-        <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span>
-      </div>
+  <span className="text-[#A7D8FF]">Periode perhitungan: </span>
+  <span className="text-white font-medium">
+    {new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric' 
+    })} s/d {' '}
+    {new Date(getPeriodeEnd(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric' 
+    })}
+  </span>
+  <span className="ml-4 text-[#A7D8FF]">Pembayaran: </span>
+  <span className="text-white font-medium">
+    1 {selectedMonth} {selectedYear}
+  </span>
+</div>
 
       {/* CS DP WD Section */}
       {groupedOfficers['CS DP WD'].length > 0 && (
