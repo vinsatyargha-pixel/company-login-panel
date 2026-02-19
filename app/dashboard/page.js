@@ -120,13 +120,13 @@ export default function DashboardContent() {
           className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
         />
                 <DashboardCard
-          title="Financial Summary"
-          value="Management"
-          icon="💰"
-          color="gold"
-          href="/dashboard/financial"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
+  title="Financial Summary"
+  value="Management"
+  icon="💰"
+  color="gold"
+  href="/dashboard/financial"  // ← Arahkan ke halaman utama financial
+  className="..."
+/>
       </div> {/* <-- PENTING: TUTUP GRID DISINI */}
 
       {/* Quick Access section - UDAH DI LUAR GRID */}
