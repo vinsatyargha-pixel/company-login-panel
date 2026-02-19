@@ -603,34 +603,36 @@ export default function MealAllowancePage() {
                       </div>
                       
                       {/* Bank & No Rek - Tampilan Rapi */}
-                      <div className="w-full md:w-1/6">
-                        <div className="text-[#A7D8FF] text-xs font-medium">{bank}</div>
-                        <div className="text-xs text-white break-all">{rek}</div>
-                        {link && (
-                          <a 
-                            href={link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-[#FFD700] hover:underline block truncate max-w-[150px] mt-1"
-                            title={link}
-                          >
-                            {link.replace('https://snipboard.io/', '')}
-                          </a>
-                        )}
-                        
-                        {/* Tombol Edit untuk Admin */}
-                        {isAdmin && usingSnapshot && (
-                          <button
-                            onClick={() => handleEditClick(officer)}
-                            className="mt-2 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-all"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                            <span>Edit</span>
-                          </button>
-                        )}
-                      </div>
+<div className="w-full md:w-1/6">
+  <div className="text-[#A7D8FF] text-xs font-medium">{bank}</div>
+  <div className="text-xs text-white break-all">{rek}</div>
+  
+  {/* Link FULL - bisa diklik */}
+  {link && (
+    <a 
+      href={link} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="text-[10px] text-[#FFD700] hover:underline block break-all mt-1"
+      title={link}
+    >
+      {link}
+    </a>
+  )}
+  
+  {/* Tombol Edit untuk Admin - DIPERBESAR */}
+  {isAdmin && usingSnapshot && (
+    <button
+      onClick={() => handleEditClick(officer)}
+      className="mt-3 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition-all w-fit"
+    >
+      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+      </svg>
+      <span>Edit KASBON/ETC</span>
+    </button>
+  )}
+</div>
                     </div>
                   </div>
                 );
