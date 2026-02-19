@@ -54,6 +54,44 @@ export default function MealAllowancePage() {
     return `${year}-${String(prevMonth + 1).padStart(2, '0')}-20`;
   };
 
+  // Format bank dan rekening
+  const formatBankAndRek = (bankAccount) => {
+    if (!bankAccount) return { bank: 'ABA', rek: '-', link: '' };
+    
+    let bank = '';
+    let rek = bankAccount;
+    let link = '';
+    
+    // Pisahin link dari teks
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const links = bankAccount.match(urlRegex);
+    if (links && links.length > 0) {
+      link = links[0];
+      rek = bankAccount.replace(link, '').trim();
+    }
+    
+    // Deteksi bank
+    if (rek.includes('ABA')) {
+      bank = 'ABA';
+      rek = rek.replace('ABA', '').trim();
+    } else if (rek.includes('ACLEDA')) {
+      bank = 'ACLEDA';
+      rek = rek.replace('ACLEDA', '').trim();
+    } else if (rek.includes('WING BANK')) {
+      bank = 'WING BANK';
+      rek = rek.replace('WING BANK', '').trim();
+    } else if (rek.includes('WING')) {
+      bank = 'WING BANK';
+      rek = rek.replace('WING', '').trim();
+    } else {
+      const parts = rek.split(' ');
+      bank = parts[0] || 'ABA';
+      rek = parts.slice(1).join(' ') || '';
+    }
+    
+    return { bank, rek: rek.trim(), link };
+  };
+
   // Set department filter based on user role
   useEffect(() => {
     if (!isAdmin) {
@@ -113,8 +151,7 @@ export default function MealAllowancePage() {
             etc: item.etc || 0,
             etc_operator: item.etc_operator || '+',
             etc_note: item.etc_note || '',
-            bank_name: '',
-            rekening: ''
+            bank_account: item.bank_account || ''
           }));
           
           setOfficers(formattedOfficers);
@@ -319,33 +356,6 @@ export default function MealAllowancePage() {
     };
   };
 
-  const formatBankAndRek = (bankAccount) => {
-    if (!bankAccount) return { bank: '', rek: '' };
-    
-    let bank = '';
-    let rek = bankAccount;
-    
-    if (bankAccount.includes('ABA')) {
-      bank = 'ABA';
-      rek = bankAccount.replace('ABA', '').trim();
-    } else if (bankAccount.includes('ACLEDA')) {
-      bank = 'ACLEDA';
-      rek = bankAccount.replace('ACLEDA', '').trim();
-    } else if (bankAccount.includes('WING BANK')) {
-      bank = 'WING BANK';
-      rek = bankAccount.replace('WING BANK', '').trim();
-    } else if (bankAccount.includes('WING')) {
-      bank = 'WING BANK';
-      rek = bankAccount.replace('WING', '').trim();
-    } else {
-      const parts = bankAccount.split(' ');
-      bank = parts[0] || '';
-      rek = parts.slice(1).join(' ') || '';
-    }
-    
-    return { bank, rek };
-  };
-
   // Filter officers
   const officersWithStats = officers
     .filter(o => {
@@ -366,18 +376,13 @@ export default function MealAllowancePage() {
         
         return {
           ...officer,
-          bank_name: '',
-          rekening: '',
           finalNet: Math.max(0, finalNet)
         };
       } else {
         const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
-        const { bank, rek } = formatBankAndRek(officer.bank_account);
         return {
           ...officer,
           ...stats,
-          bank_name: bank,
-          rekening: rek,
           finalNet: stats.umNet
         };
       }
@@ -525,112 +530,111 @@ export default function MealAllowancePage() {
               <h2 className="text-xl font-bold text-[#FFD700]">{dept} ({groupedOfficers[dept].length})</h2>
             </div>
             <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
-              {groupedOfficers[dept].map((officer) => (
-                <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                  <div className="flex flex-col md:flex-row md:items-center gap-4">
-                    {/* Nama dan Join Date */}
-                    <div className="w-full md:w-1/5">
-                      <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
-                      <div className="text-xs text-[#A7D8FF]">
-                        Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}
+              {groupedOfficers[dept].map((officer) => {
+                const { bank, rek, link } = formatBankAndRek(officer.bank_account);
+                
+                return (
+                  <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
+                    <div className="flex flex-col md:flex-row md:items-start gap-4">
+                      {/* Nama dan Join Date */}
+                      <div className="w-full md:w-1/5">
+                        <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
+                        <div className="text-xs text-[#A7D8FF]">
+                          Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}
+                        </div>
+                      </div>
+                      
+                      {/* Angka-angka - KE SAMPING */}
+                      <div className="flex-1 flex flex-wrap items-center gap-3 text-sm">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#A7D8FF] text-xs">Pokok:</span>
+                          <span className="font-medium">${Math.round(officer.baseAmount || officer.base_amount)}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#A7D8FF] text-xs">Rate:</span>
+                          <span className="font-medium">${Math.round(officer.prorate || officer.prorate)}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#A7D8FF] text-xs">Holiday:</span>
+                          <span className="font-medium">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
+                          <span className="font-medium">
+                            {officer.cutiCount || officer.cuti_count || 0}/
+                            {officer.unpaidCount || officer.unpaid_count || 0}/
+                            {officer.sakitCount || officer.sakit_count || 0}/
+                            {officer.izinCount || officer.izin_count || 0}/
+                            {officer.alphaCount || officer.alpha_count || 0}
+                          </span>
+                        </div>
+                        
+                        {/* KASBON - Admin only */}
+                        {isAdmin && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[#A7D8FF] text-xs">KASBON:</span>
+                            <span className="font-medium text-red-400">-${Math.abs(officer.kasbon || 0)}</span>
+                          </div>
+                        )}
+                        
+                        {/* ETC dengan Keterangan - Admin only */}
+                        {isAdmin && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[#A7D8FF] text-xs">ETC:</span>
+                            <span className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
+                              {officer.etc_operator}{officer.etc || 0}
+                            </span>
+                            {officer.etc_note && (
+                              <span className="text-xs text-[#A7D8FF]">({officer.etc_note})</span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* NET Final */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[#A7D8FF] text-xs">NET:</span>
+                          <span className="font-bold text-[#FFD700]">
+                            ${Math.round(officer.finalNet || officer.umNet || officer.um_net || 0)}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Bank & No Rek - Tampilan Rapi */}
+                      <div className="w-full md:w-1/6">
+                        <div className="text-[#A7D8FF] text-xs font-medium">{bank}</div>
+                        <div className="text-xs text-white break-all">{rek}</div>
+                        {link && (
+                          <a 
+                            href={link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-[#FFD700] hover:underline block truncate max-w-[150px] mt-1"
+                            title={link}
+                          >
+                            {link.replace('https://snipboard.io/', '')}
+                          </a>
+                        )}
+                        
+                        {/* Tombol Edit untuk Admin */}
+                        {isAdmin && usingSnapshot && (
+                          <button
+                            onClick={() => handleEditClick(officer)}
+                            className="mt-2 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-all"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            <span>Edit</span>
+                          </button>
+                        )}
                       </div>
                     </div>
-                    
-                    {/* Di dalam mapping officer, ganti bagian angka-angka */}
-<div className="flex-1 flex flex-wrap items-center gap-4 text-sm">
-  {/* Pokok */}
-  <div className="flex items-center gap-1">
-    <span className="text-[#A7D8FF] text-xs">Pokok:</span>
-    <span className="font-medium">${Math.round(officer.baseAmount || officer.base_amount)}</span>
-  </div>
-  
-  {/* Rate */}
-  <div className="flex items-center gap-1">
-    <span className="text-[#A7D8FF] text-xs">Rate:</span>
-    <span className="font-medium">${Math.round(officer.prorate || officer.prorate)}</span>
-  </div>
-  
-  {/* Holiday */}
-  <div className="flex items-center gap-1">
-    <span className="text-[#A7D8FF] text-xs">Holiday:</span>
-    <span className="font-medium">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</span>
-  </div>
-  
-  {/* C/U/S/I/A */}
-  <div className="flex items-center gap-1">
-    <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
-    <span className="font-medium">
-      {officer.cutiCount || officer.cuti_count || 0}/
-      {officer.unpaidCount || officer.unpaid_count || 0}/
-      {officer.sakitCount || officer.sakit_count || 0}/
-      {officer.izinCount || officer.izin_count || 0}/
-      {officer.alphaCount || officer.alpha_count || 0}
-    </span>
-  </div>
-  
-  {/* KASBON - Admin only */}
-  {isAdmin && (
-    <div className="flex items-center gap-1">
-      <span className="text-[#A7D8FF] text-xs">KASBON:</span>
-      <span className="font-medium text-red-400">-${Math.abs(officer.kasbon || 0)}</span>
-    </div>
-  )}
-  
-  {/* ETC dengan Keterangan - Admin only */}
-  {isAdmin && (
-    <div className="flex items-center gap-1">
-      <span className="text-[#A7D8FF] text-xs">ETC:</span>
-      <span className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
-        {officer.etc_operator}{officer.etc || 0}
-      </span>
-      {officer.etc_note && (
-        <span className="text-xs text-[#A7D8FF]">({officer.etc_note})</span>
-      )}
-    </div>
-  )}
-  
-  {/* NET Final */}
-  <div className="flex items-center gap-1">
-    <span className="text-[#A7D8FF] text-xs">NET:</span>
-    <span className="font-bold text-[#FFD700]">
-      ${Math.round(officer.finalNet || officer.umNet || officer.um_net || 0)}
-    </span>
-  </div>
-</div>
-                    
-                    {/* Bank & No Rek - Tampilan Baris Baru */}
-<div className="w-full md:w-1/6">
-  <div className="text-[#A7D8FF] text-xs">{officer.bank_name || 'ABA'}</div>
-  <div className="text-xs font-medium break-all">{officer.rekening || officer.bank_account || '-'}</div>
-  {/* Link dipisah ke baris baru */}
-  {officer.rekening?.includes('http') && (
-    <a 
-      href={officer.rekening} 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className="text-[10px] text-[#FFD700] hover:underline block truncate max-w-[150px]"
-      title={officer.rekening}
-    >
-      {officer.rekening.substring(0, 30)}...
-    </a>
-  )}
-  
-  {/* Tombol Edit untuk Admin */}
-  {isAdmin && usingSnapshot && (
-    <button
-      onClick={() => handleEditClick(officer)}
-      className="mt-2 text-[#FFD700] hover:text-[#FFD700]/80 flex items-center gap-1"
-    >
-      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-      </svg>
-      <span className="text-xs">Edit KASBON/ETC</span>
-    </button>
-  )}
-</div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         );
