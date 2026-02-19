@@ -170,20 +170,26 @@ export default function FinancialPage() {
     return { bank, rek };
   };
 
-  const filteredOfficers = officers
+  // Group officers by department
+  const officersWithStats = officers
     .filter(o => selectedDept === 'All' || o.department === selectedDept)
     .filter(o => o.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
-    .map((officer, index) => {
+    .map((officer) => {
       const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
       const { bank, rek } = formatBankAndRek(officer.bank_account);
       return {
         ...officer,
         ...stats,
-        no: index + 1,
         bank_name: bank,
         rekening: rek
       };
     });
+
+  const groupedOfficers = {
+    'CS DP WD': officersWithStats.filter(o => o.department === 'CS DP WD'),
+    'CAPTAIN': officersWithStats.filter(o => o.department === 'CAPTAIN'),
+    'AM': officersWithStats.filter(o => o.department === 'AM')
+  };
 
   if (loading) {
     return (
@@ -208,7 +214,7 @@ export default function FinancialPage() {
         </Link>
         <div>
           <h1 className="text-3xl font-bold text-[#FFD700]">FINANCIAL SUMMARY</h1>
-          <p className="text-[#A7D8FF] mt-1">Meal Allowance Calculation</p>
+          <p className="text-[#A7D8FF] mt-1">Meal Allowance Calculation - {selectedMonth} {selectedYear}</p>
         </div>
       </div>
 
@@ -253,79 +259,169 @@ export default function FinancialPage() {
         />
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto border border-[#FFD700]/30 rounded-lg">
-        <table className="min-w-full bg-[#0B1A33] text-sm">
-          <thead>
-            <tr className="bg-[#1A2F4A] text-[#FFD700] text-xs font-bold">
-              <th className="p-2 border border-[#FFD700]/30">No</th>
-              <th className="p-2 border border-[#FFD700]/30">Nama</th>
-              <th className="p-2 border border-[#FFD700]/30">Dept</th>
-              <th className="p-2 border border-[#FFD700]/30">Join</th>
-              <th className="p-2 border border-[#FFD700]/30">Pokok</th>
-              <th className="p-2 border border-[#FFD700]/30">Rate</th>
-              <th className="p-2 border border-[#FFD700]/30">Holiday</th>
-              <th className="p-2 border border-[#FFD700]/30">C</th>
-              <th className="p-2 border border-[#FFD700]/30">U</th>
-              <th className="p-2 border border-[#FFD700]/30">S</th>
-              <th className="p-2 border border-[#FFD700]/30">I</th>
-              <th className="p-2 border border-[#FFD700]/30">A</th>
-              <th className="p-2 border border-[#FFD700]/30">(+)</th>
-              <th className="p-2 border border-[#FFD700]/30">(-)</th>
-              <th className="p-2 border border-[#FFD700]/30">U</th>
-              <th className="p-2 border border-[#FFD700]/30">S</th>
-              <th className="p-2 border border-[#FFD700]/30">I</th>
-              <th className="p-2 border border-[#FFD700]/30">A</th>
-              <th className="p-2 border border-[#FFD700]/30">Kasbon</th>
-              <th className="p-2 border border-[#FFD700]/30">NET</th>
-              <th className="p-2 border border-[#FFD700]/30">Bank</th>
-              <th className="p-2 border border-[#FFD700]/30">No Rek</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredOfficers.map((officer) => (
-              <tr key={officer.id} className="text-white hover:bg-[#1A2F4A]">
-                <td className="p-2 border border-[#FFD700]/30 text-center">{officer.no}</td>
-                <td className="p-2 border border-[#FFD700]/30">{officer.full_name}</td>
-                <td className="p-2 border border-[#FFD700]/30">{officer.department}</td>
-                <td className="p-2 border border-[#FFD700]/30">
-                  {new Date(officer.join_date).toLocaleDateString('id-ID', { 
-                    day: 'numeric', 
-                    month: 'short', 
-                    year: '2-digit' 
-                  })}
-                </td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.baseAmount)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.prorate)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">{Math.max(0, 4 - officer.offCount)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-center">{officer.cutiCount || ''}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-center">{officer.unpaidCount || ''}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-center">{officer.sakitCount || ''}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-center">{officer.izinCount || ''}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-center">{officer.alphaCount || ''}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.proratePlus)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.prorateMinus)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.unpaidCount * officer.prorate)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.sakitCount * officer.prorate)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.izinCount * officer.prorate)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.alphaCount * 50)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">$0</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right font-bold text-[#FFD700]">${Math.round(officer.umNet)}</td>
-                <td className="p-2 border border-[#FFD700]/30">{officer.bank_name}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-xs">{officer.rekening?.substring(0, 15)}...</td>
-              </tr>
+      {/* CS DP WD Section */}
+      {groupedOfficers['CS DP WD'].length > 0 && (
+        <div className="mb-8">
+          <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
+            <h2 className="text-xl font-bold text-[#FFD700]">CS DP WD</h2>
+          </div>
+          <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
+            {groupedOfficers['CS DP WD'].map((officer) => (
+              <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                  {/* Nama dan Info Dasar */}
+                  <div className="w-full md:w-1/4">
+                    <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
+                    <div className="text-xs text-[#A7D8FF]">Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
+                  </div>
+                  
+                  {/* Angka-angka */}
+                  <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">Pokok:</span>
+                      <div className="font-medium">${Math.round(officer.baseAmount)}</div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">Rate:</span>
+                      <div className="font-medium">${Math.round(officer.prorate)}</div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">Holiday:</span>
+                      <div className="font-medium">{Math.max(0, 4 - officer.offCount)}</div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
+                      <div className="font-medium">
+                        {officer.cutiCount}/{officer.unpaidCount}/{officer.sakitCount}/{officer.izinCount}/{officer.alphaCount}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">NET:</span>
+                      <div className="font-bold text-[#FFD700]">${Math.round(officer.umNet)}</div>
+                    </div>
+                  </div>
+                  
+                  {/* Bank & No Rek */}
+                  <div className="w-full md:w-1/4 text-right">
+                    <div className="text-[#A7D8FF] text-xs">{officer.bank_name}</div>
+                    <div className="text-xs break-all">{officer.rekening}</div>
+                  </div>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+      )}
+
+      {/* CAPTAIN Section */}
+      {groupedOfficers['CAPTAIN'].length > 0 && (
+        <div className="mb-8">
+          <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
+            <h2 className="text-xl font-bold text-[#FFD700]">CAPTAIN</h2>
+          </div>
+          <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
+            {groupedOfficers['CAPTAIN'].map((officer) => (
+              <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                  <div className="w-full md:w-1/4">
+                    <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
+                    <div className="text-xs text-[#A7D8FF]">Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
+                  </div>
+                  
+                  <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">Pokok:</span>
+                      <div className="font-medium">${Math.round(officer.baseAmount)}</div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">Rate:</span>
+                      <div className="font-medium">${Math.round(officer.prorate)}</div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">Holiday:</span>
+                      <div className="font-medium">{Math.max(0, 4 - officer.offCount)}</div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
+                      <div className="font-medium">
+                        {officer.cutiCount}/{officer.unpaidCount}/{officer.sakitCount}/{officer.izinCount}/{officer.alphaCount}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">NET:</span>
+                      <div className="font-bold text-[#FFD700]">${Math.round(officer.umNet)}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="w-full md:w-1/4 text-right">
+                    <div className="text-[#A7D8FF] text-xs">{officer.bank_name}</div>
+                    <div className="text-xs break-all">{officer.rekening}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* AM Section */}
+      {groupedOfficers['AM'].length > 0 && (
+        <div className="mb-8">
+          <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
+            <h2 className="text-xl font-bold text-[#FFD700]">AM</h2>
+          </div>
+          <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
+            {groupedOfficers['AM'].map((officer) => (
+              <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                  <div className="w-full md:w-1/4">
+                    <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
+                    <div className="text-xs text-[#A7D8FF]">Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
+                  </div>
+                  
+                  <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">Pokok:</span>
+                      <div className="font-medium">${Math.round(officer.baseAmount)}</div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">Rate:</span>
+                      <div className="font-medium">${Math.round(officer.prorate)}</div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">Holiday:</span>
+                      <div className="font-medium">{Math.max(0, 4 - officer.offCount)}</div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
+                      <div className="font-medium">
+                        {officer.cutiCount}/{officer.unpaidCount}/{officer.sakitCount}/{officer.izinCount}/{officer.alphaCount}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-[#A7D8FF] text-xs">NET:</span>
+                      <div className="font-bold text-[#FFD700]">${Math.round(officer.umNet)}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="w-full md:w-1/4 text-right">
+                    <div className="text-[#A7D8FF] text-xs">{officer.bank_name}</div>
+                    <div className="text-xs break-all">{officer.rekening}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Footer Total */}
-      <div className="mt-4 p-4 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg flex justify-between items-center">
+      <div className="mt-6 p-4 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg flex justify-between items-center">
         <span className="text-[#FFD700] font-bold">
-          Total Officers: {filteredOfficers.length}
+          Total Officers: {officersWithStats.length}
         </span>
         <span className="text-[#FFD700] font-bold">
-          Total NET: ${Math.round(filteredOfficers.reduce((sum, o) => sum + (o.umNet || 0), 0))}
+          Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.umNet || 0), 0))}
         </span>
       </div>
     </div>
