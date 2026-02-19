@@ -130,32 +130,33 @@ export default function MealAllowancePage() {
           .order('officer_name');
         
         if (snapData) {
-          setSnapshotData(snapData);
-          setUsingSnapshot(true);
-          
-          const formattedOfficers = snapData.map(item => ({
-            id: item.officer_id,
-            full_name: item.officer_name,
-            department: item.department,
-            join_date: item.join_date,
-            baseAmount: item.base_amount,
-            prorate: item.prorate,
-            offCount: item.off_count,
-            sakitCount: item.sakit_count,
-            cutiCount: item.cuti_count,
-            izinCount: item.izin_count,
-            unpaidCount: item.unpaid_count,
-            alphaCount: item.alpha_count,
-            umNet: item.um_net,
-            kasbon: item.kasbon || 0,
-            etc: item.etc || 0,
-            etc_operator: item.etc_operator || '+',
-            etc_note: item.etc_note || '',
-            bank_account: item.bank_account || ''
-          }));
-          
-          setOfficers(formattedOfficers);
-        }
+  setSnapshotData(snapData);
+  setUsingSnapshot(true);
+  
+  const formattedOfficers = snapData.map(item => ({
+    id: item.officer_id,
+    full_name: item.officer_name,
+    department: item.department,
+    join_date: item.join_date,
+    baseAmount: item.base_amount,
+    prorate: item.prorate,
+    offCount: item.off_count,
+    sakitCount: item.sakit_count,
+    cutiCount: item.cuti_count,
+    izinCount: item.izin_count,
+    unpaidCount: item.unpaid_count,
+    alphaCount: item.alpha_count,
+    umNet: item.um_net,
+    // 🔥 INI PENTING - KASBON & ETC
+    kasbon: item.kasbon || 0,
+    etc: item.etc || 0,
+    etc_operator: item.etc_operator || '+',
+    etc_note: item.etc_note || '',
+    bank_account: item.bank_account || ''
+  }));
+  
+  setOfficers(formattedOfficers);
+}
       } else {
         setUsingSnapshot(false);
         await fetchManualData();
@@ -243,29 +244,29 @@ export default function MealAllowancePage() {
   };
 
   const handleEditSave = async () => {
-    try {
-      const { error } = await supabase
-        .from('meal_allowance_snapshot')
-        .update({
-          kasbon: editForm.kasbon,
-          etc: editForm.etc,
-          etc_operator: editForm.etc_operator,
-          etc_note: editForm.etc_note
-        })
-        .eq('officer_id', editingOfficer.id)
-        .eq('bulan', `${selectedMonth} ${selectedYear}`);
-      
-      if (error) throw error;
-      
-      alert('✅ Data berhasil diupdate');
-      fetchData();
-      setEditingOfficer(null);
-      
-    } catch (error) {
-      console.error('Error updating:', error);
-      alert('❌ Gagal update data');
-    }
-  };
+  try {
+    const { error } = await supabase
+      .from('meal_allowance_snapshot')
+      .update({
+        kasbon: editForm.kasbon,
+        etc: editForm.etc,
+        etc_operator: editForm.etc_operator,
+        etc_note: editForm.etc_note
+      })
+      .eq('officer_id', editingOfficer.id)
+      .eq('bulan', `${selectedMonth} ${selectedYear}`);
+    
+    if (error) throw error;
+    
+    alert('✅ Data berhasil diupdate');
+    fetchData(); // Refresh data
+    setEditingOfficer(null);
+    
+  } catch (error) {
+    console.error('Error updating:', error);
+    alert('❌ Gagal update data');
+  }
+};
 
   const getMonthsOfWork = (joinDate) => {
     const join = new Date(joinDate);
@@ -365,8 +366,9 @@ export default function MealAllowancePage() {
       return selectedDept === 'All' || o.department === selectedDept;
     })
     .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
-    .map((officer) => {
+        .map((officer) => {
       if (usingSnapshot) {
+        // Hitung final NET dengan kasbon dan etc
         const baseNet = officer.umNet || 0;
         const kasbon = Math.abs(officer.kasbon || 0);
         const etc = officer.etc || 0;
@@ -377,7 +379,15 @@ export default function MealAllowancePage() {
           ...officer,
           finalNet: Math.max(0, finalNet)
         };
-      } else {
+      }
+        const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
+        return {
+          ...officer,
+          ...stats,
+          finalNet: stats.umNet
+        };
+      }
+    });
         const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
         return {
           ...officer,
@@ -572,26 +582,25 @@ export default function MealAllowancePage() {
                         </div>
                         
                         {/* KASBON - Admin only */}
-                        {isAdmin && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[#A7D8FF] text-xs">KASBON:</span>
-                            <span className="font-medium text-red-400">-${Math.abs(officer.kasbon || 0)}</span>
-                          </div>
-                        )}
+{isAdmin && (
+  <div className="flex items-center gap-1">
+    <span className="text-[#A7D8FF] text-xs">KASBON:</span>
+    <span className="font-medium text-red-400">-${Math.abs(officer.kasbon || 0)}</span>
+  </div>
+)}
                         
                         {/* ETC dengan Keterangan - Admin only */}
-                        {isAdmin && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[#A7D8FF] text-xs">ETC:</span>
-                            <span className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
-                              {officer.etc_operator}{officer.etc || 0}
-                            </span>
-                            {officer.etc_note && (
-                              <span className="text-xs text-[#A7D8FF]">({officer.etc_note})</span>
-                            )}
-                          </div>
-                        )}
-                        
+{isAdmin && (
+  <div className="flex items-center gap-1">
+    <span className="text-[#A7D8FF] text-xs">ETC:</span>
+    <span className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
+      {officer.etc_operator}{officer.etc || 0}
+    </span>
+    {officer.etc_note && (
+      <span className="text-xs text-[#A7D8FF]">({officer.etc_note})</span>
+    )}
+  </div>
+)}
                         {/* NET Final */}
                         <div className="flex items-center gap-1">
                           <span className="text-[#A7D8FF] text-xs">NET:</span>
@@ -601,26 +610,26 @@ export default function MealAllowancePage() {
                         </div>
                       </div>
                       
-                      {/* Bank & No Rek */}
-                      <div className="w-full md:w-1/6">
-                        <div className="text-[#A7D8FF] text-xs font-medium">{bank}</div>
-                        <div className="text-xs text-white break-all">{rek}</div>
-                        
-                        {/* Link FULL */}
-                        {link && (
-                          <a 
-                            href={link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-[#FFD700] hover:underline block break-all mt-1"
-                            title={link}
-                          >
-                            {link}
-                          </a>
-                        )}
-                        
-                        {/* Tombol Edit */}
-{isAdmin && usingSnapshot && (
+                      {/* Bank & No Rek - Tampilan Rapi */}
+<div className="w-full md:w-1/6">
+  <div className="text-[#A7D8FF] text-xs font-medium">{bank}</div>
+  <div className="text-xs text-white break-all">{rek}</div>
+  
+  {/* Link FULL - bisa diklik */}
+  {link && (
+    <a 
+      href={link} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="text-[10px] text-[#FFD700] hover:underline block break-all mt-1"
+      title={link}
+    >
+      {link}
+    </a>
+  )}
+  
+  {/* Tombol Edit - DIPAKSA MUNCUL UNTUK TEST */}
+{isAdmin && (
   <button
     onClick={() => handleEditClick(officer)}
     className="mt-3 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition-all w-fit"
@@ -631,7 +640,7 @@ export default function MealAllowancePage() {
     <span>Edit KASBON/ETC</span>
   </button>
 )}
-                      </div>
+</div>
                     </div>
                   </div>
                 );
@@ -651,94 +660,86 @@ export default function MealAllowancePage() {
         </span>
       </div>
 
-      {/* Modal Edit */}
-      {editingOfficer && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-[#FFD700] mb-4">
-              Edit {editingOfficer.full_name}
-            </h3>
-            
-            <div className="space-y-4">
-              {/* KASBON - LANGSUNG KETIK */}
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  KASBON ( - )
-                </label>
-                <input
-                  type="text"
-                  value={editForm.kasbon}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setEditForm({...editForm, kasbon: value ? parseInt(value) : 0});
-                  }}
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                  placeholder="Contoh: 150"
-                  inputMode="numeric"
-                />
-              </div>
-              
-              {/* ETC - LANGSUNG KETIK */}
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  ETC ( + / - )
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={editForm.etc_operator}
-                    onChange={(e) => setEditForm({...editForm, etc_operator: e.target.value})}
-                    className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white w-20"
-                  >
-                    <option value="+">+</option>
-                    <option value="-">-</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={editForm.etc}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, '');
-                      setEditForm({...editForm, etc: value ? parseInt(value) : 0});
-                    }}
-                    className="flex-1 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                    placeholder="Contoh: 25"
-                    inputMode="numeric"
-                  />
-                </div>
-              </div>
-              
-              {/* Keterangan */}
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  Keterangan
-                </label>
-                <input
-                  type="text"
-                  value={editForm.etc_note}
-                  onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})}
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                  placeholder="Misal: Koreksi, Bonus, Denda"
-                />
-              </div>
-              
-              {/* Tombol */}
-              <div className="flex gap-2 pt-4">
-                <button
-                  onClick={handleEditSave}
-                  className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80"
-                >
-                  Simpan
-                </button>
-                <button
-                  onClick={() => setEditingOfficer(null)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600"
-                >
-                  Batal
-                </button>
-              </div>
-            </div>
+      {/* Modal Edit untuk Admin */}
+{editingOfficer && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
+      <h3 className="text-xl font-bold text-[#FFD700] mb-4">
+        Edit {editingOfficer.full_name}
+      </h3>
+      
+      <div className="space-y-4">
+        {/* 1. KASBON */}
+        <div>
+          <label className="text-[#A7D8FF] text-sm block mb-1">
+            KASBON ( - )
+          </label>
+          <input
+            type="number"
+            value={editForm.kasbon}
+            onChange={(e) => setEditForm({...editForm, kasbon: parseInt(e.target.value) || 0})}
+            className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+            placeholder="0"
+          />
+        </div>
+        
+        {/* 2. ETC + OPERATOR */}
+        <div>
+          <label className="text-[#A7D8FF] text-sm block mb-1">
+            ETC ( + / - )
+          </label>
+          <div className="flex gap-2">
+            <select
+              value={editForm.etc_operator}
+              onChange={(e) => setEditForm({...editForm, etc_operator: e.target.value})}
+              className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white w-20"
+            >
+              <option value="+">+</option>
+              <option value="-">-</option>
+            </select>
+            <input
+              type="number"
+              value={editForm.etc}
+              onChange={(e) => setEditForm({...editForm, etc: parseInt(e.target.value) || 0})}
+              className="flex-1 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+              placeholder="0"
+            />
           </div>
         </div>
-      )}
+        
+        {/* 3. KETERANGAN/NOTE */}
+        <div>
+          <label className="text-[#A7D8FF] text-sm block mb-1">
+            Keterangan / Note
+          </label>
+          <input
+            type="text"
+            value={editForm.etc_note}
+            onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})}
+            className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+            placeholder="Misal: Koreksi, Bonus, Denda, dll"
+          />
+        </div>
+        
+        {/* Tombol Simpan & Batal */}
+        <div className="flex gap-2 pt-4">
+          <button
+            onClick={handleEditSave}
+            className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80"
+          >
+            Simpan
+          </button>
+          <button
+            onClick={() => setEditingOfficer(null)}
+            className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600"
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
