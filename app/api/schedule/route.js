@@ -64,4 +64,4 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
-}
+}// force redeploy Thu Feb 19 15:08:07 SEAST 2026
