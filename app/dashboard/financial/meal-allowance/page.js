@@ -20,6 +20,15 @@ export default function MealAllowancePage() {
   const [locking, setLocking] = useState(false);
   const [snapshotData, setSnapshotData] = useState([]);
   const [usingSnapshot, setUsingSnapshot] = useState(false);
+  
+  // State untuk edit
+  const [editingOfficer, setEditingOfficer] = useState(null);
+  const [editForm, setEditForm] = useState({
+    kasbon: 0,
+    etc: 0,
+    etc_operator: '+',
+    etc_note: ''
+  });
 
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -27,31 +36,23 @@ export default function MealAllowancePage() {
 
   // Helper functions untuk periode
   const getPeriodeStart = (month, year) => {
-  const monthIndex = months.indexOf(month);
-  // Untuk bulan February, ambil 21 Desember tahun sebelumnya
-  if (month === 'February') {
-    return `${parseInt(year) - 1}-12-21`;
-  }
-  // Untuk bulan lainnya, ambil 21 bulan sebelumnya
-  const prevMonth = monthIndex === 0 ? 11 : monthIndex - 2; // Mundur 2 bulan
-  const prevMonthYear = monthIndex <= 1 ? parseInt(year) - 1 : parseInt(year);
-  return `${prevMonthYear}-${String(prevMonth + 1).padStart(2, '0')}-21`;
-};
+    const monthIndex = months.indexOf(month);
+    if (month === 'February') {
+      return `${parseInt(year) - 1}-12-21`;
+    }
+    const prevMonth = monthIndex === 0 ? 11 : monthIndex - 2;
+    const prevMonthYear = monthIndex <= 1 ? parseInt(year) - 1 : parseInt(year);
+    return `${prevMonthYear}-${String(prevMonth + 1).padStart(2, '0')}-21`;
+  };
 
-const getPeriodeEnd = (month, year) => {
-  const monthIndex = months.indexOf(month);
-  // Untuk bulan February, ambil 20 Januari tahun ini
-  if (month === 'February') {
-    return `${year}-01-20`;
-  }
-  // Untuk bulan lainnya, ambil 20 bulan sebelumnya
-  const prevMonth = monthIndex === 0 ? 11 : monthIndex - 1;
-  return `${year}-${String(prevMonth + 1).padStart(2, '0')}-20`;
-};
-
-const getPaymentDate = (month, year) => {
-  return `1 ${month} ${year}`;
-};
+  const getPeriodeEnd = (month, year) => {
+    const monthIndex = months.indexOf(month);
+    if (month === 'February') {
+      return `${year}-01-20`;
+    }
+    const prevMonth = monthIndex === 0 ? 11 : monthIndex - 1;
+    return `${year}-${String(prevMonth + 1).padStart(2, '0')}-20`;
+  };
 
   // Set department filter based on user role
   useEffect(() => {
@@ -75,7 +76,6 @@ const getPaymentDate = (month, year) => {
       
       const bulan = `${selectedMonth} ${selectedYear}`;
       
-      // Cek apakah periode sudah di-lock
       const { data: lockCheck } = await supabase
         .from('meal_allowance_snapshot')
         .select('is_locked')
@@ -85,7 +85,6 @@ const getPaymentDate = (month, year) => {
       setIsLocked(lockCheck?.is_locked || false);
       
       if (lockCheck?.is_locked) {
-        // Ambil dari snapshot
         const { data: snapData } = await supabase
           .from('meal_allowance_snapshot')
           .select('*')
@@ -96,7 +95,6 @@ const getPaymentDate = (month, year) => {
           setSnapshotData(snapData);
           setUsingSnapshot(true);
           
-          // Transform snapshot ke format officers
           const formattedOfficers = snapData.map(item => ({
             id: item.officer_id,
             full_name: item.officer_name,
@@ -111,14 +109,17 @@ const getPaymentDate = (month, year) => {
             unpaidCount: item.unpaid_count,
             alphaCount: item.alpha_count,
             umNet: item.um_net,
-            bank_name: '', // Will be filled from officers table if needed
+            kasbon: item.kasbon || 0,
+            etc: item.etc || 0,
+            etc_operator: item.etc_operator || '+',
+            etc_note: item.etc_note || '',
+            bank_name: '',
             rekening: ''
           }));
           
           setOfficers(formattedOfficers);
         }
       } else {
-        // Hitung manual dari schedule
         setUsingSnapshot(false);
         await fetchManualData();
       }
@@ -130,7 +131,7 @@ const getPaymentDate = (month, year) => {
     }
   };
 
-  // Fetch data manual (existing code)
+  // Fetch data manual
   const fetchManualData = async () => {
     try {
       const { data: officersData } = await supabase
@@ -157,7 +158,7 @@ const getPaymentDate = (month, year) => {
     }
   };
 
-  // Handle lock period (admin only)
+  // Handle lock period
   const handleLockPeriod = async () => {
     if (!isAdmin) return;
     
@@ -167,7 +168,6 @@ const getPaymentDate = (month, year) => {
       const periodeStart = getPeriodeStart(selectedMonth, selectedYear);
       const periodeEnd = getPeriodeEnd(selectedMonth, selectedYear);
       
-      // Panggil fungsi lock di database
       const { error } = await supabase.rpc('lock_meal_allowance', {
         target_bulan: bulan,
         start_date: periodeStart,
@@ -176,18 +176,14 @@ const getPaymentDate = (month, year) => {
       
       if (error) throw error;
       
-      // Hitung dan update snapshot dengan data terbaru
       const { error: calcError } = await supabase.rpc('calculate_and_update_snapshot', {
         target_bulan: bulan
       });
       
       if (calcError) throw calcError;
       
-      // Update status
       setIsLocked(true);
       alert('✅ Periode berhasil dikunci!');
-      
-      // Refresh data
       fetchData();
       
     } catch (error) {
@@ -195,6 +191,42 @@ const getPaymentDate = (month, year) => {
       alert('❌ Gagal mengunci periode');
     } finally {
       setLocking(false);
+    }
+  };
+
+  // Handle edit
+  const handleEditClick = (officer) => {
+    setEditingOfficer(officer);
+    setEditForm({
+      kasbon: officer.kasbon || 0,
+      etc: officer.etc || 0,
+      etc_operator: officer.etc_operator || '+',
+      etc_note: officer.etc_note || ''
+    });
+  };
+
+  const handleEditSave = async () => {
+    try {
+      const { error } = await supabase
+        .from('meal_allowance_snapshot')
+        .update({
+          kasbon: editForm.kasbon,
+          etc: editForm.etc,
+          etc_operator: editForm.etc_operator,
+          etc_note: editForm.etc_note
+        })
+        .eq('officer_id', editingOfficer.id)
+        .eq('bulan', `${selectedMonth} ${selectedYear}`);
+      
+      if (error) throw error;
+      
+      alert('✅ Data berhasil diupdate');
+      fetchData();
+      setEditingOfficer(null);
+      
+    } catch (error) {
+      console.error('Error updating:', error);
+      alert('❌ Gagal update data');
     }
   };
 
@@ -314,7 +346,7 @@ const getPaymentDate = (month, year) => {
     return { bank, rek };
   };
 
-  // Filter officers based on role and selected department
+  // Filter officers
   const officersWithStats = officers
     .filter(o => {
       if (!isAdmin) {
@@ -325,10 +357,18 @@ const getPaymentDate = (month, year) => {
     .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
     .map((officer) => {
       if (usingSnapshot) {
+        // Hitung final NET dengan kasbon dan etc
+        const baseNet = officer.umNet || 0;
+        const kasbon = Math.abs(officer.kasbon || 0);
+        const etc = officer.etc || 0;
+        const etcOp = officer.etc_operator === '+' ? 1 : -1;
+        const finalNet = baseNet - kasbon + (etcOp * etc);
+        
         return {
           ...officer,
           bank_name: '',
-          rekening: ''
+          rekening: '',
+          finalNet: Math.max(0, finalNet)
         };
       } else {
         const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
@@ -337,7 +377,8 @@ const getPaymentDate = (month, year) => {
           ...officer,
           ...stats,
           bank_name: bank,
-          rekening: rek
+          rekening: rek,
+          finalNet: stats.umNet
         };
       }
     });
@@ -358,7 +399,7 @@ const getPaymentDate = (month, year) => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
-      {/* Header dengan Tombol Back dan Lock */}
+      {/* Header */}
       <div className="mb-6 flex items-center gap-4 flex-wrap">
         <Link 
           href="/dashboard/financial" 
@@ -379,7 +420,7 @@ const getPaymentDate = (month, year) => {
           </p>
         </div>
         
-        {/* Tombol Lock - Hanya untuk Admin */}
+        {/* Tombol Lock */}
         {isAdmin && !isLocked && (
           <button
             onClick={handleLockPeriod}
@@ -454,191 +495,131 @@ const getPaymentDate = (month, year) => {
 
       {/* Info periode */}
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
-  <span className="text-[#A7D8FF]">Periode perhitungan: </span>
-  <span className="text-white font-medium">
-    {new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { 
-      day: '2-digit', 
-      month: 'short', 
-      year: 'numeric' 
-    })} s/d {' '}
-    {new Date(getPeriodeEnd(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { 
-      day: '2-digit', 
-      month: 'short', 
-      year: 'numeric' 
-    })}
-  </span>
-  <span className="ml-4 text-[#A7D8FF]">Pembagian: </span>
-  <span className="text-white font-medium">
-    1 {selectedMonth} {selectedYear}
-  </span>
-</div>
+        <span className="text-[#A7D8FF]">Periode perhitungan: </span>
+        <span className="text-white font-medium">
+          {new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric' 
+          })} s/d {' '}
+          {new Date(getPeriodeEnd(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { 
+            day: '2-digit', 
+            month: 'short', 
+            year: 'numeric' 
+          })}
+        </span>
+        <span className="ml-4 text-[#A7D8FF]">Pembagian: </span>
+        <span className="text-white font-medium">
+          1 {selectedMonth} {selectedYear}
+        </span>
+      </div>
 
-      {/* CS DP WD Section */}
-      {groupedOfficers['CS DP WD'].length > 0 && (
-        <div className="mb-8">
-          <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
-            <h2 className="text-xl font-bold text-[#FFD700]">CS DP WD ({groupedOfficers['CS DP WD'].length})</h2>
-          </div>
-          <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
-            {groupedOfficers['CS DP WD'].map((officer) => (
-              <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="w-full md:w-1/4">
-                    <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
-                    <div className="text-xs text-[#A7D8FF]">
-                      Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">Pokok:</span>
-                      <div className="font-medium">${Math.round(officer.baseAmount || officer.base_amount)}</div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">Rate:</span>
-                      <div className="font-medium">${Math.round(officer.prorate || officer.prorate)}</div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">Holiday:</span>
-                      <div className="font-medium">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
-                      <div className="font-medium">
-                        {officer.cutiCount || officer.cuti_count || 0}/
-                        {officer.unpaidCount || officer.unpaid_count || 0}/
-                        {officer.sakitCount || officer.sakit_count || 0}/
-                        {officer.izinCount || officer.izin_count || 0}/
-                        {officer.alphaCount || officer.alpha_count || 0}
+      {/* Render Sections */}
+      {['CS DP WD', 'CAPTAIN', 'AM'].map(dept => {
+        if (dept !== 'CS DP WD' && !isAdmin) return null;
+        if (groupedOfficers[dept]?.length === 0) return null;
+        
+        return (
+          <div key={dept} className="mb-8">
+            <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
+              <h2 className="text-xl font-bold text-[#FFD700]">{dept} ({groupedOfficers[dept].length})</h2>
+            </div>
+            <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
+              {groupedOfficers[dept].map((officer) => (
+                <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
+                  <div className="flex flex-col md:flex-row md:items-center gap-4">
+                    {/* Nama dan Join Date */}
+                    <div className="w-full md:w-1/5">
+                      <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
+                      <div className="text-xs text-[#A7D8FF]">
+                        Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}
                       </div>
                     </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">NET:</span>
-                      <div className="font-bold text-[#FFD700]">${Math.round(officer.umNet || officer.um_net || 0)}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="w-full md:w-1/4 text-right">
-                    <div className="text-[#A7D8FF] text-xs">{officer.bank_name || 'ABA'}</div>
-                    <div className="text-xs break-all">{officer.rekening || officer.bank_account || '-'}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* CAPTAIN Section - Only for admin */}
-      {isAdmin && groupedOfficers['CAPTAIN'].length > 0 && (
-        <div className="mb-8">
-          <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
-            <h2 className="text-xl font-bold text-[#FFD700]">CAPTAIN ({groupedOfficers['CAPTAIN'].length})</h2>
-          </div>
-          <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
-            {groupedOfficers['CAPTAIN'].map((officer) => (
-              <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="w-full md:w-1/4">
-                    <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
-                    <div className="text-xs text-[#A7D8FF]">Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
-                  </div>
-                  
-                  <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">Pokok:</span>
-                      <div className="font-medium">${Math.round(officer.baseAmount || officer.base_amount)}</div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">Rate:</span>
-                      <div className="font-medium">${Math.round(officer.prorate || officer.prorate)}</div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">Holiday:</span>
-                      <div className="font-medium">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
-                      <div className="font-medium">
-                        {officer.cutiCount || officer.cuti_count || 0}/
-                        {officer.unpaidCount || officer.unpaid_count || 0}/
-                        {officer.sakitCount || officer.sakit_count || 0}/
-                        {officer.izinCount || officer.izin_count || 0}/
-                        {officer.alphaCount || officer.alpha_count || 0}
+                    
+                    {/* Angka-angka */}
+                    <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-2 text-sm">
+                      <div>
+                        <span className="text-[#A7D8FF] text-xs">Pokok:</span>
+                        <div className="font-medium">${Math.round(officer.baseAmount || officer.base_amount)}</div>
+                      </div>
+                      <div>
+                        <span className="text-[#A7D8FF] text-xs">Rate:</span>
+                        <div className="font-medium">${Math.round(officer.prorate || officer.prorate)}</div>
+                      </div>
+                      <div>
+                        <span className="text-[#A7D8FF] text-xs">Holiday:</span>
+                        <div className="font-medium">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</div>
+                      </div>
+                      <div>
+                        <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
+                        <div className="font-medium">
+                          {officer.cutiCount || officer.cuti_count || 0}/
+                          {officer.unpaidCount || officer.unpaid_count || 0}/
+                          {officer.sakitCount || officer.sakit_count || 0}/
+                          {officer.izinCount || officer.izin_count || 0}/
+                          {officer.alphaCount || officer.alpha_count || 0}
+                        </div>
+                      </div>
+                      
+                      {/* KASBON - Admin only */}
+                      {isAdmin && (
+                        <div>
+                          <span className="text-[#A7D8FF] text-xs">KASBON:</span>
+                          <div className="font-medium text-red-400">
+                            -${Math.abs(officer.kasbon || 0)}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* ETC dengan Keterangan - Admin only */}
+                      {isAdmin && (
+                        <div>
+                          <span className="text-[#A7D8FF] text-xs">ETC:</span>
+                          <div className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
+                            {officer.etc_operator}{officer.etc || 0}
+                            {officer.etc_note && (
+                              <span className="text-xs text-[#A7D8FF] ml-1">
+                                ({officer.etc_note})
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* NET Final */}
+                      <div>
+                        <span className="text-[#A7D8FF] text-xs">NET:</span>
+                        <div className="font-bold text-[#FFD700]">
+                          ${Math.round(officer.finalNet || officer.umNet || officer.um_net || 0)}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">NET:</span>
-                      <div className="font-bold text-[#FFD700]">${Math.round(officer.umNet || officer.um_net || 0)}</div>
+                    
+                    {/* Bank & Rek */}
+                    <div className="w-full md:w-1/6 text-right">
+                      <div className="text-[#A7D8FF] text-xs">{officer.bank_name || 'ABA'}</div>
+                      <div className="text-xs break-all">{officer.rekening || officer.bank_account || '-'}</div>
+                      
+                      {/* Tombol Edit untuk Admin */}
+                      {isAdmin && usingSnapshot && (
+                        <button
+                          onClick={() => handleEditClick(officer)}
+                          className="mt-2 text-[#FFD700] hover:text-[#FFD700]/80"
+                        >
+                          <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                          <span className="text-xs ml-1">Edit</span>
+                        </button>
+                      )}
                     </div>
-                  </div>
-                  
-                  <div className="w-full md:w-1/4 text-right">
-                    <div className="text-[#A7D8FF] text-xs">{officer.bank_name || 'ABA'}</div>
-                    <div className="text-xs break-all">{officer.rekening || officer.bank_account || '-'}</div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* AM Section - Only for admin */}
-      {isAdmin && groupedOfficers['AM'].length > 0 && (
-        <div className="mb-8">
-          <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
-            <h2 className="text-xl font-bold text-[#FFD700]">AM ({groupedOfficers['AM'].length})</h2>
-          </div>
-          <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
-            {groupedOfficers['AM'].map((officer) => (
-              <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  <div className="w-full md:w-1/4">
-                    <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
-                    <div className="text-xs text-[#A7D8FF]">Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
-                  </div>
-                  
-                  <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">Pokok:</span>
-                      <div className="font-medium">${Math.round(officer.baseAmount || officer.base_amount)}</div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">Rate:</span>
-                      <div className="font-medium">${Math.round(officer.prorate || officer.prorate)}</div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">Holiday:</span>
-                      <div className="font-medium">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
-                      <div className="font-medium">
-                        {officer.cutiCount || officer.cuti_count || 0}/
-                        {officer.unpaidCount || officer.unpaid_count || 0}/
-                        {officer.sakitCount || officer.sakit_count || 0}/
-                        {officer.izinCount || officer.izin_count || 0}/
-                        {officer.alphaCount || officer.alpha_count || 0}
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-[#A7D8FF] text-xs">NET:</span>
-                      <div className="font-bold text-[#FFD700]">${Math.round(officer.umNet || officer.um_net || 0)}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="w-full md:w-1/4 text-right">
-                    <div className="text-[#A7D8FF] text-xs">{officer.bank_name || 'ABA'}</div>
-                    <div className="text-xs break-all">{officer.rekening || officer.bank_account || '-'}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })}
 
       {/* Footer Total */}
       <div className="mt-6 p-4 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg flex justify-between items-center">
@@ -646,9 +627,90 @@ const getPaymentDate = (month, year) => {
           Total Officers: {officersWithStats.length}
         </span>
         <span className="text-[#FFD700] font-bold">
-          Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.umNet || o.um_net || 0), 0))}
+          Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || o.umNet || o.um_net || 0), 0))}
         </span>
       </div>
+
+      {/* Modal Edit untuk Admin */}
+      {editingOfficer && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-[#FFD700] mb-4">
+              Edit {editingOfficer.full_name}
+            </h3>
+            
+            <div className="space-y-4">
+              {/* KASBON */}
+              <div>
+                <label className="text-[#A7D8FF] text-sm block mb-1">
+                  KASBON ( - )
+                </label>
+                <input
+                  type="number"
+                  value={editForm.kasbon}
+                  onChange={(e) => setEditForm({...editForm, kasbon: parseInt(e.target.value) || 0})}
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+                  placeholder="0"
+                />
+              </div>
+              
+              {/* ETC */}
+              <div>
+                <label className="text-[#A7D8FF] text-sm block mb-1">
+                  ETC ( + / - )
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    value={editForm.etc_operator}
+                    onChange={(e) => setEditForm({...editForm, etc_operator: e.target.value})}
+                    className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white w-20"
+                  >
+                    <option value="+">+</option>
+                    <option value="-">-</option>
+                  </select>
+                  <input
+                    type="number"
+                    value={editForm.etc}
+                    onChange={(e) => setEditForm({...editForm, etc: parseInt(e.target.value) || 0})}
+                    className="flex-1 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              
+              {/* Keterangan ETC */}
+              <div>
+                <label className="text-[#A7D8FF] text-sm block mb-1">
+                  Keterangan ETC
+                </label>
+                <input
+                  type="text"
+                  value={editForm.etc_note}
+                  onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})}
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+                  placeholder="Misal: Koreksi, Bonus, dll"
+                />
+              </div>
+              
+              {/* Tombol */}
+              <div className="flex gap-2 pt-4">
+                <button
+                  onClick={handleEditSave}
+                  className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80"
+                >
+                  Simpan
+                </button>
+                <button
+                  onClick={() => setEditingOfficer(null)}
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
