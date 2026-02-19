@@ -17,15 +17,31 @@ export function useAuth() {
       setUser(user);
 
       if (user?.email) {
+        // 🔥 AMBIL EMAIL DALAM BENTUK LOWERCASE
+        const userEmail = user.email.toLowerCase();
+        
+        // Cek di tabel users (case insensitive)
         const { data: userData } = await supabase
           .from('users')
           .select('role')
-          .ilike('email', user.email)
+          .ilike('email', userEmail)  // ilike = case insensitive
           .maybeSingle();
 
         if (userData?.role) {
           console.log('🔥 Role asli:', userData.role);
           setUserJobRole(userData.role);
+        } else {
+          // Fallback ke tabel officers kalau ga ketemu di users
+          const { data: officerData } = await supabase
+            .from('officers')
+            .select('role')
+            .ilike('email', userEmail)
+            .maybeSingle();
+            
+          if (officerData?.role) {
+            console.log('🔥 Role dari officers:', officerData.role);
+            setUserJobRole(officerData.role);
+          }
         }
       }
     } catch (error) {
@@ -35,7 +51,9 @@ export function useAuth() {
     }
   };
 
-  const isAdmin = userJobRole?.toLowerCase() === 'admin';
+  const isAdmin = userJobRole?.toLowerCase() === 'admin' || 
+                  userJobRole?.toLowerCase() === 'administrator' || 
+                  userJobRole?.toLowerCase() === 'superadmin';
 
   return { 
     user,
