@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
 
 export default function FinancialPage() {
   const [loading, setLoading] = useState(true);
@@ -13,8 +14,6 @@ export default function FinancialPage() {
   const [selectedDept, setSelectedDept] = useState('All');
   const [scheduleData, setScheduleData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-
-  const { user } = useAuth();
 
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -29,23 +28,16 @@ export default function FinancialPage() {
     try {
       setLoading(true);
       
-      // 1. Fetch officers dari Supabase
-      const { data: officersData, error: officersError } = await supabase
+      const { data: officersData } = await supabase
         .from('officers')
         .select('*')
         .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
         .eq('status', 'REGULAR');
       
-      if (officersError) throw officersError;
-      
-      // 2. Fetch meal allowance rates
-      const { data: ratesData, error: ratesError } = await supabase
+      const { data: ratesData } = await supabase
         .from('meal_allowance')
         .select('*');
       
-      if (ratesError) throw ratesError;
-      
-      // 3. Fetch schedule dari API
       const scheduleResponse = await fetch(
         `/api/schedule?year=${selectedYear}&month=${selectedMonth}`
       );
@@ -56,27 +48,24 @@ export default function FinancialPage() {
       setScheduleData(scheduleResult.data || []);
       
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Hitung masa kerja dalam bulan
-  const getMonthsOfWork = (joinDate, endDate = '2026-02-20') => {
+  const getMonthsOfWork = (joinDate) => {
     const join = new Date(joinDate);
-    const end = new Date(endDate);
+    const end = new Date(`${selectedYear}-${String(months.indexOf(selectedMonth) + 1).padStart(2, '0')}-20`);
     const years = end.getFullYear() - join.getFullYear();
-    const months = (years * 12) + (end.getMonth() - join.getMonth());
-    return months;
+    return (years * 12) + (end.getMonth() - join.getMonth());
   };
 
-  // Dapatkan rate berdasarkan department dan masa kerja
   const getMealRate = (department, joinDate) => {
     const monthsWorked = getMonthsOfWork(joinDate);
     
     if (department === 'AM' || department === 'CAPTAIN') {
-      return mealRates.find(r => r.department === department && r.years_of_service === 'tidak terikat');
+      return mealRates.find(r => r.department === department);
     }
     
     if (department === 'CS DP WD') {
@@ -88,88 +77,55 @@ export default function FinancialPage() {
         return mealRates.find(r => r.department === department && r.years_of_service === '1 tahun kebawah');
       }
     }
-    
     return null;
   };
 
-  // Hitung statistik per officer dari schedule
   const calculateOfficerStats = (officerName, department, joinDate) => {
-    // Filter schedule untuk periode 21 Jan - 20 Feb
+    const targetMonth = months.indexOf(selectedMonth);
+    
     const periodData = scheduleData.filter(day => {
-      const date = new Date(day['DATE RUNDOWN']);
-      const month = date.getMonth();
-      const dayOfMonth = date.getDate();
+      const dateStr = day['DATE RUNDOWN'];
+      if (!dateStr) return false;
       
-      // Periode: 21 Jan - 20 Feb
-      if (selectedMonth === 'February') {
-        if (month === 0 && dayOfMonth >= 21) return true; // Jan 21-31
-        if (month === 1 && dayOfMonth <= 20) return true; // Feb 1-20
+      const [dayNum, monthStr, yearStr] = dateStr.split('-');
+      const date = new Date(`${monthStr} ${dayNum}, ${yearStr}`);
+      const month = date.getMonth();
+      const dateDay = date.getDate();
+      
+      if (targetMonth === 1) {
+        if (month === 0 && dateDay >= 21) return true;
+        if (month === 1 && dateDay <= 20) return true;
       }
       return false;
     });
 
-    // Inisialisasi counter
-    let offCount = 0;
-    let sakitCount = 0;
-    let cutiCount = 0;
-    let izinCount = 0;
-    let unpaidCount = 0;
-    let alphaCount = 0;
-    let specialCount = 0;
-    let totalHadir = 0;
+    let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
+    let unpaidCount = 0, alphaCount = 0;
 
-    // Hitung status per hari
     periodData.forEach(day => {
       const status = day[officerName];
       if (!status) return;
       
       switch(status) {
-        case 'OFF':
-          offCount++;
-          totalHadir++;
-          break;
-        case 'SPECIAL':
-          specialCount++;
-          totalHadir++;
-          break;
-        case 'P':
-        case 'M':
-        case 'S':
-          totalHadir++;
-          break;
-        case 'SAKIT':
-          sakitCount++;
-          break;
-        case 'CUTI':
-          cutiCount++;
-          break;
-        case 'IZIN':
-          izinCount++;
-          break;
-        case 'UNPAID LEAVE':
-          unpaidCount++;
-          break;
-        case 'ABSEN':
-          alphaCount++;
-          break;
+        case 'OFF': offCount++; break;
+        case 'SAKIT': sakitCount++; break;
+        case 'CUTI': cutiCount++; break;
+        case 'IZIN': izinCount++; break;
+        case 'UNPAID LEAVE': unpaidCount++; break;
+        case 'ABSEN': alphaCount++; break;
       }
     });
 
-    // Dapatkan rate
     const rate = getMealRate(department, joinDate);
     const baseAmount = rate?.base_amount || 0;
     const prorate = rate?.prorate_per_day || 0;
 
-    // Hitung bonus off tidak diambil
     const offNotTaken = Math.max(0, 4 - offCount);
     const proratePlus = offNotTaken * prorate;
-
-    // Hitung potongan
     const totalPotongan = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
     const dendaAlpha = alphaCount * 50;
     const prorateMinus = totalPotongan + dendaAlpha;
-
-    // Hitung total UM
+    
     const umSebelumPotongan = baseAmount + proratePlus;
     const umNet = Math.max(0, Math.round(umSebelumPotongan - prorateMinus));
 
@@ -182,8 +138,6 @@ export default function FinancialPage() {
       izinCount,
       unpaidCount,
       alphaCount,
-      specialCount,
-      totalHadir,
       proratePlus,
       prorateMinus,
       umSebelumPotongan,
@@ -191,16 +145,45 @@ export default function FinancialPage() {
     };
   };
 
-  // Filter officers berdasarkan department dan search
+  const formatBankAndRek = (bankAccount) => {
+    if (!bankAccount) return { bank: '', rek: '' };
+    
+    let bank = '';
+    let rek = bankAccount;
+    
+    if (bankAccount.includes('ABA')) {
+      bank = 'ABA';
+      rek = bankAccount.replace('ABA', '').trim();
+    } else if (bankAccount.includes('ACLEDA')) {
+      bank = 'ACLEDA';
+      rek = bankAccount.replace('ACLEDA', '').trim();
+    } else if (bankAccount.includes('WING BANK')) {
+      bank = 'WING BANK';
+      rek = bankAccount.replace('WING BANK', '').trim();
+    } else if (bankAccount.includes('WING')) {
+      bank = 'WING BANK';
+      rek = bankAccount.replace('WING', '').trim();
+    } else {
+      const parts = bankAccount.split(' ');
+      bank = parts[0] || '';
+      rek = parts.slice(1).join(' ') || '';
+    }
+    
+    return { bank, rek };
+  };
+
   const filteredOfficers = officers
     .filter(o => selectedDept === 'All' || o.department === selectedDept)
     .filter(o => o.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
     .map((officer, index) => {
       const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
+      const { bank, rek } = formatBankAndRek(officer.bank_account);
       return {
         ...officer,
         ...stats,
-        no: index + 1
+        no: index + 1,
+        bank_name: bank,
+        rekening: rek
       };
     });
 
@@ -214,10 +197,21 @@ export default function FinancialPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-[#FFD700]">FINANCIAL SUMMARY</h1>
-        <p className="text-[#A7D8FF] mt-2">Meal Allowance Calculation</p>
+      {/* Header dengan Tombol Back */}
+      <div className="mb-6 flex items-center gap-4">
+        <Link 
+          href="/dashboard" 
+          className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30 transition-all duration-300"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span>Back to Dashboard</span>
+        </Link>
+        <div>
+          <h1 className="text-3xl font-bold text-[#FFD700]">FINANCIAL SUMMARY</h1>
+          <p className="text-[#A7D8FF] mt-1">Meal Allowance Calculation</p>
+        </div>
       </div>
 
       {/* Filter Controls */}
@@ -255,7 +249,7 @@ export default function FinancialPage() {
         <input
           type="text"
           placeholder="Search name..."
-          className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1"
+          className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px]"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -271,22 +265,22 @@ export default function FinancialPage() {
               <th className="p-2 border border-[#FFD700]/30">Department</th>
               <th className="p-2 border border-[#FFD700]/30">Join</th>
               <th className="p-2 border border-[#FFD700]/30">Uang Makan</th>
-              <th className="p-2 border border-[#FFD700]/30">PRORATE / DAY</th>
-              <th className="p-2 border border-[#FFD700]/30">PRORATE HOLIDAY</th>
+              <th className="p-2 border border-[#FFD700]/30">PRORATE/DAY</th>
+              <th className="p-2 border border-[#FFD700]/30">HOLIDAY</th>
               <th className="p-2 border border-[#FFD700]/30">CUTI</th>
               <th className="p-2 border border-[#FFD700]/30">UNPAID</th>
               <th className="p-2 border border-[#FFD700]/30">SAKIT</th>
               <th className="p-2 border border-[#FFD700]/30">IZIN</th>
               <th className="p-2 border border-[#FFD700]/30">ALPHA</th>
-              <th className="p-2 border border-[#FFD700]/30">Pro rate (+)</th>
-              <th className="p-2 border border-[#FFD700]/30">Pro rate (-)</th>
+              <th className="p-2 border border-[#FFD700]/30">Prorate (+)</th>
+              <th className="p-2 border border-[#FFD700]/30">Prorate (-)</th>
               <th className="p-2 border border-[#FFD700]/30">UNPAID</th>
               <th className="p-2 border border-[#FFD700]/30">SAKIT</th>
               <th className="p-2 border border-[#FFD700]/30">IZIN</th>
               <th className="p-2 border border-[#FFD700]/30">ALPHA</th>
               <th className="p-2 border border-[#FFD700]/30">KASBON</th>
               <th className="p-2 border border-[#FFD700]/30">UM</th>
-              <th className="p-2 border border-[#FFD700]/30">U. M NET</th>
+              <th className="p-2 border border-[#FFD700]/30">U.M NET</th>
               <th className="p-2 border border-[#FFD700]/30">NAMA BANK</th>
               <th className="p-2 border border-[#FFD700]/30">NO REK / BARCODE</th>
             </tr>
@@ -297,7 +291,13 @@ export default function FinancialPage() {
                 <td className="p-2 border border-[#FFD700]/30 text-center">{officer.no}</td>
                 <td className="p-2 border border-[#FFD700]/30">{officer.full_name}</td>
                 <td className="p-2 border border-[#FFD700]/30">{officer.department}</td>
-                <td className="p-2 border border-[#FFD700]/30">{new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}</td>
+                <td className="p-2 border border-[#FFD700]/30">
+                  {new Date(officer.join_date).toLocaleDateString('id-ID', { 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: '2-digit' 
+                  })}
+                </td>
                 <td className="p-2 border border-[#FFD700]/30 text-right">${officer.baseAmount?.toFixed(2)}</td>
                 <td className="p-2 border border-[#FFD700]/30 text-right">${officer.prorate?.toFixed(2)}</td>
                 <td className="p-2 border border-[#FFD700]/30 text-right">{Math.max(0, 4 - officer.offCount)}</td>
@@ -315,17 +315,19 @@ export default function FinancialPage() {
                 <td className="p-2 border border-[#FFD700]/30 text-right">$0.00</td>
                 <td className="p-2 border border-[#FFD700]/30 text-right">${officer.umSebelumPotongan?.toFixed(2)}</td>
                 <td className="p-2 border border-[#FFD700]/30 text-right font-bold text-[#FFD700]">${officer.umNet?.toFixed(2)}</td>
-                <td className="p-2 border border-[#FFD700]/30">{officer.bank_account?.split(' ')[0] || ''}</td>
-                <td className="p-2 border border-[#FFD700]/30">{officer.bank_account?.split(' ').slice(1).join(' ') || officer.bank_account || ''}</td>
+                <td className="p-2 border border-[#FFD700]/30">{officer.bank_name}</td>
+                <td className="p-2 border border-[#FFD700]/30">{officer.rekening}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {/* Total Row */}
+      {/* Footer Total */}
       <div className="mt-4 p-4 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg flex justify-between items-center">
-        <span className="text-[#FFD700] font-bold">Total Officers: {filteredOfficers.length}</span>
+        <span className="text-[#FFD700] font-bold">
+          Total Officers: {filteredOfficers.length}
+        </span>
         <span className="text-[#FFD700] font-bold">
           Total U.M NET: ${filteredOfficers.reduce((sum, o) => sum + (o.umNet || 0), 0).toFixed(2)}
         </span>
