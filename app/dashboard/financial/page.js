@@ -15,7 +15,7 @@ export default function FinancialHomePage() {
     {
       title: 'Laundry Allowance',
       description: 'Uang Laundry Officer',
-      icon: '🧺',  // keranjang baju (mendekati mesin cuci)
+      icon: '👕',  // baju aja
       href: '/dashboard/financial/laundry-allowance',
       bgColor: 'bg-blue-500/20',
       textColor: 'text-blue-500'
