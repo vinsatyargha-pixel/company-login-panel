@@ -15,7 +15,7 @@ export default function FinancialHomePage() {
     {
       title: 'Laundry Allowance',
       description: 'Uang Laundry Officer',
-      icon: '👕',
+      icon: '🧺',  // ganti jadi keranjang cucian / mesin cuci
       href: '/dashboard/financial/laundry-allowance',
       bgColor: 'bg-blue-500/20',
       textColor: 'text-blue-500'
@@ -23,7 +23,7 @@ export default function FinancialHomePage() {
     {
       title: 'Salary',
       description: 'Gaji Officer',
-      icon: '💰',
+      icon: '💵',  // ganti jadi duit kertas (dolar)
       href: '/dashboard/financial/salary',
       bgColor: 'bg-green-500/20',
       textColor: 'text-green-500'
@@ -45,6 +45,7 @@ export default function FinancialHomePage() {
         <h1 className="text-3xl font-bold text-[#FFD700]">FINANCIAL SUMMARY</h1>
       </div>
 
+      {/* Grid 3 kolom ke samping */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {menuItems.map((item, index) => (
           <Link key={index} href={item.href} className="block group">
