@@ -536,64 +536,67 @@ export default function MealAllowancePage() {
                       </div>
                     </div>
                     
-                    {/* Angka-angka */}
-                    <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-2 text-sm">
-                      <div>
-                        <span className="text-[#A7D8FF] text-xs">Pokok:</span>
-                        <div className="font-medium">${Math.round(officer.baseAmount || officer.base_amount)}</div>
-                      </div>
-                      <div>
-                        <span className="text-[#A7D8FF] text-xs">Rate:</span>
-                        <div className="font-medium">${Math.round(officer.prorate || officer.prorate)}</div>
-                      </div>
-                      <div>
-                        <span className="text-[#A7D8FF] text-xs">Holiday:</span>
-                        <div className="font-medium">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</div>
-                      </div>
-                      <div>
-                        <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
-                        <div className="font-medium">
-                          {officer.cutiCount || officer.cuti_count || 0}/
-                          {officer.unpaidCount || officer.unpaid_count || 0}/
-                          {officer.sakitCount || officer.sakit_count || 0}/
-                          {officer.izinCount || officer.izin_count || 0}/
-                          {officer.alphaCount || officer.alpha_count || 0}
-                        </div>
-                      </div>
-                      
-                      {/* KASBON - Admin only */}
-                      {isAdmin && (
-                        <div>
-                          <span className="text-[#A7D8FF] text-xs">KASBON:</span>
-                          <div className="font-medium text-red-400">
-                            -${Math.abs(officer.kasbon || 0)}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* ETC dengan Keterangan - Admin only */}
-                      {isAdmin && (
-                        <div>
-                          <span className="text-[#A7D8FF] text-xs">ETC:</span>
-                          <div className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
-                            {officer.etc_operator}{officer.etc || 0}
-                            {officer.etc_note && (
-                              <span className="text-xs text-[#A7D8FF] ml-1">
-                                ({officer.etc_note})
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* NET Final */}
-                      <div>
-                        <span className="text-[#A7D8FF] text-xs">NET:</span>
-                        <div className="font-bold text-[#FFD700]">
-                          ${Math.round(officer.finalNet || officer.umNet || officer.um_net || 0)}
-                        </div>
-                      </div>
-                    </div>
+                    {/* Di dalam mapping officer, ganti bagian angka-angka */}
+<div className="flex-1 flex flex-wrap items-center gap-4 text-sm">
+  {/* Pokok */}
+  <div className="flex items-center gap-1">
+    <span className="text-[#A7D8FF] text-xs">Pokok:</span>
+    <span className="font-medium">${Math.round(officer.baseAmount || officer.base_amount)}</span>
+  </div>
+  
+  {/* Rate */}
+  <div className="flex items-center gap-1">
+    <span className="text-[#A7D8FF] text-xs">Rate:</span>
+    <span className="font-medium">${Math.round(officer.prorate || officer.prorate)}</span>
+  </div>
+  
+  {/* Holiday */}
+  <div className="flex items-center gap-1">
+    <span className="text-[#A7D8FF] text-xs">Holiday:</span>
+    <span className="font-medium">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</span>
+  </div>
+  
+  {/* C/U/S/I/A */}
+  <div className="flex items-center gap-1">
+    <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
+    <span className="font-medium">
+      {officer.cutiCount || officer.cuti_count || 0}/
+      {officer.unpaidCount || officer.unpaid_count || 0}/
+      {officer.sakitCount || officer.sakit_count || 0}/
+      {officer.izinCount || officer.izin_count || 0}/
+      {officer.alphaCount || officer.alpha_count || 0}
+    </span>
+  </div>
+  
+  {/* KASBON - Admin only */}
+  {isAdmin && (
+    <div className="flex items-center gap-1">
+      <span className="text-[#A7D8FF] text-xs">KASBON:</span>
+      <span className="font-medium text-red-400">-${Math.abs(officer.kasbon || 0)}</span>
+    </div>
+  )}
+  
+  {/* ETC dengan Keterangan - Admin only */}
+  {isAdmin && (
+    <div className="flex items-center gap-1">
+      <span className="text-[#A7D8FF] text-xs">ETC:</span>
+      <span className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
+        {officer.etc_operator}{officer.etc || 0}
+      </span>
+      {officer.etc_note && (
+        <span className="text-xs text-[#A7D8FF]">({officer.etc_note})</span>
+      )}
+    </div>
+  )}
+  
+  {/* NET Final */}
+  <div className="flex items-center gap-1">
+    <span className="text-[#A7D8FF] text-xs">NET:</span>
+    <span className="font-bold text-[#FFD700]">
+      ${Math.round(officer.finalNet || officer.umNet || officer.um_net || 0)}
+    </span>
+  </div>
+</div>
                     
                     {/* Bank & Rek */}
                     <div className="w-full md:w-1/6 text-right">
