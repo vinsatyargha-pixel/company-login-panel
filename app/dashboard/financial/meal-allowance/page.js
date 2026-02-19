@@ -620,18 +620,18 @@ export default function MealAllowancePage() {
     </a>
   )}
   
-  {/* Tombol Edit untuk Admin - DIPERBESAR */}
-  {isAdmin && usingSnapshot && (
-    <button
-      onClick={() => handleEditClick(officer)}
-      className="mt-3 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition-all w-fit"
-    >
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-      </svg>
-      <span>Edit KASBON/ETC</span>
-    </button>
-  )}
+  {/* Tombol Edit - DIPAKSA MUNCUL UNTUK TEST */}
+{isAdmin && (
+  <button
+    onClick={() => handleEditClick(officer)}
+    className="mt-3 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition-all w-fit"
+  >
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+    </svg>
+    <span>Edit KASBON/ETC</span>
+  </button>
+)}
 </div>
                     </div>
                   </div>
