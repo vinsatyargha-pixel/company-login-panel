@@ -359,27 +359,39 @@ export default function MealAllowancePage() {
 
   // Filter officers
   const officersWithStats = officers
-    .filter(o => {
-      if (!isAdmin) {
-        return o.department === 'CS DP WD';
-      }
-      return selectedDept === 'All' || o.department === selectedDept;
-    })
-    .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
-        .map((officer) => {
-      if (usingSnapshot) {
-        // Hitung final NET dengan kasbon dan etc
-        const baseNet = officer.umNet || 0;
-        const kasbon = Math.abs(officer.kasbon || 0);
-        const etc = officer.etc || 0;
-        const etcOp = officer.etc_operator === '+' ? 1 : -1;
-        const finalNet = baseNet - kasbon + (etcOp * etc);
-        
-        return {
-          ...officer,
-          finalNet: Math.max(0, finalNet)
-        };
-      }
+  .filter(o => {
+    if (!isAdmin) {
+      return o.department === 'CS DP WD';
+    }
+    return selectedDept === 'All' || o.department === selectedDept;
+  })
+  .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
+  .map((officer) => {
+    if (usingSnapshot) {
+      const baseNet = officer.umNet || 0;
+      const kasbon = Math.abs(officer.kasbon || 0);
+      const etc = officer.etc || 0;
+      const etcOp = officer.etc_operator === '+' ? 1 : -1;
+      const finalNet = baseNet - kasbon + (etcOp * etc);
+
+      return {
+        ...officer,
+        finalNet: Math.max(0, finalNet)
+      };
+    }
+
+    const stats = calculateOfficerStats(
+      officer.full_name,
+      officer.department,
+      officer.join_date
+    );
+
+    return {
+      ...officer,
+      ...stats,
+      finalNet: stats.umNet
+    };
+  });
         const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
         return {
           ...officer,
