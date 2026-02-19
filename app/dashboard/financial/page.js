@@ -258,28 +258,28 @@ export default function FinancialPage() {
         <table className="min-w-full bg-[#0B1A33] text-sm">
           <thead>
             <tr className="bg-[#1A2F4A] text-[#FFD700] text-xs font-bold">
-              <th className="p-2 border border-[#FFD700]/30">No.</th>
+              <th className="p-2 border border-[#FFD700]/30">No</th>
               <th className="p-2 border border-[#FFD700]/30">Nama</th>
-              <th className="p-2 border border-[#FFD700]/30">Department</th>
+              <th className="p-2 border border-[#FFD700]/30">Dept</th>
               <th className="p-2 border border-[#FFD700]/30">Join</th>
-              <th className="p-2 border border-[#FFD700]/30">UM POKOK</th>
-              <th className="p-2 border border-[#FFD700]/30">PRORATE / DAY</th>
-              <th className="p-2 border border-[#FFD700]/30">PRORATE HOLIDAY</th>
-              <th className="p-2 border border-[#FFD700]/30">CUTI</th>
-              <th className="p-2 border border-[#FFD700]/30">UNPAID</th>
-              <th className="p-2 border border-[#FFD700]/30">SAKIT</th>
-              <th className="p-2 border border-[#FFD700]/30">IZIN</th>
-              <th className="p-2 border border-[#FFD700]/30">ALPHA</th>
-              <th className="p-2 border border-[#FFD700]/30">Pro rate (+)</th>
-              <th className="p-2 border border-[#FFD700]/30">Pro rate (-)</th>
-              <th className="p-2 border border-[#FFD700]/30">UNPAID</th>
-              <th className="p-2 border border-[#FFD700]/30">Skt</th>
+              <th className="p-2 border border-[#FFD700]/30">Pokok</th>
+              <th className="p-2 border border-[#FFD700]/30">Rate</th>
+              <th className="p-2 border border-[#FFD700]/30">Holiday</th>
+              <th className="p-2 border border-[#FFD700]/30">C</th>
+              <th className="p-2 border border-[#FFD700]/30">U</th>
+              <th className="p-2 border border-[#FFD700]/30">S</th>
               <th className="p-2 border border-[#FFD700]/30">I</th>
               <th className="p-2 border border-[#FFD700]/30">A</th>
-              <th className="p-2 border border-[#FFD700]/30">KASBON</th>
-              <th className="p-2 border border-[#FFD700]/30">U. M NET</th>
-              <th className="p-2 border border-[#FFD700]/30">NAMA BANK</th>
-              <th className="p-2 border border-[#FFD700]/30">NO REK / BARCODE</th>
+              <th className="p-2 border border-[#FFD700]/30">(+)</th>
+              <th className="p-2 border border-[#FFD700]/30">(-)</th>
+              <th className="p-2 border border-[#FFD700]/30">U</th>
+              <th className="p-2 border border-[#FFD700]/30">S</th>
+              <th className="p-2 border border-[#FFD700]/30">I</th>
+              <th className="p-2 border border-[#FFD700]/30">A</th>
+              <th className="p-2 border border-[#FFD700]/30">Kasbon</th>
+              <th className="p-2 border border-[#FFD700]/30">NET</th>
+              <th className="p-2 border border-[#FFD700]/30">Bank</th>
+              <th className="p-2 border border-[#FFD700]/30">No Rek</th>
             </tr>
           </thead>
           <tbody>
@@ -312,7 +312,7 @@ export default function FinancialPage() {
                 <td className="p-2 border border-[#FFD700]/30 text-right">$0</td>
                 <td className="p-2 border border-[#FFD700]/30 text-right font-bold text-[#FFD700]">${Math.round(officer.umNet)}</td>
                 <td className="p-2 border border-[#FFD700]/30">{officer.bank_name}</td>
-                <td className="p-2 border border-[#FFD700]/30">{officer.rekening}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-xs">{officer.rekening?.substring(0, 15)}...</td>
               </tr>
             ))}
           </tbody>
@@ -325,7 +325,7 @@ export default function FinancialPage() {
           Total Officers: {filteredOfficers.length}
         </span>
         <span className="text-[#FFD700] font-bold">
-          Total U.M NET: ${Math.round(filteredOfficers.reduce((sum, o) => sum + (o.umNet || 0), 0))}
+          Total NET: ${Math.round(filteredOfficers.reduce((sum, o) => sum + (o.umNet || 0), 0))}
         </span>
       </div>
     </div>
