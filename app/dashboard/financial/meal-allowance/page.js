@@ -598,24 +598,36 @@ export default function MealAllowancePage() {
   </div>
 </div>
                     
-                    {/* Bank & Rek */}
-                    <div className="w-full md:w-1/6 text-right">
-                      <div className="text-[#A7D8FF] text-xs">{officer.bank_name || 'ABA'}</div>
-                      <div className="text-xs break-all">{officer.rekening || officer.bank_account || '-'}</div>
-                      
-                      {/* Tombol Edit untuk Admin */}
-                      {isAdmin && usingSnapshot && (
-                        <button
-                          onClick={() => handleEditClick(officer)}
-                          className="mt-2 text-[#FFD700] hover:text-[#FFD700]/80"
-                        >
-                          <svg className="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                          <span className="text-xs ml-1">Edit</span>
-                        </button>
-                      )}
-                    </div>
+                    {/* Bank & No Rek - Tampilan Baris Baru */}
+<div className="w-full md:w-1/6">
+  <div className="text-[#A7D8FF] text-xs">{officer.bank_name || 'ABA'}</div>
+  <div className="text-xs font-medium break-all">{officer.rekening || officer.bank_account || '-'}</div>
+  {/* Link dipisah ke baris baru */}
+  {officer.rekening?.includes('http') && (
+    <a 
+      href={officer.rekening} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className="text-[10px] text-[#FFD700] hover:underline block truncate max-w-[150px]"
+      title={officer.rekening}
+    >
+      {officer.rekening.substring(0, 30)}...
+    </a>
+  )}
+  
+  {/* Tombol Edit untuk Admin */}
+  {isAdmin && usingSnapshot && (
+    <button
+      onClick={() => handleEditClick(officer)}
+      className="mt-2 text-[#FFD700] hover:text-[#FFD700]/80 flex items-center gap-1"
+    >
+      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+      </svg>
+      <span className="text-xs">Edit KASBON/ETC</span>
+    </button>
+  )}
+</div>
                   </div>
                 </div>
               ))}
