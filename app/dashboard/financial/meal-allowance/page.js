@@ -130,32 +130,33 @@ export default function MealAllowancePage() {
           .order('officer_name');
         
         if (snapData) {
-          setSnapshotData(snapData);
-          setUsingSnapshot(true);
-          
-          const formattedOfficers = snapData.map(item => ({
-            id: item.officer_id,
-            full_name: item.officer_name,
-            department: item.department,
-            join_date: item.join_date,
-            baseAmount: item.base_amount,
-            prorate: item.prorate,
-            offCount: item.off_count,
-            sakitCount: item.sakit_count,
-            cutiCount: item.cuti_count,
-            izinCount: item.izin_count,
-            unpaidCount: item.unpaid_count,
-            alphaCount: item.alpha_count,
-            umNet: item.um_net,
-            kasbon: item.kasbon || 0,
-            etc: item.etc || 0,
-            etc_operator: item.etc_operator || '+',
-            etc_note: item.etc_note || '',
-            bank_account: item.bank_account || ''
-          }));
-          
-          setOfficers(formattedOfficers);
-        }
+  setSnapshotData(snapData);
+  setUsingSnapshot(true);
+  
+  const formattedOfficers = snapData.map(item => ({
+    id: item.officer_id,
+    full_name: item.officer_name,
+    department: item.department,
+    join_date: item.join_date,
+    baseAmount: item.base_amount,
+    prorate: item.prorate,
+    offCount: item.off_count,
+    sakitCount: item.sakit_count,
+    cutiCount: item.cuti_count,
+    izinCount: item.izin_count,
+    unpaidCount: item.unpaid_count,
+    alphaCount: item.alpha_count,
+    umNet: item.um_net,
+    // 🔥 INI PENTING - KASBON & ETC
+    kasbon: item.kasbon || 0,
+    etc: item.etc || 0,
+    etc_operator: item.etc_operator || '+',
+    etc_note: item.etc_note || '',
+    bank_account: item.bank_account || ''
+  }));
+  
+  setOfficers(formattedOfficers);
+}
       } else {
         setUsingSnapshot(false);
         await fetchManualData();
@@ -243,29 +244,29 @@ export default function MealAllowancePage() {
   };
 
   const handleEditSave = async () => {
-    try {
-      const { error } = await supabase
-        .from('meal_allowance_snapshot')
-        .update({
-          kasbon: editForm.kasbon,
-          etc: editForm.etc,
-          etc_operator: editForm.etc_operator,
-          etc_note: editForm.etc_note
-        })
-        .eq('officer_id', editingOfficer.id)
-        .eq('bulan', `${selectedMonth} ${selectedYear}`);
-      
-      if (error) throw error;
-      
-      alert('✅ Data berhasil diupdate');
-      fetchData();
-      setEditingOfficer(null);
-      
-    } catch (error) {
-      console.error('Error updating:', error);
-      alert('❌ Gagal update data');
-    }
-  };
+  try {
+    const { error } = await supabase
+      .from('meal_allowance_snapshot')
+      .update({
+        kasbon: editForm.kasbon,
+        etc: editForm.etc,
+        etc_operator: editForm.etc_operator,
+        etc_note: editForm.etc_note
+      })
+      .eq('officer_id', editingOfficer.id)
+      .eq('bulan', `${selectedMonth} ${selectedYear}`);
+    
+    if (error) throw error;
+    
+    alert('✅ Data berhasil diupdate');
+    fetchData(); // Refresh data
+    setEditingOfficer(null);
+    
+  } catch (error) {
+    console.error('Error updating:', error);
+    alert('❌ Gagal update data');
+  }
+};
 
   const getMonthsOfWork = (joinDate) => {
     const join = new Date(joinDate);
@@ -367,18 +368,18 @@ export default function MealAllowancePage() {
     .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
     .map((officer) => {
       if (usingSnapshot) {
-        // Hitung final NET dengan kasbon dan etc
-        const baseNet = officer.umNet || 0;
-        const kasbon = Math.abs(officer.kasbon || 0);
-        const etc = officer.etc || 0;
-        const etcOp = officer.etc_operator === '+' ? 1 : -1;
-        const finalNet = baseNet - kasbon + (etcOp * etc);
-        
-        return {
-          ...officer,
-          finalNet: Math.max(0, finalNet)
-        };
-      } else {
+  // Hitung final NET dengan kasbon dan etc
+  const baseNet = officer.umNet || 0;
+  const kasbon = Math.abs(officer.kasbon || 0);
+  const etc = officer.etc || 0;
+  const etcOp = officer.etc_operator === '+' ? 1 : -1;
+  const finalNet = baseNet - kasbon + (etcOp * etc);
+  
+  return {
+    ...officer,
+    finalNet: Math.max(0, finalNet)
+  };
+}
         const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
         return {
           ...officer,
@@ -573,26 +574,25 @@ export default function MealAllowancePage() {
                         </div>
                         
                         {/* KASBON - Admin only */}
-                        {isAdmin && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[#A7D8FF] text-xs">KASBON:</span>
-                            <span className="font-medium text-red-400">-${Math.abs(officer.kasbon || 0)}</span>
-                          </div>
-                        )}
+{isAdmin && (
+  <div className="flex items-center gap-1">
+    <span className="text-[#A7D8FF] text-xs">KASBON:</span>
+    <span className="font-medium text-red-400">-${Math.abs(officer.kasbon || 0)}</span>
+  </div>
+)}
                         
                         {/* ETC dengan Keterangan - Admin only */}
-                        {isAdmin && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[#A7D8FF] text-xs">ETC:</span>
-                            <span className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
-                              {officer.etc_operator}{officer.etc || 0}
-                            </span>
-                            {officer.etc_note && (
-                              <span className="text-xs text-[#A7D8FF]">({officer.etc_note})</span>
-                            )}
-                          </div>
-                        )}
-                        
+{isAdmin && (
+  <div className="flex items-center gap-1">
+    <span className="text-[#A7D8FF] text-xs">ETC:</span>
+    <span className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
+      {officer.etc_operator}{officer.etc || 0}
+    </span>
+    {officer.etc_note && (
+      <span className="text-xs text-[#A7D8FF]">({officer.etc_note})</span>
+    )}
+  </div>
+)}
                         {/* NET Final */}
                         <div className="flex items-center gap-1">
                           <span className="text-[#A7D8FF] text-xs">NET:</span>
