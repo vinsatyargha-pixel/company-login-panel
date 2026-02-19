@@ -368,46 +368,26 @@ export default function MealAllowancePage() {
   .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
   .map((officer) => {
     if (usingSnapshot) {
+      // Hitung final NET dengan kasbon dan etc
       const baseNet = officer.umNet || 0;
       const kasbon = Math.abs(officer.kasbon || 0);
       const etc = officer.etc || 0;
       const etcOp = officer.etc_operator === '+' ? 1 : -1;
       const finalNet = baseNet - kasbon + (etcOp * etc);
-
+      
       return {
         ...officer,
         finalNet: Math.max(0, finalNet)
       };
+    } else {
+      const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
+      return {
+        ...officer,
+        ...stats,
+        finalNet: stats.umNet
+      };
     }
-
-    const stats = calculateOfficerStats(
-      officer.full_name,
-      officer.department,
-      officer.join_date
-    );
-
-    return {
-      ...officer,
-      ...stats,
-      finalNet: stats.umNet
-    };
-  });
-        const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
-        return {
-          ...officer,
-          ...stats,
-          finalNet: stats.umNet
-        };
-      }
-    });
-        const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
-        return {
-          ...officer,
-          ...stats,
-          finalNet: stats.umNet
-        };
-      }
-    });
+  }); // ← HANYA SATU INI, GA ADA LAGI
 
   const groupedOfficers = {
     'CS DP WD': officersWithStats.filter(o => o.department === 'CS DP WD'),
