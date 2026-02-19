@@ -15,7 +15,7 @@ export default function FinancialHomePage() {
     {
       title: 'Laundry Allowance',
       description: 'Uang Laundry Officer',
-      icon: '🧺',  // ganti jadi keranjang cucian / mesin cuci
+      icon: '🧺',  // keranjang baju (mendekati mesin cuci)
       href: '/dashboard/financial/laundry-allowance',
       bgColor: 'bg-blue-500/20',
       textColor: 'text-blue-500'
@@ -23,7 +23,7 @@ export default function FinancialHomePage() {
     {
       title: 'Salary',
       description: 'Gaji Officer',
-      icon: '💵',  // ganti jadi duit kertas (dolar)
+      icon: '💵',  // duit kertas
       href: '/dashboard/financial/salary',
       bgColor: 'bg-green-500/20',
       textColor: 'text-green-500'
@@ -32,6 +32,7 @@ export default function FinancialHomePage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
+      {/* Header dengan Tombol Back */}
       <div className="mb-8 flex items-center gap-4">
         <Link 
           href="/dashboard" 
@@ -45,16 +46,28 @@ export default function FinancialHomePage() {
         <h1 className="text-3xl font-bold text-[#FFD700]">FINANCIAL SUMMARY</h1>
       </div>
 
-      {/* Grid 3 kolom ke samping */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* MENU VERTIKAL (KEBAWAH) - ICON GEDE */}
+      <div className="space-y-4">
         {menuItems.map((item, index) => (
           <Link key={index} href={item.href} className="block group">
-            <div className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 hover:shadow-[0_0_30px_#FFD700] transition-all duration-500">
-              <div className={`w-20 h-20 rounded-full ${item.bgColor} flex items-center justify-center mb-4 mx-auto`}>
-                <span className={`text-4xl ${item.textColor}`}>{item.icon}</span>
+            <div className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 hover:shadow-[0_0_30px_#FFD700] transition-all duration-500 flex items-center gap-6">
+              {/* Icon gede di kiri */}
+              <div className={`w-24 h-24 rounded-full ${item.bgColor} flex items-center justify-center flex-shrink-0`}>
+                <span className={`text-5xl ${item.textColor}`}>{item.icon}</span>
               </div>
-              <h2 className="text-xl font-bold text-[#FFD700] text-center mb-2">{item.title}</h2>
-              <p className="text-[#A7D8FF] text-center text-sm">{item.description}</p>
+              
+              {/* Title & description di kanan icon */}
+              <div className="flex-1">
+                <h2 className="text-3xl font-bold text-[#FFD700] mb-2">{item.title}</h2>
+                <p className="text-[#A7D8FF] text-lg">{item.description}</p>
+              </div>
+              
+              {/* Arrow di kanan */}
+              <div className="ml-auto">
+                <svg className="w-8 h-8 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
             </div>
           </Link>
         ))}
