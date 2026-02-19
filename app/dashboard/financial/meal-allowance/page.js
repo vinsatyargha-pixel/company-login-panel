@@ -27,15 +27,31 @@ export default function MealAllowancePage() {
 
   // Helper functions untuk periode
   const getPeriodeStart = (month, year) => {
-    const monthIndex = months.indexOf(month);
-    const prevMonth = monthIndex === 0 ? 11 : monthIndex - 1;
-    const prevMonthYear = monthIndex === 0 ? parseInt(year) - 1 : parseInt(year);
-    return `${prevMonthYear}-${String(prevMonth + 1).padStart(2, '0')}-21`;
-  };
+  const monthIndex = months.indexOf(month);
+  // Untuk bulan February, ambil 21 Desember tahun sebelumnya
+  if (month === 'February') {
+    return `${parseInt(year) - 1}-12-21`;
+  }
+  // Untuk bulan lainnya, ambil 21 bulan sebelumnya
+  const prevMonth = monthIndex === 0 ? 11 : monthIndex - 2; // Mundur 2 bulan
+  const prevMonthYear = monthIndex <= 1 ? parseInt(year) - 1 : parseInt(year);
+  return `${prevMonthYear}-${String(prevMonth + 1).padStart(2, '0')}-21`;
+};
 
-  const getPeriodeEnd = (month, year) => {
-    return `${year}-${String(months.indexOf(month) + 1).padStart(2, '0')}-20`;
-  };
+const getPeriodeEnd = (month, year) => {
+  const monthIndex = months.indexOf(month);
+  // Untuk bulan February, ambil 20 Januari tahun ini
+  if (month === 'February') {
+    return `${year}-01-20`;
+  }
+  // Untuk bulan lainnya, ambil 20 bulan sebelumnya
+  const prevMonth = monthIndex === 0 ? 11 : monthIndex - 1;
+  return `${year}-${String(prevMonth + 1).padStart(2, '0')}-20`;
+};
+
+const getPaymentDate = (month, year) => {
+  return `1 ${month} ${year}`;
+};
 
   // Set department filter based on user role
   useEffect(() => {
