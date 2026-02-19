@@ -573,26 +573,51 @@ export default function MealAllowancePage() {
                           </span>
                         </div>
                         
-                        {/* KASBON - Admin only */}
-{isAdmin && (
-  <div className="flex items-center gap-1">
-    <span className="text-[#A7D8FF] text-xs">KASBON:</span>
-    <span className="font-medium text-red-400">-${Math.abs(officer.kasbon || 0)}</span>
+                        {/* 1. KASBON - UBAH INI */}
+<div>
+  <label className="text-[#A7D8FF] text-sm block mb-1">
+    KASBON ( - )
+  </label>
+  <input
+    type="text"  // ← GANTI DARI 'number' JADI 'text'
+    value={editForm.kasbon}
+    onChange={(e) => {
+      const value = e.target.value.replace(/[^0-9]/g, '');
+      setEditForm({...editForm, kasbon: value ? parseInt(value) : 0});
+    }}
+    className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+    placeholder="Contoh: 150"
+    inputMode="numeric"
+  />
+</div>
+
+{/* 2. ETC - UBAH JUGA */}
+<div>
+  <label className="text-[#A7D8FF] text-sm block mb-1">
+    ETC ( + / - )
+  </label>
+  <div className="flex gap-2">
+    <select
+      value={editForm.etc_operator}
+      onChange={(e) => setEditForm({...editForm, etc_operator: e.target.value})}
+      className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white w-20"
+    >
+      <option value="+">+</option>
+      <option value="-">-</option>
+    </select>
+    <input
+      type="text"  // ← GANTI DARI 'number' JADI 'text'
+      value={editForm.etc}
+      onChange={(e) => {
+        const value = e.target.value.replace(/[^0-9]/g, '');
+        setEditForm({...editForm, etc: value ? parseInt(value) : 0});
+      }}
+      className="flex-1 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+      placeholder="Contoh: 25"
+      inputMode="numeric"
+    />
   </div>
-)}
-                        
-                        {/* ETC dengan Keterangan - Admin only */}
-{isAdmin && (
-  <div className="flex items-center gap-1">
-    <span className="text-[#A7D8FF] text-xs">ETC:</span>
-    <span className={`font-medium ${officer.etc_operator === '+' ? 'text-green-400' : 'text-red-400'}`}>
-      {officer.etc_operator}{officer.etc || 0}
-    </span>
-    {officer.etc_note && (
-      <span className="text-xs text-[#A7D8FF]">({officer.etc_note})</span>
-    )}
-  </div>
-)}
+</div>
                         {/* NET Final */}
                         <div className="flex items-center gap-1">
                           <span className="text-[#A7D8FF] text-xs">NET:</span>
