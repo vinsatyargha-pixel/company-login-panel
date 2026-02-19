@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function MealAllowancePage() {
+  const { user, userJobRole, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [officers, setOfficers] = useState([]);
   const [mealRates, setMealRates] = useState([]);
@@ -14,11 +15,24 @@ export default function MealAllowancePage() {
   const [selectedDept, setSelectedDept] = useState('All');
   const [scheduleData, setScheduleData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [availableDepartments, setAvailableDepartments] = useState(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
 
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                   'July', 'August', 'September', 'October', 'November', 'December'];
   const years = ['2025', '2026', '2027'];
-  const departments = ['All', 'AM', 'CAPTAIN', 'CS DP WD'];
+
+  // Set department filter based on user role
+  useEffect(() => {
+    if (!isAdmin) {
+      // Staff: only CS DP WD
+      setAvailableDepartments(['CS DP WD']);
+      setSelectedDept('CS DP WD');
+    } else {
+      // Admin: all departments
+      setAvailableDepartments(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
+      setSelectedDept('All');
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     fetchData();
@@ -170,9 +184,16 @@ export default function MealAllowancePage() {
     return { bank, rek };
   };
 
-  // Group officers by department
+  // Filter officers based on role and selected department
   const officersWithStats = officers
-    .filter(o => selectedDept === 'All' || o.department === selectedDept)
+    .filter(o => {
+      // Staff: only CS DP WD
+      if (!isAdmin) {
+        return o.department === 'CS DP WD';
+      }
+      // Admin: filter by selected department
+      return selectedDept === 'All' || o.department === selectedDept;
+    })
     .filter(o => o.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
     .map((officer) => {
       const stats = calculateOfficerStats(officer.full_name, officer.department, officer.join_date);
@@ -213,8 +234,10 @@ export default function MealAllowancePage() {
           <span>Back to Dashboard</span>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold text-[#FFD700]">FINANCIAL SUMMARY</h1>
-          <p className="text-[#A7D8FF] mt-1">Meal Allowance Calculation - {selectedMonth} {selectedYear}</p>
+          <h1 className="text-3xl font-bold text-[#FFD700]">MEAL ALLOWANCE</h1>
+          <p className="text-[#A7D8FF] mt-1">
+            {isAdmin ? 'Admin View' : 'Staff View'} - {selectedMonth} {selectedYear}
+          </p>
         </div>
       </div>
 
@@ -244,8 +267,9 @@ export default function MealAllowancePage() {
           className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
           value={selectedDept}
           onChange={(e) => setSelectedDept(e.target.value)}
+          disabled={!isAdmin}
         >
-          {departments.map(dept => (
+          {availableDepartments.map(dept => (
             <option key={dept} value={dept}>{dept}</option>
           ))}
         </select>
@@ -259,23 +283,21 @@ export default function MealAllowancePage() {
         />
       </div>
 
-      {/* CS DP WD Section */}
+      {/* CS DP WD Section - Always show for staff, conditional for admin */}
       {groupedOfficers['CS DP WD'].length > 0 && (
         <div className="mb-8">
           <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
-            <h2 className="text-xl font-bold text-[#FFD700]">CS DP WD</h2>
+            <h2 className="text-xl font-bold text-[#FFD700]">CS DP WD ({groupedOfficers['CS DP WD'].length})</h2>
           </div>
           <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
             {groupedOfficers['CS DP WD'].map((officer) => (
               <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
                 <div className="flex flex-col md:flex-row md:items-center gap-4">
-                  {/* Nama dan Info Dasar */}
                   <div className="w-full md:w-1/4">
                     <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
                     <div className="text-xs text-[#A7D8FF]">Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
                   </div>
                   
-                  {/* Angka-angka */}
                   <div className="flex-1 grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
                     <div>
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
@@ -301,7 +323,6 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {/* Bank & No Rek */}
                   <div className="w-full md:w-1/4 text-right">
                     <div className="text-[#A7D8FF] text-xs">{officer.bank_name}</div>
                     <div className="text-xs break-all">{officer.rekening}</div>
@@ -313,11 +334,11 @@ export default function MealAllowancePage() {
         </div>
       )}
 
-      {/* CAPTAIN Section */}
-      {groupedOfficers['CAPTAIN'].length > 0 && (
+      {/* CAPTAIN Section - Only for admin */}
+      {isAdmin && groupedOfficers['CAPTAIN'].length > 0 && (
         <div className="mb-8">
           <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
-            <h2 className="text-xl font-bold text-[#FFD700]">CAPTAIN</h2>
+            <h2 className="text-xl font-bold text-[#FFD700]">CAPTAIN ({groupedOfficers['CAPTAIN'].length})</h2>
           </div>
           <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
             {groupedOfficers['CAPTAIN'].map((officer) => (
@@ -364,11 +385,11 @@ export default function MealAllowancePage() {
         </div>
       )}
 
-      {/* AM Section */}
-      {groupedOfficers['AM'].length > 0 && (
+      {/* AM Section - Only for admin */}
+      {isAdmin && groupedOfficers['AM'].length > 0 && (
         <div className="mb-8">
           <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
-            <h2 className="text-xl font-bold text-[#FFD700]">AM</h2>
+            <h2 className="text-xl font-bold text-[#FFD700]">AM ({groupedOfficers['AM'].length})</h2>
           </div>
           <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
             {groupedOfficers['AM'].map((officer) => (
