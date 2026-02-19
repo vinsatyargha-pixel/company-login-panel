@@ -467,7 +467,7 @@ const getPaymentDate = (month, year) => {
       year: 'numeric' 
     })}
   </span>
-  <span className="ml-4 text-[#A7D8FF]">Pembayaran: </span>
+  <span className="ml-4 text-[#A7D8FF]">Pembagian: </span>
   <span className="text-white font-medium">
     1 {selectedMonth} {selectedYear}
   </span>
