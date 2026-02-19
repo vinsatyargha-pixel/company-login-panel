@@ -126,8 +126,7 @@ export default function FinancialPage() {
     const dendaAlpha = alphaCount * 50;
     const prorateMinus = totalPotongan + dendaAlpha;
     
-    const umSebelumPotongan = baseAmount + proratePlus;
-    const umNet = Math.max(0, Math.round(umSebelumPotongan - prorateMinus));
+    const umNet = Math.max(0, Math.round(baseAmount + proratePlus - prorateMinus));
 
     return {
       baseAmount,
@@ -140,7 +139,6 @@ export default function FinancialPage() {
       alphaCount,
       proratePlus,
       prorateMinus,
-      umSebelumPotongan,
       umNet
     };
   };
@@ -264,23 +262,22 @@ export default function FinancialPage() {
               <th className="p-2 border border-[#FFD700]/30">Nama</th>
               <th className="p-2 border border-[#FFD700]/30">Department</th>
               <th className="p-2 border border-[#FFD700]/30">Join</th>
-              <th className="p-2 border border-[#FFD700]/30">Uang Makan</th>
-              <th className="p-2 border border-[#FFD700]/30">PRORATE/DAY</th>
-              <th className="p-2 border border-[#FFD700]/30">HOLIDAY</th>
+              <th className="p-2 border border-[#FFD700]/30">UM POKOK</th>
+              <th className="p-2 border border-[#FFD700]/30">PRORATE / DAY</th>
+              <th className="p-2 border border-[#FFD700]/30">PRORATE HOLIDAY</th>
               <th className="p-2 border border-[#FFD700]/30">CUTI</th>
               <th className="p-2 border border-[#FFD700]/30">UNPAID</th>
               <th className="p-2 border border-[#FFD700]/30">SAKIT</th>
               <th className="p-2 border border-[#FFD700]/30">IZIN</th>
               <th className="p-2 border border-[#FFD700]/30">ALPHA</th>
-              <th className="p-2 border border-[#FFD700]/30">Prorate (+)</th>
-              <th className="p-2 border border-[#FFD700]/30">Prorate (-)</th>
+              <th className="p-2 border border-[#FFD700]/30">Pro rate (+)</th>
+              <th className="p-2 border border-[#FFD700]/30">Pro rate (-)</th>
               <th className="p-2 border border-[#FFD700]/30">UNPAID</th>
-              <th className="p-2 border border-[#FFD700]/30">SAKIT</th>
-              <th className="p-2 border border-[#FFD700]/30">IZIN</th>
-              <th className="p-2 border border-[#FFD700]/30">ALPHA</th>
+              <th className="p-2 border border-[#FFD700]/30">Skt</th>
+              <th className="p-2 border border-[#FFD700]/30">I</th>
+              <th className="p-2 border border-[#FFD700]/30">A</th>
               <th className="p-2 border border-[#FFD700]/30">KASBON</th>
-              <th className="p-2 border border-[#FFD700]/30">UM</th>
-              <th className="p-2 border border-[#FFD700]/30">U.M NET</th>
+              <th className="p-2 border border-[#FFD700]/30">U. M NET</th>
               <th className="p-2 border border-[#FFD700]/30">NAMA BANK</th>
               <th className="p-2 border border-[#FFD700]/30">NO REK / BARCODE</th>
             </tr>
@@ -298,23 +295,22 @@ export default function FinancialPage() {
                     year: '2-digit' 
                   })}
                 </td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${officer.baseAmount?.toFixed(2)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${officer.prorate?.toFixed(2)}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.baseAmount)}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.prorate)}</td>
                 <td className="p-2 border border-[#FFD700]/30 text-right">{Math.max(0, 4 - officer.offCount)}</td>
                 <td className="p-2 border border-[#FFD700]/30 text-center">{officer.cutiCount || ''}</td>
                 <td className="p-2 border border-[#FFD700]/30 text-center">{officer.unpaidCount || ''}</td>
                 <td className="p-2 border border-[#FFD700]/30 text-center">{officer.sakitCount || ''}</td>
                 <td className="p-2 border border-[#FFD700]/30 text-center">{officer.izinCount || ''}</td>
                 <td className="p-2 border border-[#FFD700]/30 text-center">{officer.alphaCount || ''}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${officer.proratePlus?.toFixed(2)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${officer.prorateMinus?.toFixed(2)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${(officer.unpaidCount * officer.prorate)?.toFixed(2)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${(officer.sakitCount * officer.prorate)?.toFixed(2)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${(officer.izinCount * officer.prorate)?.toFixed(2)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${(officer.alphaCount * 50)?.toFixed(2)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">$0.00</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right">${officer.umSebelumPotongan?.toFixed(2)}</td>
-                <td className="p-2 border border-[#FFD700]/30 text-right font-bold text-[#FFD700]">${officer.umNet?.toFixed(2)}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.proratePlus)}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.prorateMinus)}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.unpaidCount * officer.prorate)}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.sakitCount * officer.prorate)}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.izinCount * officer.prorate)}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right">${Math.round(officer.alphaCount * 50)}</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right">$0</td>
+                <td className="p-2 border border-[#FFD700]/30 text-right font-bold text-[#FFD700]">${Math.round(officer.umNet)}</td>
                 <td className="p-2 border border-[#FFD700]/30">{officer.bank_name}</td>
                 <td className="p-2 border border-[#FFD700]/30">{officer.rekening}</td>
               </tr>
@@ -329,7 +325,7 @@ export default function FinancialPage() {
           Total Officers: {filteredOfficers.length}
         </span>
         <span className="text-[#FFD700] font-bold">
-          Total U.M NET: ${filteredOfficers.reduce((sum, o) => sum + (o.umNet || 0), 0).toFixed(2)}
+          Total U.M NET: ${Math.round(filteredOfficers.reduce((sum, o) => sum + (o.umNet || 0), 0))}
         </span>
       </div>
     </div>
