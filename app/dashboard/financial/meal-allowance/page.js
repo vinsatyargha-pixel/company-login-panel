@@ -642,12 +642,39 @@ export default function MealAllowancePage() {
               </div>
               
               <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">ETC (+ nambah, - ngurang)</label>
-                <input type="text" value={editForm.etc} onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9-]/g, '');
-                  setEditForm({...editForm, etc: value ? parseInt(value) : 0});
-                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="Contoh: 25 atau -10" inputMode="numeric" />
-              </div>
+  <label className="text-[#A7D8FF] text-sm block mb-1">ETC (+ nambah, - ngurang)</label>
+  <input 
+    type="text" 
+    value={editForm.etc} 
+    onChange={(e) => {
+      // Hanya izinkan angka dan tanda minus di depan
+      const value = e.target.value;
+      
+      // Kalo kosong atau cuma tanda minus
+      if (value === '' || value === '-') {
+        setEditForm({...editForm, etc: value});
+        return;
+      }
+      
+      // Cek apakah string adalah angka valid (boleh negatif)
+      if (/^-?\d*$/.test(value)) {
+        setEditForm({...editForm, etc: value});
+      }
+    }}
+    onBlur={(e) => {
+      // Pas keluar dari input, konversi ke number
+      const num = parseInt(e.target.value);
+      if (!isNaN(num)) {
+        setEditForm({...editForm, etc: num});
+      } else {
+        setEditForm({...editForm, etc: 0});
+      }
+    }}
+    className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
+    placeholder="Contoh: 25 atau -10" 
+    inputMode="numeric" 
+  />
+</div>
               
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">Keterangan / Note</label>
