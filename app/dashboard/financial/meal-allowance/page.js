@@ -137,6 +137,23 @@ export default function MealAllowancePage() {
     const dendaAlpha = alphaCount * 50;
     const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
 
+    // CONSOLE LOG UNTUK DEBUG
+    console.log(`🔍 ${officerName} di ${selectedMonth} ${selectedYear}:`, {
+      periode: `${periodeStart.toLocaleDateString()} - ${periodeEnd.toLocaleDateString()}`,
+      totalHari: periodData.length,
+      OFF: offCount,
+      SAKIT: sakitCount,
+      CUTI: cutiCount,
+      IZIN: izinCount,
+      UNPAID: unpaidCount,
+      ALPHA: alphaCount,
+      POKOK: pokok,
+      PRORATE: prorate,
+      POTONGAN: potonganKejadian,
+      DENDA: dendaAlpha,
+      UM_NET: umNet
+    });
+
     return {
       baseAmount: pokok,
       prorate: prorate,
@@ -258,16 +275,7 @@ export default function MealAllowancePage() {
           scheduleResult.data || []
         );
         const { bank, rek, link } = formatBankAndRek(officer.bank_account || '');
-        console.log(`🔍 ${officerName} di ${selectedMonth} ${selectedYear}:`, {
-  periode: `${periodeStart.toLocaleDateString()} - ${periodeEnd.toLocaleDateString()}`,
-  SAKIT: sakitCount,
-  CUTI: cutiCount,
-  IZIN: izinCount,
-  UNPAID: unpaidCount,
-  ALPHA: alphaCount,
-  OFF: offCount,
-  totalHari: periodData.length
-});
+        
         return {
           id: officer.id,
           full_name: officer.full_name,
@@ -335,7 +343,7 @@ export default function MealAllowancePage() {
         prorate: prorate,
         off_count: editingOfficer.offCount || 0,
         sakit_count: editingOfficer.sakitCount || 0,
-        cuti_count: editForm.cuti,  // ← CUTI MANUAL
+        cuti_count: editForm.cuti,
         izin_count: editingOfficer.izinCount || 0,
         unpaid_count: editingOfficer.unpaidCount || 0,
         alpha_count: editingOfficer.alphaCount || 0,
@@ -351,7 +359,6 @@ export default function MealAllowancePage() {
       
       if (error) throw error;
       
-      // Update state langsung
       setOfficers(prev => prev.map(o => 
         o.id === editingOfficer.id 
           ? { 
@@ -504,7 +511,6 @@ export default function MealAllowancePage() {
             <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
               {groupedOfficers[dept].map((officer) => (
                 <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                  {/* BARIS 1: Nama, Join Date, Bank */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
                     <div>
                       <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
@@ -521,7 +527,6 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {/* BARIS 2: Angka-angka */}
                   <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
@@ -552,7 +557,6 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                       <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
@@ -572,7 +576,6 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {/* BARIS 4: Tombol Edit */}
                   {isAdmin && (
                     <div className="flex justify-end">
                       <button onClick={() => handleEditClick(officer)} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all">
@@ -595,84 +598,51 @@ export default function MealAllowancePage() {
         <span className="text-[#FFD700] font-bold">Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}</span>
       </div>
 
-      {/* MODAL EDIT DENGAN CUTI MANUAL */}
       {editingOfficer && isAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
             <h3 className="text-xl font-bold text-[#FFD700] mb-4">Edit {editingOfficer.full_name}</h3>
             
             <div className="space-y-4">
-              {/* KASBON */}
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">KASBON ( - )</label>
-                <input 
-                  type="text" 
-                  value={editForm.kasbon} 
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setEditForm({...editForm, kasbon: value ? parseInt(value) : 0});
-                  }} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
-                  placeholder="0" 
-                  inputMode="numeric" 
-                />
+                <input type="text" value={editForm.kasbon} onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setEditForm({...editForm, kasbon: value ? parseInt(value) : 0});
+                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="0" inputMode="numeric" />
               </div>
               
-              {/* CUTI MANUAL */}
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">CUTI (hari)</label>
-                <input 
-                  type="text" 
-                  value={editForm.cuti} 
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setEditForm({...editForm, cuti: value ? parseInt(value) : 0});
-                  }} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
-                  placeholder="0" 
-                  inputMode="numeric" 
-                />
+                <input type="text" value={editForm.cuti} onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setEditForm({...editForm, cuti: value ? parseInt(value) : 0});
+                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="0" inputMode="numeric" />
                 <p className="text-[10px] text-[#A7D8FF] mt-1">*Akan mengganti hitungan cuti dari schedule</p>
               </div>
               
-              {/* ETC */}
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">ETC (+ nambah, - ngurang)</label>
-                <input 
-                  type="text" 
-                  value={editForm.etc} 
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '' || value === '-') {
-                      setEditForm({...editForm, etc: value});
-                      return;
-                    }
-                    if (/^-?\d*$/.test(value)) {
-                      setEditForm({...editForm, etc: value});
-                    }
-                  }} 
-                  onBlur={() => {
-                    const num = parseInt(editForm.etc);
-                    setEditForm({...editForm, etc: isNaN(num) ? 0 : num});
-                  }} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
-                  placeholder="Contoh: 25 atau -10" 
-                />
+                <input type="text" value={editForm.etc} onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || value === '-') {
+                    setEditForm({...editForm, etc: value});
+                    return;
+                  }
+                  if (/^-?\d*$/.test(value)) {
+                    setEditForm({...editForm, etc: value});
+                  }
+                }} onBlur={() => {
+                  const num = parseInt(editForm.etc);
+                  setEditForm({...editForm, etc: isNaN(num) ? 0 : num});
+                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="Contoh: 25 atau -10" />
               </div>
               
-              {/* NOTES */}
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">Keterangan / Note</label>
-                <input 
-                  type="text" 
-                  value={editForm.etc_note} 
-                  onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
-                  placeholder="Misal: Koreksi, Bonus, Denda, dll" 
-                />
+                <input type="text" value={editForm.etc_note} onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="Misal: Koreksi, Bonus, Denda, dll" />
               </div>
               
-              {/* BUTTON */}
               <div className="flex gap-2 pt-4">
                 <button onClick={handleEditSave} className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80">Simpan</button>
                 <button onClick={() => setEditingOfficer(null)} className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600">Batal</button>
