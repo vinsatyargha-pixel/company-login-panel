@@ -36,13 +36,27 @@ export default function MealAllowancePage() {
   const getPeriodeStart = (month, year) => {
   const monthIndex = months.indexOf(month);
   
-  // Start = 2 bulan sebelumnya (21)
+  // Start = 2 bulan sebelum bulan filter, tanggal 21
   if (monthIndex === 0) { // January
-    return `${parseInt(year) - 1}-11-21`;
+    return `${parseInt(year) - 1}-11-21`; // 21 Nov tahun lalu
   } else if (monthIndex === 1) { // February
-    return `${parseInt(year) - 1}-12-21`;
+    return `${parseInt(year) - 1}-12-21`; // 21 Dec tahun lalu
   } else {
-    return `${year}-${String(monthIndex - 1).padStart(2, '0')}-21`;
+    // March (index 2) -> 2 bulan sebelum = January (index 0)
+    const prevMonthIndex = monthIndex - 2;
+    return `${year}-${String(prevMonthIndex + 1).padStart(2, '0')}-21`;
+  }
+};
+
+const getPeriodeEnd = (month, year) => {
+  const monthIndex = months.indexOf(month);
+  
+  // End = 1 bulan sebelum bulan filter, tanggal 20
+  if (monthIndex === 0) { // January
+    return `${parseInt(year) - 1}-12-20`; // 20 Dec tahun lalu
+  } else {
+    // March (index 2) -> 1 bulan sebelum = February (index 1)
+    return `${year}-${String(monthIndex).padStart(2, '0')}-20`;
   }
 };
 
