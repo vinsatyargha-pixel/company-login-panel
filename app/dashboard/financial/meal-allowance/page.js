@@ -421,52 +421,51 @@ export default function MealAllowancePage() {
   };
 
   const handleEditSave = async () => {
-    try {
-      if (editForm.kasbon < 0 || editForm.etc < 0) {
-        alert('⚠️ Nilai tidak boleh negatif');
-        return;
-      }
-      
-      const snapshotData = {
-        officer_id: editingOfficer.id,
-        officer_name: editingOfficer.full_name,
-        department: editingOfficer.department,
-        join_date: editingOfficer.join_date,
-        bulan: `${selectedMonth} ${selectedYear}`,
-        base_amount: editingOfficer.baseAmount || 0,
-        prorate: editingOfficer.prorate || 0,
-        off_count: editingOfficer.offCount || 0,
-        sakit_count: editingOfficer.sakitCount || 0,
-        cuti_count: editingOfficer.cutiCount || 0,
-        izin_count: editingOfficer.izinCount || 0,
-        unpaid_count: editingOfficer.unpaidCount || 0,
-        alpha_count: editingOfficer.alphaCount || 0,
-        um_net: editingOfficer.umNet || 0,
-        kasbon: editForm.kasbon,
-        etc: editForm.etc,
-        etc_operator: editForm.etc_operator,
-        etc_note: editForm.etc_note,
-        bank_account: editingOfficer.bank_account || '',
-        is_locked: true
-      };
-      
-      const { error } = await supabase
-        .from('meal_allowance_snapshot')
-        .upsert(snapshotData, { 
-          onConflict: 'officer_id, bulan' 
-        });
-      
-      if (error) throw error;
-      
-      alert('✅ Data berhasil diupdate');
-      fetchData();
-      setEditingOfficer(null);
-      
-    } catch (error) {
-      console.error('Error updating:', error);
-      alert('❌ Gagal update data: ' + error.message);
+  try {
+    if (editForm.kasbon < 0 || editForm.etc < 0) {
+      alert('⚠️ Nilai tidak boleh negatif');
+      return;
     }
-  };
+    
+    const snapshotData = {
+      officer_id: editingOfficer.id,
+      officer_name: editingOfficer.full_name,
+      department: editingOfficer.department,
+      join_date: editingOfficer.join_date,
+      bulan: `${selectedMonth} ${selectedYear}`,
+      base_amount: editingOfficer.baseAmount || 0,
+      prorate: editingOfficer.prorate || 0,
+      off_count: editingOfficer.offCount || 0,
+      sakit_count: editingOfficer.sakitCount || 0,
+      cuti_count: editingOfficer.cutiCount || 0,
+      izin_count: editingOfficer.izinCount || 0,
+      unpaid_count: editingOfficer.unpaidCount || 0,
+      alpha_count: editingOfficer.alphaCount || 0,
+      um_net: editingOfficer.umNet || 0,
+      kasbon: editForm.kasbon,
+      etc: editForm.etc,
+      etc_operator: editForm.etc_operator,
+      etc_note: editForm.etc_note,
+      // bank_account: editingOfficer.bank_account || ''  <-- HAPUS INI!
+    };
+    
+    const { error } = await supabase
+      .from('meal_allowance_snapshot')
+      .upsert(snapshotData, { 
+        onConflict: 'officer_id, bulan' 
+      });
+    
+    if (error) throw error;
+    
+    alert('✅ Data berhasil diupdate');
+    fetchData();
+    setEditingOfficer(null);
+    
+  } catch (error) {
+    console.error('Error updating:', error);
+    alert('❌ Gagal update data: ' + error.message);
+  }
+};
 
   // ===========================================
   // FILTER & PROCESS OFFICERS
