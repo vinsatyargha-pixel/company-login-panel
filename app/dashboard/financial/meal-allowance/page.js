@@ -34,23 +34,26 @@ export default function MealAllowancePage() {
   // ===========================================
   
   const getPeriodeStart = (month, year) => {
-    const monthIndex = months.indexOf(month);
-    if (month === 'February') {
-      return `${parseInt(year) - 1}-12-21`;
-    }
-    const prevMonth = monthIndex === 0 ? 11 : monthIndex - 2;
-    const prevMonthYear = monthIndex <= 1 ? parseInt(year) - 1 : parseInt(year);
-    return `${prevMonthYear}-${String(prevMonth + 1).padStart(2, '0')}-21`;
-  };
+  const monthIndex = months.indexOf(month);
+  
+  // Untuk pembagian 1 February, periode = 21 Jan - 20 Feb
+  // Untuk pembagian 1 March, periode = 21 Feb - 20 March
+  // dst...
+  
+  // Periode start = tanggal 21 bulan sebelumnya
+  if (monthIndex === 0) { // January
+    return `${parseInt(year) - 1}-12-21`;
+  } else {
+    return `${year}-${String(monthIndex).padStart(2, '0')}-21`;
+  }
+};
 
-  const getPeriodeEnd = (month, year) => {
-    const monthIndex = months.indexOf(month);
-    if (month === 'February') {
-      return `${year}-01-20`;
-    }
-    const prevMonth = monthIndex === 0 ? 11 : monthIndex - 1;
-    return `${year}-${String(prevMonth + 1).padStart(2, '0')}-20`;
-  };
+const getPeriodeEnd = (month, year) => {
+  const monthIndex = months.indexOf(month);
+  
+  // Periode end = tanggal 20 bulan ini
+  return `${year}-${String(monthIndex + 1).padStart(2, '0')}-20`;
+};
 
   const formatBankAndRek = (bankAccount) => {
     if (!bankAccount) return { bank: 'ABA', rek: '-', link: '' };
