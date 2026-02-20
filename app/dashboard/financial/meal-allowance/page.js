@@ -30,36 +30,9 @@ export default function MealAllowancePage() {
   const years = ['2025', '2026', '2027'];
 
   // ===========================================
-  // HELPER FUNCTIONS - PERIODE ABSENSI
+  // HELPER FUNCTIONS
   // ===========================================
   
-  const getPeriodeStart = (month, year) => {
-    const monthIndex = months.indexOf(month);
-    
-    // Start = 2 bulan sebelum bulan filter, tanggal 21
-    if (monthIndex === 0) { // January
-      return `${parseInt(year) - 1}-11-21`; // 21 Nov tahun lalu
-    } else if (monthIndex === 1) { // February
-      return `${parseInt(year) - 1}-12-21`; // 21 Dec tahun lalu
-    } else {
-      // March (index 2) -> 2 bulan sebelum = January (index 0)
-      const prevMonthIndex = monthIndex - 2;
-      return `${year}-${String(prevMonthIndex + 1).padStart(2, '0')}-21`;
-    }
-  };
-
-  const getPeriodeEnd = (month, year) => {
-    const monthIndex = months.indexOf(month);
-    
-    // End = 1 bulan sebelum bulan filter, tanggal 20
-    if (monthIndex === 0) { // January
-      return `${parseInt(year) - 1}-12-20`; // 20 Dec tahun lalu
-    } else {
-      // March (index 2) -> 1 bulan sebelum = February (index 1)
-      return `${year}-${String(monthIndex).padStart(2, '0')}-20`;
-    }
-  };
-
   const formatBankAndRek = (bankAccount) => {
     if (!bankAccount) return { bank: '-', rek: '-', link: '' };
     
@@ -109,73 +82,48 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // FUNGSI HITUNG USIA (dari API)
+  // FUNGSI HITUNG USIA (LANGSUNG DARI SCHEDULE - COPY DARI CALENDAR)
   // ===========================================
   const hitungUSIA = (officerName, schedule = scheduleData) => {
-    const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
-    const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
-    periodeStart.setHours(0, 0, 0, 0);
-    periodeEnd.setHours(23, 59, 59, 999);
+    // Ini variable buat nampung semua jenis kejadian (sama kayak di Calendar)
+    const totals = {
+      OFF: 0,
+      SAKIT: 0,
+      IZIN: 0,
+      ABSEN: 0,
+      CUTI: 0,
+      'UNPAID LEAVE': 0,
+      SPECIAL: 0,
+      DIRUMAHKAN: 0,
+      RESIGN: 0,
+      TERMINATED: 0,
+      'BELUM JOIN': 0
+    };
     
-    const periodData = schedule.filter(day => {
-      const dateStr = day['DATE RUNDOWN'];
-      if (!dateStr) return false;
-      const [dayNum, monthStr, yearStr] = dateStr.split('-');
-      const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
-      date.setHours(0, 0, 0, 0);
-      return date >= periodeStart && date <= periodeEnd;
-    });
-
-    let sakitCount = 0, izinCount = 0, unpaidCount = 0, alphaCount = 0;
-    let offCount = 0;
-
-    periodData.forEach(day => {
+    // Loop semua data schedule (LANGSUNG, GA PAKE FILTER HELPER)
+    schedule.forEach(day => {
       const status = day[officerName];
       if (!status) return;
       
-      switch(status) {
-        case 'SAKIT': sakitCount++; break;
-        case 'IZIN': izinCount++; break;
-        case 'UNPAID LEAVE': unpaidCount++; break;
-        case 'ABSEN': alphaCount++; break;
-        case 'OFF': offCount++; break;
+      // Kalo statusnya ada di daftar, tambahin
+      if (totals.hasOwnProperty(status)) {
+        totals[status] += 1;
       }
     });
 
+    // Balikin hasil sesuai format yang dipake Meal Allowance
     return {
-      sakit: sakitCount,
-      izin: izinCount,
-      unpaid: unpaidCount,
-      alpha: alphaCount,
-      off: offCount
-    };
-  };
-
-  const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
-    let pokok = 0, prorate = 0;
-    const rate = getMealRate(department, joinDate);
-    if (rate) {
-      pokok = rate.base_amount;
-      prorate = rate.prorate_per_day;
-    }
-    
-    // USIA dari API (tanpa CUTI)
-    const usia = hitungUSIA(officerName, schedule);
-    
-    return {
-      baseAmount: pokok,
-      prorate: prorate,
-      offCount: usia.off,
-      sakitCount: usia.sakit,
-      izinCount: usia.izin,
-      unpaidCount: usia.unpaid,
-      alphaCount: usia.alpha,
-      // cutiCount akan diambil dari snapshot atau input manual
+      sakit: totals['SAKIT'] || 0,
+      izin: totals['IZIN'] || 0,
+      unpaid: totals['UNPAID LEAVE'] || 0,
+      alpha: totals['ABSEN'] || 0,
+      cuti: totals['CUTI'] || 0,
+      off: totals['OFF'] || 0
     };
   };
 
   // ===========================================
-  // DATA FETCHING (LANGSUNG DARI API)
+  // DATA FETCHING
   // ===========================================
 
   useEffect(() => {
@@ -211,64 +159,69 @@ export default function MealAllowancePage() {
         .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
         .eq('status', 'REGULAR');
       
-      // Ambil schedule dari API
+      // AMBIL SCHEDULE DARI API (SAMA PERSIS KAYAK CALENDAR)
       const scheduleResponse = await fetch(
         `/api/schedule?year=${selectedYear}&month=${selectedMonth}`
       );
       const scheduleResult = await scheduleResponse.json();
       const schedule = scheduleResult.data || [];
-      
       setScheduleData(schedule);
       
-      // Ambil snapshot (khusus cuti, kasbon, etc)
+      // Ambil snapshot
       const { data: snapData } = await supabase
         .from('meal_allowance_snapshot')
-        .select('officer_id, cuti_count, kasbon, etc, etc_note')
+        .select('officer_id, cuti_count, kasbon, etc, etc_note, last_edited_by, last_edited_at')
         .eq('bulan', bulan);
+      
+      // Ambil data admin
+      const { data: adminData } = await supabase
+        .from('officers')
+        .select('id, full_name, email')
+        .eq('role', 'admin');
+      
+      const adminMap = {};
+      adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
       
       // Gabungin data
       const officersWithStats = (officersData || []).map(officer => {
-        // Hitung USIA dari API
+        // HITUNG USIA LANGSUNG DARI SCHEDULE (GA PAKAI FILTER)
         const usia = hitungUSIA(officer.full_name, schedule);
         
-        // Cari snapshot untuk officer ini
+        // Cari snapshot
         const snapshot = snapData?.find(s => s.officer_id === officer.id);
         
         const { bank, rek, link } = formatBankAndRek(officer.bank_account || '');
+        const rate = getMealRate(officer.department, officer.join_date);
         
         return {
           id: officer.id,
           full_name: officer.full_name,
           department: officer.department,
           join_date: officer.join_date,
-          baseAmount: usia.baseAmount || getMealRate(officer.department, officer.join_date)?.base_amount || 0,
-          prorate: usia.prorate || getMealRate(officer.department, officer.join_date)?.prorate_per_day || 0,
+          baseAmount: rate?.base_amount || 0,
+          prorate: rate?.prorate_per_day || 0,
           offCount: usia.off,
           sakitCount: usia.sakit,
           izinCount: usia.izin,
           unpaidCount: usia.unpaid,
           alphaCount: usia.alpha,
-          cutiCount: snapshot?.cuti_count || 0,  // dari snapshot
+          cutiCount: snapshot?.cuti_count || 0,  // CUTI MANUAL TETEP PAKAI SNAPSHOT
           kasbon: snapshot?.kasbon || 0,
           etc: snapshot?.etc || 0,
           etc_note: snapshot?.etc_note || '',
           bank: bank,
           rek: rek,
           link: link,
-          umNet: 0 // akan dihitung ulang di mapping
+          lastEditedBy: snapshot?.last_edited_by ? adminMap[snapshot.last_edited_by] : null,
+          lastEditedAt: snapshot?.last_edited_at || null
         };
       });
       
-      // Hitung ulang umNet untuk semua
+      // Hitung umNet
       const withUmNet = officersWithStats.map(o => {
-        const rate = getMealRate(o.department, o.join_date);
-        const prorate = rate?.prorate_per_day || 0;
-        const pokok = rate?.base_amount || 0;
-        
-        const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * prorate;
+        const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
         const denda = o.alphaCount * 50;
-        const umNet = Math.max(0, pokok - potongan - denda);
-        
+        const umNet = Math.max(0, o.baseAmount - potongan - denda);
         return { ...o, umNet };
       });
       
@@ -306,29 +259,21 @@ export default function MealAllowancePage() {
       }
       
       const bulan = `${selectedMonth} ${selectedYear}`;
-      
-      // Ambil data officer
       const officer = editingOfficer;
-      const rate = getMealRate(officer.department, officer.join_date);
-      const prorate = rate?.prorate_per_day || 0;
-      const pokok = rate?.base_amount || 0;
       
       // Hitung ulang UM Net
-      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * prorate;
+      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
       const denda = officer.alphaCount * 50;
-      const umNetBaru = Math.max(0, pokok - potongan - denda);
+      const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
       
-      // Simpan ke snapshot
       const snapshotData = {
         officer_id: officer.id,
         officer_name: officer.full_name,
         department: officer.department,
         join_date: officer.join_date,
         bulan: bulan,
-        periode_start: getPeriodeStart(selectedMonth, selectedYear),
-        periode_end: getPeriodeEnd(selectedMonth, selectedYear),
-        base_amount: pokok,
-        prorate: prorate,
+        base_amount: officer.baseAmount,
+        prorate: officer.prorate,
         off_count: officer.offCount || 0,
         sakit_count: officer.sakitCount || 0,
         cuti_count: editForm.cuti,
@@ -338,7 +283,9 @@ export default function MealAllowancePage() {
         um_net: umNetBaru,
         kasbon: editForm.kasbon,
         etc: editForm.etc || 0,
-        etc_note: editForm.etc_note
+        etc_note: editForm.etc_note,
+        last_edited_by: user?.id,
+        last_edited_at: new Date().toISOString()
       };
       
       const { error } = await supabase
@@ -347,7 +294,15 @@ export default function MealAllowancePage() {
       
       if (error) throw error;
       
-      // Update state
+      // Ambil nama admin
+      const { data: adminData } = await supabase
+        .from('officers')
+        .select('full_name, email')
+        .eq('id', user?.id)
+        .single();
+      
+      const adminName = adminData?.full_name || adminData?.email || 'Unknown';
+      
       setOfficers(prev => prev.map(o => 
         o.id === officer.id 
           ? { 
@@ -356,12 +311,14 @@ export default function MealAllowancePage() {
               cutiCount: editForm.cuti,
               etc: editForm.etc || 0,
               etc_note: editForm.etc_note,
-              umNet: umNetBaru
+              umNet: umNetBaru,
+              lastEditedBy: adminName,
+              lastEditedAt: new Date().toISOString()
             }
           : o
       ));
       
-      alert('✅ Data berhasil diupdate');
+      alert(`✅ Data berhasil diupdate oleh ${adminName}`);
       setEditingOfficer(null);
       
     } catch (error) {
@@ -392,7 +349,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // RENDER
+  // RENDER (TAMPILAN TETEP SAMA)
   // ===========================================
 
   if (loading) {
@@ -483,7 +440,7 @@ export default function MealAllowancePage() {
 
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
         <div className="flex flex-wrap gap-4">
-          <div><span className="text-[#A7D8FF]">Periode Absensi:</span> <span className="text-white font-medium">{new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} - {new Date(getPeriodeEnd(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
+          <div><span className="text-[#A7D8FF]">Periode:</span> <span className="text-white font-medium">Data dari schedule {selectedMonth} {selectedYear}</span></div>
           <div><span className="text-[#A7D8FF]">Pembagian UM:</span> <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span></div>
         </div>
       </div>
@@ -517,7 +474,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {/* BARIS 2: Angka-angka (USIA pisah dari CUTI) */}
+                  {/* BARIS 2: Angka-angka (USIA dari API via Calendar logic) */}
                   <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
@@ -533,7 +490,7 @@ export default function MealAllowancePage() {
                     
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
                     
-                    {/* USIA dari API (Sakit, Izin, Unpaid, Alpha) */}
+                    {/* USIA dari API (Sekarang pake logic Calendar) */}
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">S/I/U/A:</span>
                       <span className="font-medium text-white">
@@ -543,7 +500,7 @@ export default function MealAllowancePage() {
                     
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
                     
-                    {/* CUTI Manual (input admin) */}
+                    {/* CUTI Manual (dari snapshot) */}
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Cuti Manual:</span>
                       <span className="font-medium text-yellow-400">{officer.cutiCount || 0}</span>
@@ -577,7 +534,14 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {/* BARIS 4: Tombol Edit */}
+                  {/* LOG EDIT */}
+                  {officer.lastEditedBy && (
+                    <div className="text-[10px] text-[#A7D8FF] mb-2 text-right">
+                      Last edited by: {officer.lastEditedBy} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
+                    </div>
+                  )}
+                  
+                  {/* Tombol Edit */}
                   {isAdmin && (
                     <div className="flex justify-end">
                       <button onClick={() => handleEditClick(officer)} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all">
