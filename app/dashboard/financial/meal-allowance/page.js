@@ -149,102 +149,115 @@ export default function MealAllowancePage() {
   }, [isAdmin]);
 
   useEffect(() => {
-    fetchData();
-  }, [selectedMonth, selectedYear]);
+  fetchData();
+}, [selectedMonth, selectedYear]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      if (selectedMonth === 'January') {
-        setOfficers([]);
-        setLoading(false);
-        return;
-      }
-      
-      const bulan = `${selectedMonth} ${selectedYear}`;
-      
-      // Ambil data officers
-      const { data: officersData } = await supabase
-        .from('officers')
-        .select('*')
-        .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
-        .eq('status', 'REGULAR');
-      
-      // AMBIL SCHEDULE DARI API (SAMA PERSIS KAYAK CALENDAR)
-      const scheduleResponse = await fetch(
-        `/api/schedule?year=${selectedYear}&month=${selectedMonth}`
-      );
-      const scheduleResult = await scheduleResponse.json();
-      const schedule = scheduleResult.data || [];
-      setScheduleData(schedule);
-      
-      // Ambil snapshot
-      const { data: snapData } = await supabase
-        .from('meal_allowance_snapshot')
-        .select('officer_id, cuti_count, kasbon, etc, etc_note, last_edited_by, last_edited_at')
-        .eq('bulan', bulan);
-      
-      // Ambil data admin
-      const { data: adminData } = await supabase
-        .from('officers')
-        .select('id, full_name, email')
-        .eq('role', 'admin');
-      
-      const adminMap = {};
-      adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
-      
-      // Gabungin data
-      const officersWithStats = (officersData || []).map(officer => {
-        // HITUNG USIA LANGSUNG DARI SCHEDULE
-        const usia = hitungUSIA(officer.full_name, schedule);
-        
-        // Cari snapshot
-        const snapshot = snapData?.find(s => s.officer_id === officer.id);
-        
-        const { bank, rek, link } = formatBankAndRek(officer.bank_account || '');
-        const rate = getMealRate(officer.department, officer.join_date);
-        
-        return {
-          id: officer.id,
-          full_name: officer.full_name,
-          department: officer.department,
-          join_date: officer.join_date,
-          baseAmount: rate?.base_amount || 0,
-          prorate: rate?.prorate_per_day || 0,
-          offCount: usia.off,
-          sakitCount: usia.sakit,
-          izinCount: usia.izin,
-          unpaidCount: usia.unpaid,
-          alphaCount: usia.alpha,
-          cutiCount: snapshot?.cuti_count || 0,
-          kasbon: snapshot?.kasbon || 0,
-          etc: snapshot?.etc || 0,
-          etc_note: snapshot?.etc_note || '',
-          bank: bank,
-          rek: rek,
-          link: link,
-          lastEditedBy: snapshot?.last_edited_by ? adminMap[snapshot.last_edited_by] : null,
-          lastEditedAt: snapshot?.last_edited_at || null
-        };
-      });
-      
-      // Hitung umNet
-      const withUmNet = officersWithStats.map(o => {
-        const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
-        const denda = o.alphaCount * 50;
-        const umNet = Math.max(0, o.baseAmount - potongan - denda);
-        return { ...o, umNet };
-      });
-      
-      setOfficers(withUmNet);
-      
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
+const fetchData = async () => {
+  try {
+    setLoading(true);
+    
+    if (selectedMonth === 'January') {
+      setOfficers([]);
       setLoading(false);
+      return;
     }
-  };
+    
+    const bulan = `${selectedMonth} ${selectedYear}`;
+    
+    // AMBIL BULAN SEBELUMNYA UNTUK SCHEDULE
+    const getPreviousMonthData = (month, year) => {
+      const monthIndex = months.indexOf(month);
+      if (monthIndex === 0) {
+        return { month: 'December', year: parseInt(year) - 1 };
+      } else {
+        return { month: months[monthIndex - 1], year: parseInt(year) };
+      }
+    };
+    
+    const prev = getPreviousMonthData(selectedMonth, selectedYear);
+    console.log(`Fetching schedule for: ${prev.month} ${prev.year} (data untuk ${selectedMonth} ${selectedYear})`);
+    
+    // Ambil data officers
+    const { data: officersData } = await supabase
+      .from('officers')
+      .select('*')
+      .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
+      .eq('status', 'REGULAR');
+    
+    // AMBIL SCHEDULE DARI BULAN SEBELUMNYA
+    const scheduleResponse = await fetch(
+      `/api/schedule?year=${prev.year}&month=${prev.month}`
+    );
+    const scheduleResult = await scheduleResponse.json();
+    const schedule = scheduleResult.data || [];
+    setScheduleData(schedule);
+    
+    // Ambil snapshot
+    const { data: snapData } = await supabase
+      .from('meal_allowance_snapshot')
+      .select('officer_id, cuti_count, kasbon, etc, etc_note, last_edited_by, last_edited_at')
+      .eq('bulan', bulan);
+    
+    // Ambil data admin
+    const { data: adminData } = await supabase
+      .from('officers')
+      .select('id, full_name, email')
+      .eq('role', 'admin');
+    
+    const adminMap = {};
+    adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
+    
+    // Gabungin data
+    const officersWithStats = (officersData || []).map(officer => {
+      // HITUNG USIA DARI SCHEDULE BULAN SEBELUMNYA
+      const usia = hitungUSIA(officer.full_name, schedule);
+      
+      // Cari snapshot
+      const snapshot = snapData?.find(s => s.officer_id === officer.id);
+      
+      const { bank, rek, link } = formatBankAndRek(officer.bank_account || '');
+      const rate = getMealRate(officer.department, officer.join_date);
+      
+      return {
+        id: officer.id,
+        full_name: officer.full_name,
+        department: officer.department,
+        join_date: officer.join_date,
+        baseAmount: rate?.base_amount || 0,
+        prorate: rate?.prorate_per_day || 0,
+        offCount: usia.off,
+        sakitCount: usia.sakit,
+        izinCount: usia.izin,
+        unpaidCount: usia.unpaid,
+        alphaCount: usia.alpha,
+        cutiCount: snapshot?.cuti_count || 0,
+        kasbon: snapshot?.kasbon || 0,
+        etc: snapshot?.etc || 0,
+        etc_note: snapshot?.etc_note || '',
+        bank: bank,
+        rek: rek,
+        link: link,
+        lastEditedBy: snapshot?.last_edited_by ? adminMap[snapshot.last_edited_by] : null,
+        lastEditedAt: snapshot?.last_edited_at || null
+      };
+    });
+    
+    // Hitung umNet
+    const withUmNet = officersWithStats.map(o => {
+      const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
+      const denda = o.alphaCount * 50;
+      const umNet = Math.max(0, o.baseAmount - potongan - denda);
+      return { ...o, umNet };
+    });
+    
+    setOfficers(withUmNet);
+    
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ===========================================
   // EDIT HANDLERS
