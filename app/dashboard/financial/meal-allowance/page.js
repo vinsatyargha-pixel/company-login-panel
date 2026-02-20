@@ -173,13 +173,15 @@ export default function MealAllowancePage() {
       }
     });
 
-    // 3. HITUNG UM NET
-    const offNotTaken = Math.max(0, 4 - offCount);
-    const tambahProrate = offNotTaken * prorate;
-    const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
-    const dendaAlpha = alphaCount * 50;
-    
-    const umNet = Math.max(0, pokok + tambahProrate - potonganKejadian - dendaAlpha);
+    // HITUNG UM NET
+const offTerpakai = offCount;  // jumlah hari OFF di schedule
+const sisaOff = Math.max(0, 4 - offTerpakai);
+const tambahanProrate = sisaOff * prorate;  // nambah kalau sisa off > 0
+
+const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
+const dendaAlpha = alphaCount * 50;
+
+const umNet = Math.max(0, pokok + tambahanProrate - potonganKejadian - dendaAlpha);
 
     return {
       baseAmount: pokok,
