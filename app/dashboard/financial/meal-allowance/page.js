@@ -149,16 +149,19 @@ export default function MealAllowancePage() {
         .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
         .eq('status', 'REGULAR');
       
-      // Ambil semua schedule dari API
-      const scheduleResponse = await fetch(
-        `/api/schedule?year=${selectedYear}&month=${selectedMonth}`
-      );
-      const scheduleResult = await scheduleResponse.json();
-      const allSchedule = scheduleResult.data || [];
-      
-      // Filter schedule berdasarkan HELPER = monthShort (Feb, Mar, etc)
-      const schedule = allSchedule.filter(day => day['HELPER'] === monthShort);
-      setScheduleData(schedule);
+      // Ambil schedule dari API
+const scheduleResponse = await fetch(
+  `/api/schedule?year=${selectedYear}&month=${selectedMonth}`
+);
+const scheduleResult = await scheduleResponse.json();
+const allSchedule = scheduleResult.data || [];
+
+// Filter schedule berdasarkan HELPER = "Mar-2026", "Feb-2026", dll
+const helperTarget = `${selectedMonth.substring(0, 3)}-${selectedYear}`;
+const schedule = allSchedule.filter(day => day['HELPER'] === helperTarget);
+console.log(`Filtering HELPER = ${helperTarget}, found ${schedule.length} days`);
+
+setScheduleData(schedule);
       
       // Ambil snapshot (khusus cuti, kasbon, etc, last_edited_by)
       const { data: snapData } = await supabase
