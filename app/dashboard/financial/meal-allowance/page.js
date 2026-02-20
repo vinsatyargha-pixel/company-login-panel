@@ -292,7 +292,7 @@ export default function MealAllowancePage() {
       const bulan = `${selectedMonth} ${selectedYear}`;
       const officer = editingOfficer;
       
-      // HITUNG PERIODE PAKAI FUNGSI
+      // HITUNG PERIODE PAKAI FUNGSI (SUDAH TERSEDIA GLOBAL)
       const prev = getPreviousMonthData(selectedMonth, selectedYear);
       
       // Hitung ulang UM Net
@@ -509,6 +509,7 @@ export default function MealAllowancePage() {
             <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
               {groupedOfficers[dept].map((officer) => (
                 <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
+                  {/* BARIS 1: Nama, Join Date, Bank */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
                     <div>
                       <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
@@ -525,6 +526,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
+                  {/* BARIS 2: Angka-angka */}
                   <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
@@ -562,6 +564,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
+                  {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                       <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
@@ -581,12 +584,14 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
+                  {/* LOG EDIT */}
                   {(officer.lastEditedBy || officer.lastEditedAt) && (
                     <div className="text-[10px] text-[#A7D8FF] mb-2 text-right">
                       Last edited by: {officer.lastEditedBy || 'Admin'} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
                     </div>
                   )}
                   
+                  {/* Tombol Edit */}
                   {isAdmin && (
                     <div className="flex justify-end">
                       <button onClick={() => handleEditClick(officer)} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all">
@@ -609,6 +614,7 @@ export default function MealAllowancePage() {
         <span className="text-[#FFD700] font-bold">Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}</span>
       </div>
 
+      {/* MODAL EDIT */}
       {editingOfficer && isAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
