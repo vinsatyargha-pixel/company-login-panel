@@ -714,99 +714,138 @@ export default function MealAllowancePage() {
                 
                 return (
                   <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                    <div className="flex flex-col md:flex-row md:items-start gap-4">
-                      {/* Nama dan Join Date */}
-                      <div className="w-full md:w-1/5">
-                        <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
-                        <div className="text-xs text-[#A7D8FF]">
-                          Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { 
-                            day: 'numeric', 
-                            month: 'short', 
-                            year: '2-digit' 
-                          })}
-                        </div>
-                      </div>
-                      
-                      {/* Angka-angka */}
-                      <div className="flex-1 flex flex-wrap items-center gap-3 text-sm">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[#A7D8FF] text-xs">Pokok:</span>
-                          <span className="font-medium">${Math.round(officer.baseAmount || officer.base_amount || 0)}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-1">
-                          <span className="text-[#A7D8FF] text-xs">Rate:</span>
-                          <span className="font-medium">${Math.round(officer.prorate || officer.prorate || 0)}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-1">
-                          <span className="text-[#A7D8FF] text-xs">Holiday:</span>
-                          <span className="font-medium">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-1">
-                          <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
-                          <span className="font-medium">
-                            {officer.cutiCount || officer.cuti_count || 0}/
-                            {officer.unpaidCount || officer.unpaid_count || 0}/
-                            {officer.sakitCount || officer.sakit_count || 0}/
-                            {officer.izinCount || officer.izin_count || 0}/
-                            {officer.alphaCount || officer.alpha_count || 0}
-                          </span>
-                        </div>
-                        
-                        {/* NET Final */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-[#A7D8FF] text-xs">NET:</span>
-                          <span className="font-bold text-[#FFD700]">
-                            ${Math.round(officer.finalNet || officer.umNet || officer.um_net || 0)}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Bank & No Rek + Tombol Edit */}
-                      <div className="w-full md:w-1/6">
-                        <div className="text-[#A7D8FF] text-xs font-medium">{bank}</div>
-                        <div className="text-xs text-white break-all">{rek}</div>
-                        
-                        {link && (
-                          <a 
-                            href={link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-[#FFD700] hover:underline block break-all mt-1"
-                            title={link}
-                          >
-                            {link}
-                          </a>
-                        )}
-                        
-                        {/* Tombol Edit - Hanya Muncul Jika BELUM LOCK */}
-{isAdmin && !isLocked && (
-  <button
-    onClick={() => handleEditClick(officer)}
-    className="mt-3 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-3 py-1.5 rounded text-xs font-medium flex items-center gap-1 transition-all w-fit"
-  >
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-    </svg>
-    <span>Edit KASBON/ETC</span>
-  </button>
-)}
-
-{/* Info kalau sudah lock */}
-{isAdmin && isLocked && (
-  <span className="text-xs text-gray-400 block mt-3">
-    🔒 Data terkunci (snapshot)
-  </span>
-)}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+  {/* BARIS 1: Nama, Join Date, Bank */}
+  <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
+    <div>
+      <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
+      <div className="text-xs text-[#A7D8FF]">
+        Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { 
+          day: 'numeric', 
+          month: 'short', 
+          year: '2-digit' 
+        })}
+      </div>
+    </div>
+    
+    {/* Bank & Link */}
+    <div className="mt-2 md:mt-0">
+      <div className="text-[#A7D8FF] text-xs font-medium">{bank}</div>
+      <div className="text-xs text-white break-all">{rek}</div>
+      {link && (
+        <a 
+          href={link} 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="text-[10px] text-[#FFD700] hover:underline block break-all"
+          title={link}
+        >
+          {link}
+        </a>
+      )}
+    </div>
+  </div>
+  
+  {/* BARIS 2: Angka-angka (Pokok, Rate, Holiday, C/U/S/I/A, NET) - KE SAMPING */}
+  <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
+    <div className="flex items-center gap-1">
+      <span className="text-[#A7D8FF] text-xs">Pokok:</span>
+      <span className="font-medium text-white">${Math.round(officer.baseAmount || officer.base_amount || 0)}</span>
+    </div>
+    
+    <div className="w-px h-4 bg-[#FFD700]/30"></div>
+    
+    <div className="flex items-center gap-1">
+      <span className="text-[#A7D8FF] text-xs">Rate:</span>
+      <span className="font-medium text-white">${Math.round(officer.prorate || officer.prorate || 0)}</span>
+    </div>
+    
+    <div className="w-px h-4 bg-[#FFD700]/30"></div>
+    
+    <div className="flex items-center gap-1">
+      <span className="text-[#A7D8FF] text-xs">Holiday:</span>
+      <span className="font-medium text-white">{Math.max(0, 4 - (officer.offCount || officer.off_count || 0))}</span>
+    </div>
+    
+    <div className="w-px h-4 bg-[#FFD700]/30"></div>
+    
+    <div className="flex items-center gap-1">
+      <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
+      <span className="font-medium text-white">
+        {officer.cutiCount || officer.cuti_count || 0}/
+        {officer.unpaidCount || officer.unpaid_count || 0}/
+        {officer.sakitCount || officer.sakit_count || 0}/
+        {officer.izinCount || officer.izin_count || 0}/
+        {officer.alphaCount || officer.alpha_count || 0}
+      </span>
+    </div>
+    
+    <div className="w-px h-4 bg-[#FFD700]/30"></div>
+    
+    <div className="flex items-center gap-1">
+      <span className="text-[#A7D8FF] text-xs">NET:</span>
+      <span className="font-bold text-[#FFD700]">
+        ${Math.round(officer.finalNet || officer.umNet || officer.um_net || 0)}
+      </span>
+    </div>
+  </div>
+  
+  {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+    {/* Kasbon */}
+    <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
+      <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
+      <div className="font-medium text-red-400">
+        {usingSnapshot ? (
+          `$${officer.kasbon || 0}`
+        ) : (
+          <span className="text-gray-400">-</span>
+        )}
+      </div>
+    </div>
+    
+    {/* ETC */}
+    <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
+      <div className="text-[#A7D8FF] text-xs mb-1">🔄 ETC</div>
+      <div className="font-medium text-green-400">
+        {usingSnapshot ? (
+          `${officer.etc_operator === '+' ? '+' : '-'}$${officer.etc || 0}`
+        ) : (
+          <span className="text-gray-400">-</span>
+        )}
+      </div>
+    </div>
+    
+    {/* Notes */}
+    <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
+      <div className="text-[#A7D8FF] text-xs mb-1">📝 NOTES</div>
+      <div className="text-sm text-white truncate" title={officer.etc_note}>
+        {usingSnapshot ? (officer.etc_note || '-') : '-'}
+      </div>
+    </div>
+  </div>
+  
+  {/* BARIS 4: Tombol Edit */}
+  <div className="mt-3 flex justify-end">
+    {isAdmin && !isLocked && (
+      <button
+        onClick={() => handleEditClick(officer)}
+        className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+        <span>Edit KASBON/ETC</span>
+      </button>
+    )}
+    
+    {isAdmin && isLocked && (
+      <span className="text-xs text-gray-400 flex items-center gap-1">
+        <span>🔒</span>
+        <span>Data terkunci (snapshot)</span>
+      </span>
+    )}
+  </div>
+</div>
         );
       })}
 
