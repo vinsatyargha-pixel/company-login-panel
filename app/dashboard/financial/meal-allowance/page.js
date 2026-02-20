@@ -633,14 +633,14 @@ const getPeriodeEnd = (month, year) => {
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
                       <div className="flex items-center gap-1">
-                        <span className="text-[#A7D8FF] text-xs">Rate:</span>
-                        <span className="font-medium text-white">${Math.round(officer.prorate || 0)}</span>
+                      <span className="text-[#A7D8FF] text-xs">OFF Day:</span>
+                      <span className="font-medium text-white">{offCount || 0}</span>
                       </div>
                       
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
                       <div className="flex items-center gap-1">
-                        <span className="text-[#A7D8FF] text-xs">Holiday:</span>
+                        <span className="text-[#A7D8FF] text-xs">OFF DAY:</span>
                         <span className="font-medium text-white">{Math.max(0, 4 - (officer.offCount || 0))}</span>
                       </div>
                       
