@@ -30,46 +30,35 @@ export default function MealAllowancePage() {
   const years = ['2025', '2026', '2027'];
 
   // ===========================================
-  // HELPER FUNCTIONS
+  // HELPER FUNCTIONS - PERIODE ABSENSI
   // ===========================================
   
   const getPeriodeStart = (month, year) => {
-  const monthIndex = months.indexOf(month);
-  
-  // Start = 2 bulan sebelum bulan filter, tanggal 21
-  if (monthIndex === 0) { // January
-    return `${parseInt(year) - 1}-11-21`; // 21 Nov tahun lalu
-  } else if (monthIndex === 1) { // February
-    return `${parseInt(year) - 1}-12-21`; // 21 Dec tahun lalu
-  } else {
-    // March (index 2) -> 2 bulan sebelum = January (index 0)
-    const prevMonthIndex = monthIndex - 2;
-    return `${year}-${String(prevMonthIndex + 1).padStart(2, '0')}-21`;
-  }
-};
+    const monthIndex = months.indexOf(month);
+    
+    // Start = 2 bulan sebelum bulan filter, tanggal 21
+    if (monthIndex === 0) { // January
+      return `${parseInt(year) - 1}-11-21`; // 21 Nov tahun lalu
+    } else if (monthIndex === 1) { // February
+      return `${parseInt(year) - 1}-12-21`; // 21 Dec tahun lalu
+    } else {
+      // March (index 2) -> 2 bulan sebelum = January (index 0)
+      const prevMonthIndex = monthIndex - 2;
+      return `${year}-${String(prevMonthIndex + 1).padStart(2, '0')}-21`;
+    }
+  };
 
-const getPeriodeEnd = (month, year) => {
-  const monthIndex = months.indexOf(month);
-  
-  // End = 1 bulan sebelum bulan filter, tanggal 20
-  if (monthIndex === 0) { // January
-    return `${parseInt(year) - 1}-12-20`; // 20 Dec tahun lalu
-  } else {
-    // March (index 2) -> 1 bulan sebelum = February (index 1)
-    return `${year}-${String(monthIndex).padStart(2, '0')}-20`;
-  }
-};
-
-const getPeriodeEnd = (month, year) => {
-  const monthIndex = months.indexOf(month);
-  
-  // End = 1 bulan sebelumnya (20)
-  if (monthIndex === 0) { // January
-    return `${parseInt(year) - 1}-12-20`;
-  } else {
-    return `${year}-${String(monthIndex).padStart(2, '0')}-20`;
-  }
-};
+  const getPeriodeEnd = (month, year) => {
+    const monthIndex = months.indexOf(month);
+    
+    // End = 1 bulan sebelum bulan filter, tanggal 20
+    if (monthIndex === 0) { // January
+      return `${parseInt(year) - 1}-12-20`; // 20 Dec tahun lalu
+    } else {
+      // March (index 2) -> 1 bulan sebelum = February (index 1)
+      return `${year}-${String(monthIndex).padStart(2, '0')}-20`;
+    }
+  };
 
   const formatBankAndRek = (bankAccount) => {
     if (!bankAccount) return { bank: '-', rek: '-', link: '' };
