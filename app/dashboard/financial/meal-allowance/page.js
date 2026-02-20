@@ -156,10 +156,23 @@ const scheduleResponse = await fetch(
 const scheduleResult = await scheduleResponse.json();
 const allSchedule = scheduleResult.data || [];
 
-// Filter schedule berdasarkan HELPER = "Mar-2026", "Feb-2026", dll
-const helperTarget = `${selectedMonth.substring(0, 3)}-${selectedYear}`;
+// Helper target = bulan SEBELUMNYA
+const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const monthIndex = months.indexOf(selectedMonth);
+
+let helperMonth;
+if (monthIndex === 0) { // January
+  helperMonth = 'Dec';
+} else {
+  helperMonth = monthNames[monthIndex - 1];
+}
+
+const helperTarget = `${helperMonth}-${selectedYear}`;
+console.log('selectedMonth:', selectedMonth);
+console.log('helperTarget:', helperTarget);
+
 const schedule = allSchedule.filter(day => day['HELPER'] === helperTarget);
-console.log(`Filtering HELPER = ${helperTarget}, found ${schedule.length} days`);
+console.log(`Found ${schedule.length} days for ${helperTarget}`);
 
 setScheduleData(schedule);
       
