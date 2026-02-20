@@ -34,26 +34,18 @@ export default function MealAllowancePage() {
   // ===========================================
   
   const getPeriodeStart = (month, year) => {
-  const monthIndex = months.indexOf(month);
-  
-  // Untuk pembagian 1 February, periode = 21 Jan - 20 Feb
-  // Untuk pembagian 1 March, periode = 21 Feb - 20 March
-  // dst...
-  
-  // Periode start = tanggal 21 bulan sebelumnya
-  if (monthIndex === 0) { // January
-    return `${parseInt(year) - 1}-12-21`;
-  } else {
-    return `${year}-${String(monthIndex).padStart(2, '0')}-21`;
-  }
-};
+    const monthIndex = months.indexOf(month);
+    if (monthIndex === 0) { // January
+      return `${parseInt(year) - 1}-12-21`;
+    } else {
+      return `${year}-${String(monthIndex).padStart(2, '0')}-21`;
+    }
+  };
 
-const getPeriodeEnd = (month, year) => {
-  const monthIndex = months.indexOf(month);
-  
-  // Periode end = tanggal 20 bulan ini
-  return `${year}-${String(monthIndex + 1).padStart(2, '0')}-20`;
-};
+  const getPeriodeEnd = (month, year) => {
+    const monthIndex = months.indexOf(month);
+    return `${year}-${String(monthIndex + 1).padStart(2, '0')}-20`;
+  };
 
   const formatBankAndRek = (bankAccount) => {
     if (!bankAccount) return { bank: 'ABA', rek: '-', link: '' };
@@ -97,106 +89,110 @@ const getPeriodeEnd = (month, year) => {
     return (years * 12) + (end.getMonth() - join.getMonth());
   };
 
-  const getMasaKerjaLabel = (joinDate) => {
-    const monthsWorked = getMonthsOfWork(joinDate);
-    if (monthsWorked >= 36) return 'genap 3 tahun keatas';
-    if (monthsWorked >= 24) return 'genap 2 tahun keatas';
-    return '1 tahun kebawah';
-  };
-
   const getMealRate = (department, joinDate) => {
     const monthsWorked = getMonthsOfWork(joinDate);
     
-    if (department === 'AM' || department === 'CAPTAIN') {
-      return mealRates.find(r => r.department === department);
+    // AM & CAPTAIN tetap
+    if (department === 'AM') {
+      return { base_amount: 400, prorate_per_day: 15 };
+    }
+    if (department === 'CAPTAIN') {
+      return { base_amount: 350, prorate_per_day: 13 };
     }
     
+    // CS DP WD berdasarkan masa kerja
     if (department === 'CS DP WD') {
-      if (monthsWorked >= 36) {
-        return mealRates.find(r => r.department === department && r.years_of_service === 'genap 3 tahun keatas');
-      } else if (monthsWorked >= 24) {
-        return mealRates.find(r => r.department === department && r.years_of_service === 'genap 2 tahun keatas');
-      } else {
-        return mealRates.find(r => r.department === department && r.years_of_service === '1 tahun kebawah');
+      if (monthsWorked >= 36) { // 3 tahun keatas
+        return { base_amount: 325, prorate_per_day: 12 };
+      } else if (monthsWorked >= 24) { // 2 tahun keatas
+        return { base_amount: 300, prorate_per_day: 11 };
+      } else { // kurang dari 2 tahun
+        return { base_amount: 275, prorate_per_day: 10 };
       }
     }
+    
     return null;
   };
 
   const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
-  // 1. TENTUKAN POKOK & PRORATE
-  let pokok = 0, prorate = 0;
-  
-  if (department === 'AM') {
-    pokok = 400;
-    prorate = 15;
-  } else if (department === 'CAPTAIN') {
-    pokok = 350;
-    prorate = 13;
-  } else if (department === 'CS DP WD') {
-    const monthsWorked = getMonthsOfWork(joinDate);
-    if (monthsWorked >= 36) {
-      pokok = 325;
-      prorate = 12;
-    } else if (monthsWorked >= 24) {
-      pokok = 300;
-      prorate = 11;
-    } else {
-      pokok = 275;
-      prorate = 10;
-    }
-  }
-  
-  // 2. HITUNG KEJADIAN DARI SCHEDULE
-  const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
-  const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
-  
-  const periodData = schedule.filter(day => {
-    const dateStr = day['DATE RUNDOWN'];
-    if (!dateStr) return false;
+    // 1. TENTUKAN POKOK & PRORATE
+    let pokok = 0, prorate = 0;
     
-    const [dayNum, monthStr, yearStr] = dateStr.split('-');
-    const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
-    return date >= periodeStart && date <= periodeEnd;
-  });
-
-  let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
-  let unpaidCount = 0, alphaCount = 0;
-
-  periodData.forEach(day => {
-    const status = day[officerName];
-    if (!status) return;
-    
-    switch(status) {
-      case 'OFF': offCount++; break;
-      case 'SAKIT': sakitCount++; break;
-      case 'CUTI': cutiCount++; break;
-      case 'IZIN': izinCount++; break;
-      case 'UNPAID LEAVE': unpaidCount++; break;
-      case 'ABSEN': alphaCount++; break;
+    if (department === 'AM') {
+      pokok = 400;
+      prorate = 15;
+    } else if (department === 'CAPTAIN') {
+      pokok = 350;
+      prorate = 13;
+    } else if (department === 'CS DP WD') {
+      const monthsWorked = getMonthsOfWork(joinDate);
+      if (monthsWorked >= 36) {
+        pokok = 325;
+        prorate = 12;
+      } else if (monthsWorked >= 24) {
+        pokok = 300;
+        prorate = 11;
+      } else {
+        pokok = 275;
+        prorate = 10;
+      }
     }
-  });
+    
+    // 2. HITUNG KEJADIAN DARI SCHEDULE
+    const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
+    const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
+    
+    periodeStart.setHours(0, 0, 0, 0);
+    periodeEnd.setHours(23, 59, 59, 999);
+    
+    const periodData = schedule.filter(day => {
+      const dateStr = day['DATE RUNDOWN'];
+      if (!dateStr) return false;
+      
+      const [dayNum, monthStr, yearStr] = dateStr.split('-');
+      const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
+      date.setHours(0, 0, 0, 0);
+      
+      return date >= periodeStart && date <= periodeEnd;
+    });
 
-  // 3. HITUNG UM NET
-  const offNotTaken = Math.max(0, 4 - offCount);
-  const tambahProrate = offNotTaken * prorate;
-  const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
-  const dendaAlpha = alphaCount * 50;
-  
-  const umNet = Math.max(0, pokok + tambahProrate - potonganKejadian - dendaAlpha);
+    let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
+    let unpaidCount = 0, alphaCount = 0;
 
-  return {
-    baseAmount: pokok,
-    prorate: prorate,
-    offCount,
-    sakitCount,
-    cutiCount,
-    izinCount,
-    unpaidCount,
-    alphaCount,
-    umNet  // ← INI UM NET ASLI
+    periodData.forEach(day => {
+      const status = day[officerName];
+      if (!status) return;
+      
+      switch(status) {
+        case 'OFF': offCount++; break;
+        case 'SAKIT': sakitCount++; break;
+        case 'CUTI': cutiCount++; break;
+        case 'IZIN': izinCount++; break;
+        case 'UNPAID LEAVE': unpaidCount++; break;
+        case 'ABSEN': alphaCount++; break;
+      }
+    });
+
+    // 3. HITUNG UM NET
+    const offNotTaken = Math.max(0, 4 - offCount);
+    const tambahProrate = offNotTaken * prorate;
+    const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
+    const dendaAlpha = alphaCount * 50;
+    
+    const umNet = Math.max(0, pokok + tambahProrate - potonganKejadian - dendaAlpha);
+
+    return {
+      baseAmount: pokok,
+      prorate: prorate,
+      offCount,
+      sakitCount,
+      cutiCount,
+      izinCount,
+      unpaidCount,
+      alphaCount,
+      umNet
+    };
   };
-};
 
   // ===========================================
   // DATA FETCHING
@@ -217,27 +213,25 @@ const getPeriodeEnd = (month, year) => {
   }, [selectedMonth, selectedYear]);
 
   const fetchData = async () => {
-  try {
-    setLoading(true);
-    
-    const bulan = `${selectedMonth} ${selectedYear}`;
-    
-    // Ambil semua officer aktif dulu
-    const { data: allOfficers } = await supabase
-      .from('officers')
-      .select('id, full_name, department, join_date, bank_account')
-      .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
-      .eq('status', 'REGULAR');
-    
-    // Ambil snapshot bulan ini
-    const { data: snapData } = await supabase
-      .from('meal_allowance_snapshot')
-      .select('*')
-      .eq('bulan', bulan);
-    
-    if (snapData && snapData.length > 0) {
-      // Cek apakah jumlah snapshot = jumlah officer
-      if (snapData.length === allOfficers.length) {
+    try {
+      setLoading(true);
+      
+      const bulan = `${selectedMonth} ${selectedYear}`;
+      
+      // Ambil semua officer aktif
+      const { data: allOfficers } = await supabase
+        .from('officers')
+        .select('id, full_name, department, join_date, bank_account')
+        .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
+        .eq('status', 'REGULAR');
+      
+      // Ambil snapshot bulan ini
+      const { data: snapData } = await supabase
+        .from('meal_allowance_snapshot')
+        .select('*')
+        .eq('bulan', bulan);
+      
+      if (snapData && snapData.length === allOfficers.length) {
         // LENGKAP, pake snapshot
         const formattedOfficers = snapData.map(item => ({
           id: item.officer_id,
@@ -260,19 +254,17 @@ const getPeriodeEnd = (month, year) => {
         }));
         
         setOfficers(formattedOfficers);
-        return;
+      } else {
+        // TIDAK LENGKAP, hitung ulang semua
+        await fetchManualData();
       }
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
-    
-    // KALO TIDAK LENGKAP, HITUNG ULANG SEMUA
-    await fetchManualData();
-    
-  } catch (error) {
-    console.error('Error fetching data:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const fetchManualData = async () => {
     try {
@@ -348,9 +340,7 @@ const getPeriodeEnd = (month, year) => {
       
       const bulan = `${selectedMonth} ${selectedYear}`;
       
-      // AMBIL UM NET ASLI (yang sudah dihitung dari schedule)
-      const umNetAsli = editingOfficer.umNet || 0;
-      
+      // Data untuk disimpan
       const snapshotData = {
         officer_id: editingOfficer.id,
         officer_name: editingOfficer.full_name,
@@ -367,11 +357,10 @@ const getPeriodeEnd = (month, year) => {
         izin_count: editingOfficer.izinCount || 0,
         unpaid_count: editingOfficer.unpaidCount || 0,
         alpha_count: editingOfficer.alphaCount || 0,
-        um_net: umNetAsli,  // ← INI YANG ASLI, JANGAN DIUTAK-ATIK
+        um_net: editingOfficer.umNet || 0,
         kasbon: editForm.kasbon,
         etc: editForm.etc || 0,
-        etc_note: editForm.etc_note,
-        updated_at: new Date().toISOString()
+        etc_note: editForm.etc_note
       };
       
       const { error } = await supabase
@@ -382,35 +371,17 @@ const getPeriodeEnd = (month, year) => {
       
       if (error) throw error;
       
-      // Ambil semua data terbaru
-      const { data: semuaData } = await supabase
-        .from('meal_allowance_snapshot')
-        .select('*')
-        .eq('bulan', bulan);
-      
-      if (semuaData) {
-        const formattedAll = semuaData.map(item => ({
-          id: item.officer_id,
-          full_name: item.officer_name,
-          department: item.department,
-          join_date: item.join_date,
-          baseAmount: item.base_amount,
-          prorate: item.prorate,
-          offCount: item.off_count,
-          sakitCount: item.sakit_count,
-          cutiCount: item.cuti_count,
-          izinCount: item.izin_count,
-          unpaidCount: item.unpaid_count,
-          alphaCount: item.alpha_count,
-          umNet: item.um_net,  // ← UM NET ASLI
-          kasbon: item.kasbon || 0,
-          etc: item.etc || 0,
-          etc_note: item.etc_note || '',
-          bank_account: item.bank_account || ''
-        }));
-        
-        setOfficers(formattedAll);
-      }
+      // Update state langsung
+      setOfficers(prev => prev.map(o => 
+        o.id === editingOfficer.id 
+          ? { 
+              ...o, 
+              kasbon: editForm.kasbon,
+              etc: editForm.etc || 0,
+              etc_note: editForm.etc_note
+            }
+          : o
+      ));
       
       alert('✅ Data berhasil diupdate');
       setEditingOfficer(null);
@@ -434,12 +405,10 @@ const getPeriodeEnd = (month, year) => {
     })
     .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
     .map((officer) => {
-      // HITUNG NET FINAL: UM Net Asli - Kasbon + Etc
       const finalNet = Math.max(0, (officer.umNet || 0) - (officer.kasbon || 0) + (officer.etc || 0));
-      
       return {
         ...officer,
-        finalNet  // ← INI BUAT TAMPILAN
+        finalNet
       };
     });
 
@@ -555,7 +524,7 @@ const getPeriodeEnd = (month, year) => {
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
         <div className="flex flex-wrap gap-4">
           <div>
-            <span className="text-[#A7D8FF]">Periode: </span>
+            <span className="text-[#A7D8FF]">Periode Kejadian: </span>
             <span className="text-white font-medium">
               {new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { 
                 day: '2-digit', 
@@ -633,15 +602,8 @@ const getPeriodeEnd = (month, year) => {
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
                       <div className="flex items-center gap-1">
-                      <span className="text-[#A7D8FF] text-xs">OFF Day:</span>
-                      <span className="font-medium text-white">{offCount || 0}</span>
-                      </div>
-                      
-                      <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                      
-                      <div className="flex items-center gap-1">
-                        <span className="text-[#A7D8FF] text-xs">OFF DAY:</span>
-                        <span className="font-medium text-white">{Math.max(0, 4 - (officer.offCount || 0))}</span>
+                        <span className="text-[#A7D8FF] text-xs">OFF Day:</span>
+                        <span className="font-medium text-white">{officer.offCount || 0}</span>
                       </div>
                       
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
@@ -659,7 +621,6 @@ const getPeriodeEnd = (month, year) => {
                       
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
-                      {/* NET FINAL - HASIL AKHIR SETELAH KASBON & ETC */}
                       <div className="flex items-center gap-1">
                         <span className="text-[#A7D8FF] text-xs">NET:</span>
                         <span className="font-bold text-[#FFD700]">
@@ -670,7 +631,6 @@ const getPeriodeEnd = (month, year) => {
                     
                     {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                      {/* Kasbon */}
                       <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                         <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
                         <div className="font-medium text-red-400">
@@ -678,7 +638,6 @@ const getPeriodeEnd = (month, year) => {
                         </div>
                       </div>
                       
-                      {/* ETC */}
                       <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                         <div className="text-[#A7D8FF] text-xs mb-1">🔄 ETC</div>
                         <div className={`font-medium ${(officer.etc || 0) > 0 ? 'text-green-400' : (officer.etc || 0) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
@@ -686,7 +645,6 @@ const getPeriodeEnd = (month, year) => {
                         </div>
                       </div>
                       
-                      {/* Notes */}
                       <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                         <div className="text-[#A7D8FF] text-xs mb-1">📝 NOTES</div>
                         <div className="text-sm text-white truncate" title={officer.etc_note}>
@@ -695,7 +653,7 @@ const getPeriodeEnd = (month, year) => {
                       </div>
                     </div>
                     
-                    {/* BARIS 4: Tombol Edit - HANYA UNTUK ADMIN */}
+                    {/* BARIS 4: Tombol Edit */}
                     {isAdmin && (
                       <div className="flex justify-end">
                         <button
@@ -736,7 +694,6 @@ const getPeriodeEnd = (month, year) => {
             </h3>
             
             <div className="space-y-4">
-              {/* KASBON */}
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">
                   KASBON ( - )
@@ -754,7 +711,6 @@ const getPeriodeEnd = (month, year) => {
                 />
               </div>
               
-              {/* ETC */}
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">
                   ETC (+ nambah, - ngurang)
@@ -772,7 +728,6 @@ const getPeriodeEnd = (month, year) => {
                 />
               </div>
               
-              {/* NOTES */}
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">
                   Keterangan / Note
@@ -786,7 +741,6 @@ const getPeriodeEnd = (month, year) => {
                 />
               </div>
               
-              {/* Tombol Simpan & Batal */}
               <div className="flex gap-2 pt-4">
                 <button
                   onClick={handleEditSave}
