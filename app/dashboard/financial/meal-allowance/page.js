@@ -436,7 +436,6 @@ export default function MealAllowancePage() {
 
   const handleEditSave = async () => {
   try {
-    // Validasi
     if (editForm.kasbon < 0) {
       alert('⚠️ Kasbon tidak boleh negatif');
       return;
@@ -475,10 +474,38 @@ export default function MealAllowancePage() {
     
     alert('✅ Data berhasil diupdate');
     
-    // PAKSA REFRESH dengan delay kecil
-    setTimeout(() => {
-      fetchData();
-    }, 500);
+    // AMBIL ULANG SEMUA DATA DARI SNAPSHOT
+    const { data: semuaSnapshot } = await supabase
+      .from('meal_allowance_snapshot')
+      .select('*')
+      .eq('bulan', `${selectedMonth} ${selectedYear}`)
+      .order('officer_name');
+    
+    if (semuaSnapshot) {
+      // Format ulang semua data snapshot
+      const formattedAll = semuaSnapshot.map(item => ({
+        id: item.officer_id,
+        full_name: item.officer_name,
+        department: item.department,
+        join_date: item.join_date,
+        baseAmount: item.base_amount,
+        prorate: item.prorate,
+        offCount: item.off_count,
+        sakitCount: item.sakit_count,
+        cutiCount: item.cuti_count,
+        izinCount: item.izin_count,
+        unpaidCount: item.unpaid_count,
+        alphaCount: item.alpha_count,
+        umNet: item.um_net,
+        kasbon: item.kasbon || 0,
+        etc: item.etc || 0,
+        etc_note: item.etc_note || '',
+        bank_account: item.bank_account || ''
+      }));
+      
+      setOfficers(formattedAll);
+      setUsingSnapshot(true);
+    }
     
     setEditingOfficer(null);
     
