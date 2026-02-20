@@ -96,7 +96,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // FUNGSI UTAMA HITUNG USIA (Sakit, Izin, Unpaid, Alpha)
+  // FUNGSI HITUNG USIA (dari API)
   // ===========================================
   const hitungUSIA = (officerName, schedule = scheduleData) => {
     const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
@@ -104,7 +104,6 @@ export default function MealAllowancePage() {
     periodeStart.setHours(0, 0, 0, 0);
     periodeEnd.setHours(23, 59, 59, 999);
     
-    // Filter schedule berdasarkan periode
     const periodData = schedule.filter(day => {
       const dateStr = day['DATE RUNDOWN'];
       if (!dateStr) return false;
@@ -115,7 +114,7 @@ export default function MealAllowancePage() {
     });
 
     let sakitCount = 0, izinCount = 0, unpaidCount = 0, alphaCount = 0;
-    let offCount = 0, cutiCount = 0;
+    let offCount = 0;
 
     periodData.forEach(day => {
       const status = day[officerName];
@@ -127,7 +126,6 @@ export default function MealAllowancePage() {
         case 'UNPAID LEAVE': unpaidCount++; break;
         case 'ABSEN': alphaCount++; break;
         case 'OFF': offCount++; break;
-        case 'CUTI': cutiCount++; break;
       }
     });
 
@@ -136,8 +134,7 @@ export default function MealAllowancePage() {
       izin: izinCount,
       unpaid: unpaidCount,
       alpha: alphaCount,
-      off: offCount,
-      cuti: cutiCount
+      off: offCount
     };
   };
 
@@ -149,29 +146,23 @@ export default function MealAllowancePage() {
       prorate = rate.prorate_per_day;
     }
     
-    // Hitung USIA dari schedule
+    // USIA dari API (tanpa CUTI)
     const usia = hitungUSIA(officerName, schedule);
     
-    // Hitung UM NET
-    const potonganKejadian = (usia.sakit + usia.izin + usia.unpaid) * prorate;
-    const dendaAlpha = usia.alpha * 50;
-    const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
-
     return {
       baseAmount: pokok,
       prorate: prorate,
       offCount: usia.off,
-      cutiCount: usia.cuti,
       sakitCount: usia.sakit,
       izinCount: usia.izin,
       unpaidCount: usia.unpaid,
       alphaCount: usia.alpha,
-      umNet
+      // cutiCount akan diambil dari snapshot atau input manual
     };
   };
 
   // ===========================================
-  // DATA FETCHING
+  // DATA FETCHING (LANGSUNG DARI API)
   // ===========================================
 
   useEffect(() => {
@@ -200,83 +191,36 @@ export default function MealAllowancePage() {
       
       const bulan = `${selectedMonth} ${selectedYear}`;
       
-      const { data: allOfficers } = await supabase
-        .from('officers')
-        .select('id, full_name, department, join_date, bank_account')
-        .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
-        .eq('status', 'REGULAR');
-      
-      const { data: snapData } = await supabase
-        .from('meal_allowance_snapshot')
-        .select('*')
-        .eq('bulan', bulan);
-      
-      if (snapData && snapData.length === allOfficers.length) {
-        const formattedOfficers = snapData.map(item => {
-          const officerData = allOfficers.find(o => o.id === item.officer_id);
-          const { bank, rek, link } = formatBankAndRek(officerData?.bank_account || '');
-          
-          return {
-            id: item.officer_id,
-            full_name: item.officer_name,
-            department: item.department,
-            join_date: item.join_date,
-            baseAmount: item.base_amount,
-            prorate: item.prorate,
-            offCount: item.off_count,
-            sakitCount: item.sakit_count,
-            cutiCount: item.cuti_count,
-            izinCount: item.izin_count,
-            unpaidCount: item.unpaid_count,
-            alphaCount: item.alpha_count,
-            umNet: item.um_net,
-            kasbon: item.kasbon || 0,
-            etc: item.etc || 0,
-            etc_note: item.etc_note || '',
-            bank: bank,
-            rek: rek,
-            link: link
-          };
-        });
-        setOfficers(formattedOfficers);
-      } else {
-        await fetchManualData();
-      }
-      
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchManualData = async () => {
-    try {
+      // Ambil data officers
       const { data: officersData } = await supabase
         .from('officers')
         .select('*')
         .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
         .eq('status', 'REGULAR');
       
-      const { data: ratesData } = await supabase
-        .from('meal_allowance')
-        .select('*');
-      
+      // Ambil schedule dari API
       const scheduleResponse = await fetch(
         `/api/schedule?year=${selectedYear}&month=${selectedMonth}`
       );
       const scheduleResult = await scheduleResponse.json();
+      const schedule = scheduleResult.data || [];
       
-      setMealRates(ratesData || []);
-      setScheduleData(scheduleResult.data || []);
+      setScheduleData(schedule);
       
+      // Ambil snapshot (khusus cuti, kasbon, etc)
+      const { data: snapData } = await supabase
+        .from('meal_allowance_snapshot')
+        .select('officer_id, cuti_count, kasbon, etc, etc_note')
+        .eq('bulan', bulan);
+      
+      // Gabungin data
       const officersWithStats = (officersData || []).map(officer => {
-        const stats = calculateOfficerStats(
-          officer.full_name, 
-          officer.department, 
-          officer.join_date,
-          scheduleResult.data || []
-        );
+        // Hitung USIA dari API
+        const usia = hitungUSIA(officer.full_name, schedule);
+        
+        // Cari snapshot untuk officer ini
+        const snapshot = snapData?.find(s => s.officer_id === officer.id);
+        
         const { bank, rek, link } = formatBankAndRek(officer.bank_account || '');
         
         return {
@@ -284,20 +228,43 @@ export default function MealAllowancePage() {
           full_name: officer.full_name,
           department: officer.department,
           join_date: officer.join_date,
-          ...stats,
-          kasbon: 0,
-          etc: 0,
-          etc_note: '',
+          baseAmount: usia.baseAmount || getMealRate(officer.department, officer.join_date)?.base_amount || 0,
+          prorate: usia.prorate || getMealRate(officer.department, officer.join_date)?.prorate_per_day || 0,
+          offCount: usia.off,
+          sakitCount: usia.sakit,
+          izinCount: usia.izin,
+          unpaidCount: usia.unpaid,
+          alphaCount: usia.alpha,
+          cutiCount: snapshot?.cuti_count || 0,  // dari snapshot
+          kasbon: snapshot?.kasbon || 0,
+          etc: snapshot?.etc || 0,
+          etc_note: snapshot?.etc_note || '',
           bank: bank,
           rek: rek,
-          link: link
+          link: link,
+          umNet: 0 // akan dihitung ulang di mapping
         };
       });
       
-      setOfficers(officersWithStats);
+      // Hitung ulang umNet untuk semua
+      const withUmNet = officersWithStats.map(o => {
+        const rate = getMealRate(o.department, o.join_date);
+        const prorate = rate?.prorate_per_day || 0;
+        const pokok = rate?.base_amount || 0;
+        
+        const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * prorate;
+        const denda = o.alphaCount * 50;
+        const umNet = Math.max(0, pokok - potongan - denda);
+        
+        return { ...o, umNet };
+      });
+      
+      setOfficers(withUmNet);
       
     } catch (error) {
-      console.error('Error in manual fetch:', error);
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -327,33 +294,34 @@ export default function MealAllowancePage() {
       
       const bulan = `${selectedMonth} ${selectedYear}`;
       
-      const pokok = editingOfficer.baseAmount || 0;
-      const prorate = editingOfficer.prorate || 0;
-      const potonganKejadian = (
-        (editingOfficer.sakitCount || 0) + 
-        editForm.cuti + 
-        (editingOfficer.izinCount || 0) + 
-        (editingOfficer.unpaidCount || 0)
-      ) * prorate;
-      const dendaAlpha = (editingOfficer.alphaCount || 0) * 50;
-      const umNetBaru = Math.max(0, pokok - potonganKejadian - dendaAlpha);
+      // Ambil data officer
+      const officer = editingOfficer;
+      const rate = getMealRate(officer.department, officer.join_date);
+      const prorate = rate?.prorate_per_day || 0;
+      const pokok = rate?.base_amount || 0;
       
+      // Hitung ulang UM Net
+      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * prorate;
+      const denda = officer.alphaCount * 50;
+      const umNetBaru = Math.max(0, pokok - potongan - denda);
+      
+      // Simpan ke snapshot
       const snapshotData = {
-        officer_id: editingOfficer.id,
-        officer_name: editingOfficer.full_name,
-        department: editingOfficer.department,
-        join_date: editingOfficer.join_date,
+        officer_id: officer.id,
+        officer_name: officer.full_name,
+        department: officer.department,
+        join_date: officer.join_date,
         bulan: bulan,
         periode_start: getPeriodeStart(selectedMonth, selectedYear),
         periode_end: getPeriodeEnd(selectedMonth, selectedYear),
         base_amount: pokok,
         prorate: prorate,
-        off_count: editingOfficer.offCount || 0,
-        sakit_count: editingOfficer.sakitCount || 0,
+        off_count: officer.offCount || 0,
+        sakit_count: officer.sakitCount || 0,
         cuti_count: editForm.cuti,
-        izin_count: editingOfficer.izinCount || 0,
-        unpaid_count: editingOfficer.unpaidCount || 0,
-        alpha_count: editingOfficer.alphaCount || 0,
+        izin_count: officer.izinCount || 0,
+        unpaid_count: officer.unpaidCount || 0,
+        alpha_count: officer.alphaCount || 0,
         um_net: umNetBaru,
         kasbon: editForm.kasbon,
         etc: editForm.etc || 0,
@@ -366,8 +334,9 @@ export default function MealAllowancePage() {
       
       if (error) throw error;
       
+      // Update state
       setOfficers(prev => prev.map(o => 
-        o.id === editingOfficer.id 
+        o.id === officer.id 
           ? { 
               ...o, 
               kasbon: editForm.kasbon,
@@ -535,7 +504,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {/* BARIS 2: Angka-angka dengan USIA dari API */}
+                  {/* BARIS 2: Angka-angka (USIA pisah dari CUTI) */}
                   <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
@@ -551,16 +520,20 @@ export default function MealAllowancePage() {
                     
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
                     
-                    {/* USIA: Cuti (manual) + U S I A (dari API) */}
+                    {/* USIA dari API (Sakit, Izin, Unpaid, Alpha) */}
                     <div className="flex items-center gap-1">
-                      <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
+                      <span className="text-[#A7D8FF] text-xs">S/I/U/A:</span>
                       <span className="font-medium text-white">
-                        {officer.cutiCount || 0}/
-                        {officer.unpaidCount || 0}/
-                        {officer.sakitCount || 0}/
-                        {officer.izinCount || 0}/
-                        {officer.alphaCount || 0}
+                        {officer.sakitCount || 0}/{officer.izinCount || 0}/{officer.unpaidCount || 0}/{officer.alphaCount || 0}
                       </span>
+                    </div>
+                    
+                    <div className="w-px h-4 bg-[#FFD700]/30"></div>
+                    
+                    {/* CUTI Manual (input admin) */}
+                    <div className="flex items-center gap-1">
+                      <span className="text-[#A7D8FF] text-xs">Cuti Manual:</span>
+                      <span className="font-medium text-yellow-400">{officer.cutiCount || 0}</span>
                     </div>
                     
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
