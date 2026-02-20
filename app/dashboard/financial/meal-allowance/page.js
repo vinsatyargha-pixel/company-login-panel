@@ -286,12 +286,15 @@ const fetchData = async () => {
     const bulan = `${selectedMonth} ${selectedYear}`;
     const officer = editingOfficer;
     
+    // HITUNG PERIODE PAKAI FUNGSI
+    const prev = getPreviousMonthData(selectedMonth, selectedYear);
+    
     // Hitung ulang UM Net
     const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
     const denda = officer.alphaCount * 50;
     const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
     
-    // CARI NAMA ADMIN DARI TABEL OFFICERS BERDASARKAN EMAIL
+    // CARI NAMA ADMIN
     let adminName = 'Unknown';
     let adminId = null;
     
@@ -309,8 +312,6 @@ const fetchData = async () => {
         adminName = user.email;
       }
     }
-    
-    const prev = getPreviousMonthData(selectedMonth, selectedYear);
     
     const snapshotData = {
       officer_id: officer.id,
@@ -332,7 +333,7 @@ const fetchData = async () => {
       kasbon: editForm.kasbon,
       etc: editForm.etc || 0,
       etc_note: editForm.etc_note,
-      last_edited_by: adminId,  // ID dari tabel officers
+      last_edited_by: adminId,
       last_edited_at: new Date().toISOString()
     };
     
@@ -351,7 +352,7 @@ const fetchData = async () => {
             etc: editForm.etc || 0,
             etc_note: editForm.etc_note,
             umNet: umNetBaru,
-            lastEditedBy: adminName,  // NAMA UNTUK TAMPILAN
+            lastEditedBy: adminName,
             lastEditedAt: new Date().toISOString()
           }
         : o
