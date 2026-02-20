@@ -126,23 +126,24 @@ export default function MealAllowancePage() {
   };
 
   const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
+  // Dapatkan periode start dan end
   const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
   const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
   
-  console.log('Periode:', { 
-    start: periodeStart.toLocaleDateString(), 
-    end: periodeEnd.toLocaleDateString() 
-  });
+  // Reset jam biar ga error
+  periodeStart.setHours(0, 0, 0, 0);
+  periodeEnd.setHours(23, 59, 59, 999);
   
+  console.log(`Periode: ${periodeStart.toLocaleDateString()} - ${periodeEnd.toLocaleDateString()}`);
+  
+  // Filter schedule berdasarkan periode
   const periodData = schedule.filter(day => {
     const dateStr = day['DATE RUNDOWN'];
     if (!dateStr) return false;
     
-    // Parse tanggal dari format "DD-MM-YYYY"
+    // Parse DD-MM-YYYY
     const [dayNum, monthStr, yearStr] = dateStr.split('-');
     const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
-    
-    // Reset time ke 00:00:00 biar adil
     date.setHours(0, 0, 0, 0);
     
     return date >= periodeStart && date <= periodeEnd;
@@ -150,10 +151,11 @@ export default function MealAllowancePage() {
   
   console.log(`${officerName}: ${periodData.length} hari dalam periode`);
   
-  // ... sisa kode sama ...
+  // Initialize counters
   let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
   let unpaidCount = 0, alphaCount = 0;
 
+  // Hitung status
   periodData.forEach(day => {
     const status = day[officerName];
     if (!status) return;
@@ -168,10 +170,12 @@ export default function MealAllowancePage() {
     }
   });
 
+  // Dapatkan rate
   const rate = getMealRate(department, joinDate);
   const baseAmount = rate?.base_amount || 0;
   const prorate = rate?.prorate_per_day || 0;
 
+  // Hitung UM Net
   const offNotTaken = Math.max(0, 4 - offCount);
   const proratePlus = offNotTaken * prorate;
   const totalPotongan = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
@@ -179,6 +183,22 @@ export default function MealAllowancePage() {
   const prorateMinus = totalPotongan + dendaAlpha;
   
   const umNet = Math.max(0, Math.round(baseAmount + proratePlus - prorateMinus));
+
+  console.log(`${officerName} hasil:`, {
+    baseAmount,
+    prorate,
+    offCount,
+    sakitCount,
+    cutiCount,
+    izinCount,
+    unpaidCount,
+    alphaCount,
+    offNotTaken,
+    proratePlus,
+    totalPotongan,
+    dendaAlpha,
+    umNet
+  });
 
   return {
     baseAmount,
@@ -352,7 +372,7 @@ export default function MealAllowancePage() {
           um_net: stats.umNet,
           is_locked: true,
           locked_at: new Date().toISOString(),
-          locked_by: user?.id,
+          locked_by: null,
           kasbon: 0,
           etc: 0,  // ← LANGSUNG ANGKA
           etc_note: ''
@@ -618,30 +638,20 @@ export default function MealAllowancePage() {
         )}
         
         {isAdmin && isLocked && (
-          <div className="flex gap-2">
-            <div className="flex items-center gap-2 bg-green-600/20 text-[#32CD32] px-4 py-2 rounded-lg border border-[#32CD32]/30">
-              <span>🔒</span>
-              <span>Locked</span>
-            </div>
-            <button
-              onClick={handleUnlockPeriod}
-              disabled={unlocking}
-              className="flex items-center gap-2 bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-500 px-4 py-2 rounded-lg border border-yellow-500/30 font-medium transition-all"
-            >
-              {unlocking ? (
-                <>
-                  <div className="animate-spin h-4 w-4 border-2 border-yellow-500 border-t-transparent rounded-full"></div>
-                  <span>Unlocking...</span>
-                </>
-              ) : (
-                <>
-                  <span>🔓</span>
-                  <span>Unlock</span>
-                </>
-              )}
-            </button>
-          </div>
-        )}
+  <div className="flex gap-2">
+    <div className="flex items-center gap-2 bg-green-600/20 text-[#32CD32] px-4 py-2 rounded-lg">
+      <span>🔒</span>
+      <span>Locked</span>
+    </div>
+    <button
+      onClick={handleUnlockPeriod}
+      disabled={unlocking}
+      className="flex items-center gap-2 bg-yellow-600/20 hover:bg-yellow-600/40 text-yellow-500 px-4 py-2 rounded-lg"
+    >
+      {unlocking ? 'Unlocking...' : '🔓 Unlock'}
+    </button>
+  </div>
+)}
       </div>
 
       {/* Summary Cards */}
