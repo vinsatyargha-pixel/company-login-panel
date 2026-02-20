@@ -121,68 +121,79 @@ export default function MealAllowancePage() {
   };
 
   const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
-    const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
-    const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
+  // 1. TENTUKAN POKOK & PRORATE
+  let pokok = 0, prorate = 0;
+  
+  if (department === 'AM') {
+    pokok = 400;
+    prorate = 15;
+  } else if (department === 'CAPTAIN') {
+    pokok = 350;
+    prorate = 13;
+  } else if (department === 'CS DP WD') {
+    const monthsWorked = getMonthsOfWork(joinDate);
+    if (monthsWorked >= 36) {
+      pokok = 325;
+      prorate = 12;
+    } else if (monthsWorked >= 24) {
+      pokok = 300;
+      prorate = 11;
+    } else {
+      pokok = 275;
+      prorate = 10;
+    }
+  }
+  
+  // 2. HITUNG KEJADIAN DARI SCHEDULE
+  const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
+  const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
+  
+  const periodData = schedule.filter(day => {
+    const dateStr = day['DATE RUNDOWN'];
+    if (!dateStr) return false;
     
-    periodeStart.setHours(0, 0, 0, 0);
-    periodeEnd.setHours(23, 59, 59, 999);
+    const [dayNum, monthStr, yearStr] = dateStr.split('-');
+    const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
+    return date >= periodeStart && date <= periodeEnd;
+  });
+
+  let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
+  let unpaidCount = 0, alphaCount = 0;
+
+  periodData.forEach(day => {
+    const status = day[officerName];
+    if (!status) return;
     
-    const periodData = schedule.filter(day => {
-      const dateStr = day['DATE RUNDOWN'];
-      if (!dateStr) return false;
-      
-      const [dayNum, monthStr, yearStr] = dateStr.split('-');
-      const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
-      date.setHours(0, 0, 0, 0);
-      
-      return date >= periodeStart && date <= periodeEnd;
-    });
+    switch(status) {
+      case 'OFF': offCount++; break;
+      case 'SAKIT': sakitCount++; break;
+      case 'CUTI': cutiCount++; break;
+      case 'IZIN': izinCount++; break;
+      case 'UNPAID LEAVE': unpaidCount++; break;
+      case 'ABSEN': alphaCount++; break;
+    }
+  });
 
-    let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
-    let unpaidCount = 0, alphaCount = 0;
+  // 3. HITUNG UM NET
+  const offNotTaken = Math.max(0, 4 - offCount);
+  const tambahProrate = offNotTaken * prorate;
+  const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
+  const dendaAlpha = alphaCount * 50;
+  
+  const umNet = Math.max(0, pokok + tambahProrate - potonganKejadian - dendaAlpha);
 
-    periodData.forEach(day => {
-      const status = day[officerName];
-      if (!status) return;
-      
-      switch(status) {
-        case 'OFF': offCount++; break;
-        case 'SAKIT': sakitCount++; break;
-        case 'CUTI': cutiCount++; break;
-        case 'IZIN': izinCount++; break;
-        case 'UNPAID LEAVE': unpaidCount++; break;
-        case 'ABSEN': alphaCount++; break;
-      }
-    });
-
-    const rate = getMealRate(department, joinDate);
-    const baseAmount = rate?.base_amount || 0;
-    const prorate = rate?.prorate_per_day || 0;
-
-    const offNotTaken = Math.max(0, 4 - offCount);
-    const proratePlus = offNotTaken * prorate;
-    const totalPotongan = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
-    const dendaAlpha = alphaCount * 50;
-    const prorateMinus = totalPotongan + dendaAlpha;
-    
-    // INI UM NET ASLI SEBELUM KASBON/ETC
-    const umNet = Math.max(0, Math.round(baseAmount + proratePlus - prorateMinus));
-
-    return {
-      baseAmount,
-      prorate,
-      offCount,
-      sakitCount,
-      cutiCount,
-      izinCount,
-      unpaidCount,
-      alphaCount,
-      proratePlus,
-      prorateMinus,
-      denda: dendaAlpha,
-      umNet  // ← INI YANG DISIMPAN
-    };
+  return {
+    baseAmount: pokok,
+    prorate: prorate,
+    offCount,
+    sakitCount,
+    cutiCount,
+    izinCount,
+    unpaidCount,
+    alphaCount,
+    umNet  // ← INI UM NET ASLI
   };
+};
 
   // ===========================================
   // DATA FETCHING
