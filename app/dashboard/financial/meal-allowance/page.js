@@ -258,7 +258,16 @@ export default function MealAllowancePage() {
           scheduleResult.data || []
         );
         const { bank, rek, link } = formatBankAndRek(officer.bank_account || '');
-        
+        console.log(`🔍 ${officerName} di ${selectedMonth} ${selectedYear}:`, {
+  periode: `${periodeStart.toLocaleDateString()} - ${periodeEnd.toLocaleDateString()}`,
+  SAKIT: sakitCount,
+  CUTI: cutiCount,
+  IZIN: izinCount,
+  UNPAID: unpaidCount,
+  ALPHA: alphaCount,
+  OFF: offCount,
+  totalHari: periodData.length
+});
         return {
           id: officer.id,
           full_name: officer.full_name,
