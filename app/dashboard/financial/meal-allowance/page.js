@@ -646,28 +646,31 @@ export default function MealAllowancePage() {
               </div>
               
               <div>
+  <div>
   <label className="text-[#A7D8FF] text-sm block mb-1">ETC (+ nambah, - ngurang)</label>
   <input 
     type="text" 
     value={editForm.etc} 
     onChange={(e) => {
-      // Hanya izinkan angka dan tanda minus di depan
       const value = e.target.value;
       
-      // Kalo kosong atau cuma tanda minus
+      // Izinkan: kosong, minus doang, atau angka dengan minus di depan
       if (value === '' || value === '-') {
         setEditForm({...editForm, etc: value});
         return;
       }
       
-      // Cek apakah string adalah angka valid (boleh negatif)
-      if (/^-?\d*$/.test(value)) {
-        setEditForm({...editForm, etc: value});
+      // Cek format angka negatif/positif (tanpa leading zero ganda)
+      if (/^-?[0-9]*$/.test(value)) {
+        // Hindari multiple minus
+        if ((value.match(/-/g) || []).length <= 1) {
+          setEditForm({...editForm, etc: value});
+        }
       }
     }}
-    onBlur={(e) => {
-      // Pas keluar dari input, konversi ke number
-      const num = parseInt(e.target.value);
+    onBlur={() => {
+      // Pas keluar, konversi ke number
+      const num = parseInt(editForm.etc);
       if (!isNaN(num)) {
         setEditForm({...editForm, etc: num});
       } else {
@@ -676,7 +679,6 @@ export default function MealAllowancePage() {
     }}
     className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
     placeholder="Contoh: 25 atau -10" 
-    inputMode="numeric" 
   />
 </div>
               
