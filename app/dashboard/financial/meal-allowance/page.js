@@ -313,73 +313,95 @@ export default function MealAllowancePage() {
   };
 
   const handleEditSave = async () => {
-    if (!isAdmin) return;
-    
-    try {
-      if (editForm.kasbon < 0) {
-        alert('⚠️ Kasbon tidak boleh negatif');
-        return;
-      }
-      
-      const bulan = `${selectedMonth} ${selectedYear}`;
-      
-      // Hitung ulang UM Net dengan mempertimbangkan kasbon & etc
-      const baseUmNet = editingOfficer.umNet || 0;
-      const finalNet = Math.max(0, baseUmNet - editForm.kasbon + (editForm.etc || 0));
-      
-      // Data untuk disimpan
-      const snapshotData = {
-        officer_id: editingOfficer.id,
-        officer_name: editingOfficer.full_name,
-        department: editingOfficer.department,
-        join_date: editingOfficer.join_date,
-        bulan: bulan,
-        periode_start: getPeriodeStart(selectedMonth, selectedYear),
-        periode_end: getPeriodeEnd(selectedMonth, selectedYear),
-        base_amount: editingOfficer.baseAmount || 0,
-        prorate: editingOfficer.prorate || 0,
-        off_count: editingOfficer.offCount || 0,
-        sakit_count: editingOfficer.sakitCount || 0,
-        cuti_count: editingOfficer.cutiCount || 0,
-        izin_count: editingOfficer.izinCount || 0,
-        unpaid_count: editingOfficer.unpaidCount || 0,
-        alpha_count: editingOfficer.alphaCount || 0,
-        um_net: finalNet,  // Simpan NET setelah dikurangi kasbon/ditambah etc
-        kasbon: editForm.kasbon,
-        etc: editForm.etc || 0,
-        etc_note: editForm.etc_note,
-        updated_at: new Date().toISOString()
-      };
-      
-      const { error } = await supabase
-        .from('meal_allowance_snapshot')
-        .upsert(snapshotData, { 
-          onConflict: 'officer_id, bulan' 
-        });
-      
-      if (error) throw error;
-      
-      // Update state langsung
-      setOfficers(prev => prev.map(o => 
-        o.id === editingOfficer.id 
-          ? { 
-              ...o, 
-              kasbon: editForm.kasbon,
-              etc: editForm.etc || 0,
-              etc_note: editForm.etc_note,
-              umNet: finalNet
-            }
-          : o
-      ));
-      
-      alert('✅ Data berhasil diupdate');
-      setEditingOfficer(null);
-      
-    } catch (error) {
-      console.error('Error updating:', error);
-      alert('❌ Gagal update data: ' + error.message);
+  if (!isAdmin) return;
+  
+  try {
+    if (editForm.kasbon < 0) {
+      alert('⚠️ Kasbon tidak boleh negatif');
+      return;
     }
-  };
+    
+    const bulan = `${selectedMonth} ${selectedYear}`;
+    
+    // 1. UPDATE data officer yang diedit
+    const snapshotData = {
+      officer_id: editingOfficer.id,
+      officer_name: editingOfficer.full_name,
+      department: editingOfficer.department,
+      join_date: editingOfficer.join_date,
+      bulan: bulan,
+      periode_start: getPeriodeStart(selectedMonth, selectedYear),
+      periode_end: getPeriodeEnd(selectedMonth, selectedYear),
+      base_amount: editingOfficer.baseAmount || 0,
+      prorate: editingOfficer.prorate || 0,
+      off_count: editingOfficer.offCount || 0,
+      sakit_count: editingOfficer.sakitCount || 0,
+      cuti_count: editingOfficer.cutiCount || 0,
+      izin_count: editingOfficer.izinCount || 0,
+      unpaid_count: editingOfficer.unpaidCount || 0,
+      alpha_count: editingOfficer.alphaCount || 0,
+      um_net: editingOfficer.umNet || 0,  // NET sebelum dipotong kasbon
+      kasbon: editForm.kasbon,
+      etc: editForm.etc || 0,
+      etc_note: editForm.etc_note,
+      updated_at: new Date().toISOString()
+    };
+    
+    const { error } = await supabase
+      .from('meal_allowance_snapshot')
+      .upsert(snapshotData, { 
+        onConflict: 'officer_id, bulan' 
+      });
+    
+    if (error) throw error;
+    
+    // 2. AMBIL SEMUA data snapshot bulan ini (yang udah termasuk update tadi)
+    const { data: semuaData } = await supabase
+      .from('meal_allowance_snapshot')
+      .select('*')
+      .eq('bulan', bulan);
+    
+    if (semuaData) {
+      // 3. FORMAT ulang dengan hitung NET FINAL
+      const formattedAll = semuaData.map(item => {
+        const baseNet = item.um_net || 0;
+        const kasbon = item.kasbon || 0;
+        const etc = item.etc || 0;
+        const finalNet = Math.max(0, baseNet - kasbon + etc);
+        
+        return {
+          id: item.officer_id,
+          full_name: item.officer_name,
+          department: item.department,
+          join_date: item.join_date,
+          baseAmount: item.base_amount,
+          prorate: item.prorate,
+          offCount: item.off_count,
+          sakitCount: item.sakit_count,
+          cutiCount: item.cuti_count,
+          izinCount: item.izin_count,
+          unpaidCount: item.unpaid_count,
+          alphaCount: item.alpha_count,
+          umNet: baseNet,
+          kasbon: kasbon,
+          etc: etc,
+          etc_note: item.etc_note || '',
+          bank_account: item.bank_account || '',
+          finalNet: finalNet  // ← INI YANG DIPAKE BUAT TAMPILAN
+        };
+      });
+      
+      setOfficers(formattedAll);
+    }
+    
+    alert('✅ Data berhasil diupdate');
+    setEditingOfficer(null);
+    
+  } catch (error) {
+    console.error('Error updating:', error);
+    alert('❌ Gagal update data: ' + error.message);
+  }
+};
 
   // ===========================================
   // FILTER & PROCESS OFFICERS
