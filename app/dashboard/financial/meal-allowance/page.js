@@ -173,10 +173,10 @@ export default function MealAllowancePage() {
       }
     });
 
-    // HITUNG UM NET
-const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
-const dendaAlpha = alphaCount * 50;
-const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
+    // 3. HITUNG UM NET (OFF TIDAK NGARUH)
+    const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
+    const dendaAlpha = alphaCount * 50;
+    const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
 
     return {
       baseAmount: pokok,
@@ -212,6 +212,13 @@ const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      // KHUSUS: January kosongkan semua
+      if (selectedMonth === 'January') {
+        setOfficers([]);
+        setLoading(false);
+        return;
+      }
       
       const bulan = `${selectedMonth} ${selectedYear}`;
       
@@ -427,6 +434,29 @@ const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
     );
   }
 
+  // Khusus January: tampilkan pesan kosong
+  if (selectedMonth === 'January') {
+    return (
+      <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
+        <div className="mb-6 flex items-center gap-4 flex-wrap">
+          <Link href="/dashboard/financial" className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span>Back to Financial</span>
+          </Link>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-[#FFD700]">MEAL ALLOWANCE</h1>
+            <p className="text-[#A7D8FF] mt-1">January 2026 - Data Kosong</p>
+          </div>
+        </div>
+        <div className="text-center py-20 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30">
+          <p className="text-[#A7D8FF] text-lg">🔮 Belum ada data untuk bulan January</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
       {/* Header */}
@@ -599,24 +629,11 @@ const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
                       <div className="flex items-center gap-1">
-  <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
-  <span className="font-medium text-white">
-    {officer.cutiCount || officer.unpaidCount || officer.sakitCount || officer.izinCount || officer.alphaCount ? 
-      `${officer.cutiCount || 0}/${officer.unpaidCount || 0}/${officer.sakitCount || 0}/${officer.izinCount || 0}/${officer.alphaCount || 0}` 
-      : '-'}
-  </span>
-</div>
-                      
-                      <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                      
-                      <div className="flex items-center gap-1">
                         <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
                         <span className="font-medium text-white">
-                          {officer.cutiCount || 0}/
-                          {officer.unpaidCount || 0}/
-                          {officer.sakitCount || 0}/
-                          {officer.izinCount || 0}/
-                          {officer.alphaCount || 0}
+                          {officer.cutiCount || officer.unpaidCount || officer.sakitCount || officer.izinCount || officer.alphaCount ? 
+                            `${officer.cutiCount || 0}/${officer.unpaidCount || 0}/${officer.sakitCount || 0}/${officer.izinCount || 0}/${officer.alphaCount || 0}` 
+                            : '-'}
                         </span>
                       </div>
                       
@@ -640,7 +657,7 @@ const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
                       </div>
                       
                       <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
-                        <div className="text-[#A7D8FF] text-xs mb-1">🔄 ETC</div>
+                        <div className="text-[#A7D8FF] text-xs mb-1">🔄 ETC/PRORATE</div>
                         <div className={`font-medium ${(officer.etc || 0) > 0 ? 'text-green-400' : (officer.etc || 0) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                           {(officer.etc || 0) > 0 ? '+' : ''}{officer.etc || 0}
                         </div>
