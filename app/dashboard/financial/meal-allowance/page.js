@@ -599,9 +599,11 @@ const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
                       <div className="flex items-center gap-1">
-  <span className="text-[#A7D8FF] text-xs">OFF DAY:</span>
+  <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
   <span className="font-medium text-white">
-    {4 - (officer.offCount || 0)}  {/* ← LANGSUNG HITUNG */}
+    {officer.cutiCount || officer.unpaidCount || officer.sakitCount || officer.izinCount || officer.alphaCount ? 
+      `${officer.cutiCount || 0}/${officer.unpaidCount || 0}/${officer.sakitCount || 0}/${officer.izinCount || 0}/${officer.alphaCount || 0}` 
+      : '-'}
   </span>
 </div>
                       
