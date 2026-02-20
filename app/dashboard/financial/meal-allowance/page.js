@@ -178,7 +178,7 @@ const offTerpakai = offCount;  // ← ini harusnya 4 dari API
 const sisaOff = Math.max(0, 4 - offTerpakai);
 const tambahanProrate = sisaOff * prorate;
 
-const umNet = Math.max(0, pokok + tambahanProrate - potonganKejadian - dendaAlpha);
+const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
 
     return {
       baseAmount: pokok,
@@ -601,7 +601,7 @@ const umNet = Math.max(0, pokok + tambahanProrate - potonganKejadian - dendaAlph
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
                       <div className="flex items-center gap-1">
-  <span className="text-[#A7D8FF] text-xs">Sisa OFF:</span>
+  <span className="text-[#A7D8FF] text-xs">OFF DAY:</span>
   <span className="font-medium text-white">
     {4 - (officer.offCount || 0)}  {/* ← LANGSUNG HITUNG */}
   </span>
