@@ -602,9 +602,9 @@ export default function MealAllowancePage() {
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
                       <div className="flex items-center gap-1">
-                        <span className="text-[#A7D8FF] text-xs">OFF Day:</span>
-                        <span className="font-medium text-white">{officer.offCount || 0}</span>
-                      </div>
+  <span className="text-[#A7D8FF] text-xs">Sisa OFF:</span>
+  <span className="font-medium text-white">{Math.max(0, 4 - (officer.offCount || 0))}</span>
+</div>
                       
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
