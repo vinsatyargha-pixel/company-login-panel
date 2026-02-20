@@ -129,20 +129,19 @@ export default function MealAllowancePage() {
     const targetMonth = months.indexOf(selectedMonth);
     
     const periodData = schedule.filter(day => {
-      const dateStr = day['DATE RUNDOWN'];
-      if (!dateStr) return false;
-      
-      const [dayNum, monthStr, yearStr] = dateStr.split('-');
-      const date = new Date(`${monthStr} ${dayNum}, ${yearStr}`);
-      const month = date.getMonth();
-      const dateDay = date.getDate();
-      
-      if (targetMonth === 1) {
-        if (month === 0 && dateDay >= 21) return true;
-        if (month === 1 && dateDay <= 20) return true;
-      }
-      return false;
-    });
+  const dateStr = day['DATE RUNDOWN'];
+  if (!dateStr) return false;
+  
+  const [dayNum, monthStr, yearStr] = dateStr.split('-');
+  const date = new Date(`${monthStr} ${dayNum}, ${yearStr}`);
+  const month = date.getMonth();
+  const dateDay = date.getDate();
+  
+  const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
+  const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
+  
+  return date >= periodeStart && date <= periodeEnd;
+});
 
     let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
     let unpaidCount = 0, alphaCount = 0;
