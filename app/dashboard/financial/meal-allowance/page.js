@@ -174,12 +174,9 @@ export default function MealAllowancePage() {
     });
 
     // HITUNG UM NET
-const offTerpakai = offCount;  // jumlah OFF di schedule
+const offTerpakai = offCount;  // ← ini harusnya 4 dari API
 const sisaOff = Math.max(0, 4 - offTerpakai);
-const tambahanProrate = sisaOff * prorate;  // nambah kalau sisa off
-
-const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
-const dendaAlpha = alphaCount * 50;
+const tambahanProrate = sisaOff * prorate;
 
 const umNet = Math.max(0, pokok + tambahanProrate - potonganKejadian - dendaAlpha);
 
