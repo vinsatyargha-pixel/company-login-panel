@@ -48,7 +48,7 @@ export default function MealAllowancePage() {
   };
 
   const formatBankAndRek = (bankAccount) => {
-    if (!bankAccount) return { bank: 'ABA', rek: '-', link: '' };
+    if (!bankAccount) return { bank: '-', rek: '-', link: '' };
     
     let bank = '';
     let rek = bankAccount;
@@ -67,19 +67,16 @@ export default function MealAllowancePage() {
     } else if (rek.includes('ACLEDA')) {
       bank = 'ACLEDA';
       rek = rek.replace('ACLEDA', '').trim();
-    } else if (rek.includes('WING BANK')) {
-      bank = 'WING BANK';
-      rek = rek.replace('WING BANK', '').trim();
     } else if (rek.includes('WING')) {
-      bank = 'WING BANK';
-      rek = rek.replace('WING', '').trim();
+      bank = 'WING';
+      rek = rek.replace('WING', '').replace('BANK', '').trim();
     } else {
       const parts = rek.split(' ');
-      bank = parts[0] || 'ABA';
-      rek = parts.slice(1).join(' ') || '';
+      bank = parts[0] || '-';
+      rek = parts.slice(1).join(' ') || '-';
     }
     
-    return { bank, rek: rek.trim(), link };
+    return { bank, rek: rek.trim() || '-', link };
   };
 
   const getMonthsOfWork = (joinDate) => {
@@ -92,7 +89,6 @@ export default function MealAllowancePage() {
   const getMealRate = (department, joinDate) => {
     const monthsWorked = getMonthsOfWork(joinDate);
     
-    // AM & CAPTAIN tetap
     if (department === 'AM') {
       return { base_amount: 400, prorate_per_day: 15 };
     }
@@ -100,13 +96,12 @@ export default function MealAllowancePage() {
       return { base_amount: 350, prorate_per_day: 13 };
     }
     
-    // CS DP WD berdasarkan masa kerja
     if (department === 'CS DP WD') {
-      if (monthsWorked >= 36) { // 3 tahun keatas
+      if (monthsWorked >= 36) {
         return { base_amount: 325, prorate_per_day: 12 };
-      } else if (monthsWorked >= 24) { // 2 tahun keatas
+      } else if (monthsWorked >= 24) {
         return { base_amount: 300, prorate_per_day: 11 };
-      } else { // kurang dari 2 tahun
+      } else {
         return { base_amount: 275, prorate_per_day: 10 };
       }
     }
@@ -115,7 +110,6 @@ export default function MealAllowancePage() {
   };
 
   const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
-    // 1. TENTUKAN POKOK & PRORATE
     let pokok = 0, prorate = 0;
     
     if (department === 'AM') {
@@ -138,7 +132,6 @@ export default function MealAllowancePage() {
       }
     }
     
-    // 2. HITUNG KEJADIAN DARI SCHEDULE
     const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
     const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
     
@@ -173,7 +166,6 @@ export default function MealAllowancePage() {
       }
     });
 
-    // 3. HITUNG UM NET (OFF TIDAK NGARUH)
     const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
     const dendaAlpha = alphaCount * 50;
     const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
@@ -213,7 +205,6 @@ export default function MealAllowancePage() {
     try {
       setLoading(true);
       
-      // KHUSUS: January kosongkan semua
       if (selectedMonth === 'January') {
         setOfficers([]);
         setLoading(false);
@@ -222,21 +213,18 @@ export default function MealAllowancePage() {
       
       const bulan = `${selectedMonth} ${selectedYear}`;
       
-      // Ambil semua officer aktif
       const { data: allOfficers } = await supabase
         .from('officers')
         .select('id, full_name, department, join_date, bank_account')
         .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
         .eq('status', 'REGULAR');
       
-      // Ambil snapshot bulan ini
       const { data: snapData } = await supabase
         .from('meal_allowance_snapshot')
         .select('*')
         .eq('bulan', bulan);
       
       if (snapData && snapData.length === allOfficers.length) {
-        // LENGKAP, pake snapshot
         const formattedOfficers = snapData.map(item => ({
           id: item.officer_id,
           full_name: item.officer_name,
@@ -259,7 +247,6 @@ export default function MealAllowancePage() {
         
         setOfficers(formattedOfficers);
       } else {
-        // TIDAK LENGKAP, hitung ulang semua
         await fetchManualData();
       }
       
@@ -290,7 +277,6 @@ export default function MealAllowancePage() {
       setMealRates(ratesData || []);
       setScheduleData(scheduleResult.data || []);
       
-      // Hitung stat untuk setiap officer
       const officersWithStats = (officersData || []).map(officer => {
         const stats = calculateOfficerStats(
           officer.full_name, 
@@ -320,7 +306,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // EDIT HANDLERS (ADMIN ONLY)
+  // EDIT HANDLERS
   // ===========================================
 
   const handleEditClick = (officer) => {
@@ -344,7 +330,6 @@ export default function MealAllowancePage() {
       
       const bulan = `${selectedMonth} ${selectedYear}`;
       
-      // Data untuk disimpan
       const snapshotData = {
         officer_id: editingOfficer.id,
         officer_name: editingOfficer.full_name,
@@ -375,7 +360,6 @@ export default function MealAllowancePage() {
       
       if (error) throw error;
       
-      // Update state langsung
       setOfficers(prev => prev.map(o => 
         o.id === editingOfficer.id 
           ? { 
@@ -402,18 +386,13 @@ export default function MealAllowancePage() {
 
   const officersWithStats = officers
     .filter(o => {
-      if (!isAdmin) {
-        return o.department === 'CS DP WD';
-      }
+      if (!isAdmin) return o.department === 'CS DP WD';
       return selectedDept === 'All' || o.department === selectedDept;
     })
     .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
     .map((officer) => {
       const finalNet = Math.max(0, (officer.umNet || 0) - (officer.kasbon || 0) + (officer.etc || 0));
-      return {
-        ...officer,
-        finalNet
-      };
+      return { ...officer, finalNet };
     });
 
   const groupedOfficers = {
@@ -434,7 +413,6 @@ export default function MealAllowancePage() {
     );
   }
 
-  // Khusus January: tampilkan pesan kosong
   if (selectedMonth === 'January') {
     return (
       <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
@@ -461,10 +439,7 @@ export default function MealAllowancePage() {
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
       {/* Header */}
       <div className="mb-6 flex items-center gap-4 flex-wrap">
-        <Link 
-          href="/dashboard/financial" 
-          className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30 transition-all duration-300"
-        >
+        <Link href="/dashboard/financial" className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
@@ -507,44 +482,19 @@ export default function MealAllowancePage() {
 
       {/* Filter Controls */}
       <div className="mb-6 flex flex-wrap gap-4">
-        <select 
-          className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-        >
-          {months.map(month => (
-            <option key={month} value={month}>{month}</option>
-          ))}
+        <select className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+          {months.map(month => <option key={month} value={month}>{month}</option>)}
         </select>
 
-        <select 
-          className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(e.target.value)}
-        >
-          {years.map(year => (
-            <option key={year} value={year}>{year}</option>
-          ))}
+        <select className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+          {years.map(year => <option key={year} value={year}>{year}</option>)}
         </select>
 
-        <select 
-          className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-          value={selectedDept}
-          onChange={(e) => setSelectedDept(e.target.value)}
-          disabled={!isAdmin}
-        >
-          {availableDepartments.map(dept => (
-            <option key={dept} value={dept}>{dept}</option>
-          ))}
+        <select className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} disabled={!isAdmin}>
+          {availableDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
         </select>
 
-        <input
-          type="text"
-          placeholder="Search name..."
-          className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px]"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <input type="text" placeholder="Search name..." className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px]" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
       </div>
 
       {/* Info periode */}
@@ -553,16 +503,8 @@ export default function MealAllowancePage() {
           <div>
             <span className="text-[#A7D8FF]">Periode Kejadian: </span>
             <span className="text-white font-medium">
-              {new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { 
-                day: '2-digit', 
-                month: 'short', 
-                year: 'numeric' 
-              })} - {' '}
-              {new Date(getPeriodeEnd(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { 
-                day: '2-digit', 
-                month: 'short', 
-                year: 'numeric' 
-              })}
+              {new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} - {' '}
+              {new Date(getPeriodeEnd(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
             </span>
           </div>
           <div>
@@ -593,26 +535,16 @@ export default function MealAllowancePage() {
                       <div>
                         <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
                         <div className="text-xs text-[#A7D8FF]">
-                          Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { 
-                            day: 'numeric', 
-                            month: 'short', 
-                            year: '2-digit' 
-                          })}
+                          Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}
                         </div>
                       </div>
                       
                       {/* Bank & Link */}
-                      <div className="mt-2 md:mt-0">
+                      <div className="mt-2 md:mt-0 text-right">
                         <div className="text-[#A7D8FF] text-xs font-medium">{bank}</div>
                         <div className="text-xs text-white break-all">{rek}</div>
                         {link && (
-                          <a 
-                            href={link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-[#FFD700] hover:underline block break-all"
-                            title={link}
-                          >
+                          <a href={link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#FFD700] hover:underline block break-all" title={link}>
                             {link}
                           </a>
                         )}
@@ -651,9 +583,7 @@ export default function MealAllowancePage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                       <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                         <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
-                        <div className="font-medium text-red-400">
-                          ${officer.kasbon || 0}
-                        </div>
+                        <div className="font-medium text-red-400">${officer.kasbon || 0}</div>
                       </div>
                       
                       <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
@@ -674,10 +604,7 @@ export default function MealAllowancePage() {
                     {/* BARIS 4: Tombol Edit */}
                     {isAdmin && (
                       <div className="flex justify-end">
-                        <button
-                          onClick={() => handleEditClick(officer)}
-                          className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all"
-                        >
+                        <button onClick={() => handleEditClick(officer)} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
@@ -695,83 +622,41 @@ export default function MealAllowancePage() {
 
       {/* Footer Total */}
       <div className="mt-6 p-4 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg flex justify-between items-center">
-        <span className="text-[#FFD700] font-bold">
-          Total Officers: {officersWithStats.length}
-        </span>
-        <span className="text-[#FFD700] font-bold">
-          Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}
-        </span>
+        <span className="text-[#FFD700] font-bold">Total Officers: {officersWithStats.length}</span>
+        <span className="text-[#FFD700] font-bold">Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}</span>
       </div>
 
-      {/* Modal Edit untuk Admin */}
+      {/* Modal Edit */}
       {editingOfficer && isAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-[#FFD700] mb-4">
-              Edit {editingOfficer.full_name}
-            </h3>
+            <h3 className="text-xl font-bold text-[#FFD700] mb-4">Edit {editingOfficer.full_name}</h3>
             
             <div className="space-y-4">
               <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  KASBON ( - )
-                </label>
-                <input
-                  type="text"
-                  value={editForm.kasbon}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setEditForm({...editForm, kasbon: value ? parseInt(value) : 0});
-                  }}
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                  placeholder="0"
-                  inputMode="numeric"
-                />
+                <label className="text-[#A7D8FF] text-sm block mb-1">KASBON ( - )</label>
+                <input type="text" value={editForm.kasbon} onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9]/g, '');
+                  setEditForm({...editForm, kasbon: value ? parseInt(value) : 0});
+                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="0" inputMode="numeric" />
               </div>
               
               <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  ETC (+ nambah, - ngurang)
-                </label>
-                <input
-                  type="text"
-                  value={editForm.etc}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9-]/g, '');
-                    setEditForm({...editForm, etc: value ? parseInt(value) : 0});
-                  }}
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                  placeholder="Contoh: 25 atau -10"
-                  inputMode="numeric"
-                />
+                <label className="text-[#A7D8FF] text-sm block mb-1">ETC (+ nambah, - ngurang)</label>
+                <input type="text" value={editForm.etc} onChange={(e) => {
+                  const value = e.target.value.replace(/[^0-9-]/g, '');
+                  setEditForm({...editForm, etc: value ? parseInt(value) : 0});
+                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="Contoh: 25 atau -10" inputMode="numeric" />
               </div>
               
               <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  Keterangan / Note
-                </label>
-                <input
-                  type="text"
-                  value={editForm.etc_note}
-                  onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})}
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                  placeholder="Misal: Koreksi, Bonus, Denda, dll"
-                />
+                <label className="text-[#A7D8FF] text-sm block mb-1">Keterangan / Note</label>
+                <input type="text" value={editForm.etc_note} onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="Misal: Koreksi, Bonus, Denda, dll" />
               </div>
               
               <div className="flex gap-2 pt-4">
-                <button
-                  onClick={handleEditSave}
-                  className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80"
-                >
-                  Simpan
-                </button>
-                <button
-                  onClick={() => setEditingOfficer(null)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600"
-                >
-                  Batal
-                </button>
+                <button onClick={handleEditSave} className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80">Simpan</button>
+                <button onClick={() => setEditingOfficer(null)} className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600">Batal</button>
               </div>
             </div>
           </div>
