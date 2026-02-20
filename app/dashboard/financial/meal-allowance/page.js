@@ -602,7 +602,9 @@ const umNet = Math.max(0, pokok + tambahanProrate - potonganKejadian - dendaAlph
                       
                       <div className="flex items-center gap-1">
   <span className="text-[#A7D8FF] text-xs">Sisa OFF:</span>
-  <span className="font-medium text-white">{Math.max(0, 4 - (officer.offCount || 0))}</span>
+  <span className="font-medium text-white">
+    {4 - (officer.offCount || 0)}  {/* ← LANGSUNG HITUNG */}
+  </span>
 </div>
                       
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
