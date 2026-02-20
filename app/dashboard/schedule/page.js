@@ -88,40 +88,62 @@ export default function SchedulePage() {
   }, [selectedMonth]);
 
   // AMBIL OFFICER DARI DATABASE (CS DP WD)
-  const fetchOfficers = async () => {
-    setOfficersLoading(true);
-    try {
-      const response = await fetch('/api/officers?department=CS DP WD');
-      const data = await response.json();
-      if (data.success && data.officers.length > 0) {
-        setOfficerList(data.officers);
-      } else {
-        // FALLBACK KE HARDCODE KALO GA ADA DATA
-        console.log('Pakai hardcode officers');
-        setOfficerList([
-          { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
-          { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
-          { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' },
-          { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
-          { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
-          { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' }
-        ]);
-      }
-    } catch (error) {
-      console.error('Error fetching officers:', error);
-      // FALLBACK KE HARDCODE KALO ERROR
+const fetchOfficers = async () => {
+  setOfficersLoading(true);
+  try {
+    const response = await fetch('/api/officers?department=CS DP WD');
+    const data = await response.json();
+    if (data.success && data.officers.length > 0) {
+      // URUTIN MANUAL SESUAI KEINGINAN
+      const urutan = [
+        'Lie Fung Kien (Vini)',
+        'Ronaldo Ichwan',
+        'Mushollina Nul Hakim',
+        'Sulaeman',
+        'Goldie Mountana',
+        'Achmad Naufal Zakiy'
+      ];
+      
+      const sortedOfficers = [];
+      urutan.forEach(nama => {
+        const found = data.officers.find(o => o.full_name === nama);
+        if (found) sortedOfficers.push(found);
+      });
+      
+      // Tambahin officer lain yang mungkin ada tapi ga di urutan (kalo ada)
+      data.officers.forEach(o => {
+        if (!urutan.includes(o.full_name)) {
+          sortedOfficers.push(o);
+        }
+      });
+      
+      setOfficerList(sortedOfficers);
+    } else {
+      // FALLBACK KE HARDCODE DENGAN URUTAN YANG SAMA
       setOfficerList([
+        { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
+        { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' },
+        { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
         { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
         { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
-        { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' },
-        { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
-        { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
-        { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' }
+        { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' }
       ]);
-    } finally {
-      setOfficersLoading(false);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching officers:', error);
+    // FALLBACK KE HARDCODE DENGAN URUTAN YANG SAMA
+    setOfficerList([
+      { full_name: 'Lie Fung Kien (Vini)', join_date: '01-May-2023' },
+      { full_name: 'Ronaldo Ichwan', join_date: '01-Apr-2024' },
+      { full_name: 'Mushollina Nul Hakim', join_date: '28-Mar-2022' },
+      { full_name: 'Sulaeman', join_date: '23-Mar-2021' },
+      { full_name: 'Goldie Mountana', join_date: '13-May-2024' },
+      { full_name: 'Achmad Naufal Zakiy', join_date: '18-Sep-2022' }
+    ]);
+  } finally {
+    setOfficersLoading(false);
+  }
+};
 
   const fetchScheduleData = async () => {
     setLoading(true);
