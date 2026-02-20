@@ -94,10 +94,32 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // FUNGSI HITUNG USIA (LANGSUNG DARI SCHEDULE - COPY DARI CALENDAR)
+  // FUNGSI GET PREVIOUS MONTH DATA (LENGKAP DENGAN PERIODE)
+  // ===========================================
+  const getPreviousMonthData = (month, year) => {
+    const monthIndex = months.indexOf(month);
+    if (monthIndex === 0) {
+      return { 
+        month: 'December', 
+        year: parseInt(year) - 1,
+        start: `${parseInt(year) - 1}-12-21`,
+        end: `${year}-01-20`
+      };
+    } else {
+      const prevMonthIndex = monthIndex - 1;
+      return { 
+        month: months[prevMonthIndex], 
+        year: parseInt(year),
+        start: `${year}-${String(prevMonthIndex + 1).padStart(2, '0')}-21`,
+        end: `${year}-${String(monthIndex).padStart(2, '0')}-20`
+      };
+    }
+  };
+
+  // ===========================================
+  // FUNGSI HITUNG USIA (LANGSUNG DARI SCHEDULE)
   // ===========================================
   const hitungUSIA = (officerName, schedule = scheduleData) => {
-    // Ini variable buat nampung semua jenis kejadian (sama kayak di Calendar)
     const totals = {
       OFF: 0,
       SAKIT: 0,
@@ -112,18 +134,15 @@ export default function MealAllowancePage() {
       'BELUM JOIN': 0
     };
     
-    // Loop semua data schedule (LANGSUNG, GA PAKE FILTER APAPUN)
     schedule.forEach(day => {
       const status = day[officerName];
       if (!status) return;
       
-      // Kalo statusnya ada di daftar, tambahin
       if (totals.hasOwnProperty(status)) {
         totals[status] += 1;
       }
     });
 
-    // Balikin hasil sesuai format yang dipake Meal Allowance
     return {
       sakit: totals['SAKIT'] || 0,
       izin: totals['IZIN'] || 0,
@@ -149,115 +168,102 @@ export default function MealAllowancePage() {
   }, [isAdmin]);
 
   useEffect(() => {
-  fetchData();
-}, [selectedMonth, selectedYear]);
+    fetchData();
+  }, [selectedMonth, selectedYear]);
 
-const fetchData = async () => {
-  try {
-    setLoading(true);
-    
-    if (selectedMonth === 'January') {
-      setOfficers([]);
-      setLoading(false);
-      return;
-    }
-    
-    const bulan = `${selectedMonth} ${selectedYear}`;
-    
-    // AMBIL BULAN SEBELUMNYA UNTUK SCHEDULE
-    const getPreviousMonthData = (month, year) => {
-      const monthIndex = months.indexOf(month);
-      if (monthIndex === 0) {
-        return { month: 'December', year: parseInt(year) - 1 };
-      } else {
-        return { month: months[monthIndex - 1], year: parseInt(year) };
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      
+      if (selectedMonth === 'January') {
+        setOfficers([]);
+        setLoading(false);
+        return;
       }
-    };
-    
-    const prev = getPreviousMonthData(selectedMonth, selectedYear);
-    console.log(`Fetching schedule for: ${prev.month} ${prev.year} (data untuk ${selectedMonth} ${selectedYear})`);
-    
-    // Ambil data officers
-    const { data: officersData } = await supabase
-      .from('officers')
-      .select('*')
-      .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
-      .eq('status', 'REGULAR');
-    
-    // AMBIL SCHEDULE DARI BULAN SEBELUMNYA
-    const scheduleResponse = await fetch(
-      `/api/schedule?year=${prev.year}&month=${prev.month}`
-    );
-    const scheduleResult = await scheduleResponse.json();
-    const schedule = scheduleResult.data || [];
-    setScheduleData(schedule);
-    
-    // Ambil snapshot
-    const { data: snapData } = await supabase
-      .from('meal_allowance_snapshot')
-      .select('officer_id, cuti_count, kasbon, etc, etc_note, last_edited_by, last_edited_at')
-      .eq('bulan', bulan);
-    
-    // Ambil data admin
-    const { data: adminData } = await supabase
-      .from('officers')
-      .select('id, full_name, email')
-      .eq('role', 'admin');
-    
-    const adminMap = {};
-    adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
-    
-    // Gabungin data
-    const officersWithStats = (officersData || []).map(officer => {
-      // HITUNG USIA DARI SCHEDULE BULAN SEBELUMNYA
-      const usia = hitungUSIA(officer.full_name, schedule);
       
-      // Cari snapshot
-      const snapshot = snapData?.find(s => s.officer_id === officer.id);
+      const bulan = `${selectedMonth} ${selectedYear}`;
       
-      const { bank, rek, link } = formatBankAndRek(officer.bank_account || '');
-      const rate = getMealRate(officer.department, officer.join_date);
+      // AMBIL BULAN SEBELUMNYA UNTUK SCHEDULE
+      const prev = getPreviousMonthData(selectedMonth, selectedYear);
+      console.log(`Fetching schedule for: ${prev.month} ${prev.year} (data untuk ${selectedMonth} ${selectedYear})`);
       
-      return {
-        id: officer.id,
-        full_name: officer.full_name,
-        department: officer.department,
-        join_date: officer.join_date,
-        baseAmount: rate?.base_amount || 0,
-        prorate: rate?.prorate_per_day || 0,
-        offCount: usia.off,
-        sakitCount: usia.sakit,
-        izinCount: usia.izin,
-        unpaidCount: usia.unpaid,
-        alphaCount: usia.alpha,
-        cutiCount: snapshot?.cuti_count || 0,
-        kasbon: snapshot?.kasbon || 0,
-        etc: snapshot?.etc || 0,
-        etc_note: snapshot?.etc_note || '',
-        bank: bank,
-        rek: rek,
-        link: link,
-        lastEditedBy: snapshot?.last_edited_by ? adminMap[snapshot.last_edited_by] : null,
-        lastEditedAt: snapshot?.last_edited_at || null
-      };
-    });
-    
-    // Hitung umNet
-    const withUmNet = officersWithStats.map(o => {
-      const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
-      const denda = o.alphaCount * 50;
-      const umNet = Math.max(0, o.baseAmount - potongan - denda);
-      return { ...o, umNet };
-    });
-    
-    setOfficers(withUmNet);
-    
-  } catch (error) {
-    console.error('Error fetching data:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+      // Ambil data officers
+      const { data: officersData } = await supabase
+        .from('officers')
+        .select('*')
+        .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
+        .eq('status', 'REGULAR');
+      
+      // AMBIL SCHEDULE DARI BULAN SEBELUMNYA
+      const scheduleResponse = await fetch(
+        `/api/schedule?year=${prev.year}&month=${prev.month}`
+      );
+      const scheduleResult = await scheduleResponse.json();
+      const schedule = scheduleResult.data || [];
+      setScheduleData(schedule);
+      
+      // Ambil snapshot
+      const { data: snapData } = await supabase
+        .from('meal_allowance_snapshot')
+        .select('officer_id, cuti_count, kasbon, etc, etc_note, last_edited_by, last_edited_at')
+        .eq('bulan', bulan);
+      
+      // Ambil data admin
+      const { data: adminData } = await supabase
+        .from('officers')
+        .select('id, full_name, email')
+        .eq('role', 'admin');
+      
+      const adminMap = {};
+      adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
+      
+      // Gabungin data
+      const officersWithStats = (officersData || []).map(officer => {
+        const usia = hitungUSIA(officer.full_name, schedule);
+        const snapshot = snapData?.find(s => s.officer_id === officer.id);
+        const { bank, rek, link } = formatBankAndRek(officer.bank_account || '');
+        const rate = getMealRate(officer.department, officer.join_date);
+        
+        return {
+          id: officer.id,
+          full_name: officer.full_name,
+          department: officer.department,
+          join_date: officer.join_date,
+          baseAmount: rate?.base_amount || 0,
+          prorate: rate?.prorate_per_day || 0,
+          offCount: usia.off,
+          sakitCount: usia.sakit,
+          izinCount: usia.izin,
+          unpaidCount: usia.unpaid,
+          alphaCount: usia.alpha,
+          cutiCount: snapshot?.cuti_count || 0,
+          kasbon: snapshot?.kasbon || 0,
+          etc: snapshot?.etc || 0,
+          etc_note: snapshot?.etc_note || '',
+          bank: bank,
+          rek: rek,
+          link: link,
+          lastEditedBy: snapshot?.last_edited_by ? adminMap[snapshot.last_edited_by] : null,
+          lastEditedAt: snapshot?.last_edited_at || null
+        };
+      });
+      
+      // Hitung umNet
+      const withUmNet = officersWithStats.map(o => {
+        const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
+        const denda = o.alphaCount * 50;
+        const umNet = Math.max(0, o.baseAmount - potongan - denda);
+        return { ...o, umNet };
+      });
+      
+      setOfficers(withUmNet);
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ===========================================
   // EDIT HANDLERS
@@ -275,97 +281,97 @@ const fetchData = async () => {
   };
 
   const handleEditSave = async () => {
-  if (!isAdmin) return;
-  
-  try {
-    if (editForm.kasbon < 0 || editForm.cuti < 0) {
-      alert('⚠️ Kasbon dan Cuti tidak boleh negatif');
-      return;
-    }
+    if (!isAdmin) return;
     
-    const bulan = `${selectedMonth} ${selectedYear}`;
-    const officer = editingOfficer;
-    
-    // HITUNG PERIODE PAKAI FUNGSI
-    const prev = getPreviousMonthData(selectedMonth, selectedYear);
-    
-    // Hitung ulang UM Net
-    const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
-    const denda = officer.alphaCount * 50;
-    const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
-    
-    // CARI NAMA ADMIN
-    let adminName = 'Unknown';
-    let adminId = null;
-    
-    if (user?.email) {
-      const { data: adminData } = await supabase
-        .from('officers')
-        .select('id, full_name')
-        .eq('email', user.email)
-        .maybeSingle();
-      
-      if (adminData) {
-        adminName = adminData.full_name || user.email;
-        adminId = adminData.id;
-      } else {
-        adminName = user.email;
+    try {
+      if (editForm.kasbon < 0 || editForm.cuti < 0) {
+        alert('⚠️ Kasbon dan Cuti tidak boleh negatif');
+        return;
       }
+      
+      const bulan = `${selectedMonth} ${selectedYear}`;
+      const officer = editingOfficer;
+      
+      // HITUNG PERIODE PAKAI FUNGSI
+      const prev = getPreviousMonthData(selectedMonth, selectedYear);
+      
+      // Hitung ulang UM Net
+      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
+      const denda = officer.alphaCount * 50;
+      const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
+      
+      // CARI NAMA ADMIN
+      let adminName = 'Unknown';
+      let adminId = null;
+      
+      if (user?.email) {
+        const { data: adminData } = await supabase
+          .from('officers')
+          .select('id, full_name')
+          .eq('email', user.email)
+          .maybeSingle();
+        
+        if (adminData) {
+          adminName = adminData.full_name || user.email;
+          adminId = adminData.id;
+        } else {
+          adminName = user.email;
+        }
+      }
+      
+      const snapshotData = {
+        officer_id: officer.id,
+        officer_name: officer.full_name,
+        department: officer.department,
+        join_date: officer.join_date,
+        bulan: bulan,
+        periode_start: prev.start,
+        periode_end: prev.end,
+        base_amount: officer.baseAmount,
+        prorate: officer.prorate,
+        off_count: officer.offCount || 0,
+        sakit_count: officer.sakitCount || 0,
+        cuti_count: editForm.cuti,
+        izin_count: officer.izinCount || 0,
+        unpaid_count: officer.unpaidCount || 0,
+        alpha_count: officer.alphaCount || 0,
+        um_net: umNetBaru,
+        kasbon: editForm.kasbon,
+        etc: editForm.etc || 0,
+        etc_note: editForm.etc_note,
+        last_edited_by: adminId,
+        last_edited_at: new Date().toISOString()
+      };
+      
+      const { error } = await supabase
+        .from('meal_allowance_snapshot')
+        .upsert(snapshotData, { onConflict: 'officer_id, bulan' });
+      
+      if (error) throw error;
+      
+      setOfficers(prev => prev.map(o => 
+        o.id === officer.id 
+          ? { 
+              ...o, 
+              kasbon: editForm.kasbon,
+              cutiCount: editForm.cuti,
+              etc: editForm.etc || 0,
+              etc_note: editForm.etc_note,
+              umNet: umNetBaru,
+              lastEditedBy: adminName,
+              lastEditedAt: new Date().toISOString()
+            }
+          : o
+      ));
+      
+      alert(`✅ Data berhasil diupdate oleh ${adminName}`);
+      setEditingOfficer(null);
+      
+    } catch (error) {
+      console.error('Error updating:', error);
+      alert('❌ Gagal update data: ' + error.message);
     }
-    
-    const snapshotData = {
-      officer_id: officer.id,
-      officer_name: officer.full_name,
-      department: officer.department,
-      join_date: officer.join_date,
-      bulan: bulan,
-      periode_start: prev.start,
-      periode_end: prev.end,
-      base_amount: officer.baseAmount,
-      prorate: officer.prorate,
-      off_count: officer.offCount || 0,
-      sakit_count: officer.sakitCount || 0,
-      cuti_count: editForm.cuti,
-      izin_count: officer.izinCount || 0,
-      unpaid_count: officer.unpaidCount || 0,
-      alpha_count: officer.alphaCount || 0,
-      um_net: umNetBaru,
-      kasbon: editForm.kasbon,
-      etc: editForm.etc || 0,
-      etc_note: editForm.etc_note,
-      last_edited_by: adminId,
-      last_edited_at: new Date().toISOString()
-    };
-    
-    const { error } = await supabase
-      .from('meal_allowance_snapshot')
-      .upsert(snapshotData, { onConflict: 'officer_id, bulan' });
-    
-    if (error) throw error;
-    
-    setOfficers(prev => prev.map(o => 
-      o.id === officer.id 
-        ? { 
-            ...o, 
-            kasbon: editForm.kasbon,
-            cutiCount: editForm.cuti,
-            etc: editForm.etc || 0,
-            etc_note: editForm.etc_note,
-            umNet: umNetBaru,
-            lastEditedBy: adminName,
-            lastEditedAt: new Date().toISOString()
-          }
-        : o
-    ));
-    
-    alert(`✅ Data berhasil diupdate oleh ${adminName}`);
-    setEditingOfficer(null);
-    
-  } catch (error) {
-    console.error('Error updating:', error);
-    alert('❌ Gagal update data: ' + error.message);
-  }
-};
+  };
 
   // ===========================================
   // FILTER & PROCESS OFFICERS
@@ -478,7 +484,6 @@ const fetchData = async () => {
         <input type="text" placeholder="Search name..." className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px]" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
       </div>
 
-      {/* INFO PERIODE - UDAH BENER DENGAN getPreviousMonth */}
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
         <div className="flex flex-wrap gap-4">
           <div>
@@ -504,7 +509,6 @@ const fetchData = async () => {
             <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
               {groupedOfficers[dept].map((officer) => (
                 <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                  {/* BARIS 1: Nama, Join Date, Bank */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
                     <div>
                       <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
@@ -521,7 +525,6 @@ const fetchData = async () => {
                     </div>
                   </div>
                   
-                  {/* BARIS 2: Angka-angka */}
                   <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
@@ -537,7 +540,6 @@ const fetchData = async () => {
                     
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
                     
-                    {/* USIA dari API */}
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">S/I/U/A:</span>
                       <span className="font-medium text-white">
@@ -547,7 +549,6 @@ const fetchData = async () => {
                     
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
                     
-                    {/* CUTI Manual */}
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Cuti Manual:</span>
                       <span className="font-medium text-yellow-400">{officer.cutiCount || 0}</span>
@@ -561,7 +562,6 @@ const fetchData = async () => {
                     </div>
                   </div>
                   
-                  {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                       <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
@@ -581,14 +581,12 @@ const fetchData = async () => {
                     </div>
                   </div>
                   
-                  {/* LOG EDIT */}
-{(officer.lastEditedBy || officer.lastEditedAt) && (
-  <div className="text-[10px] text-[#A7D8FF] mb-2 text-right">
-    Last edited by: {officer.lastEditedBy || 'Admin'} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
-  </div>
-)}
+                  {(officer.lastEditedBy || officer.lastEditedAt) && (
+                    <div className="text-[10px] text-[#A7D8FF] mb-2 text-right">
+                      Last edited by: {officer.lastEditedBy || 'Admin'} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
+                    </div>
+                  )}
                   
-                  {/* Tombol Edit */}
                   {isAdmin && (
                     <div className="flex justify-end">
                       <button onClick={() => handleEditClick(officer)} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all">
@@ -611,7 +609,6 @@ const fetchData = async () => {
         <span className="text-[#FFD700] font-bold">Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}</span>
       </div>
 
-      {/* MODAL EDIT */}
       {editingOfficer && isAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
