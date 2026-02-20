@@ -174,10 +174,6 @@ export default function MealAllowancePage() {
     });
 
     // HITUNG UM NET
-const offTerpakai = offCount;  // ← ini harusnya 4 dari API
-const sisaOff = Math.max(0, 4 - offTerpakai);
-const tambahanProrate = sisaOff * prorate;
-
 const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
 
     return {
