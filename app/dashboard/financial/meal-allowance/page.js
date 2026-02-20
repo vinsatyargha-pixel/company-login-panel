@@ -174,6 +174,8 @@ export default function MealAllowancePage() {
     });
 
     // HITUNG UM NET
+const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
+const dendaAlpha = alphaCount * 50;
 const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
 
     return {
