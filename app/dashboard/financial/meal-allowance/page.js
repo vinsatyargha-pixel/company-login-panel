@@ -95,95 +95,80 @@ export default function MealAllowancePage() {
     return null;
   };
 
-  const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
-  // 1. TENTUKAN POKOK & PRORATE
-  let pokok = 0, prorate = 0;
-  const rate = getMealRate(department, joinDate);
-  if (rate) {
-    pokok = rate.base_amount;
-    prorate = rate.prorate_per_day;
-  }
-  
-  // 2. TENTUKAN PERIODE (21 BULAN LALU - 20 BULAN INI)
-  const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
-  const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
-  periodeStart.setHours(0, 0, 0, 0);
-  periodeEnd.setHours(23, 59, 59, 999);
-  
-  // 3. FILTER SCHEDULE BERDASARKAN PERIODE
-  const periodData = schedule.filter(day => {
-    const dateStr = day['DATE RUNDOWN'];
-    if (!dateStr) return false;
-    const [dayNum, monthStr, yearStr] = dateStr.split('-');
-    const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
-    date.setHours(0, 0, 0, 0);
-    return date >= periodeStart && date <= periodeEnd;
-  });
-
-  // 4. DEBUG: LIHAT PERIODE DAN TOTAL HARI
-  console.log(`📅 PERIODE ${officerName}:`, {
-    start: periodeStart.toLocaleDateString('id-ID'),
-    end: periodeEnd.toLocaleDateString('id-ID'),
-    totalHariDiSchedule: schedule.length,
-    totalHariDiPeriode: periodData.length,
-    contohHari: periodData.slice(0, 3).map(d => d['DATE RUNDOWN'])
-  });
-
-  // 5. HITUNG KEJADIAN
-  let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
-  let unpaidCount = 0, alphaCount = 0;
-
-  periodData.forEach(day => {
-    const status = day[officerName];
-    if (!status) return;
+  // ===========================================
+  // FUNGSI UTAMA HITUNG USIA (Sakit, Izin, Unpaid, Alpha)
+  // ===========================================
+  const hitungUSIA = (officerName, schedule = scheduleData) => {
+    const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
+    const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
+    periodeStart.setHours(0, 0, 0, 0);
+    periodeEnd.setHours(23, 59, 59, 999);
     
-    switch(status) {
-      case 'OFF': offCount++; break;
-      case 'SAKIT': sakitCount++; break;
-      case 'CUTI': cutiCount++; break;
-      case 'IZIN': izinCount++; break;
-      case 'UNPAID LEAVE': unpaidCount++; break;
-      case 'ABSEN': alphaCount++; break;
-      default: console.log(`Status tidak dikenal: ${status} untuk ${officerName} pada ${day['DATE RUNDOWN']}`);
-    }
-  });
+    // Filter schedule berdasarkan periode
+    const periodData = schedule.filter(day => {
+      const dateStr = day['DATE RUNDOWN'];
+      if (!dateStr) return false;
+      const [dayNum, monthStr, yearStr] = dateStr.split('-');
+      const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
+      date.setHours(0, 0, 0, 0);
+      return date >= periodeStart && date <= periodeEnd;
+    });
 
-  // 6. DEBUG: LIHAT HASIL HITUNGAN
-  console.log(`📊 KEJADIAN ${officerName}:`, {
-    OFF: offCount,
-    SAKIT: sakitCount,
-    CUTI: cutiCount,
-    IZIN: izinCount,
-    UNPAID: unpaidCount,
-    ALPHA: alphaCount
-  });
+    let sakitCount = 0, izinCount = 0, unpaidCount = 0, alphaCount = 0;
+    let offCount = 0, cutiCount = 0;
 
-  // 7. HITUNG UM NET
-  const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
-  const dendaAlpha = alphaCount * 50;
-  const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
+    periodData.forEach(day => {
+      const status = day[officerName];
+      if (!status) return;
+      
+      switch(status) {
+        case 'SAKIT': sakitCount++; break;
+        case 'IZIN': izinCount++; break;
+        case 'UNPAID LEAVE': unpaidCount++; break;
+        case 'ABSEN': alphaCount++; break;
+        case 'OFF': offCount++; break;
+        case 'CUTI': cutiCount++; break;
+      }
+    });
 
-  // 8. DEBUG: LIHAT HASIL AKHIR
-  console.log(`💰 UM NET ${officerName}:`, {
-    POKOK: pokok,
-    PRORATE: prorate,
-    POTONGAN: potonganKejadian,
-    DENDA: dendaAlpha,
-    UM_NET: umNet
-  });
-
-  return {
-    baseAmount: pokok,
-    prorate: prorate,
-    offCount,
-    sakitCount,
-    cutiCount,
-    izinCount,
-    unpaidCount,
-    alphaCount,
-    umNet
+    return {
+      sakit: sakitCount,
+      izin: izinCount,
+      unpaid: unpaidCount,
+      alpha: alphaCount,
+      off: offCount,
+      cuti: cutiCount
+    };
   };
-};
+
+  const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
+    let pokok = 0, prorate = 0;
+    const rate = getMealRate(department, joinDate);
+    if (rate) {
+      pokok = rate.base_amount;
+      prorate = rate.prorate_per_day;
+    }
+    
+    // Hitung USIA dari schedule
+    const usia = hitungUSIA(officerName, schedule);
+    
+    // Hitung UM NET
+    const potonganKejadian = (usia.sakit + usia.izin + usia.unpaid) * prorate;
+    const dendaAlpha = usia.alpha * 50;
+    const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
+
+    return {
+      baseAmount: pokok,
+      prorate: prorate,
+      offCount: usia.off,
+      cutiCount: usia.cuti,
+      sakitCount: usia.sakit,
+      izinCount: usia.izin,
+      unpaidCount: usia.unpaid,
+      alphaCount: usia.alpha,
+      umNet
+    };
+  };
 
   // ===========================================
   // DATA FETCHING
@@ -317,7 +302,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // EDIT HANDLERS (ADMIN ONLY)
+  // EDIT HANDLERS
   // ===========================================
 
   const handleEditClick = (officer) => {
@@ -342,10 +327,14 @@ export default function MealAllowancePage() {
       
       const bulan = `${selectedMonth} ${selectedYear}`;
       
-      // Hitung ulang UM Net dengan cuti manual
       const pokok = editingOfficer.baseAmount || 0;
       const prorate = editingOfficer.prorate || 0;
-      const potonganKejadian = (editingOfficer.sakitCount + editForm.cuti + editingOfficer.izinCount + editingOfficer.unpaidCount) * prorate;
+      const potonganKejadian = (
+        (editingOfficer.sakitCount || 0) + 
+        editForm.cuti + 
+        (editingOfficer.izinCount || 0) + 
+        (editingOfficer.unpaidCount || 0)
+      ) * prorate;
       const dendaAlpha = (editingOfficer.alphaCount || 0) * 50;
       const umNetBaru = Math.max(0, pokok - potonganKejadian - dendaAlpha);
       
@@ -529,6 +518,7 @@ export default function MealAllowancePage() {
             <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
               {groupedOfficers[dept].map((officer) => (
                 <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
+                  {/* BARIS 1: Nama, Join Date, Bank */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
                     <div>
                       <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
@@ -545,6 +535,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
+                  {/* BARIS 2: Angka-angka dengan USIA dari API */}
                   <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
@@ -560,10 +551,15 @@ export default function MealAllowancePage() {
                     
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
                     
+                    {/* USIA: Cuti (manual) + U S I A (dari API) */}
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">C/U/S/I/A:</span>
                       <span className="font-medium text-white">
-                        {officer.cutiCount || 0}/{officer.unpaidCount || 0}/{officer.sakitCount || 0}/{officer.izinCount || 0}/{officer.alphaCount || 0}
+                        {officer.cutiCount || 0}/
+                        {officer.unpaidCount || 0}/
+                        {officer.sakitCount || 0}/
+                        {officer.izinCount || 0}/
+                        {officer.alphaCount || 0}
                       </span>
                     </div>
                     
@@ -575,6 +571,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
+                  {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                       <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
@@ -594,6 +591,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
+                  {/* BARIS 4: Tombol Edit */}
                   {isAdmin && (
                     <div className="flex justify-end">
                       <button onClick={() => handleEditClick(officer)} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all">
@@ -616,6 +614,7 @@ export default function MealAllowancePage() {
         <span className="text-[#FFD700] font-bold">Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}</span>
       </div>
 
+      {/* MODAL EDIT */}
       {editingOfficer && isAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
