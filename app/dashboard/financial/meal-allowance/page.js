@@ -82,6 +82,18 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
+  // FUNGSI GET PREVIOUS MONTH (BUAT LABEL)
+  // ===========================================
+  const getPreviousMonth = (month, year) => {
+    const monthIndex = months.indexOf(month);
+    if (monthIndex === 0) {
+      return `December ${parseInt(year) - 1}`;
+    } else {
+      return `${months[monthIndex - 1]} ${year}`;
+    }
+  };
+
+  // ===========================================
   // FUNGSI HITUNG USIA (LANGSUNG DARI SCHEDULE - COPY DARI CALENDAR)
   // ===========================================
   const hitungUSIA = (officerName, schedule = scheduleData) => {
@@ -100,7 +112,7 @@ export default function MealAllowancePage() {
       'BELUM JOIN': 0
     };
     
-    // Loop semua data schedule (LANGSUNG, GA PAKE FILTER HELPER)
+    // Loop semua data schedule (LANGSUNG, GA PAKE FILTER APAPUN)
     schedule.forEach(day => {
       const status = day[officerName];
       if (!status) return;
@@ -184,7 +196,7 @@ export default function MealAllowancePage() {
       
       // Gabungin data
       const officersWithStats = (officersData || []).map(officer => {
-        // HITUNG USIA LANGSUNG DARI SCHEDULE (GA PAKAI FILTER)
+        // HITUNG USIA LANGSUNG DARI SCHEDULE
         const usia = hitungUSIA(officer.full_name, schedule);
         
         // Cari snapshot
@@ -205,7 +217,7 @@ export default function MealAllowancePage() {
           izinCount: usia.izin,
           unpaidCount: usia.unpaid,
           alphaCount: usia.alpha,
-          cutiCount: snapshot?.cuti_count || 0,  // CUTI MANUAL TETEP PAKAI SNAPSHOT
+          cutiCount: snapshot?.cuti_count || 0,
           kasbon: snapshot?.kasbon || 0,
           etc: snapshot?.etc || 0,
           etc_note: snapshot?.etc_note || '',
@@ -349,7 +361,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // RENDER (TAMPILAN TETEP SAMA)
+  // RENDER
   // ===========================================
 
   if (loading) {
@@ -438,10 +450,17 @@ export default function MealAllowancePage() {
         <input type="text" placeholder="Search name..." className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px]" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
       </div>
 
+      {/* INFO PERIODE - UDAH BENER DENGAN getPreviousMonth */}
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
         <div className="flex flex-wrap gap-4">
-          <div><span className="text-[#A7D8FF]">Periode:</span> <span className="text-white font-medium">Data dari schedule {selectedMonth} {selectedYear}</span></div>
-          <div><span className="text-[#A7D8FF]">Pembagian UM:</span> <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span></div>
+          <div>
+            <span className="text-[#A7D8FF]">Data dari schedule:</span> 
+            <span className="text-white font-medium">{getPreviousMonth(selectedMonth, selectedYear)}</span>
+          </div>
+          <div>
+            <span className="text-[#A7D8FF]">Pembagian UM:</span> 
+            <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span>
+          </div>
         </div>
       </div>
 
@@ -474,7 +493,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {/* BARIS 2: Angka-angka (USIA dari API via Calendar logic) */}
+                  {/* BARIS 2: Angka-angka */}
                   <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
@@ -490,7 +509,7 @@ export default function MealAllowancePage() {
                     
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
                     
-                    {/* USIA dari API (Sekarang pake logic Calendar) */}
+                    {/* USIA dari API */}
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">S/I/U/A:</span>
                       <span className="font-medium text-white">
@@ -500,7 +519,7 @@ export default function MealAllowancePage() {
                     
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
                     
-                    {/* CUTI Manual (dari snapshot) */}
+                    {/* CUTI Manual */}
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Cuti Manual:</span>
                       <span className="font-medium text-yellow-400">{officer.cutiCount || 0}</span>
