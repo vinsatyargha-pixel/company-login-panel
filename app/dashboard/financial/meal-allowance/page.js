@@ -165,6 +165,7 @@ export default function MealAllowancePage() {
     const dendaAlpha = alphaCount * 50;
     const prorateMinus = totalPotongan + dendaAlpha;
     
+    // INI UM NET ASLI SEBELUM KASBON/ETC
     const umNet = Math.max(0, Math.round(baseAmount + proratePlus - prorateMinus));
 
     return {
@@ -179,7 +180,7 @@ export default function MealAllowancePage() {
       proratePlus,
       prorateMinus,
       denda: dendaAlpha,
-      umNet
+      umNet  // ← INI YANG DISIMPAN
     };
   };
 
@@ -229,7 +230,7 @@ export default function MealAllowancePage() {
           izinCount: item.izin_count,
           unpaidCount: item.unpaid_count,
           alphaCount: item.alpha_count,
-          umNet: item.um_net,
+          umNet: item.um_net,  // ← INI UM NET ASLI (SEBELUM KASBON)
           kasbon: item.kasbon || 0,
           etc: item.etc || 0,
           etc_note: item.etc_note || '',
@@ -313,63 +314,58 @@ export default function MealAllowancePage() {
   };
 
   const handleEditSave = async () => {
-  if (!isAdmin) return;
-  
-  try {
-    if (editForm.kasbon < 0) {
-      alert('⚠️ Kasbon tidak boleh negatif');
-      return;
-    }
+    if (!isAdmin) return;
     
-    const bulan = `${selectedMonth} ${selectedYear}`;
-    
-    // 1. UPDATE data officer yang diedit
-    const snapshotData = {
-      officer_id: editingOfficer.id,
-      officer_name: editingOfficer.full_name,
-      department: editingOfficer.department,
-      join_date: editingOfficer.join_date,
-      bulan: bulan,
-      periode_start: getPeriodeStart(selectedMonth, selectedYear),
-      periode_end: getPeriodeEnd(selectedMonth, selectedYear),
-      base_amount: editingOfficer.baseAmount || 0,
-      prorate: editingOfficer.prorate || 0,
-      off_count: editingOfficer.offCount || 0,
-      sakit_count: editingOfficer.sakitCount || 0,
-      cuti_count: editingOfficer.cutiCount || 0,
-      izin_count: editingOfficer.izinCount || 0,
-      unpaid_count: editingOfficer.unpaidCount || 0,
-      alpha_count: editingOfficer.alphaCount || 0,
-      um_net: editingOfficer.umNet || 0,  // NET sebelum dipotong kasbon
-      kasbon: editForm.kasbon,
-      etc: editForm.etc || 0,
-      etc_note: editForm.etc_note,
-      updated_at: new Date().toISOString()
-    };
-    
-    const { error } = await supabase
-      .from('meal_allowance_snapshot')
-      .upsert(snapshotData, { 
-        onConflict: 'officer_id, bulan' 
-      });
-    
-    if (error) throw error;
-    
-    // 2. AMBIL SEMUA data snapshot bulan ini (yang udah termasuk update tadi)
-    const { data: semuaData } = await supabase
-      .from('meal_allowance_snapshot')
-      .select('*')
-      .eq('bulan', bulan);
-    
-    if (semuaData) {
-      // 3. FORMAT ulang dengan hitung NET FINAL
-      const formattedAll = semuaData.map(item => {
-        const baseNet = item.um_net || 0;
-        const kasbon = item.kasbon || 0;
-        const etc = item.etc || 0;
-        const finalNet = Math.max(0, baseNet - kasbon + etc);
-        
-        return {
+    try {
+      if (editForm.kasbon < 0) {
+        alert('⚠️ Kasbon tidak boleh negatif');
+        return;
+      }
+      
+      const bulan = `${selectedMonth} ${selectedYear}`;
+      
+      // AMBIL UM NET ASLI (yang sudah dihitung dari schedule)
+      const umNetAsli = editingOfficer.umNet || 0;
+      
+      const snapshotData = {
+        officer_id: editingOfficer.id,
+        officer_name: editingOfficer.full_name,
+        department: editingOfficer.department,
+        join_date: editingOfficer.join_date,
+        bulan: bulan,
+        periode_start: getPeriodeStart(selectedMonth, selectedYear),
+        periode_end: getPeriodeEnd(selectedMonth, selectedYear),
+        base_amount: editingOfficer.baseAmount || 0,
+        prorate: editingOfficer.prorate || 0,
+        off_count: editingOfficer.offCount || 0,
+        sakit_count: editingOfficer.sakitCount || 0,
+        cuti_count: editingOfficer.cutiCount || 0,
+        izin_count: editingOfficer.izinCount || 0,
+        unpaid_count: editingOfficer.unpaidCount || 0,
+        alpha_count: editingOfficer.alphaCount || 0,
+        um_net: umNetAsli,  // ← INI YANG ASLI, JANGAN DIUTAK-ATIK
+        kasbon: editForm.kasbon,
+        etc: editForm.etc || 0,
+        etc_note: editForm.etc_note,
+        updated_at: new Date().toISOString()
+      };
+      
+      const { error } = await supabase
+        .from('meal_allowance_snapshot')
+        .upsert(snapshotData, { 
+          onConflict: 'officer_id, bulan' 
+        });
+      
+      if (error) throw error;
+      
+      // Ambil semua data terbaru
+      const { data: semuaData } = await supabase
+        .from('meal_allowance_snapshot')
+        .select('*')
+        .eq('bulan', bulan);
+      
+      if (semuaData) {
+        const formattedAll = semuaData.map(item => ({
           id: item.officer_id,
           full_name: item.officer_name,
           department: item.department,
@@ -382,51 +378,46 @@ export default function MealAllowancePage() {
           izinCount: item.izin_count,
           unpaidCount: item.unpaid_count,
           alphaCount: item.alpha_count,
-          umNet: baseNet,
-          kasbon: kasbon,
-          etc: etc,
+          umNet: item.um_net,  // ← UM NET ASLI
+          kasbon: item.kasbon || 0,
+          etc: item.etc || 0,
           etc_note: item.etc_note || '',
-          bank_account: item.bank_account || '',
-          finalNet: finalNet  // ← INI YANG DIPAKE BUAT TAMPILAN
-        };
-      });
+          bank_account: item.bank_account || ''
+        }));
+        
+        setOfficers(formattedAll);
+      }
       
-      setOfficers(formattedAll);
+      alert('✅ Data berhasil diupdate');
+      setEditingOfficer(null);
+      
+    } catch (error) {
+      console.error('Error updating:', error);
+      alert('❌ Gagal update data: ' + error.message);
     }
-    
-    alert('✅ Data berhasil diupdate');
-    setEditingOfficer(null);
-    
-  } catch (error) {
-    console.error('Error updating:', error);
-    alert('❌ Gagal update data: ' + error.message);
-  }
-};
+  };
 
   // ===========================================
   // FILTER & PROCESS OFFICERS
   // ===========================================
 
   const officersWithStats = officers
-  .filter(o => {
-    if (!isAdmin) {
-      return o.department === 'CS DP WD';
-    }
-    return selectedDept === 'All' || o.department === selectedDept;
-  })
-  .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
-  .map((officer) => {
-    // HITUNG ULANG NET dengan mempertimbangkan kasbon & etc
-    const baseNet = officer.umNet || 0;
-    const kasbon = officer.kasbon || 0;
-    const etc = officer.etc || 0;
-    const finalNet = Math.max(0, baseNet - kasbon + etc);
-    
-    return {
-      ...officer,
-      finalNet  // PAKSA hitung ulang setiap render
-    };
-  });
+    .filter(o => {
+      if (!isAdmin) {
+        return o.department === 'CS DP WD';
+      }
+      return selectedDept === 'All' || o.department === selectedDept;
+    })
+    .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
+    .map((officer) => {
+      // HITUNG NET FINAL: UM Net Asli - Kasbon + Etc
+      const finalNet = Math.max(0, (officer.umNet || 0) - (officer.kasbon || 0) + (officer.etc || 0));
+      
+      return {
+        ...officer,
+        finalNet  // ← INI BUAT TAMPILAN
+      };
+    });
 
   const groupedOfficers = {
     'CS DP WD': officersWithStats.filter(o => o.department === 'CS DP WD'),
@@ -644,10 +635,11 @@ export default function MealAllowancePage() {
                       
                       <div className="w-px h-4 bg-[#FFD700]/30"></div>
                       
+                      {/* NET FINAL - HASIL AKHIR SETELAH KASBON & ETC */}
                       <div className="flex items-center gap-1">
                         <span className="text-[#A7D8FF] text-xs">NET:</span>
                         <span className="font-bold text-[#FFD700]">
-                          ${Math.round(officer.finalNet || 0)}
+                          ${officer.finalNet || 0}
                         </span>
                       </div>
                     </div>
