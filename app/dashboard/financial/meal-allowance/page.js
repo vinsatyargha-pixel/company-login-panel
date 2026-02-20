@@ -275,82 +275,108 @@ const fetchData = async () => {
   };
 
   const handleEditSave = async () => {
-    if (!isAdmin) return;
-    
-    try {
-      if (editForm.kasbon < 0 || editForm.cuti < 0) {
-        alert('⚠️ Kasbon dan Cuti tidak boleh negatif');
-        return;
-      }
-      
-      const bulan = `${selectedMonth} ${selectedYear}`;
-      const officer = editingOfficer;
-      
-      // Hitung ulang UM Net
-      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
-      const denda = officer.alphaCount * 50;
-      const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
-      
-      const snapshotData = {
-        officer_id: officer.id,
-        officer_name: officer.full_name,
-        department: officer.department,
-        join_date: officer.join_date,
-        bulan: bulan,
-        base_amount: officer.baseAmount,
-        prorate: officer.prorate,
-        off_count: officer.offCount || 0,
-        sakit_count: officer.sakitCount || 0,
-        cuti_count: editForm.cuti,
-        izin_count: officer.izinCount || 0,
-        unpaid_count: officer.unpaidCount || 0,
-        alpha_count: officer.alphaCount || 0,
-        um_net: umNetBaru,
-        kasbon: editForm.kasbon,
-        etc: editForm.etc || 0,
-        etc_note: editForm.etc_note,
-        last_edited_by: user?.id,
-        last_edited_at: new Date().toISOString()
-      };
-      
-      const { error } = await supabase
-        .from('meal_allowance_snapshot')
-        .upsert(snapshotData, { onConflict: 'officer_id, bulan' });
-      
-      if (error) throw error;
-      
-      // Ambil nama admin
-      const { data: adminData } = await supabase
-        .from('officers')
-        .select('full_name, email')
-        .eq('id', user?.id)
-        .single();
-      
-      const adminName = adminData?.full_name || adminData?.email || 'Unknown';
-      
-      setOfficers(prev => prev.map(o => 
-        o.id === officer.id 
-          ? { 
-              ...o, 
-              kasbon: editForm.kasbon,
-              cutiCount: editForm.cuti,
-              etc: editForm.etc || 0,
-              etc_note: editForm.etc_note,
-              umNet: umNetBaru,
-              lastEditedBy: adminName,
-              lastEditedAt: new Date().toISOString()
-            }
-          : o
-      ));
-      
-      alert(`✅ Data berhasil diupdate oleh ${adminName}`);
-      setEditingOfficer(null);
-      
-    } catch (error) {
-      console.error('Error updating:', error);
-      alert('❌ Gagal update data: ' + error.message);
+  if (!isAdmin) return;
+  
+  try {
+    if (editForm.kasbon < 0 || editForm.cuti < 0) {
+      alert('⚠️ Kasbon dan Cuti tidak boleh negatif');
+      return;
     }
-  };
+    
+    const bulan = `${selectedMonth} ${selectedYear}`;
+    const officer = editingOfficer;
+    
+    // Hitung ulang UM Net
+    const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
+    const denda = officer.alphaCount * 50;
+    const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
+    
+    // AMBIL PERIODE START DAN END (1 bulan sebelum selectedMonth)
+    const getPreviousMonthData = (month, year) => {
+      const monthIndex = months.indexOf(month);
+      if (monthIndex === 0) {
+        return { 
+          month: 'December', 
+          year: parseInt(year) - 1,
+          start: `${parseInt(year) - 1}-12-21`,
+          end: `${year}-01-20`
+        };
+      } else {
+        const prevMonth = months[monthIndex - 1];
+        const prevMonthIndex = monthIndex - 1;
+        return { 
+          month: prevMonth, 
+          year: parseInt(year),
+          start: `${year}-${String(prevMonthIndex + 1).padStart(2, '0')}-21`,
+          end: `${year}-${String(monthIndex).padStart(2, '0')}-20`
+        };
+      }
+    };
+    
+    const prev = getPreviousMonthData(selectedMonth, selectedYear);
+    
+    const snapshotData = {
+      officer_id: officer.id,
+      officer_name: officer.full_name,
+      department: officer.department,
+      join_date: officer.join_date,
+      bulan: bulan,
+      periode_start: prev.start,  // ← FIX: pakai start dari prev
+      periode_end: prev.end,      // ← FIX: pakai end dari prev
+      base_amount: officer.baseAmount,
+      prorate: officer.prorate,
+      off_count: officer.offCount || 0,
+      sakit_count: officer.sakitCount || 0,
+      cuti_count: editForm.cuti,
+      izin_count: officer.izinCount || 0,
+      unpaid_count: officer.unpaidCount || 0,
+      alpha_count: officer.alphaCount || 0,
+      um_net: umNetBaru,
+      kasbon: editForm.kasbon,
+      etc: editForm.etc || 0,
+      etc_note: editForm.etc_note,
+      last_edited_by: user?.id,
+      last_edited_at: new Date().toISOString()
+    };
+    
+    const { error } = await supabase
+      .from('meal_allowance_snapshot')
+      .upsert(snapshotData, { onConflict: 'officer_id, bulan' });
+    
+    if (error) throw error;
+    
+    // Ambil nama admin
+    const { data: adminData } = await supabase
+      .from('officers')
+      .select('full_name, email')
+      .eq('id', user?.id)
+      .single();
+    
+    const adminName = adminData?.full_name || adminData?.email || 'Unknown';
+    
+    setOfficers(prev => prev.map(o => 
+      o.id === officer.id 
+        ? { 
+            ...o, 
+            kasbon: editForm.kasbon,
+            cutiCount: editForm.cuti,
+            etc: editForm.etc || 0,
+            etc_note: editForm.etc_note,
+            umNet: umNetBaru,
+            lastEditedBy: adminName,
+            lastEditedAt: new Date().toISOString()
+          }
+        : o
+    ));
+    
+    alert(`✅ Data berhasil diupdate oleh ${adminName}`);
+    setEditingOfficer(null);
+    
+  } catch (error) {
+    console.error('Error updating:', error);
+    alert('❌ Gagal update data: ' + error.message);
+  }
+};
 
   // ===========================================
   // FILTER & PROCESS OFFICERS
