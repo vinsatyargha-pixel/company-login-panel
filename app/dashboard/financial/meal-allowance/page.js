@@ -96,76 +96,94 @@ export default function MealAllowancePage() {
   };
 
   const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
-    let pokok = 0, prorate = 0;
-    const rate = getMealRate(department, joinDate);
-    if (rate) {
-      pokok = rate.base_amount;
-      prorate = rate.prorate_per_day;
+  // 1. TENTUKAN POKOK & PRORATE
+  let pokok = 0, prorate = 0;
+  const rate = getMealRate(department, joinDate);
+  if (rate) {
+    pokok = rate.base_amount;
+    prorate = rate.prorate_per_day;
+  }
+  
+  // 2. TENTUKAN PERIODE (21 BULAN LALU - 20 BULAN INI)
+  const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
+  const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
+  periodeStart.setHours(0, 0, 0, 0);
+  periodeEnd.setHours(23, 59, 59, 999);
+  
+  // 3. FILTER SCHEDULE BERDASARKAN PERIODE
+  const periodData = schedule.filter(day => {
+    const dateStr = day['DATE RUNDOWN'];
+    if (!dateStr) return false;
+    const [dayNum, monthStr, yearStr] = dateStr.split('-');
+    const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
+    date.setHours(0, 0, 0, 0);
+    return date >= periodeStart && date <= periodeEnd;
+  });
+
+  // 4. DEBUG: LIHAT PERIODE DAN TOTAL HARI
+  console.log(`📅 PERIODE ${officerName}:`, {
+    start: periodeStart.toLocaleDateString('id-ID'),
+    end: periodeEnd.toLocaleDateString('id-ID'),
+    totalHariDiSchedule: schedule.length,
+    totalHariDiPeriode: periodData.length,
+    contohHari: periodData.slice(0, 3).map(d => d['DATE RUNDOWN'])
+  });
+
+  // 5. HITUNG KEJADIAN
+  let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
+  let unpaidCount = 0, alphaCount = 0;
+
+  periodData.forEach(day => {
+    const status = day[officerName];
+    if (!status) return;
+    
+    switch(status) {
+      case 'OFF': offCount++; break;
+      case 'SAKIT': sakitCount++; break;
+      case 'CUTI': cutiCount++; break;
+      case 'IZIN': izinCount++; break;
+      case 'UNPAID LEAVE': unpaidCount++; break;
+      case 'ABSEN': alphaCount++; break;
+      default: console.log(`Status tidak dikenal: ${status} untuk ${officerName} pada ${day['DATE RUNDOWN']}`);
     }
-    
-    const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
-    const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
-    periodeStart.setHours(0, 0, 0, 0);
-    periodeEnd.setHours(23, 59, 59, 999);
-    
-    const periodData = schedule.filter(day => {
-      const dateStr = day['DATE RUNDOWN'];
-      if (!dateStr) return false;
-      const [dayNum, monthStr, yearStr] = dateStr.split('-');
-      const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
-      date.setHours(0, 0, 0, 0);
-      return date >= periodeStart && date <= periodeEnd;
-    });
+  });
 
-    let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
-    let unpaidCount = 0, alphaCount = 0;
+  // 6. DEBUG: LIHAT HASIL HITUNGAN
+  console.log(`📊 KEJADIAN ${officerName}:`, {
+    OFF: offCount,
+    SAKIT: sakitCount,
+    CUTI: cutiCount,
+    IZIN: izinCount,
+    UNPAID: unpaidCount,
+    ALPHA: alphaCount
+  });
 
-    periodData.forEach(day => {
-      const status = day[officerName];
-      if (!status) return;
-      switch(status) {
-        case 'OFF': offCount++; break;
-        case 'SAKIT': sakitCount++; break;
-        case 'CUTI': cutiCount++; break;
-        case 'IZIN': izinCount++; break;
-        case 'UNPAID LEAVE': unpaidCount++; break;
-        case 'ABSEN': alphaCount++; break;
-      }
-    });
+  // 7. HITUNG UM NET
+  const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
+  const dendaAlpha = alphaCount * 50;
+  const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
 
-    const potonganKejadian = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
-    const dendaAlpha = alphaCount * 50;
-    const umNet = Math.max(0, pokok - potonganKejadian - dendaAlpha);
+  // 8. DEBUG: LIHAT HASIL AKHIR
+  console.log(`💰 UM NET ${officerName}:`, {
+    POKOK: pokok,
+    PRORATE: prorate,
+    POTONGAN: potonganKejadian,
+    DENDA: dendaAlpha,
+    UM_NET: umNet
+  });
 
-    // CONSOLE LOG UNTUK DEBUG
-    console.log(`🔍 ${officerName} di ${selectedMonth} ${selectedYear}:`, {
-      periode: `${periodeStart.toLocaleDateString()} - ${periodeEnd.toLocaleDateString()}`,
-      totalHari: periodData.length,
-      OFF: offCount,
-      SAKIT: sakitCount,
-      CUTI: cutiCount,
-      IZIN: izinCount,
-      UNPAID: unpaidCount,
-      ALPHA: alphaCount,
-      POKOK: pokok,
-      PRORATE: prorate,
-      POTONGAN: potonganKejadian,
-      DENDA: dendaAlpha,
-      UM_NET: umNet
-    });
-
-    return {
-      baseAmount: pokok,
-      prorate: prorate,
-      offCount,
-      sakitCount,
-      cutiCount,
-      izinCount,
-      unpaidCount,
-      alphaCount,
-      umNet
-    };
+  return {
+    baseAmount: pokok,
+    prorate: prorate,
+    offCount,
+    sakitCount,
+    cutiCount,
+    izinCount,
+    unpaidCount,
+    alphaCount,
+    umNet
   };
+};
 
   // ===========================================
   // DATA FETCHING
