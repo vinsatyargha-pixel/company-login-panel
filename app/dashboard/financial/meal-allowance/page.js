@@ -386,21 +386,25 @@ export default function MealAllowancePage() {
   // ===========================================
 
   const officersWithStats = officers
-    .filter(o => {
-      if (!isAdmin) {
-        return o.department === 'CS DP WD';
-      }
-      return selectedDept === 'All' || o.department === selectedDept;
-    })
-    .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
-    .map((officer) => {
-      // Hitung final NET (sebenarnya udah dihitung pas save, tapi jaga-jaga)
-      const finalNet = officer.umNet || 0;
-      return {
-        ...officer,
-        finalNet
-      };
-    });
+  .filter(o => {
+    if (!isAdmin) {
+      return o.department === 'CS DP WD';
+    }
+    return selectedDept === 'All' || o.department === selectedDept;
+  })
+  .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
+  .map((officer) => {
+    // HITUNG ULANG NET dengan mempertimbangkan kasbon & etc
+    const baseNet = officer.umNet || 0;
+    const kasbon = officer.kasbon || 0;
+    const etc = officer.etc || 0;
+    const finalNet = Math.max(0, baseNet - kasbon + etc);
+    
+    return {
+      ...officer,
+      finalNet  // PAKSA hitung ulang setiap render
+    };
+  });
 
   const groupedOfficers = {
     'CS DP WD': officersWithStats.filter(o => o.department === 'CS DP WD'),
