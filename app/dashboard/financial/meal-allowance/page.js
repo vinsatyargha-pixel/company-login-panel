@@ -512,7 +512,7 @@ export default function MealAllowancePage() {
 
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
         <div className="flex flex-wrap gap-4">
-          <div><span className="text-[#A7D8FF]">Periode Kejadian:</span> <span className="text-white font-medium">{new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} - {new Date(getPeriodeEnd(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
+          <div><span className="text-[#A7D8FF]">Periode Absensi:</span> <span className="text-white font-medium">{new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} - {new Date(getPeriodeEnd(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
           <div><span className="text-[#A7D8FF]">Pembagian UM:</span> <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span></div>
         </div>
       </div>
