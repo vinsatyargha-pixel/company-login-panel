@@ -126,67 +126,75 @@ export default function MealAllowancePage() {
   };
 
   const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
-    const targetMonth = months.indexOf(selectedMonth);
-    
-    const periodData = schedule.filter(day => {
-  const dateStr = day['DATE RUNDOWN'];
-  if (!dateStr) return false;
-  
-  const [dayNum, monthStr, yearStr] = dateStr.split('-');
-  const date = new Date(`${monthStr} ${dayNum}, ${yearStr}`);
-  const month = date.getMonth();
-  const dateDay = date.getDate();
-  
   const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
   const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
   
-  return date >= periodeStart && date <= periodeEnd;
-});
-
-    let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
-    let unpaidCount = 0, alphaCount = 0;
-
-    periodData.forEach(day => {
-      const status = day[officerName];
-      if (!status) return;
-      
-      switch(status) {
-        case 'OFF': offCount++; break;
-        case 'SAKIT': sakitCount++; break;
-        case 'CUTI': cutiCount++; break;
-        case 'IZIN': izinCount++; break;
-        case 'UNPAID LEAVE': unpaidCount++; break;
-        case 'ABSEN': alphaCount++; break;
-      }
-    });
-
-    const rate = getMealRate(department, joinDate);
-    const baseAmount = rate?.base_amount || 0;
-    const prorate = rate?.prorate_per_day || 0;
-
-    const offNotTaken = Math.max(0, 4 - offCount);
-    const proratePlus = offNotTaken * prorate;
-    const totalPotongan = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
-    const dendaAlpha = alphaCount * 50;
-    const prorateMinus = totalPotongan + dendaAlpha;
+  console.log('Periode:', { 
+    start: periodeStart.toLocaleDateString(), 
+    end: periodeEnd.toLocaleDateString() 
+  });
+  
+  const periodData = schedule.filter(day => {
+    const dateStr = day['DATE RUNDOWN'];
+    if (!dateStr) return false;
     
-    const umNet = Math.max(0, Math.round(baseAmount + proratePlus - prorateMinus));
+    // Parse tanggal dari format "DD-MM-YYYY"
+    const [dayNum, monthStr, yearStr] = dateStr.split('-');
+    const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
+    
+    // Reset time ke 00:00:00 biar adil
+    date.setHours(0, 0, 0, 0);
+    
+    return date >= periodeStart && date <= periodeEnd;
+  });
+  
+  console.log(`${officerName}: ${periodData.length} hari dalam periode`);
+  
+  // ... sisa kode sama ...
+  let offCount = 0, sakitCount = 0, cutiCount = 0, izinCount = 0;
+  let unpaidCount = 0, alphaCount = 0;
 
-    return {
-      baseAmount,
-      prorate,
-      offCount,
-      sakitCount,
-      cutiCount,
-      izinCount,
-      unpaidCount,
-      alphaCount,
-      proratePlus,
-      prorateMinus,
-      denda: dendaAlpha,
-      umNet
-    };
+  periodData.forEach(day => {
+    const status = day[officerName];
+    if (!status) return;
+    
+    switch(status) {
+      case 'OFF': offCount++; break;
+      case 'SAKIT': sakitCount++; break;
+      case 'CUTI': cutiCount++; break;
+      case 'IZIN': izinCount++; break;
+      case 'UNPAID LEAVE': unpaidCount++; break;
+      case 'ABSEN': alphaCount++; break;
+    }
+  });
+
+  const rate = getMealRate(department, joinDate);
+  const baseAmount = rate?.base_amount || 0;
+  const prorate = rate?.prorate_per_day || 0;
+
+  const offNotTaken = Math.max(0, 4 - offCount);
+  const proratePlus = offNotTaken * prorate;
+  const totalPotongan = (sakitCount + cutiCount + izinCount + unpaidCount) * prorate;
+  const dendaAlpha = alphaCount * 50;
+  const prorateMinus = totalPotongan + dendaAlpha;
+  
+  const umNet = Math.max(0, Math.round(baseAmount + proratePlus - prorateMinus));
+
+  return {
+    baseAmount,
+    prorate,
+    offCount,
+    sakitCount,
+    cutiCount,
+    izinCount,
+    unpaidCount,
+    alphaCount,
+    proratePlus,
+    prorateMinus,
+    denda: dendaAlpha,
+    umNet
   };
+};
 
   // ===========================================
   // DATA FETCHING
