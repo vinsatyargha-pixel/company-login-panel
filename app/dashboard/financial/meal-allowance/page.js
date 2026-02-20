@@ -22,12 +22,11 @@ export default function MealAllowancePage() {
   const [snapshotData, setSnapshotData] = useState([]);
   const [usingSnapshot, setUsingSnapshot] = useState(false);
   
-  // State untuk edit
+  // State untuk edit - ETC LANGSUNG ANGKA (bisa + atau -)
   const [editingOfficer, setEditingOfficer] = useState(null);
   const [editForm, setEditForm] = useState({
     kasbon: 0,
-    etc: 0,
-    etc_operator: '+',
+    etc: 0,  // ← LANGSUNG ANGKA, positif untuk nambah, negatif untuk ngurang
     etc_note: ''
   });
 
@@ -98,6 +97,13 @@ export default function MealAllowancePage() {
     const end = new Date(`${selectedYear}-${String(months.indexOf(selectedMonth) + 1).padStart(2, '0')}-20`);
     const years = end.getFullYear() - join.getFullYear();
     return (years * 12) + (end.getMonth() - join.getMonth());
+  };
+
+  const getMasaKerjaLabel = (joinDate) => {
+    const monthsWorked = getMonthsOfWork(joinDate);
+    if (monthsWorked >= 36) return 'genap 3 tahun keatas';
+    if (monthsWorked >= 24) return 'genap 2 tahun keatas';
+    return '1 tahun kebawah';
   };
 
   const getMealRate = (department, joinDate) => {
@@ -178,6 +184,7 @@ export default function MealAllowancePage() {
       alphaCount,
       proratePlus,
       prorateMinus,
+      denda: dendaAlpha,
       umNet
     };
   };
@@ -240,8 +247,7 @@ export default function MealAllowancePage() {
             alphaCount: item.alpha_count,
             umNet: item.um_net,
             kasbon: item.kasbon || 0,
-            etc: item.etc || 0,
-            etc_operator: item.etc_operator || '+',
+            etc: item.etc || 0,  // ← LANGSUNG ANGKA (bisa negatif)
             etc_note: item.etc_note || '',
             bank_account: item.bank_account || ''
           }));
@@ -319,21 +325,30 @@ export default function MealAllowancePage() {
           officer_name: officer.full_name,
           department: officer.department,
           join_date: officer.join_date,
-          bank_account: officer.bank_account || '',
+          bulan: `${selectedMonth} ${selectedYear}`,
+          periode_start: getPeriodeStart(selectedMonth, selectedYear),
+          periode_end: getPeriodeEnd(selectedMonth, selectedYear),
+          payment_date: null,
           base_amount: stats.baseAmount,
           prorate: stats.prorate,
+          masa_kerja: getMasaKerjaLabel(officer.join_date),
           off_count: stats.offCount,
           sakit_count: stats.sakitCount,
           cuti_count: stats.cutiCount,
           izin_count: stats.izinCount,
           unpaid_count: stats.unpaidCount,
           alpha_count: stats.alphaCount,
+          total_days: 30,
+          prorate_plus: stats.proratePlus,
+          prorate_minus: stats.prorateMinus,
+          denda: stats.denda,
           um_net: stats.umNet,
+          is_locked: true,
+          locked_at: new Date().toISOString(),
+          locked_by: user?.id,
           kasbon: 0,
-          etc: 0,
-          etc_operator: '+',
-          etc_note: '',
-          is_locked: true
+          etc: 0,  // ← LANGSUNG ANGKA
+          etc_note: ''
         };
       });
     } catch (error) {
@@ -414,58 +429,59 @@ export default function MealAllowancePage() {
     setEditingOfficer(officer);
     setEditForm({
       kasbon: officer.kasbon || 0,
-      etc: officer.etc || 0,
-      etc_operator: officer.etc_operator || '+',
+      etc: officer.etc || 0,  // ← LANGSUNG ANGKA
       etc_note: officer.etc_note || ''
     });
   };
 
   const handleEditSave = async () => {
-  try {
-    if (editForm.kasbon < 0 || editForm.etc < 0) {
-      alert('⚠️ Nilai tidak boleh negatif');
-      return;
+    try {
+      // Validasi
+      if (editForm.kasbon < 0) {
+        alert('⚠️ Kasbon tidak boleh negatif');
+        return;
+      }
+      
+      const snapshotData = {
+        officer_id: editingOfficer.id,
+        officer_name: editingOfficer.full_name,
+        department: editingOfficer.department,
+        join_date: editingOfficer.join_date,
+        bulan: `${selectedMonth} ${selectedYear}`,
+        periode_start: getPeriodeStart(selectedMonth, selectedYear),
+        periode_end: getPeriodeEnd(selectedMonth, selectedYear),
+        base_amount: editingOfficer.baseAmount || 0,
+        prorate: editingOfficer.prorate || 0,
+        off_count: editingOfficer.offCount || 0,
+        sakit_count: editingOfficer.sakitCount || 0,
+        cuti_count: editingOfficer.cutiCount || 0,
+        izin_count: editingOfficer.izinCount || 0,
+        unpaid_count: editingOfficer.unpaidCount || 0,
+        alpha_count: editingOfficer.alphaCount || 0,
+        um_net: editingOfficer.umNet || 0,
+        kasbon: editForm.kasbon,
+        etc: editForm.etc,  // ← LANGSUNG ANGKA
+        etc_note: editForm.etc_note,
+        is_locked: true
+      };
+      
+      const { error } = await supabase
+        .from('meal_allowance_snapshot')
+        .upsert(snapshotData, { 
+          onConflict: 'officer_id, bulan' 
+        });
+      
+      if (error) throw error;
+      
+      alert('✅ Data berhasil diupdate');
+      fetchData();
+      setEditingOfficer(null);
+      
+    } catch (error) {
+      console.error('Error updating:', error);
+      alert('❌ Gagal update data: ' + error.message);
     }
-    
-    const snapshotData = {
-      officer_id: editingOfficer.id,
-      officer_name: editingOfficer.full_name,
-      department: editingOfficer.department,
-      join_date: editingOfficer.join_date,
-      bulan: `${selectedMonth} ${selectedYear}`,
-      base_amount: editingOfficer.baseAmount || 0,
-      prorate: editingOfficer.prorate || 0,
-      off_count: editingOfficer.offCount || 0,
-      sakit_count: editingOfficer.sakitCount || 0,
-      cuti_count: editingOfficer.cutiCount || 0,
-      izin_count: editingOfficer.izinCount || 0,
-      unpaid_count: editingOfficer.unpaidCount || 0,
-      alpha_count: editingOfficer.alphaCount || 0,
-      um_net: editingOfficer.umNet || 0,
-      kasbon: editForm.kasbon,
-      etc: editForm.etc,
-      etc_operator: editForm.etc_operator,
-      etc_note: editForm.etc_note,
-      // bank_account: editingOfficer.bank_account || ''  <-- HAPUS INI!
-    };
-    
-    const { error } = await supabase
-      .from('meal_allowance_snapshot')
-      .upsert(snapshotData, { 
-        onConflict: 'officer_id, bulan' 
-      });
-    
-    if (error) throw error;
-    
-    alert('✅ Data berhasil diupdate');
-    fetchData();
-    setEditingOfficer(null);
-    
-  } catch (error) {
-    console.error('Error updating:', error);
-    alert('❌ Gagal update data: ' + error.message);
-  }
-};
+  };
 
   // ===========================================
   // FILTER & PROCESS OFFICERS
@@ -483,9 +499,8 @@ export default function MealAllowancePage() {
       if (usingSnapshot) {
         const baseNet = Number(officer.umNet) || 0;
         const kasbon = Number(officer.kasbon) || 0;
-        const etc = Number(officer.etc) || 0;
-        const etcOp = officer.etc_operator === '+' ? 1 : -1;
-        const finalNet = baseNet - kasbon + (etcOp * etc);
+        const etc = Number(officer.etc) || 0;  // ← LANGSUNG ANGKA
+        const finalNet = baseNet - kasbon + etc;  // ← RUMUS SEDERHANA
         
         return {
           ...officer,
@@ -611,10 +626,7 @@ export default function MealAllowancePage() {
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total ETC</div>
           <div className="text-2xl font-bold text-green-400">
-            ${Math.round(officersWithStats.reduce((sum, o) => {
-              const etcOp = o.etc_operator === '+' ? 1 : -1;
-              return sum + (etcOp * (o.etc || 0));
-            }, 0))}
+            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.etc || 0), 0))}
           </div>
         </div>
       </div>
@@ -793,12 +805,12 @@ export default function MealAllowancePage() {
                         </div>
                       </div>
                       
-                      {/* ETC */}
+                      {/* ETC - LANGSUNG ANGKA */}
                       <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                         <div className="text-[#A7D8FF] text-xs mb-1">🔄 ETC</div>
-                        <div className="font-medium text-green-400">
+                        <div className={`font-medium ${(officer.etc || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                           {usingSnapshot ? (
-                            `${officer.etc_operator === '+' ? '+' : '-'}$${officer.etc || 0}`
+                            `${(officer.etc || 0) > 0 ? '+' : ''}$${officer.etc || 0}`
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
@@ -853,7 +865,7 @@ export default function MealAllowancePage() {
         </span>
       </div>
 
-      {/* Modal Edit untuk Admin */}
+      {/* Modal Edit untuk Admin - VERSION SIMPLE */}
       {editingOfficer && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
@@ -880,32 +892,22 @@ export default function MealAllowancePage() {
                 />
               </div>
               
-              {/* ETC + OPERATOR */}
+              {/* ETC - LANGSUNG ANGKA BISA + ATAU - */}
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">
-                  ETC ( + / - )
+                  ETC (+ untuk nambah, - untuk ngurang)
                 </label>
-                <div className="flex gap-2">
-                  <select
-                    value={editForm.etc_operator}
-                    onChange={(e) => setEditForm({...editForm, etc_operator: e.target.value})}
-                    className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white w-20"
-                  >
-                    <option value="+">+</option>
-                    <option value="-">-</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={editForm.etc}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, '');
-                      setEditForm({...editForm, etc: value ? parseInt(value) : 0});
-                    }}
-                    className="flex-1 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                    placeholder="0"
-                    inputMode="numeric"
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={editForm.etc}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9-]/g, '');
+                    setEditForm({...editForm, etc: value ? parseInt(value) : 0});
+                  }}
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+                  placeholder="Contoh: 25 atau -10"
+                  inputMode="numeric"
+                />
               </div>
               
               {/* KETERANGAN/NOTE */}
