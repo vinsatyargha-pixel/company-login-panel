@@ -157,22 +157,31 @@ const scheduleResult = await scheduleResponse.json();
 const allSchedule = scheduleResult.data || [];
 
 // Helper target = bulan SEBELUMNYA
+// Helper target = bulan SEBELUMNYA
 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const monthIndex = months.indexOf(selectedMonth);
 
 let helperMonth;
-if (monthIndex === 0) { // January
+if (monthIndex === 0) { // January -> helper = Dec tahun lalu
   helperMonth = 'Dec';
+  const helperTarget = `${helperMonth}-${parseInt(selectedYear) - 1}`;
 } else {
   helperMonth = monthNames[monthIndex - 1];
+  const helperTarget = `${helperMonth}-${selectedYear}`;
 }
 
-const helperTarget = `${helperMonth}-${selectedYear}`;
 console.log('selectedMonth:', selectedMonth);
 console.log('helperTarget:', helperTarget);
 
-const schedule = allSchedule.filter(day => day['HELPER'] === helperTarget);
+// Filter schedule
+const schedule = allSchedule.filter(day => day['HELPER']?.trim() === helperTarget);
 console.log(`Found ${schedule.length} days for ${helperTarget}`);
+
+// Kalo kosong, tampilkan sample helpers
+if (schedule.length === 0) {
+  const uniqueHelpers = [...new Set(allSchedule.map(d => d['HELPER']))];
+  console.log('Available helpers in API:', uniqueHelpers);
+}
 
 setScheduleData(schedule);
       
