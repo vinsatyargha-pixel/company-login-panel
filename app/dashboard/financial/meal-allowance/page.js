@@ -291,27 +291,24 @@ const fetchData = async () => {
     const denda = officer.alphaCount * 50;
     const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
     
-    // AMBIL PERIODE START DAN END (1 bulan sebelum selectedMonth)
-    const getPreviousMonthData = (month, year) => {
-      const monthIndex = months.indexOf(month);
-      if (monthIndex === 0) {
-        return { 
-          month: 'December', 
-          year: parseInt(year) - 1,
-          start: `${parseInt(year) - 1}-12-21`,
-          end: `${year}-01-20`
-        };
+    // CARI NAMA ADMIN DARI TABEL OFFICERS BERDASARKAN EMAIL
+    let adminName = 'Unknown';
+    let adminId = null;
+    
+    if (user?.email) {
+      const { data: adminData } = await supabase
+        .from('officers')
+        .select('id, full_name')
+        .eq('email', user.email)
+        .maybeSingle();
+      
+      if (adminData) {
+        adminName = adminData.full_name || user.email;
+        adminId = adminData.id;
       } else {
-        const prevMonth = months[monthIndex - 1];
-        const prevMonthIndex = monthIndex - 1;
-        return { 
-          month: prevMonth, 
-          year: parseInt(year),
-          start: `${year}-${String(prevMonthIndex + 1).padStart(2, '0')}-21`,
-          end: `${year}-${String(monthIndex).padStart(2, '0')}-20`
-        };
+        adminName = user.email;
       }
-    };
+    }
     
     const prev = getPreviousMonthData(selectedMonth, selectedYear);
     
@@ -321,8 +318,8 @@ const fetchData = async () => {
       department: officer.department,
       join_date: officer.join_date,
       bulan: bulan,
-      periode_start: prev.start,  // ← FIX: pakai start dari prev
-      periode_end: prev.end,      // ← FIX: pakai end dari prev
+      periode_start: prev.start,
+      periode_end: prev.end,
       base_amount: officer.baseAmount,
       prorate: officer.prorate,
       off_count: officer.offCount || 0,
@@ -335,7 +332,7 @@ const fetchData = async () => {
       kasbon: editForm.kasbon,
       etc: editForm.etc || 0,
       etc_note: editForm.etc_note,
-      last_edited_by: user?.id,
+      last_edited_by: adminId,  // ID dari tabel officers
       last_edited_at: new Date().toISOString()
     };
     
@@ -344,15 +341,6 @@ const fetchData = async () => {
       .upsert(snapshotData, { onConflict: 'officer_id, bulan' });
     
     if (error) throw error;
-    
-    // Ambil nama admin
-    const { data: adminData } = await supabase
-      .from('officers')
-      .select('full_name, email')
-      .eq('id', user?.id)
-      .single();
-    
-    const adminName = adminData?.full_name || adminData?.email || 'Unknown';
     
     setOfficers(prev => prev.map(o => 
       o.id === officer.id 
@@ -363,7 +351,7 @@ const fetchData = async () => {
             etc: editForm.etc || 0,
             etc_note: editForm.etc_note,
             umNet: umNetBaru,
-            lastEditedBy: adminName,
+            lastEditedBy: adminName,  // NAMA UNTUK TAMPILAN
             lastEditedAt: new Date().toISOString()
           }
         : o
