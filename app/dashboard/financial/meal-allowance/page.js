@@ -593,11 +593,11 @@ const fetchData = async () => {
                   </div>
                   
                   {/* LOG EDIT */}
-                  {officer.lastEditedBy && (
-                    <div className="text-[10px] text-[#A7D8FF] mb-2 text-right">
-                      Last edited by: {officer.lastEditedBy} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
-                    </div>
-                  )}
+{(officer.lastEditedBy || officer.lastEditedAt) && (
+  <div className="text-[10px] text-[#A7D8FF] mb-2 text-right">
+    Last edited by: {officer.lastEditedBy || 'Admin'} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
+  </div>
+)}
                   
                   {/* Tombol Edit */}
                   {isAdmin && (
