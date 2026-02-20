@@ -16,7 +16,6 @@ export default function MealAllowancePage() {
   const [scheduleData, setScheduleData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [availableDepartments, setAvailableDepartments] = useState(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
-  const [editHistory, setEditHistory] = useState({});
   
   const [editingOfficer, setEditingOfficer] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -31,9 +30,36 @@ export default function MealAllowancePage() {
   const years = ['2025', '2026', '2027'];
 
   // ===========================================
-  // HELPER FUNCTIONS
+  // HELPER FUNCTIONS - PERIODE ABSENSI
   // ===========================================
   
+  const getPeriodeStart = (month, year) => {
+    const monthIndex = months.indexOf(month);
+    
+    // Start = 2 bulan sebelum bulan filter, tanggal 21
+    if (monthIndex === 0) { // January
+      return `${parseInt(year) - 1}-11-21`; // 21 Nov tahun lalu
+    } else if (monthIndex === 1) { // February
+      return `${parseInt(year) - 1}-12-21`; // 21 Dec tahun lalu
+    } else {
+      // March (index 2) -> 2 bulan sebelum = January (index 0)
+      const prevMonthIndex = monthIndex - 2;
+      return `${year}-${String(prevMonthIndex + 1).padStart(2, '0')}-21`;
+    }
+  };
+
+  const getPeriodeEnd = (month, year) => {
+    const monthIndex = months.indexOf(month);
+    
+    // End = 1 bulan sebelum bulan filter, tanggal 20
+    if (monthIndex === 0) { // January
+      return `${parseInt(year) - 1}-12-20`; // 20 Dec tahun lalu
+    } else {
+      // March (index 2) -> 1 bulan sebelum = February (index 1)
+      return `${year}-${String(monthIndex).padStart(2, '0')}-20`;
+    }
+  };
+
   const formatBankAndRek = (bankAccount) => {
     if (!bankAccount) return { bank: '-', rek: '-', link: '' };
     
@@ -83,13 +109,27 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // FUNGSI HITUNG USIA (dari API - filter by HELPER)
+  // FUNGSI HITUNG USIA (dari API)
   // ===========================================
   const hitungUSIA = (officerName, schedule = scheduleData) => {
+    const periodeStart = new Date(getPeriodeStart(selectedMonth, selectedYear));
+    const periodeEnd = new Date(getPeriodeEnd(selectedMonth, selectedYear));
+    periodeStart.setHours(0, 0, 0, 0);
+    periodeEnd.setHours(23, 59, 59, 999);
+    
+    const periodData = schedule.filter(day => {
+      const dateStr = day['DATE RUNDOWN'];
+      if (!dateStr) return false;
+      const [dayNum, monthStr, yearStr] = dateStr.split('-');
+      const date = new Date(`${yearStr}-${monthStr}-${dayNum}`);
+      date.setHours(0, 0, 0, 0);
+      return date >= periodeStart && date <= periodeEnd;
+    });
+
     let sakitCount = 0, izinCount = 0, unpaidCount = 0, alphaCount = 0;
     let offCount = 0;
 
-    schedule.forEach(day => {
+    periodData.forEach(day => {
       const status = day[officerName];
       if (!status) return;
       
@@ -108,6 +148,29 @@ export default function MealAllowancePage() {
       unpaid: unpaidCount,
       alpha: alphaCount,
       off: offCount
+    };
+  };
+
+  const calculateOfficerStats = (officerName, department, joinDate, schedule = scheduleData) => {
+    let pokok = 0, prorate = 0;
+    const rate = getMealRate(department, joinDate);
+    if (rate) {
+      pokok = rate.base_amount;
+      prorate = rate.prorate_per_day;
+    }
+    
+    // USIA dari API (tanpa CUTI)
+    const usia = hitungUSIA(officerName, schedule);
+    
+    return {
+      baseAmount: pokok,
+      prorate: prorate,
+      offCount: usia.off,
+      sakitCount: usia.sakit,
+      izinCount: usia.izin,
+      unpaidCount: usia.unpaid,
+      alphaCount: usia.alpha,
+      // cutiCount akan diambil dari snapshot atau input manual
     };
   };
 
@@ -140,7 +203,6 @@ export default function MealAllowancePage() {
       }
       
       const bulan = `${selectedMonth} ${selectedYear}`;
-      const monthShort = selectedMonth.substring(0, 3); // Feb, Mar, Apr
       
       // Ambil data officers
       const { data: officersData } = await supabase
@@ -150,59 +212,23 @@ export default function MealAllowancePage() {
         .eq('status', 'REGULAR');
       
       // Ambil schedule dari API
-const scheduleResponse = await fetch(
-  `/api/schedule?year=${selectedYear}&month=${selectedMonth}`
-);
-const scheduleResult = await scheduleResponse.json();
-const allSchedule = scheduleResult.data || [];
-
-// Helper target = bulan SEBELUMNYA
-// Helper target = bulan SEBELUMNYA
-const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const monthIndex = months.indexOf(selectedMonth);
-
-let helperMonth;
-if (monthIndex === 0) { // January -> helper = Dec tahun lalu
-  helperMonth = 'Dec';
-  const helperTarget = `${helperMonth}-${parseInt(selectedYear) - 1}`;
-} else {
-  helperMonth = monthNames[monthIndex - 1];
-  const helperTarget = `${helperMonth}-${selectedYear}`;
-}
-
-console.log('selectedMonth:', selectedMonth);
-console.log('helperTarget:', helperTarget);
-
-// Filter schedule
-const schedule = allSchedule.filter(day => day['HELPER']?.trim() === helperTarget);
-console.log(`Found ${schedule.length} days for ${helperTarget}`);
-
-// Kalo kosong, tampilkan sample helpers
-if (schedule.length === 0) {
-  const uniqueHelpers = [...new Set(allSchedule.map(d => d['HELPER']))];
-  console.log('Available helpers in API:', uniqueHelpers);
-}
-
-setScheduleData(schedule);
+      const scheduleResponse = await fetch(
+        `/api/schedule?year=${selectedYear}&month=${selectedMonth}`
+      );
+      const scheduleResult = await scheduleResponse.json();
+      const schedule = scheduleResult.data || [];
       
-      // Ambil snapshot (khusus cuti, kasbon, etc, last_edited_by)
+      setScheduleData(schedule);
+      
+      // Ambil snapshot (khusus cuti, kasbon, etc)
       const { data: snapData } = await supabase
         .from('meal_allowance_snapshot')
-        .select('officer_id, cuti_count, kasbon, etc, etc_note, last_edited_by, last_edited_at')
+        .select('officer_id, cuti_count, kasbon, etc, etc_note')
         .eq('bulan', bulan);
-      
-      // Ambil data officers untuk last_edited_by
-      const { data: adminData } = await supabase
-        .from('officers')
-        .select('id, full_name, email')
-        .eq('role', 'admin');
-      
-      const adminMap = {};
-      adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
       
       // Gabungin data
       const officersWithStats = (officersData || []).map(officer => {
-        // Hitung USIA dari API (sudah difilter by HELPER)
+        // Hitung USIA dari API
         const usia = hitungUSIA(officer.full_name, schedule);
         
         // Cari snapshot untuk officer ini
@@ -215,29 +241,29 @@ setScheduleData(schedule);
           full_name: officer.full_name,
           department: officer.department,
           join_date: officer.join_date,
-          baseAmount: getMealRate(officer.department, officer.join_date)?.base_amount || 0,
-          prorate: getMealRate(officer.department, officer.join_date)?.prorate_per_day || 0,
+          baseAmount: usia.baseAmount || getMealRate(officer.department, officer.join_date)?.base_amount || 0,
+          prorate: usia.prorate || getMealRate(officer.department, officer.join_date)?.prorate_per_day || 0,
           offCount: usia.off,
           sakitCount: usia.sakit,
           izinCount: usia.izin,
           unpaidCount: usia.unpaid,
           alphaCount: usia.alpha,
-          cutiCount: snapshot?.cuti_count || 0,
+          cutiCount: snapshot?.cuti_count || 0,  // dari snapshot
           kasbon: snapshot?.kasbon || 0,
           etc: snapshot?.etc || 0,
           etc_note: snapshot?.etc_note || '',
           bank: bank,
           rek: rek,
           link: link,
-          lastEditedBy: snapshot?.last_edited_by ? adminMap[snapshot.last_edited_by] : null,
-          lastEditedAt: snapshot?.last_edited_at || null
+          umNet: 0 // akan dihitung ulang di mapping
         };
       });
       
       // Hitung ulang umNet untuk semua
       const withUmNet = officersWithStats.map(o => {
-        const pokok = o.baseAmount;
-        const prorate = o.prorate;
+        const rate = getMealRate(o.department, o.join_date);
+        const prorate = rate?.prorate_per_day || 0;
+        const pokok = rate?.base_amount || 0;
         
         const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * prorate;
         const denda = o.alphaCount * 50;
@@ -283,23 +309,24 @@ setScheduleData(schedule);
       
       // Ambil data officer
       const officer = editingOfficer;
-      const pokok = officer.baseAmount;
-      const prorate = officer.prorate;
+      const rate = getMealRate(officer.department, officer.join_date);
+      const prorate = rate?.prorate_per_day || 0;
+      const pokok = rate?.base_amount || 0;
       
       // Hitung ulang UM Net
       const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * prorate;
       const denda = officer.alphaCount * 50;
       const umNetBaru = Math.max(0, pokok - potongan - denda);
       
-      // Simpan ke snapshot dengan info admin
+      // Simpan ke snapshot
       const snapshotData = {
         officer_id: officer.id,
         officer_name: officer.full_name,
         department: officer.department,
         join_date: officer.join_date,
         bulan: bulan,
-        periode_start: null, // Ga dipake karena pake HELPER
-        periode_end: null,
+        periode_start: getPeriodeStart(selectedMonth, selectedYear),
+        periode_end: getPeriodeEnd(selectedMonth, selectedYear),
         base_amount: pokok,
         prorate: prorate,
         off_count: officer.offCount || 0,
@@ -311,9 +338,7 @@ setScheduleData(schedule);
         um_net: umNetBaru,
         kasbon: editForm.kasbon,
         etc: editForm.etc || 0,
-        etc_note: editForm.etc_note,
-        last_edited_by: user?.id,
-        last_edited_at: new Date().toISOString()
+        etc_note: editForm.etc_note
       };
       
       const { error } = await supabase
@@ -321,15 +346,6 @@ setScheduleData(schedule);
         .upsert(snapshotData, { onConflict: 'officer_id, bulan' });
       
       if (error) throw error;
-      
-      // Ambil nama admin
-      const { data: adminData } = await supabase
-        .from('officers')
-        .select('full_name, email')
-        .eq('id', user?.id)
-        .single();
-      
-      const adminName = adminData?.full_name || adminData?.email || 'Unknown';
       
       // Update state
       setOfficers(prev => prev.map(o => 
@@ -340,14 +356,12 @@ setScheduleData(schedule);
               cutiCount: editForm.cuti,
               etc: editForm.etc || 0,
               etc_note: editForm.etc_note,
-              umNet: umNetBaru,
-              lastEditedBy: adminName,
-              lastEditedAt: new Date().toISOString()
+              umNet: umNetBaru
             }
           : o
       ));
       
-      alert(`✅ Data berhasil diupdate oleh ${adminName}`);
+      alert('✅ Data berhasil diupdate');
       setEditingOfficer(null);
       
     } catch (error) {
@@ -469,7 +483,7 @@ setScheduleData(schedule);
 
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
         <div className="flex flex-wrap gap-4">
-          <div><span className="text-[#A7D8FF]">Helper:</span> <span className="text-white font-medium">{selectedMonth.substring(0, 3)}</span></div>
+          <div><span className="text-[#A7D8FF]">Periode Absensi:</span> <span className="text-white font-medium">{new Date(getPeriodeStart(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })} - {new Date(getPeriodeEnd(selectedMonth, selectedYear)).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
           <div><span className="text-[#A7D8FF]">Pembagian UM:</span> <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span></div>
         </div>
       </div>
@@ -543,7 +557,7 @@ setScheduleData(schedule);
                     </div>
                   </div>
                   
-                  {/* BARIS 3: Kolom Kasbon, ETC, Notes + LOG ADMIN */}
+                  {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                       <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
@@ -562,13 +576,6 @@ setScheduleData(schedule);
                       <div className="text-sm text-white truncate" title={officer.etc_note}>{officer.etc_note || '-'}</div>
                     </div>
                   </div>
-                  
-                  {/* LOG EDIT - SIAPA YANG TERAKHIR EDIT */}
-                  {officer.lastEditedBy && (
-                    <div className="text-[10px] text-[#A7D8FF] mb-2 text-right">
-                      Last edited by: {officer.lastEditedBy} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
-                    </div>
-                  )}
                   
                   {/* BARIS 4: Tombol Edit */}
                   {isAdmin && (
