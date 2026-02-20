@@ -34,18 +34,28 @@ export default function MealAllowancePage() {
   // ===========================================
   
   const getPeriodeStart = (month, year) => {
-    const monthIndex = months.indexOf(month);
-    if (monthIndex === 0) {
-      return `${parseInt(year) - 1}-12-21`;
-    } else {
-      return `${year}-${String(monthIndex).padStart(2, '0')}-21`;
-    }
-  };
+  const monthIndex = months.indexOf(month);
+  
+  // Start = 2 bulan sebelumnya (21)
+  if (monthIndex === 0) { // January
+    return `${parseInt(year) - 1}-11-21`;
+  } else if (monthIndex === 1) { // February
+    return `${parseInt(year) - 1}-12-21`;
+  } else {
+    return `${year}-${String(monthIndex - 1).padStart(2, '0')}-21`;
+  }
+};
 
-  const getPeriodeEnd = (month, year) => {
-    const monthIndex = months.indexOf(month);
-    return `${year}-${String(monthIndex + 1).padStart(2, '0')}-20`;
-  };
+const getPeriodeEnd = (month, year) => {
+  const monthIndex = months.indexOf(month);
+  
+  // End = 1 bulan sebelumnya (20)
+  if (monthIndex === 0) { // January
+    return `${parseInt(year) - 1}-12-20`;
+  } else {
+    return `${year}-${String(monthIndex).padStart(2, '0')}-20`;
+  }
+};
 
   const formatBankAndRek = (bankAccount) => {
     if (!bankAccount) return { bank: '-', rek: '-', link: '' };
