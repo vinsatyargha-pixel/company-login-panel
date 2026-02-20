@@ -924,23 +924,33 @@ export default function MealAllowancePage() {
                 />
               </div>
               
-              {/* ETC - LANGSUNG ANGKA BISA + ATAU - */}
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">
-                  ETC (+ untuk nambah, - untuk ngurang)
-                </label>
-                <input
-                  type="text"
-                  value={editForm.etc}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9-]/g, '');
-                    setEditForm({...editForm, etc: value ? parseInt(value) : 0});
-                  }}
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
-                  placeholder="Contoh: 25 atau -10"
-                  inputMode="numeric"
-                />
-              </div>
+              {/* ETC - BISA + ATAU - */}
+<div>
+  <label className="text-[#A7D8FF] text-sm block mb-1">
+    ETC (+ untuk nambah, - untuk ngurang)
+  </label>
+  <input
+    type="text"
+    value={editForm.etc}
+    onChange={(e) => {
+      let value = e.target.value;
+      
+      // Izinkan angka, tanda minus di depan, dan kosong
+      if (value === '' || value === '-') {
+        setEditForm({...editForm, etc: value});
+        return;
+      }
+      
+      // Cek format angka negatif/positif
+      const numValue = Number(value);
+      if (!isNaN(numValue)) {
+        setEditForm({...editForm, etc: numValue});
+      }
+    }}
+    className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+    placeholder="Contoh: 25 atau -10"
+  />
+</div>
               
               {/* KETERANGAN/NOTE */}
               <div>
