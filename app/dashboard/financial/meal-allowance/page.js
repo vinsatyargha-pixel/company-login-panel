@@ -225,30 +225,34 @@ export default function MealAllowancePage() {
         .eq('bulan', bulan);
       
       if (snapData && snapData.length === allOfficers.length) {
-        const formattedOfficers = snapData.map(item => ({
-          id: item.officer_id,
-          full_name: item.officer_name,
-          department: item.department,
-          join_date: item.join_date,
-          baseAmount: item.base_amount,
-          prorate: item.prorate,
-          offCount: item.off_count,
-          sakitCount: item.sakit_count,
-          cutiCount: item.cuti_count,
-          izinCount: item.izin_count,
-          unpaidCount: item.unpaid_count,
-          alphaCount: item.alpha_count,
-          umNet: item.um_net,
-          kasbon: item.kasbon || 0,
-          etc: item.etc || 0,
-          etc_note: item.etc_note || '',
-          bank_account: item.bank_account || ''
-        }));
-        
-        setOfficers(formattedOfficers);
-      } else {
-        await fetchManualData();
-      }
+  // Gabungin data snapshot dengan bank_account dari officers
+  const formattedOfficers = snapData.map(item => {
+    // Cari officer yang sesuai
+    const officerData = allOfficers.find(o => o.id === item.officer_id);
+    
+    return {
+      id: item.officer_id,
+      full_name: item.officer_name,
+      department: item.department,
+      join_date: item.join_date,
+      baseAmount: item.base_amount,
+      prorate: item.prorate,
+      offCount: item.off_count,
+      sakitCount: item.sakit_count,
+      cutiCount: item.cuti_count,
+      izinCount: item.izin_count,
+      unpaidCount: item.unpaid_count,
+      alphaCount: item.alpha_count,
+      umNet: item.um_net,
+      kasbon: item.kasbon || 0,
+      etc: item.etc || 0,
+      etc_note: item.etc_note || '',
+      bank_account: officerData?.bank_account || ''  // ← AMBIL DARI OFFICERS
+    };
+  });
+  
+  setOfficers(formattedOfficers);
+}
       
     } catch (error) {
       console.error('Error fetching data:', error);
