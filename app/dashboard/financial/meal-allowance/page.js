@@ -214,20 +214,28 @@ export default function MealAllowancePage() {
   }, [selectedMonth, selectedYear]);
 
   const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      const bulan = `${selectedMonth} ${selectedYear}`;
-      
-      // Ambil data dari snapshot kalo ada
-      const { data: snapData } = await supabase
-        .from('meal_allowance_snapshot')
-        .select('*')
-        .eq('bulan', bulan)
-        .order('officer_name');
-      
-      if (snapData && snapData.length > 0) {
-        // Data udah ada di snapshot
+  try {
+    setLoading(true);
+    
+    const bulan = `${selectedMonth} ${selectedYear}`;
+    
+    // Ambil semua officer aktif dulu
+    const { data: allOfficers } = await supabase
+      .from('officers')
+      .select('id, full_name, department, join_date, bank_account')
+      .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
+      .eq('status', 'REGULAR');
+    
+    // Ambil snapshot bulan ini
+    const { data: snapData } = await supabase
+      .from('meal_allowance_snapshot')
+      .select('*')
+      .eq('bulan', bulan);
+    
+    if (snapData && snapData.length > 0) {
+      // Cek apakah jumlah snapshot = jumlah officer
+      if (snapData.length === allOfficers.length) {
+        // LENGKAP, pake snapshot
         const formattedOfficers = snapData.map(item => ({
           id: item.officer_id,
           full_name: item.officer_name,
@@ -241,7 +249,7 @@ export default function MealAllowancePage() {
           izinCount: item.izin_count,
           unpaidCount: item.unpaid_count,
           alphaCount: item.alpha_count,
-          umNet: item.um_net,  // ← INI UM NET ASLI (SEBELUM KASBON)
+          umNet: item.um_net,
           kasbon: item.kasbon || 0,
           etc: item.etc || 0,
           etc_note: item.etc_note || '',
@@ -249,17 +257,19 @@ export default function MealAllowancePage() {
         }));
         
         setOfficers(formattedOfficers);
-      } else {
-        // Hitung manual dari schedule
-        await fetchManualData();
+        return;
       }
-      
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setLoading(false);
     }
-  };
+    
+    // KALO TIDAK LENGKAP, HITUNG ULANG SEMUA
+    await fetchManualData();
+    
+  } catch (error) {
+    console.error('Error fetching data:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const fetchManualData = async () => {
     try {
