@@ -225,44 +225,91 @@ export default function DashboardContent() {
         </div>
       </header>
 
-      {/* ROYAL GOLD CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <DashboardCard
-          title="Asset GROUP-X"
-          value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
-          icon="💎"
-          color="gold"
-          href="/dashboard/assets"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        <DashboardCard
-          title="Data Officers GROUP-X"
-          value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
-          icon={<span className="text-2xl">👨‍💼</span>}
-          color="gold"
-          href="/dashboard/officers/active"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        <DashboardCard
-          title="Schedule Officers GROUP-X"
-          value="Calendar"
-          icon="📅"
-          color="gold"
-          href="/dashboard/schedule"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        <DashboardCard
-          title="Financial Summary GROUP-X"
-          value="Management"
-          icon="💰"
-          color="gold"
-          href="/dashboard/financial"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
+      {/* ROYAL GOLD CARDS - BRANKAS EMAS */}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  {/* ASSET GROUP-X - Brankas Emas dengan Berlian */}
+  <DashboardCard
+    title="Asset GROUP-X"
+    value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
+    icon={
+      <div className="relative flex items-center justify-center w-16 h-16">
+        {/* Brankas */}
+        <div className="absolute text-5xl text-[#FFD700] drop-shadow-[0_0_15px_#FFD700] animate-pulse">
+          🔒
+        </div>
+        {/* Gagang brankas */}
+        <div className="absolute w-4 h-4 rounded-full bg-[#FFD700] border-2 border-[#B8860B] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-70"></div>
+        {/* Berlian kecil */}
+        <div className="absolute -top-1 -right-1 text-sm bg-gradient-to-br from-[#FFD700] to-[#FFA500] rounded-full w-6 h-6 flex items-center justify-center shadow-lg border border-white/30">
+          💎
+        </div>
       </div>
+    }
+    color="gold"
+    href="/dashboard/assets"
+    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+  />
+
+  {/* DATA OFFICERS - Brankas dengan Orang */}
+  <DashboardCard
+    title="Data Officers GROUP-X"
+    value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
+    icon={
+      <div className="relative flex items-center justify-center w-16 h-16">
+        <div className="absolute text-5xl text-[#FFD700] drop-shadow-[0_0_15px_#FFD700] animate-pulse">
+          🔐
+        </div>
+        <div className="absolute w-4 h-4 rounded-full bg-[#FFD700] border-2 border-[#B8860B] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-70"></div>
+        <div className="absolute -top-1 -right-1 text-sm bg-blue-500 rounded-full w-6 h-6 flex items-center justify-center shadow-lg border border-white/30">
+          👤
+        </div>
+      </div>
+    }
+    color="gold"
+    href="/dashboard/officers/active"
+    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+  />
+
+  {/* SCHEDULE OFFICERS - Brankas Kalender */}
+  <DashboardCard
+    title="Schedule Officers GROUP-X"
+    value="Calendar"
+    icon={
+      <div className="relative flex items-center justify-center w-16 h-16">
+        <div className="absolute text-5xl text-[#FFD700] drop-shadow-[0_0_15px_#FFD700] animate-pulse">
+          🔒
+        </div>
+        <div className="absolute w-4 h-4 rounded-full bg-[#FFD700] border-2 border-[#B8860B] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-70"></div>
+        <div className="absolute -top-1 -right-1 text-sm bg-green-500 rounded-full w-6 h-6 flex items-center justify-center shadow-lg border border-white/30">
+          📅
+        </div>
+      </div>
+    }
+    color="gold"
+    href="/dashboard/schedule"
+    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+  />
+
+  {/* FINANCIAL SUMMARY - Brankas Uang */}
+  <DashboardCard
+    title="Financial Summary GROUP-X"
+    value="Management"
+    icon={
+      <div className="relative flex items-center justify-center w-16 h-16">
+        <div className="absolute text-5xl text-[#FFD700] drop-shadow-[0_0_15px_#FFD700] animate-pulse">
+          🔐
+        </div>
+        <div className="absolute w-4 h-4 rounded-full bg-[#FFD700] border-2 border-[#B8860B] top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-70"></div>
+        <div className="absolute -top-1 -right-1 text-sm bg-orange-500 rounded-full w-6 h-6 flex items-center justify-center shadow-lg border border-white/30">
+          💰
+        </div>
+      </div>
+    }
+    color="gold"
+    href="/dashboard/financial"
+    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+  />
+</div>
 
       {/* Quick Access section */}
       <div className="mb-8">
