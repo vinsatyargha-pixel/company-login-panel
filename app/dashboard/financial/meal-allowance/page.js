@@ -447,29 +447,66 @@ export default function MealAllowancePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total Officers</div>
-          <div className="text-2xl font-bold text-[#FFD700]">{officersWithStats.length}</div>
-        </div>
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total NET</div>
-          <div className="text-2xl font-bold text-[#FFD700]">
-            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}
+  {/* CARD 1: Total Officers */}
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="text-[#A7D8FF] text-sm">Total Officers</div>
+    <div className="text-2xl font-bold text-[#FFD700]">{officersWithStats.length}</div>
+  </div>
+
+  {/* CARD 2: Total NET */}
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="text-[#A7D8FF] text-sm">Total NET</div>
+    <div className="text-2xl font-bold text-[#FFD700]">
+      ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}
+    </div>
+  </div>
+
+  {/* CARD 3: Total Kasbon + LIST PER ORANG */}
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="text-[#A7D8FF] text-sm">Total Kasbon</div>
+    <div className="text-2xl font-bold text-red-400">
+      ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.kasbon || 0), 0))}
+    </div>
+    
+    {/* LIST KASBON PER ORANG - HANYA YANG > 0 */}
+    <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
+      {officersWithStats
+        .filter(o => o.kasbon > 0)
+        .sort((a, b) => b.kasbon - a.kasbon)
+        .map(officer => (
+          <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded transition-colors">
+            <span className="text-[#A7D8FF] truncate max-w-[160px]" title={officer.full_name}>
+              {officer.full_name}
+            </span>
+            <span className="text-red-400 font-medium ml-2">${officer.kasbon}</span>
           </div>
+        ))
+      }
+      
+      {/* KALAU TIDAK ADA KASBON */}
+      {officersWithStats.filter(o => o.kasbon > 0).length === 0 && (
+        <div className="text-[#A7D8FF] text-center py-2 italic text-xs">
+          ✨ Tidak ada kasbon
         </div>
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total Kasbon</div>
-          <div className="text-2xl font-bold text-red-400">
-            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.kasbon || 0), 0))}
-          </div>
-        </div>
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total ETC</div>
-          <div className="text-2xl font-bold text-green-400">
-            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.etc || 0), 0))}
-          </div>
-        </div>
+      )}
+    </div>
+    
+    {/* FOOTER: Total jumlah orang yang punya kasbon (optional) */}
+    {officersWithStats.filter(o => o.kasbon > 0).length > 0 && (
+      <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
+        {officersWithStats.filter(o => o.kasbon > 0).length} orang
       </div>
+    )}
+  </div>
+
+  {/* CARD 4: Total ETC */}
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="text-[#A7D8FF] text-sm">Total ETC</div>
+    <div className="text-2xl font-bold text-green-400">
+      ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.etc || 0), 0))}
+    </div>
+  </div>
+</div>
 
       <div className="mb-6 flex flex-wrap gap-4">
         <select className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
