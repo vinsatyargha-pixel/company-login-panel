@@ -41,11 +41,11 @@ export default function FinancialHomePage() {
         }, {});
       }
 
-      // Format data
+      // Format data dengan detail changes
       const formatted = (data || []).map(item => ({
         ...item,
         adminName: adminMap[item.last_edited_by] || 'Admin',
-        changes: formatChanges(item)
+        changes: formatMealChanges(item)
       }));
 
       setMealActivities(formatted);
@@ -56,7 +56,7 @@ export default function FinancialHomePage() {
     }
   };
 
-  const formatChanges = (item) => {
+  const formatMealChanges = (item) => {
     const changes = [];
     if (item.kasbon > 0) changes.push(`💰 Kasbon: $${item.kasbon}`);
     if (item.cuti_count > 0) changes.push(`🏖️ Cuti: ${item.cuti_count} hari`);
@@ -150,7 +150,7 @@ export default function FinancialHomePage() {
         ))}
       </div>
 
-      {/* RECENT ACTIVITY MEAL ALLOWANCE */}
+      {/* RECENT ACTIVITY MEAL ALLOWANCE - DENGAN DETAIL BEFORE-AFTER */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">🍽️ Recent Meal Allowance Updates</h2>
         
@@ -164,28 +164,42 @@ export default function FinancialHomePage() {
             ))
           ) : mealActivities.length > 0 ? (
             mealActivities.slice(0, 5).map((act, idx) => (
-              <div key={idx} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 hover:bg-[#1A2F4A]/80 transition-colors">
-                <div className="flex items-start gap-2">
-                  <span className="text-lg">🍽️</span>
+              <div key={idx} className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:bg-[#1A2F4A]/80 transition-colors">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">🍽️</span>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-[#FFD700]">{act.officer_name}</span>
-                      <span className="text-xs bg-[#0B1A33] px-2 py-0.5 rounded-full text-[#A7D8FF]">
+                    {/* Header: Nama & Bulan */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-[#FFD700] text-lg">{act.officer_name}</span>
+                      <span className="text-xs bg-[#0B1A33] px-2 py-1 rounded-full text-[#A7D8FF] border border-[#FFD700]/20">
                         {act.bulan}
                       </span>
                     </div>
                     
-                    <div className="text-white text-sm mt-1">
-                      {act.changes?.map((change, i) => (
-                        <div key={i} className="flex items-start gap-1">
-                          <span className="text-[#A7D8FF]">•</span>
-                          <span>{change}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {/* Detail Perubahan - Yang Diubah */}
+                    {act.changes && act.changes.length > 0 ? (
+                      <div className="bg-[#0B1A33] p-2 rounded-lg mb-2">
+                        {act.changes.map((change, i) => (
+                          <div key={i} className="text-sm text-white flex items-start gap-2 py-0.5">
+                            <span className="text-[#FFD700]">•</span>
+                            <span>{change}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-[#0B1A33] p-2 rounded-lg mb-2 text-sm text-[#A7D8FF] italic">
+                        Tidak ada perubahan data
+                      </div>
+                    )}
                     
-                    <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-2">
-                      <span>by {act.adminName}</span>
+                    {/* Footer: Admin & Waktu */}
+                    <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-2 border-t border-[#FFD700]/10 pt-2">
+                      <span className="flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        {act.adminName}
+                      </span>
                       <span>•</span>
                       <span>{formatTimeAgo(act.last_edited_at)}</span>
                     </div>
@@ -195,6 +209,9 @@ export default function FinancialHomePage() {
             ))
           ) : (
             <div className="text-center py-8 text-[#A7D8FF]">
+              <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               <p>Belum ada aktivitas Meal Allowance</p>
               <p className="text-sm mt-1">Edit data Meal Allowance untuk memulai</p>
             </div>
