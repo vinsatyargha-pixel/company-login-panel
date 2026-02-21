@@ -53,23 +53,13 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FUNGSI RECENT ACTIVITY
+  // FUNGSI RECENT ACTIVITY - HANYA OFFICERS
   // ===========================================
   const fetchRecentActivities = async () => {
     try {
       setLoadingActivities(true);
       
-      // 1. AMBIL DARI MEAL ALLOWANCE SNAPSHOT
-      const { data: mealData, error: mealError } = await supabase
-        .from('meal_allowance_snapshot')
-        .select('officer_name, kasbon, etc, etc_note, cuti_count, last_edited_by, last_edited_at, bulan')
-        .not('last_edited_at', 'is', null)
-        .order('last_edited_at', { ascending: false, nullsFirst: false })
-        .limit(50);
-
-      if (mealError) console.error('Meal Error:', mealError);
-
-      // 2. AMBIL DARI AUDIT LOGS (Officers)
+      // AMBIL DARI AUDIT LOGS (Officers) aja
       const { data: auditData, error: auditError } = await supabase
         .from('audit_logs')
         .select(`
@@ -77,39 +67,11 @@ export default function DashboardContent() {
           officers!changed_by (full_name, email)
         `)
         .order('changed_at', { ascending: false, nullsFirst: false })
-        .limit(50);
+        .limit(20);
 
       if (auditError) console.error('Audit Error:', auditError);
 
-      // 3. AMBIL DATA ADMIN UNTUK MEAL ALLOWANCE
-      const adminIds = [...new Set(mealData?.map(item => item.last_edited_by).filter(Boolean) || [])];
-      let adminMap = {};
-      
-      if (adminIds.length > 0) {
-        const { data: admins } = await supabase
-          .from('officers')
-          .select('id, full_name, email')
-          .in('id', adminIds);
-        
-        adminMap = (admins || []).reduce((acc, admin) => {
-          acc[admin.id] = admin.full_name || admin.email;
-          return acc;
-        }, {});
-      }
-
-      // 4. FORMAT MEAL ALLOWANCE ACTIVITIES
-      const mealActivities = (mealData || []).map(item => ({
-        id: `meal-${item.last_edited_at}-${item.officer_name}`,
-        module: 'Meal Allowance',
-        officer: item.officer_name,
-        bulan: item.bulan,
-        timestamp: item.last_edited_at,
-        adminName: adminMap[item.last_edited_by] || 'Admin',
-        changes: formatMealChanges(item),
-        icon: '🍽️'
-      }));
-
-      // 5. FORMAT AUDIT LOGS ACTIVITIES
+      // FORMAT AUDIT LOGS ACTIVITIES
       const auditActivities = (auditData || []).map(item => {
         let changes = [];
         let icon = '👤';
@@ -137,33 +99,13 @@ export default function DashboardContent() {
         };
       });
 
-      // 6. GABUNGIN SEMUA
-      const allActivities = [...mealActivities, ...auditActivities]
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-      setActivities(allActivities);
+      setActivities(auditActivities);
       
     } catch (error) {
       console.error('Error fetching activities:', error);
     } finally {
       setLoadingActivities(false);
     }
-  };
-
-  // ===========================================
-  // FORMAT CHANGES UNTUK MEAL ALLOWANCE
-  // ===========================================
-  const formatMealChanges = (item) => {
-    const changes = [];
-    if (item.kasbon > 0) changes.push(`💰 Kasbon: $${item.kasbon}`);
-    if (item.cuti_count > 0) changes.push(`🏖️ Cuti: ${item.cuti_count} hari`);
-    if (item.etc !== 0) {
-      changes.push(`🔄 ETC: ${item.etc > 0 ? '+' : ''}${item.etc}`);
-    }
-    if (item.etc_note && item.etc_note.trim() !== '') {
-      changes.push(`📝 Note: "${item.etc_note}"`);
-    }
-    return changes;
   };
 
   // ===========================================
@@ -320,19 +262,19 @@ export default function DashboardContent() {
         <QuickLinks />
       </div>
 
-      {/* RECENT ACTIVITY - VERSION SEDERHANA YANG PASTI JALAN */}
+      {/* RECENT ACTIVITY - HANYA OFFICERS */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Recent Activity</h2>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Recent Activity - Officers</h2>
         
         <div className="space-y-2">
           {activities.slice(0, 10).map((act, idx) => (
             <div key={idx} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30">
               <div className="flex items-start gap-2">
-                <span className="text-lg">{act.icon || '📝'}</span>
+                <span className="text-lg">{act.icon || '👤'}</span>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs bg-[#0B1A33] px-2 py-0.5 rounded-full text-[#FFD700]">
-                      {act.module}
+                      Officers
                     </span>
                     <span className="font-bold text-[#FFD700]">{act.officer}</span>
                   </div>
