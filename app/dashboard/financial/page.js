@@ -172,7 +172,7 @@ export default function FinancialHomePage() {
                     <div className="flex items-center justify-between mb-2">
   <span className="font-bold text-[#FFD700] text-lg">{act.officer_name}</span>
   <span className="text-xs bg-[#0B1A33] px-2 py-1 rounded-full text-[#A7D8FF] border border-[#FFD700]/20">
-    {act.bulan}  {/* <-- INI YANG DITAMBAH */}
+    Bulan yang diedit: {act.bulan}
   </span>
 </div>
                     
