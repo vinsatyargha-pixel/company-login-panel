@@ -59,7 +59,6 @@ export default function DashboardContent() {
     try {
       setLoadingActivities(true);
       
-      // AMBIL DARI AUDIT LOGS (Officers) aja
       const { data: auditData, error: auditError } = await supabase
         .from('audit_logs')
         .select(`
@@ -71,7 +70,6 @@ export default function DashboardContent() {
 
       if (auditError) console.error('Audit Error:', auditError);
 
-      // FORMAT AUDIT LOGS ACTIVITIES
       const auditActivities = (auditData || []).map(item => {
         let changes = [];
         let icon = '👤';
@@ -186,8 +184,18 @@ export default function DashboardContent() {
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
       <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#FFD700]">GROUP-X Dashboard</h1>
-          <p className="text-[#A7D8FF] mt-2">Welcome back! Here's your overview for today.</p>
+          {/* NEON GLOWING TITLE */}
+          <h1 className="relative text-5xl font-bold">
+            <span className="absolute inset-0 text-[#FFD700] blur-2xl opacity-70 animate-pulse">
+              GROUP-X Dashboard
+            </span>
+            <span className="relative text-[#FFD700] drop-shadow-[0_0_15px_#FFD700]">
+              GROUP-X Dashboard
+            </span>
+          </h1>
+          <p className="text-[#A7D8FF] mt-2 drop-shadow-[0_0_8px_#A7D8FF]">
+            Welcome back! Here's your overview for today.
+          </p>
         </div>
         
         <div className="flex items-center gap-4">
@@ -258,54 +266,71 @@ export default function DashboardContent() {
 
       {/* Quick Access section */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Quick Access</h2>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Quick Access</h2>
         <QuickLinks />
       </div>
 
       {/* RECENT ACTIVITY - HANYA OFFICERS */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Recent Activity - Officers</h2>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Recent Activity - Officers</h2>
         
         <div className="space-y-2">
-          {activities.slice(0, 10).map((act, idx) => (
-            <div key={idx} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30">
-              <div className="flex items-start gap-2">
-                <span className="text-lg">{act.icon || '👤'}</span>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs bg-[#0B1A33] px-2 py-0.5 rounded-full text-[#FFD700]">
-                      Officers
-                    </span>
-                    <span className="font-bold text-[#FFD700]">{act.officer}</span>
-                  </div>
-                  
-                  <div className="text-white text-sm mt-1">
-                    {act.changes?.map((change, i) => (
-                      <div key={i} className="flex items-start gap-1">
-                        <span className="text-[#A7D8FF]">•</span>
-                        <span>{change}</span>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-2">
-                    <span>{act.adminName}</span>
-                    <span>•</span>
-                    <span>{formatTimeAgo(act.timestamp)}</span>
-                    <span>•</span>
-                    <span className="px-2 py-0.5 bg-[#0B1A33] rounded-full">{act.bulan}</span>
+          {loadingActivities ? (
+            [...Array(3)].map((_, i) => (
+              <div key={i} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 animate-pulse">
+                <div className="h-4 bg-[#0B1A33] rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-[#0B1A33] rounded w-1/2"></div>
+              </div>
+            ))
+          ) : activities.length > 0 ? (
+            activities.slice(0, 10).map((act, idx) => (
+              <div key={idx} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 hover:bg-[#1A2F4A]/80 transition-all">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">{act.icon || '👤'}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs bg-[#0B1A33] px-2 py-0.5 rounded-full text-[#FFD700] border border-[#FFD700]/30">
+                        Officers
+                      </span>
+                      <span className="font-bold text-[#FFD700]">{act.officer}</span>
+                    </div>
+                    
+                    <div className="text-white text-sm mt-1">
+                      {act.changes?.map((change, i) => (
+                        <div key={i} className="flex items-start gap-1">
+                          <span className="text-[#A7D8FF]">•</span>
+                          <span>{change}</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-2">
+                      <span>{act.adminName}</span>
+                      <span>•</span>
+                      <span>{formatTimeAgo(act.timestamp)}</span>
+                      <span>•</span>
+                      <span className="px-2 py-0.5 bg-[#0B1A33] rounded-full border border-[#FFD700]/20">{act.bulan}</span>
+                    </div>
                   </div>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-[#A7D8FF]">
+              <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p>Belum ada aktivitas terbaru</p>
+              <p className="text-sm mt-1">Edit data officer untuk memulai</p>
             </div>
-          ))}
+          )}
         </div>
 
         {activities.length > 0 && (
           <div className="mt-4 pt-3 border-t border-[#FFD700]/20 text-right">
             <button 
               onClick={() => window.location.href = '/dashboard/activity-log'}
-              className="text-sm text-[#FFD700] hover:text-[#FFD700]/80 transition-colors"
+              className="text-sm text-[#FFD700] hover:text-[#FFD700]/80 transition-colors drop-shadow-[0_0_5px_#FFD700]"
             >
               View all activity →
             </button>
