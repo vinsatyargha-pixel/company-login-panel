@@ -138,9 +138,15 @@ export default function DashboardContent() {
       });
 
       // 6. GABUNGIN SEMUA
-      const allActivities = [...mealActivities, ...auditActivities]
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 10);
+      // 6. GABUNGIN & SORTIR (PALING ADIL - BERDASARKAN TIMESTAMP)
+const allActivities = [...mealActivities, ...auditActivities]
+  .sort((a, b) => {
+    // Bandingkan timestamp, yang lebih baru di atas
+    const timeA = new Date(a.timestamp).getTime();
+    const timeB = new Date(b.timestamp).getTime();
+    return timeB - timeA; // Descending (terbaru ke lama)
+  })
+  .slice(0, 10); // Ambil 10 terbaru
 
       setActivities(allActivities);
       
