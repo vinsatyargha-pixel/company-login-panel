@@ -1,6 +1,6 @@
 'use client';
 
-export default function SpinningX({ size = 14, color = 'text-[#FFD700]', className = '' }) {
+export default function SpinningX({ size = 13, color = 'text-[#FFD700]', className = '' }) {
   return (
     <div className={`inline-block ${className}`}>
       <style jsx>{`
