@@ -382,53 +382,53 @@ export default function DashboardContent() {
             ))
           ) : activities.length > 0 ? (
             activities.map((activity, index) => (
-  <div 
-    key={activity.id} 
-    className="border-l-4 border-[#FFD700] pl-4 py-2 hover:bg-[#1A2F4A]/30 transition-colors rounded-r-lg"
-  >
-    <div className="flex items-start gap-2">
-      <span className="text-lg">{activity.icon || '📝'}</span>
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full text-[#FFD700]">
-            {activity.module}
-          </span>
-          <span className="font-medium text-white">
-            <span className="text-[#FFD700]">{activity.officer}</span>
-          </span>
-        </div>
-        
-        {/* Changes - Multiple lines */}
-        <div className="text-sm text-white mb-1 space-y-0.5">
-          {activity.changes && activity.changes.length > 0 ? (
-            activity.changes.map((change, i) => (
-              <div key={i} className="flex items-start gap-1">
-                <span className="text-[#A7D8FF] text-xs">•</span>
-                <span>{change}</span>
-              </div>
-            ))
-          ) : (
-            <div className="flex items-start gap-1">
-              <span className="text-[#A7D8FF] text-xs">•</span>
-              <span>Updated data</span>
-            </div>
-          )}
-        </div>
-        
-        {/* Metadata */}
-        <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-1">
-          <span className="flex items-center gap-1">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            {activity.adminName}
-          </span>
-          <span>•</span>
-          <span>{formatTimeAgo(activity.timestamp)}</span>
-          <span>•</span>
-          <span className="px-2 py-0.5 bg-[#1A2F4A] rounded-full text-xs">
-            {activity.bulan}
-          </span>
+              <div 
+                key={activity.id} 
+                className="border-l-4 border-[#FFD700] pl-4 py-2 hover:bg-[#1A2F4A]/30 transition-colors rounded-r-lg"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">{activity.icon || '📝'}</span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full text-[#FFD700]">
+                        {activity.module}
+                      </span>
+                      <span className="font-medium text-white">
+                        <span className="text-[#FFD700]">{activity.officer}</span>
+                      </span>
+                    </div>
+                    
+                    {/* Changes - Multiple lines */}
+                    <div className="text-sm text-white mb-1 space-y-0.5">
+                      {activity.changes && activity.changes.length > 0 ? (
+                        activity.changes.map((change, i) => (
+                          <div key={i} className="flex items-start gap-1">
+                            <span className="text-[#A7D8FF] text-xs">•</span>
+                            <span>{change}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex items-start gap-1">
+                          <span className="text-[#A7D8FF] text-xs">•</span>
+                          <span>Updated data</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Metadata */}
+                    <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-1">
+                      <span className="flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        {activity.adminName}
+                      </span>
+                      <span>•</span>
+                      <span>{formatTimeAgo(activity.timestamp)}</span>
+                      <span>•</span>
+                      <span className="px-2 py-0.5 bg-[#1A2F4A] rounded-full text-xs">
+                        {activity.bulan}
+                      </span>
                     </div>
                   </div>
                 </div>
