@@ -56,110 +56,104 @@ export default function DashboardContent() {
   // FUNGSI RECENT ACTIVITY
   // ===========================================
   const fetchRecentActivities = async () => {
-    try {
-      setLoadingActivities(true);
+  try {
+    setLoadingActivities(true);
+    console.log('🔍 START FETCHING...');
+    
+    // 1. AMBIL DARI MEAL ALLOWANCE SNAPSHOT
+    const { data: mealData, error: mealError } = await supabase
+      .from('meal_allowance_snapshot')
+      .select('officer_name, kasbon, etc, etc_note, cuti_count, last_edited_by, last_edited_at, bulan')
+      .not('last_edited_at', 'is', null)
+      .order('last_edited_at', { ascending: false })
+      .limit(10);
+
+    if (mealError) console.error('❌ Meal Error:', mealError);
+    console.log('🍽️ Meal Data:', mealData);
+
+    // 2. AMBIL DARI AUDIT LOGS (Officers)
+    const { data: auditData, error: auditError } = await supabase
+      .from('audit_logs')
+      .select(`
+        *,
+        officers!changed_by (full_name, email)
+      `)
+      .order('changed_at', { ascending: false })
+      .limit(10);
+
+    if (auditError) console.error('❌ Audit Error:', auditError);
+    console.log('👤 Audit Data:', auditData);
+
+    // 3. AMBIL DATA ADMIN UNTUK MEAL ALLOWANCE
+    const adminIds = [...new Set(mealData?.map(item => item.last_edited_by).filter(Boolean) || [])];
+    let adminMap = {};
+    
+    if (adminIds.length > 0) {
+      const { data: admins } = await supabase
+        .from('officers')
+        .select('id, full_name, email')
+        .in('id', adminIds);
       
-      // 1. AMBIL DARI MEAL ALLOWANCE SNAPSHOT
-      const { data: mealData, error: mealError } = await supabase
-        .from('meal_allowance_snapshot')
-        .select(`
-          officer_name,
-          kasbon,
-          etc,
-          etc_note,
-          cuti_count,
-          last_edited_by,
-          last_edited_at,
-          bulan
-        `)
-        .not('last_edited_at', 'is', null)
-        .order('last_edited_at', { ascending: false })
-        .limit(10);
+      adminMap = (admins || []).reduce((acc, admin) => {
+        acc[admin.id] = admin.full_name || admin.email;
+        return acc;
+      }, {});
+    }
 
-      if (mealError) throw mealError;
+    // 4. FORMAT MEAL ALLOWANCE ACTIVITIES
+    const mealActivities = (mealData || []).map(item => ({
+      id: `meal-${item.last_edited_at}`,
+      module: 'Meal Allowance',
+      officer: item.officer_name,
+      bulan: item.bulan,
+      timestamp: item.last_edited_at,
+      adminName: adminMap[item.last_edited_by] || 'Admin',
+      changes: formatMealChanges(item),
+      icon: getMealIcon(item)
+    }));
 
-      // 2. AMBIL DARI AUDIT LOGS (Officers)
-      const { data: auditData, error: auditError } = await supabase
-        .from('audit_logs')
-        .select(`
-          *,
-          officers!changed_by (full_name, email)
-        `)
-        .order('changed_at', { ascending: false })
-        .limit(10);
-
-      if (auditError) throw auditError;
-
-      // 3. AMBIL DATA ADMIN UNTUK MEAL ALLOWANCE
-      const adminIds = [...new Set(mealData.map(item => item.last_edited_by).filter(Boolean))];
-      let adminMap = {};
+    // 5. FORMAT AUDIT LOGS ACTIVITIES
+    const auditActivities = (auditData || []).map(item => {
+      let changes = [];
+      let icon = '👤';
       
-      if (adminIds.length > 0) {
-        const { data: admins } = await supabase
-          .from('officers')
-          .select('id, full_name, email')
-          .in('id', adminIds);
-        
-        adminMap = (admins || []).reduce((acc, admin) => {
-          acc[admin.id] = admin.full_name || admin.email;
-          return acc;
-        }, {});
+      if (item.action === 'UPDATE') {
+        changes = formatOfficerChanges(item.old_data, item.new_data);
+        icon = '✏️';
+      } else if (item.action === 'DELETE') {
+        changes = [`❌ Deleted officer: ${item.old_data?.full_name || 'Unknown'}`];
+        icon = '❌';
+      } else if (item.action === 'INSERT') {
+        changes = [`➕ Added new officer: ${item.new_data?.full_name || 'Unknown'}`];
+        icon = '➕';
       }
 
-      // 4. FORMAT MEAL ALLOWANCE ACTIVITIES
-      const mealActivities = (mealData || []).map(item => ({
-        id: `meal-${item.last_edited_at}`,
-        module: 'Meal Allowance',
-        officer: item.officer_name,
-        bulan: item.bulan,
-        timestamp: item.last_edited_at,
-        adminName: adminMap[item.last_edited_by] || 'Admin',
-        changes: formatMealChanges(item),
-        icon: getMealIcon(item)
-      }));
+      return {
+        id: `audit-${item.changed_at}`,
+        module: 'Officers',
+        officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
+        bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+        timestamp: item.changed_at,
+        adminName: item.officers?.full_name || item.officers?.email || 'Admin',
+        changes: changes,
+        icon: icon
+      };
+    });
 
-      // 5. FORMAT AUDIT LOGS ACTIVITIES (Officers) - DENGAN BEFORE-AFTER
-      const auditActivities = (auditData || []).map(item => {
-        let changes = [];
-        let icon = '👤';
-        
-        if (item.action === 'UPDATE') {
-          changes = formatOfficerChanges(item.old_data, item.new_data);
-          icon = '✏️';
-        } else if (item.action === 'DELETE') {
-          changes = [`❌ Deleted officer: ${item.old_data?.full_name || 'Unknown'}`];
-          icon = '❌';
-        } else if (item.action === 'INSERT') {
-          changes = [`➕ Added new officer: ${item.new_data?.full_name || 'Unknown'}`];
-          icon = '➕';
-        }
+    // 6. GABUNGIN
+    const allActivities = [...mealActivities, ...auditActivities]
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 10);
 
-        return {
-          id: `audit-${item.changed_at}`,
-          module: 'Officers',
-          officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
-          bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
-          timestamp: item.changed_at,
-          adminName: item.officers?.full_name || item.officers?.email || 'Admin',
-          changes: changes,
-          icon: icon
-        };
-      });
-
-      // 6. GABUNGIN & SORTIR (ambil 10 terbaru)
-      const allActivities = [...mealActivities, ...auditActivities]
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 10);
-
-      console.log('📸 All activities:', allActivities);
-      setActivities(allActivities);
-      
-    } catch (error) {
-      console.error('Error fetching activities:', error);
-    } finally {
-      setLoadingActivities(false);
-    }
-  };
+    console.log('📦 FINAL ACTIVITIES:', allActivities);
+    setActivities(allActivities);
+    
+  } catch (error) {
+    console.error('❌ Fatal Error:', error);
+  } finally {
+    setLoadingActivities(false);
+  }
+};
 
   // ===========================================
   // FORMAT CHANGES UNTUK MEAL ALLOWANCE
