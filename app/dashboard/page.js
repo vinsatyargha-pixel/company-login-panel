@@ -370,37 +370,30 @@ setActivities(allActivities); // PAKAI SEMUA DULU
           )}
         </div>
         
-        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
-          {loadingActivities ? (
-            [...Array(3)].map((_, i) => (
-              <div key={i} className="border-l-4 border-[#FFD700]/30 pl-4 py-2 animate-pulse">
-                <div className="h-4 bg-[#1A2F4A] rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-[#1A2F4A] rounded w-1/2"></div>
-              </div>
-            ))
-          ) : activities.length > 0 ? (
-            activities.map((activity, index) => (
+        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+  {activities.map((activity, idx) => (
     <div 
-      key={`${activity.module}-${activity.officer}-${activity.timestamp}-${index}`}
-      className="border-l-4 border-[#FFD700] pl-4 py-2 hover:bg-[#1A2F4A]/30 transition-colors rounded-r-lg"
+      key={`act-${idx}`} 
+      className="border-l-4 border-[#FFD700] pl-4 py-3 hover:bg-[#1A2F4A]/30 transition-colors rounded-r-lg"
     >
-      <div className="flex items-start gap-2">
-        <span className="text-lg">{activity.icon || '📝'}</span>
+      <div className="flex items-start gap-3">
+        {/* Icon */}
+        <span className="text-xl">{activity.icon || '📝'}</span>
+        
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full text-[#FFD700]">
+          {/* Header */}
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full text-[#FFD700] border border-[#FFD700]/30">
               {activity.module}
             </span>
-            <span className="font-medium text-white">
-              <span className="text-[#FFD700]">{activity.officer}</span>
-            </span>
+            <span className="font-bold text-[#FFD700]">{activity.officer}</span>
           </div>
           
           {/* Changes */}
-          <div className="text-sm text-white mb-1 space-y-0.5">
+          <div className="text-white text-sm mb-1 space-y-0.5">
             {activity.changes && activity.changes.length > 0 ? (
               activity.changes.map((change, i) => (
-                <div key={`change-${i}`} className="flex items-start gap-1">
+                <div key={i} className="flex items-start gap-1">
                   <span className="text-[#A7D8FF] text-xs">•</span>
                   <span>{change}</span>
                 </div>
