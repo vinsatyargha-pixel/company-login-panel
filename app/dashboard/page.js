@@ -7,7 +7,7 @@ import LogoutButton from '@/components/LogoutButton';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import SpinningX from '@/components/SpiningX'; // Perhatikan nama file!
+import SpinningX from '@/components/SpinningX'; // Perhatikan nama file!
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
