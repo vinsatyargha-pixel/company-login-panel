@@ -56,61 +56,66 @@ export default function DashboardContent() {
   // FUNGSI RECENT ACTIVITY
   // ===========================================
   const fetchRecentActivities = async () => {
-    try {
-      setLoadingActivities(true);
+  try {
+    setLoadingActivities(true);
+    
+    // 1. Ambil data snapshot dulu (tanpa join)
+    const { data: snapshotData, error: snapshotError } = await supabase
+      .from('meal_allowance_snapshot')
+      .select(`
+        officer_name,
+        kasbon,
+        etc,
+        etc_note,
+        cuti_count,
+        last_edited_by,
+        last_edited_at,
+        bulan
+      `)
+      .not('last_edited_at', 'is', null)
+      .order('last_edited_at', { ascending: false })
+      .limit(10);
+
+    if (snapshotError) throw snapshotError;
+    
+    console.log('📸 Snapshot data:', snapshotData);
+
+    // 2. Kumpulkan semua admin IDs
+    const adminIds = [...new Set(snapshotData.map(item => item.last_edited_by).filter(Boolean))];
+    
+    // 3. Ambil data admin
+    let adminMap = {};
+    if (adminIds.length > 0) {
+      const { data: admins } = await supabase
+        .from('officers')
+        .select('id, full_name, email')
+        .in('id', adminIds);
       
-      // Ambil 10 aktivitas terakhir dari meal allowance
-      const { data, error } = await supabase
-        .from('meal_allowance_snapshot')
-        .select(`
-          officer_name,
-          kasbon,
-          etc,
-          etc_note,
-          cuti_count,
-          last_edited_by,
-          last_edited_at,
-          bulan,
-          officers!last_edited_by (
-            full_name,
-            email
-          )
-        `)
-        .not('last_edited_at', 'is', null)
-        .order('last_edited_at', { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-
-      // Format data
-      const formattedActivities = (data || []).map(item => {
-        // Dapatkan nama admin dari relasi
-        let adminName = 'Admin';
-        if (item.officers) {
-          adminName = item.officers.full_name || item.officers.email || 'Admin';
-        } else if (item.last_edited_by) {
-          // Fallback: coba cari manual
-          adminName = `Admin (${item.last_edited_by})`;
-        }
-
-        return {
-          id: item.last_edited_at,
-          officer: item.officer_name,
-          bulan: item.bulan,
-          timestamp: item.last_edited_at,
-          adminName: adminName,
-          changes: formatChanges(item),
-          raw: item
-        };
-      });
-
-      setActivities(formattedActivities);
-    } catch (error) {
-      console.error('Error fetching activities:', error);
-    } finally {
-      setLoadingActivities(false);
+      adminMap = (admins || []).reduce((acc, admin) => {
+        acc[admin.id] = admin.full_name || admin.email;
+        return acc;
+      }, {});
     }
-  };
+
+    // 4. Format activities
+    const formattedActivities = (snapshotData || []).map(item => ({
+      id: item.last_edited_at,
+      officer: item.officer_name,
+      bulan: item.bulan,
+      timestamp: item.last_edited_at,
+      adminName: adminMap[item.last_edited_by] || 'Admin',
+      changes: formatChanges(item)
+    }));
+
+    console.log('🎯 Formatted activities:', formattedActivities);
+    setActivities(formattedActivities);
+    
+  } catch (error) {
+    console.error('Error fetching activities:', error);
+  } finally {
+    setLoadingActivities(false);
+  }
+};
 
   const formatChanges = (item) => {
     const changes = [];
