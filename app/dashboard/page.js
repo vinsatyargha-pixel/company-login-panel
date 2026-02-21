@@ -114,7 +114,7 @@ export default function DashboardContent() {
   />
   
   <DashboardCard
-    title="Schedule Officers"
+    title="Schedule Officers GROUP-X"
     value="Calendar"
     icon="📅"
     color="gold"
@@ -123,7 +123,7 @@ export default function DashboardContent() {
   />
   
   <DashboardCard
-    title="Financial Summary"
+    title="Financial Summary GROUP-X"
     value="Management"
     icon="💰"
     color="gold"
