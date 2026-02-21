@@ -191,8 +191,8 @@ export default function ActiveOfficersPage() {
           BACK TO DASHBOARD
         </Link>
         
-        <h1 className="text-2xl font-bold text-black">ACTIVE OFFICERS</h1>
-        <p className="text-gray-600 text-sm mt-1">Daftar officer aktif di GROUP-X</p>
+        <h1 className="text-2xl font-bold text-black">LIST OFFICERS GROUP-X</h1>
+        <p className="text-gray-600 text-sm mt-1">Daftar officer di GROUP-X</p>
       </div>
 
       {/* STATS CARDS */}
