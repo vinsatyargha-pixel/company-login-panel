@@ -65,7 +65,7 @@ export default function DashboardContent() {
         .select('officer_name, kasbon, etc, etc_note, cuti_count, last_edited_by, last_edited_at, bulan')
         .not('last_edited_at', 'is', null)
         .order('last_edited_at', { ascending: false, nullsFirst: false })
-        .limit(20);
+        .limit(50); // NAIKIN JADI 50
 
       if (mealError) console.error('Meal Error:', mealError);
 
@@ -77,7 +77,7 @@ export default function DashboardContent() {
           officers!changed_by (full_name, email)
         `)
         .order('changed_at', { ascending: false, nullsFirst: false })
-        .limit(20);
+        .limit(50); // NAIKIN JADI 50
 
       if (auditError) console.error('Audit Error:', auditError);
 
@@ -100,13 +100,13 @@ export default function DashboardContent() {
       // 4. FORMAT MEAL ALLOWANCE ACTIVITIES
       const mealActivities = (mealData || []).map(item => ({
         id: `meal-${item.last_edited_at}-${item.officer_name}`,
-        module: 'Meal Allowance',
+        module: '🍽️ Meal Allowance',
         officer: item.officer_name,
         bulan: item.bulan,
         timestamp: item.last_edited_at,
         adminName: adminMap[item.last_edited_by] || 'Admin',
         changes: formatMealChanges(item),
-        icon: getMealIcon(item)
+        icon: '🍽️'
       }));
 
       // 5. FORMAT AUDIT LOGS ACTIVITIES
@@ -127,7 +127,7 @@ export default function DashboardContent() {
 
         return {
           id: `audit-${item.changed_at}-${item.old_data?.full_name || item.new_data?.full_name || 'unknown'}`,
-          module: 'Officers',
+          module: '👥 Officers',
           officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
           bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
           timestamp: item.changed_at,
@@ -137,15 +137,18 @@ export default function DashboardContent() {
         };
       });
 
-      // 6. GABUNGIN SEMUA - URUTKAN BERDASARKAN TIMESTAMP (PALING ADIL)
+      // 6. GABUNGIN SEMUA - URUTKAN BERDASARKAN TIMESTAMP
       const allActivities = [...mealActivities, ...auditActivities]
         .sort((a, b) => {
           const timeA = new Date(a.timestamp).getTime();
           const timeB = new Date(b.timestamp).getTime();
-          return timeB - timeA; // Descending (terbaru ke lama)
-        })
-        .slice(0, 15); // Ambil 15 terbaru biar lebih banyak
+          return timeB - timeA;
+        });
 
+      console.log('📊 TOTAL ACTIVITIES:', allActivities.length);
+      console.log('📊 MEAL:', allActivities.filter(a => a.module.includes('Meal')).length);
+      console.log('📊 OFFICERS:', allActivities.filter(a => a.module.includes('Officers')).length);
+      
       setActivities(allActivities);
       
     } catch (error) {
@@ -169,13 +172,6 @@ export default function DashboardContent() {
       changes.push(`📝 Note: "${item.etc_note}"`);
     }
     return changes;
-  };
-
-  const getMealIcon = (item) => {
-    if (item.kasbon > 0) return '💰';
-    if (item.cuti_count > 0) return '🏖️';
-    if (item.etc !== 0) return '🔄';
-    return '🍽️';
   };
 
   // ===========================================
