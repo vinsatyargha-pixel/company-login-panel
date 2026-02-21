@@ -64,8 +64,8 @@ export default function DashboardContent() {
         .from('meal_allowance_snapshot')
         .select('officer_name, kasbon, etc, etc_note, cuti_count, last_edited_by, last_edited_at, bulan')
         .not('last_edited_at', 'is', null)
-        .order('last_edited_at', { ascending: false })
-        .limit(10);
+        .order('last_edited_at', { ascending: false, nullsFirst: false })
+        .limit(20);
 
       if (mealError) console.error('Meal Error:', mealError);
 
@@ -76,8 +76,8 @@ export default function DashboardContent() {
           *,
           officers!changed_by (full_name, email)
         `)
-        .order('changed_at', { ascending: false })
-        .limit(10);
+        .order('changed_at', { ascending: false, nullsFirst: false })
+        .limit(20);
 
       if (auditError) console.error('Audit Error:', auditError);
 
@@ -99,7 +99,7 @@ export default function DashboardContent() {
 
       // 4. FORMAT MEAL ALLOWANCE ACTIVITIES
       const mealActivities = (mealData || []).map(item => ({
-        id: `meal-${item.last_edited_at}`,
+        id: `meal-${item.last_edited_at}-${item.officer_name}`,
         module: 'Meal Allowance',
         officer: item.officer_name,
         bulan: item.bulan,
@@ -126,7 +126,7 @@ export default function DashboardContent() {
         }
 
         return {
-          id: `audit-${item.changed_at}`,
+          id: `audit-${item.changed_at}-${item.old_data?.full_name || item.new_data?.full_name || 'unknown'}`,
           module: 'Officers',
           officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
           bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
@@ -137,16 +137,14 @@ export default function DashboardContent() {
         };
       });
 
-      // 6. GABUNGIN SEMUA
-      // 6. GABUNGIN & SORTIR (PALING ADIL - BERDASARKAN TIMESTAMP)
-const allActivities = [...mealActivities, ...auditActivities]
-  .sort((a, b) => {
-    // Bandingkan timestamp, yang lebih baru di atas
-    const timeA = new Date(a.timestamp).getTime();
-    const timeB = new Date(b.timestamp).getTime();
-    return timeB - timeA; // Descending (terbaru ke lama)
-  })
-  .slice(0, 10); // Ambil 10 terbaru
+      // 6. GABUNGIN SEMUA - URUTKAN BERDASARKAN TIMESTAMP (PALING ADIL)
+      const allActivities = [...mealActivities, ...auditActivities]
+        .sort((a, b) => {
+          const timeA = new Date(a.timestamp).getTime();
+          const timeB = new Date(b.timestamp).getTime();
+          return timeB - timeA; // Descending (terbaru ke lama)
+        })
+        .slice(0, 15); // Ambil 15 terbaru biar lebih banyak
 
       setActivities(allActivities);
       
