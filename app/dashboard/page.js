@@ -70,7 +70,11 @@ export default function DashboardContent() {
           cuti_count,
           last_edited_by,
           last_edited_at,
-          bulan
+          bulan,
+          officers!last_edited_by (
+            full_name,
+            email
+          )
         `)
         .not('last_edited_at', 'is', null)
         .order('last_edited_at', { ascending: false })
@@ -79,14 +83,26 @@ export default function DashboardContent() {
       if (error) throw error;
 
       // Format data
-      const formattedActivities = (data || []).map(item => ({
-        id: item.last_edited_at,
-        officer: item.officer_name,
-        bulan: item.bulan,
-        timestamp: item.last_edited_at,
-        changes: formatChanges(item),
-        raw: item
-      }));
+      const formattedActivities = (data || []).map(item => {
+        // Dapatkan nama admin dari relasi
+        let adminName = 'Admin';
+        if (item.officers) {
+          adminName = item.officers.full_name || item.officers.email || 'Admin';
+        } else if (item.last_edited_by) {
+          // Fallback: coba cari manual
+          adminName = `Admin (${item.last_edited_by})`;
+        }
+
+        return {
+          id: item.last_edited_at,
+          officer: item.officer_name,
+          bulan: item.bulan,
+          timestamp: item.last_edited_at,
+          adminName: adminName,
+          changes: formatChanges(item),
+          raw: item
+        };
+      });
 
       setActivities(formattedActivities);
     } catch (error) {
@@ -258,7 +274,13 @@ export default function DashboardContent() {
                       )}
                     </p>
                     <div className="flex items-center gap-2 text-sm text-[#A7D8FF] mt-1">
-                      <span>by Admin</span>
+                      {/* BY ADMIN dengan nama real dari database */}
+                      <span className="flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        {activity.adminName}
+                      </span>
                       <span>•</span>
                       <span>{formatTimeAgo(activity.timestamp)}</span>
                       <span>•</span>
