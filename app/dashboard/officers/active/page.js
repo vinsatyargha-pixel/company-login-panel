@@ -121,82 +121,36 @@ export default function ActiveOfficersPage() {
   };
 
   const handleOfficerUpdated = async (updatedOfficer) => {
-    try {
-      // 1. Update state
-      setOfficers(officers.map(o => o.id === updatedOfficer.id ? updatedOfficer : o));
-      
-      // 2. Simpan ke audit logs (snapshot)
-      if (adminId) {
-        await supabase
-          .from('audit_logs')
-          .insert({
-            table_name: 'officers',
-            record_id: updatedOfficer.id,
-            action: 'UPDATE',
-            new_data: updatedOfficer,
-            changed_by: adminId,
-            changed_at: new Date().toISOString()
-          });
-      }
-      
-      setShowEditModal(false);
-      showNotification('success', 'Data officer berhasil diupdate');
-      
-    } catch (error) {
-      console.error('Error in handleOfficerUpdated:', error);
-      showNotification('error', 'Gagal mengupdate data officer');
-    }
-  };
-
-  const handleDeleteClick = (officer, e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  try {
+    // 1. Cari data lama sebelum diupdate
+    const oldOfficer = officers.find(o => o.id === updatedOfficer.id);
     
-    if (!isAdmin) {
-      showNotification('error', 'You do not have permission to delete officers');
-      return;
-    }
-    setOfficerToDelete(officer);
-    setShowDeleteModal(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!officerToDelete) return;
+    // 2. Update state
+    setOfficers(officers.map(o => o.id === updatedOfficer.id ? updatedOfficer : o));
     
-    try {
-      // 1. Simpan ke audit logs dulu (sebelum dihapus)
-      if (adminId) {
-        await supabase
-          .from('audit_logs')
-          .insert({
-            table_name: 'officers',
-            record_id: officerToDelete.id,
-            action: 'DELETE',
-            old_data: officerToDelete,
-            changed_by: adminId,
-            changed_at: new Date().toISOString()
-          });
-      }
-      
-      // 2. Hapus dari tabel officers
-      const { error } = await supabase
-        .from('officers')
-        .delete()
-        .eq('id', officerToDelete.id);
-
-      if (error) throw error;
-
-      // 3. Update state
-      setOfficers(officers.filter(o => o.id !== officerToDelete.id));
-      setShowDeleteModal(false);
-      setOfficerToDelete(null);
-      showNotification('success', 'Officer berhasil dihapus');
-      
-    } catch (error) {
-      console.error('Error deleting officer:', error);
-      showNotification('error', 'Gagal menghapus officer');
+    // 3. Simpan ke audit logs dengan old_data
+    if (adminId) {
+      await supabase
+        .from('audit_logs')
+        .insert({
+          table_name: 'officers',
+          record_id: updatedOfficer.id,
+          action: 'UPDATE',
+          old_data: oldOfficer,     // <-- INI PENTING!
+          new_data: updatedOfficer,
+          changed_by: adminId,
+          changed_at: new Date().toISOString()
+        });
     }
-  };
+    
+    setShowEditModal(false);
+    showNotification('success', 'Data officer berhasil diupdate');
+    
+  } catch (error) {
+    console.error('Error in handleOfficerUpdated:', error);
+    showNotification('error', 'Gagal mengupdate data officer');
+  }
+};
 
   if (!mounted || authLoading || loading) {
     return (
