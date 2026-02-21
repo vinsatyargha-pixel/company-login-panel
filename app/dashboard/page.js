@@ -188,10 +188,10 @@ export default function DashboardContent() {
           {/* NEON GLOWING TITLE - X MUTER DI TENGAH */}
           <h1 className="relative text-5xl font-bold">
             <span className="absolute inset-0 text-[#FFD700] blur-2xl opacity-70 animate-pulse flex items-center">
-              GROUP-<SpinningX size={16} /> Dashboard
+              GROUP<SpinningX size={16} /> Dashboard
             </span>
             <span className="relative text-[#FFD700] drop-shadow-[0_0_15px_#FFD700] flex items-center">
-              GROUP-<SpinningX size={16} /> Dashboard
+              GROUP<SpinningX size={16} /> Dashboard
             </span>
           </h1>
           <p className="text-[#A7D8FF] mt-2 drop-shadow-[0_0_8px_#A7D8FF]">
