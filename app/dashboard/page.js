@@ -7,7 +7,7 @@ import LogoutButton from '@/components/LogoutButton';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import SpinningX from '@/components/SpinningX'; // <-- IMPORT KOMPONEN
+import SpinningX from '@/components/SpiningX'; // Perhatikan nama file!
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
@@ -184,17 +184,19 @@ export default function DashboardContent() {
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
       <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-3">
-          {/* NEON GLOWING TITLE + SPINNING X */}
+        <div>
+          {/* NEON GLOWING TITLE - X MUTER DI TENGAH */}
           <h1 className="relative text-5xl font-bold">
-            <span className="absolute inset-0 text-[#FFD700] blur-2xl opacity-70 animate-pulse">
-              GROUP-X Dashboard
+            <span className="absolute inset-0 text-[#FFD700] blur-2xl opacity-70 animate-pulse flex items-center">
+              GROUP-<SpinningX size={8} /> Dashboard
             </span>
-            <span className="relative text-[#FFD700] drop-shadow-[0_0_15px_#FFD700] flex items-center gap-3">
-              GROUP-X Dashboard
-              <SpinningX size={8} /> {/* <-- X MUTER DI SINI */}
+            <span className="relative text-[#FFD700] drop-shadow-[0_0_15px_#FFD700] flex items-center">
+              GROUP-<SpinningX size={8} /> Dashboard
             </span>
           </h1>
+          <p className="text-[#A7D8FF] mt-2 drop-shadow-[0_0_8px_#A7D8FF]">
+            Welcome back! Here's your overview for today.
+          </p>
         </div>
         
         <div className="flex items-center gap-4">
@@ -223,10 +225,6 @@ export default function DashboardContent() {
           <LogoutButton />
         </div>
       </header>
-
-      <p className="text-[#A7D8FF] mt-2 drop-shadow-[0_0_8px_#A7D8FF] mb-6">
-        Welcome back! Here's your overview for today.
-      </p>
 
       {/* ROYAL GOLD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
