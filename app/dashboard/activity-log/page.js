@@ -71,18 +71,24 @@ export default function ActivityLogPage() {
         bulan: item.bulan,
         timestamp: item.last_edited_at,
         adminName: adminMap[item.last_edited_by] || 'Admin',
-        changes: formatMealChanges(item)
+        changes: formatMealChanges(item),
+        icon: getMealIcon(item)
       }));
 
-      // 5. FORMAT AUDIT LOGS ACTIVITIES (Officers)
+      // 5. FORMAT AUDIT LOGS ACTIVITIES (Officers) - DENGAN BEFORE-AFTER
       const auditActivities = (auditData || []).map(item => {
         let changes = [];
+        let icon = '👤';
+        
         if (item.action === 'UPDATE') {
-          changes = ['updated data'];
+          changes = formatOfficerChanges(item.old_data, item.new_data);
+          icon = '✏️';
         } else if (item.action === 'DELETE') {
-          changes = ['deleted officer'];
+          changes = [`❌ Deleted officer: ${item.old_data?.full_name || 'Unknown'}`];
+          icon = '❌';
         } else if (item.action === 'INSERT') {
-          changes = ['added new officer'];
+          changes = [`➕ Added new officer: ${item.new_data?.full_name || 'Unknown'}`];
+          icon = '➕';
         }
 
         return {
@@ -93,7 +99,7 @@ export default function ActivityLogPage() {
           timestamp: item.changed_at,
           adminName: item.officers?.full_name || item.officers?.email || 'Admin',
           changes: changes,
-          action: item.action
+          icon: icon
         };
       });
 
@@ -109,19 +115,105 @@ export default function ActivityLogPage() {
     }
   };
 
+  // ===========================================
+  // FORMAT CHANGES UNTUK MEAL ALLOWANCE
+  // ===========================================
   const formatMealChanges = (item) => {
     const changes = [];
-    if (item.kasbon > 0) changes.push(`kasbon $${item.kasbon}`);
-    if (item.cuti_count > 0) changes.push(`cuti ${item.cuti_count} hari`);
+    if (item.kasbon > 0) changes.push(`💰 Kasbon: $${item.kasbon}`);
+    if (item.cuti_count > 0) changes.push(`🏖️ Cuti: ${item.cuti_count} hari`);
     if (item.etc !== 0) {
-      changes.push(`etc ${item.etc > 0 ? '+' : ''}${item.etc}`);
+      changes.push(`🔄 ETC: ${item.etc > 0 ? '+' : ''}${item.etc}`);
     }
     if (item.etc_note && item.etc_note.trim() !== '') {
-      changes.push(`"${item.etc_note}"`);
+      changes.push(`📝 Note: "${item.etc_note}"`);
     }
     return changes;
   };
 
+  const getMealIcon = (item) => {
+    if (item.kasbon > 0) return '💰';
+    if (item.cuti_count > 0) return '🏖️';
+    if (item.etc !== 0) return '🔄';
+    return '🍽️';
+  };
+
+  // ===========================================
+  // FORMAT CHANGES UNTUK OFFICERS (BEFORE-AFTER DETAIL)
+  // ===========================================
+  const formatOfficerChanges = (oldData, newData) => {
+    if (!oldData || !newData) return ['📝 Updated data'];
+    
+    const changes = [];
+    
+    // 1. ROOM CHANGE
+    if (oldData.room !== newData.room) {
+      changes.push(`🏠 Room: ${oldData.room || 'empty'} → ${newData.room || 'empty'}`);
+    }
+    
+    // 2. STATUS CHANGE
+    if (oldData.status !== newData.status) {
+      changes.push(`📊 Status: ${oldData.status || 'empty'} → ${newData.status || 'empty'}`);
+    }
+    
+    // 3. DEPARTMENT CHANGE
+    if (oldData.department !== newData.department) {
+      changes.push(`🏢 Department: ${oldData.department || 'empty'} → ${newData.department || 'empty'}`);
+    }
+    
+    // 4. JOIN DATE CHANGE
+    if (oldData.join_date !== newData.join_date) {
+      const oldDate = oldData.join_date ? new Date(oldData.join_date).toLocaleDateString('id-ID') : 'empty';
+      const newDate = newData.join_date ? new Date(newData.join_date).toLocaleDateString('id-ID') : 'empty';
+      changes.push(`📅 Join date: ${oldDate} → ${newDate}`);
+    }
+    
+    // 5. NAME CHANGE
+    if (oldData.full_name !== newData.full_name) {
+      changes.push(`👤 Name: ${oldData.full_name || 'empty'} → ${newData.full_name || 'empty'}`);
+    }
+    
+    // 6. PANEL ID CHANGE
+    if (oldData.panel_id !== newData.panel_id) {
+      changes.push(`🆔 Panel ID: ${oldData.panel_id || 'empty'} → ${newData.panel_id || 'empty'}`);
+    }
+    
+    // 7. NATIONALITY CHANGE
+    if (oldData.nationality !== newData.nationality) {
+      changes.push(`🌏 Nationality: ${oldData.nationality || 'empty'} → ${newData.nationality || 'empty'}`);
+    }
+    
+    // 8. GENDER CHANGE
+    if (oldData.gender !== newData.gender) {
+      changes.push(`⚥ Gender: ${oldData.gender || 'empty'} → ${newData.gender || 'empty'}`);
+    }
+    
+    // 9. BANK ACCOUNT CHANGE
+    if (oldData.bank_account !== newData.bank_account) {
+      changes.push(`💰 Bank account: updated`);
+    }
+    
+    // 10. PHONE CHANGE
+    if (oldData.phone !== newData.phone) {
+      changes.push(`📱 Phone: ${oldData.phone || 'empty'} → ${newData.phone || 'empty'}`);
+    }
+    
+    // 11. TELEGRAM CHANGE
+    if (oldData.telegram_id !== newData.telegram_id) {
+      changes.push(`✈️ Telegram: ${oldData.telegram_id || 'empty'} → ${newData.telegram_id || 'empty'}`);
+    }
+    
+    // 12. EMAIL CHANGE
+    if (oldData.email !== newData.email) {
+      changes.push(`📧 Email: ${oldData.email || 'empty'} → ${newData.email || 'empty'}`);
+    }
+    
+    return changes.length > 0 ? changes : ['📝 Updated data'];
+  };
+
+  // ===========================================
+  // FORMAT TIME AGO
+  // ===========================================
   const formatTimeAgo = (timestamp) => {
     const past = new Date(timestamp);
     return past.toLocaleString('id-ID', {
@@ -133,19 +225,10 @@ export default function ActivityLogPage() {
     });
   };
 
-  const getActivityIcon = (activity) => {
-    if (activity.module === 'Meal Allowance') {
-      if (activity.changes.some(c => c.includes('kasbon'))) return '💰';
-      if (activity.changes.some(c => c.includes('cuti'))) return '🏖️';
-      if (activity.changes.some(c => c.includes('etc'))) return '🔄';
-      return '🍽️';
-    } else {
-      if (activity.action === 'INSERT') return '➕';
-      if (activity.action === 'DELETE') return '❌';
-      if (activity.action === 'UPDATE') return '✏️';
-      return '👤';
-    }
-  };
+  // ===========================================
+  // GET ACTIVITY ICON (SUDAH ADA DI DATA)
+  // ===========================================
+  // Tidak perlu fungsi getActivityIcon lagi karena icon sudah di data
 
   if (loading) {
     return (
@@ -202,7 +285,7 @@ export default function ActivityLogPage() {
               >
                 <div className="flex items-start gap-3">
                   {/* Icon berdasarkan tipe perubahan */}
-                  <span className="text-xl">{getActivityIcon(activity)}</span>
+                  <span className="text-xl">{activity.icon}</span>
                   
                   <div className="flex-1">
                     {/* Module badge & officer name */}
@@ -213,17 +296,18 @@ export default function ActivityLogPage() {
                       <span className="font-bold text-[#FFD700]">{activity.officer}</span>
                     </div>
                     
-                    {/* Changes */}
-                    <p className="text-white text-sm mb-1">
-                      {activity.changes.length > 0 ? (
-                        activity.changes.join(' • ')
-                      ) : (
-                        'updated data'
-                      )}
-                    </p>
+                    {/* Changes - Multiple lines jika perlu */}
+                    <div className="text-white text-sm mb-1 space-y-1">
+                      {activity.changes.map((change, i) => (
+                        <div key={i} className="flex items-start gap-1">
+                          <span className="text-[#A7D8FF] min-w-[4px]">•</span>
+                          <span>{change}</span>
+                        </div>
+                      ))}
+                    </div>
                     
                     {/* Metadata: admin, waktu, bulan */}
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#A7D8FF]">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#A7D8FF] mt-2">
                       <span className="flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
