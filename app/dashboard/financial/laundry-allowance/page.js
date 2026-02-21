@@ -301,17 +301,17 @@ export default function LaundryAllowancePage() {
 
                       {/* Toggle Button (Admin Only) */}
                       {isAdmin && (
-                        <button
-                          onClick={() => togglePayment(officer.id, officer.full_name, isPaid)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            isPaid 
-                              ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30' 
-                              : 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30'
-                          }`}
-                        >
-                          {isPaid ? 'Mark Unpaid' : 'Mark Paid'}
-                        </button>
-                      )}
+  <button
+    onClick={() => togglePayment(officer.id, officer.full_name, isPaid)}
+    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+      isPaid 
+        ? 'bg-green-500 text-white shadow-[0_0_20px_#10b981] border-2 border-green-400 hover:bg-green-600' 
+        : 'bg-gray-600 text-gray-300 hover:bg-gray-700 border-2 border-transparent'
+    }`}
+  >
+    {isPaid ? 'PAID ✓' : 'Mark Paid'}
+  </button>
+)}
                     </div>
                   </div>
                 </div>

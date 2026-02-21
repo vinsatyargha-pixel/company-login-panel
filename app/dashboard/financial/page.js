@@ -6,22 +6,24 @@ import { supabase } from '@/lib/supabase';
 
 export default function FinancialHomePage() {
   const [mealActivities, setMealActivities] = useState([]);
+  const [laundryActivities, setLaundryActivities] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchMealActivities();
+    Promise.all([fetchMealActivities(), fetchLaundryActivities()]).finally(() => setLoading(false));
   }, []);
 
+  // ===========================================
+  // FETCH MEAL ALLOWANCE ACTIVITIES
+  // ===========================================
   const fetchMealActivities = async () => {
     try {
-      setLoading(true);
-      
       const { data, error } = await supabase
         .from('meal_allowance_snapshot')
         .select('officer_name, kasbon, etc, etc_note, cuti_count, last_edited_by, last_edited_at, bulan')
         .not('last_edited_at', 'is', null)
         .order('last_edited_at', { ascending: false })
-        .limit(20);
+        .limit(10);
 
       if (error) throw error;
 
@@ -41,7 +43,7 @@ export default function FinancialHomePage() {
         }, {});
       }
 
-      // Format data dengan detail changes
+      // Format data
       const formatted = (data || []).map(item => ({
         ...item,
         adminName: adminMap[item.last_edited_by] || 'Admin',
@@ -50,22 +52,50 @@ export default function FinancialHomePage() {
 
       setMealActivities(formatted);
     } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error fetching meal activities:', error);
     }
   };
 
+  // ===========================================
+  // FETCH LAUNDRY PAYMENT ACTIVITIES
+  // ===========================================
+  const fetchLaundryActivities = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('laundry_payments')
+        .select('*')
+        .not('updated_at', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      const formatted = (data || []).map(item => ({
+        id: `laundry-${item.updated_at}`,
+        officer_name: item.officer_name,
+        bulan: item.bulan,
+        amount: item.amount,
+        is_paid: item.is_paid,
+        updated_at: item.updated_at,
+        status: item.is_paid ? '✅ Paid' : '⏳ Unpaid',
+        action: item.is_paid ? 'marked as PAID' : 'marked as UNPAID'
+      }));
+
+      setLaundryActivities(formatted);
+    } catch (error) {
+      console.error('Error fetching laundry activities:', error);
+    }
+  };
+
+  // ===========================================
+  // FORMAT FUNCTIONS
+  // ===========================================
   const formatMealChanges = (item) => {
     const changes = [];
     if (item.kasbon > 0) changes.push(`💰 Kasbon: $${item.kasbon}`);
     if (item.cuti_count > 0) changes.push(`🏖️ Cuti: ${item.cuti_count} hari`);
-    if (item.etc !== 0) {
-      changes.push(`🔄 ETC: ${item.etc > 0 ? '+' : ''}${item.etc}`);
-    }
-    if (item.etc_note && item.etc_note.trim() !== '') {
-      changes.push(`📝 Note: "${item.etc_note}"`);
-    }
+    if (item.etc !== 0) changes.push(`🔄 ETC: ${item.etc > 0 ? '+' : ''}${item.etc}`);
+    if (item.etc_note && item.etc_note.trim() !== '') changes.push(`📝 Note: "${item.etc_note}"`);
     return changes;
   };
 
@@ -109,7 +139,7 @@ export default function FinancialHomePage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
-      {/* Header dengan Tombol Back */}
+      {/* Header */}
       <div className="mb-8 flex items-center gap-4">
         <Link 
           href="/dashboard" 
@@ -123,23 +153,18 @@ export default function FinancialHomePage() {
         <h1 className="text-3xl font-bold text-[#FFD700]">FINANCIAL SUMMARY</h1>
       </div>
 
-      {/* MENU VERTIKAL */}
+      {/* Menu */}
       <div className="space-y-4 mb-8">
         {menuItems.map((item, index) => (
           <Link key={index} href={item.href} className="block group">
             <div className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 hover:shadow-[0_0_30px_#FFD700] transition-all duration-500 flex items-center gap-6">
-              {/* Icon gede di kiri */}
               <div className={`w-24 h-24 rounded-full ${item.bgColor} flex items-center justify-center flex-shrink-0`}>
                 <span className={`text-5xl ${item.textColor}`}>{item.icon}</span>
               </div>
-              
-              {/* Title & description di kanan icon */}
               <div className="flex-1">
                 <h2 className="text-3xl font-bold text-[#FFD700] mb-2">{item.title}</h2>
                 <p className="text-[#A7D8FF] text-lg">{item.description}</p>
               </div>
-              
-              {/* Arrow di kanan */}
               <div className="ml-auto">
                 <svg className="w-8 h-8 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -150,84 +175,101 @@ export default function FinancialHomePage() {
         ))}
       </div>
 
-      {/* RECENT ACTIVITY MEAL ALLOWANCE - DENGAN DETAIL BEFORE-AFTER */}
-      <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">🍽️ Recent Meal Allowance Updates</h2>
-        
-        <div className="space-y-3">
-          {loading ? (
-            [...Array(3)].map((_, i) => (
-              <div key={i} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 animate-pulse">
-                <div className="h-4 bg-[#0B1A33] rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-[#0B1A33] rounded w-1/2"></div>
-              </div>
-            ))
-          ) : mealActivities.length > 0 ? (
-            mealActivities.slice(0, 5).map((act, idx) => (
-              <div key={idx} className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:bg-[#1A2F4A]/80 transition-colors">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">🍽️</span>
-                  <div className="flex-1">
-                    {/* Header: Nama & Bulan */}
-                    <div className="flex items-center justify-between mb-2">
-  <span className="font-bold text-[#FFD700] text-lg">{act.officer_name}</span>
-  <span className="text-xs bg-[#0B1A33] px-2 py-1 rounded-full text-[#A7D8FF] border border-[#FFD700]/20">
-    Bulan yang diedit: {act.bulan}
-  </span>
-</div>
-                    
-                    {/* Detail Perubahan - Yang Diubah */}
-                    {act.changes && act.changes.length > 0 ? (
-                      <div className="bg-[#0B1A33] p-2 rounded-lg mb-2">
-                        {act.changes.map((change, i) => (
-                          <div key={i} className="text-sm text-white flex items-start gap-2 py-0.5">
-                            <span className="text-[#FFD700]">•</span>
-                            <span>{change}</span>
-                          </div>
-                        ))}
+      {/* Recent Activities Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Meal Allowance Activities */}
+        <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
+          <h2 className="text-xl font-bold text-[#FFD700] mb-4">🍽️ Recent Meal Allowance</h2>
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+            {loading ? (
+              [...Array(3)].map((_, i) => (
+                <div key={i} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 animate-pulse">
+                  <div className="h-4 bg-[#0B1A33] rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-[#0B1A33] rounded w-1/2"></div>
+                </div>
+              ))
+            ) : mealActivities.length > 0 ? (
+              mealActivities.slice(0, 5).map((act, idx) => (
+                <div key={idx} className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-bold text-[#FFD700] text-lg">{act.officer_name}</span>
+                    <span className="text-xs bg-[#0B1A33] px-2 py-1 rounded-full text-[#A7D8FF] border border-[#FFD700]/20">
+                      {act.bulan}
+                    </span>
+                  </div>
+                  
+                  {act.changes.length > 0 ? (
+                    act.changes.map((change, i) => (
+                      <div key={i} className="text-sm text-white flex items-start gap-2 py-0.5">
+                        <span className="text-[#FFD700]">•</span>
+                        <span>{change}</span>
                       </div>
-                    ) : (
-                      <div className="bg-[#0B1A33] p-2 rounded-lg mb-2 text-sm text-[#A7D8FF] italic">
-                        Tidak ada perubahan data
-                      </div>
-                    )}
-                    
-                    {/* Footer: Admin & Waktu */}
-                    <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-2 border-t border-[#FFD700]/10 pt-2">
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        {act.adminName}
-                      </span>
-                      <span>•</span>
-                      <span>{formatTimeAgo(act.last_edited_at)}</span>
-                    </div>
+                    ))
+                  ) : (
+                    <div className="text-sm text-[#A7D8FF] italic">Tidak ada perubahan data</div>
+                  )}
+                  
+                  <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-2 pt-2 border-t border-[#FFD700]/10">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      {act.adminName}
+                    </span>
+                    <span>•</span>
+                    <span>{formatTimeAgo(act.last_edited_at)}</span>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-[#A7D8FF]">
+                <p>Belum ada aktivitas Meal Allowance</p>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-[#A7D8FF]">
-              <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p>Belum ada aktivitas Meal Allowance</p>
-              <p className="text-sm mt-1">Edit data Meal Allowance untuk memulai</p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {mealActivities.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-[#FFD700]/20 text-right">
-            <Link 
-              href="/dashboard/financial/meal-allowance"
-              className="text-sm text-[#FFD700] hover:text-[#FFD700]/80 transition-colors"
-            >
-              View all Meal Allowance →
-            </Link>
+        {/* Laundry Payment Activities */}
+        <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
+          <h2 className="text-xl font-bold text-[#FFD700] mb-4">🧺 Recent Laundry Payments</h2>
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+            {loading ? (
+              [...Array(3)].map((_, i) => (
+                <div key={i} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 animate-pulse">
+                  <div className="h-4 bg-[#0B1A33] rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-[#0B1A33] rounded w-1/2"></div>
+                </div>
+              ))
+            ) : laundryActivities.length > 0 ? (
+              laundryActivities.slice(0, 5).map((act, idx) => (
+                <div key={idx} className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-bold text-[#FFD700] text-lg">{act.officer_name}</span>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      act.is_paid 
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    }`}>
+                      {act.status}
+                    </span>
+                  </div>
+                  
+                  <div className="text-sm text-white">
+                    <span className="text-[#FFD700]">•</span> {act.action} for {act.bulan} (${act.amount})
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-2 pt-2 border-t border-[#FFD700]/10">
+                    <span>{formatTimeAgo(act.updated_at)}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-[#A7D8FF]">
+                <p>Belum ada aktivitas Laundry Payment</p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
