@@ -149,7 +149,7 @@ export default function AssetsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-white">
+    <div className="p-6 w-full min-h-screen bg-white">
       {/* HEADER WITH BACK BUTTON */}
       <div className="mb-8">
         <button

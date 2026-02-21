@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export default function SalaryPage() {
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white flex items-center justify-center">
+    <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white flex items-center justify-center">
       {/* Card Coming Soon */}
       <div className="text-center">
         {/* Back button di dalam card */}

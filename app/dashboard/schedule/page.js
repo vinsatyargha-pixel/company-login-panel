@@ -276,7 +276,7 @@ const fetchOfficers = async () => {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto min-h-screen bg-white">
+    <div className="p-4 md:p-6 w-full min-h-screen bg-white">
       <div className="mb-4">
         <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
           ← BACK TO DASHBOARD

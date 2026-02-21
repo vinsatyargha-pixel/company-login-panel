@@ -173,7 +173,7 @@ export default function DashboardContent() {
   };
 
   if (loading) return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] flex items-center justify-center">
+    <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700] mx-auto"></div>
         <p className="mt-4 text-[#FFD700]">Loading dashboard data...</p>
@@ -182,7 +182,7 @@ export default function DashboardContent() {
   );
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
+    <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           {/* NEON GLOWING TITLE - X MUTER DI TENGAH */}

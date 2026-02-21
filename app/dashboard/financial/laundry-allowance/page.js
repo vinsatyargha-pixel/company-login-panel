@@ -160,14 +160,14 @@ export default function LaundryAllowancePage() {
   // ===========================================
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] flex items-center justify-center">
+      <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
+    <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       {/* Header */}
       <div className="mb-6 flex items-center gap-4 flex-wrap">
         <Link 

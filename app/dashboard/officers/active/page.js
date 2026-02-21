@@ -220,7 +220,7 @@ export default function ActiveOfficersPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto min-h-screen bg-white">
+    <div className="p-4 md:p-6 w-full min-h-screen bg-white">
       {/* NOTIFICATION */}
       {notification && (
         <div className={`mb-4 p-3 rounded-lg flex items-center justify-between border ${

@@ -430,7 +430,7 @@ export default function MealAllowancePage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
+    <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       <div className="mb-6 flex items-center gap-4 flex-wrap">
         <Link href="/dashboard/financial" className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

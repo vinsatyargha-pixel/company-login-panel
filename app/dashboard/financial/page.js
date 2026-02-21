@@ -138,7 +138,7 @@ export default function FinancialHomePage() {
   ];
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
+    <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       {/* Header */}
       <div className="mb-8 flex items-center gap-4">
         <Link 
