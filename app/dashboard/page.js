@@ -65,7 +65,7 @@ export default function DashboardContent() {
         .select('officer_name, kasbon, etc, etc_note, cuti_count, last_edited_by, last_edited_at, bulan')
         .not('last_edited_at', 'is', null)
         .order('last_edited_at', { ascending: false, nullsFirst: false })
-        .limit(50); // NAIKIN JADI 50
+        .limit(50);
 
       if (mealError) console.error('Meal Error:', mealError);
 
@@ -77,7 +77,7 @@ export default function DashboardContent() {
           officers!changed_by (full_name, email)
         `)
         .order('changed_at', { ascending: false, nullsFirst: false })
-        .limit(50); // NAIKIN JADI 50
+        .limit(50);
 
       if (auditError) console.error('Audit Error:', auditError);
 
@@ -100,7 +100,7 @@ export default function DashboardContent() {
       // 4. FORMAT MEAL ALLOWANCE ACTIVITIES
       const mealActivities = (mealData || []).map(item => ({
         id: `meal-${item.last_edited_at}-${item.officer_name}`,
-        module: '🍽️ Meal Allowance',
+        module: 'Meal Allowance',
         officer: item.officer_name,
         bulan: item.bulan,
         timestamp: item.last_edited_at,
@@ -127,7 +127,7 @@ export default function DashboardContent() {
 
         return {
           id: `audit-${item.changed_at}-${item.old_data?.full_name || item.new_data?.full_name || 'unknown'}`,
-          module: '👥 Officers',
+          module: 'Officers',
           officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
           bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
           timestamp: item.changed_at,
@@ -137,18 +137,10 @@ export default function DashboardContent() {
         };
       });
 
-      // 6. GABUNGIN SEMUA - URUTKAN BERDASARKAN TIMESTAMP
+      // 6. GABUNGIN SEMUA
       const allActivities = [...mealActivities, ...auditActivities]
-        .sort((a, b) => {
-          const timeA = new Date(a.timestamp).getTime();
-          const timeB = new Date(b.timestamp).getTime();
-          return timeB - timeA;
-        });
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-      console.log('📊 TOTAL ACTIVITIES:', allActivities.length);
-      console.log('📊 MEAL:', allActivities.filter(a => a.module.includes('Meal')).length);
-      console.log('📊 OFFICERS:', allActivities.filter(a => a.module.includes('Officers')).length);
-      
       setActivities(allActivities);
       
     } catch (error) {
@@ -328,84 +320,43 @@ export default function DashboardContent() {
         <QuickLinks />
       </div>
 
-      {/* RECENT ACTIVITY */}
+      {/* RECENT ACTIVITY - VERSION SEDERHANA YANG PASTI JALAN */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-[#FFD700]">Recent Activity</h2>
-          {activities.length > 0 && (
-            <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-1 rounded-full">
-              {activities.length} updates
-            </span>
-          )}
-        </div>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Recent Activity</h2>
         
-        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-          {loadingActivities ? (
-            [...Array(3)].map((_, i) => (
-              <div key={i} className="border-l-4 border-[#FFD700]/30 pl-4 py-2 animate-pulse">
-                <div className="h-4 bg-[#1A2F4A] rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-[#1A2F4A] rounded w-1/2"></div>
-              </div>
-            ))
-          ) : activities.length > 0 ? (
-            activities.map((activity, index) => (
-              <div 
-                key={`${activity.module}-${activity.timestamp}-${index}`}
-                className="border-l-4 border-[#FFD700] pl-4 py-3 hover:bg-[#1A2F4A]/30 transition-colors rounded-r-lg"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="text-xl">{activity.icon || '📝'}</span>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full text-[#FFD700] border border-[#FFD700]/30">
-                        {activity.module}
-                      </span>
-                      <span className="font-bold text-[#FFD700]">{activity.officer}</span>
-                    </div>
-                    
-                    <div className="text-white text-sm mb-1 space-y-0.5">
-                      {activity.changes && activity.changes.length > 0 ? (
-                        activity.changes.map((change, i) => (
-                          <div key={i} className="flex items-start gap-1">
-                            <span className="text-[#A7D8FF] text-xs">•</span>
-                            <span>{change}</span>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="flex items-start gap-1">
-                          <span className="text-[#A7D8FF] text-xs">•</span>
-                          <span>Updated data</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-1">
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        {activity.adminName}
-                      </span>
-                      <span>•</span>
-                      <span>{formatTimeAgo(activity.timestamp)}</span>
-                      <span>•</span>
-                      <span className="px-2 py-0.5 bg-[#1A2F4A] rounded-full text-xs">
-                        {activity.bulan}
-                      </span>
-                    </div>
+        <div className="space-y-2">
+          {activities.slice(0, 10).map((act, idx) => (
+            <div key={idx} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30">
+              <div className="flex items-start gap-2">
+                <span className="text-lg">{act.icon || '📝'}</span>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs bg-[#0B1A33] px-2 py-0.5 rounded-full text-[#FFD700]">
+                      {act.module}
+                    </span>
+                    <span className="font-bold text-[#FFD700]">{act.officer}</span>
+                  </div>
+                  
+                  <div className="text-white text-sm mt-1">
+                    {act.changes?.map((change, i) => (
+                      <div key={i} className="flex items-start gap-1">
+                        <span className="text-[#A7D8FF]">•</span>
+                        <span>{change}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-2">
+                    <span>{act.adminName}</span>
+                    <span>•</span>
+                    <span>{formatTimeAgo(act.timestamp)}</span>
+                    <span>•</span>
+                    <span className="px-2 py-0.5 bg-[#0B1A33] rounded-full">{act.bulan}</span>
                   </div>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-[#A7D8FF]">
-              <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p>Belum ada aktivitas terbaru</p>
-              <p className="text-sm mt-1">Edit data untuk memulai</p>
             </div>
-          )}
+          ))}
         </div>
 
         {activities.length > 0 && (
