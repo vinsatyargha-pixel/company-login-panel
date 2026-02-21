@@ -447,31 +447,30 @@ export default function MealAllowancePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-  {/* CARD 1: Total Officers + LIST SEMUA OFFICER */}
-  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-    <div className="text-[#A7D8FF] text-sm">Total Officers</div>
-    <div className="text-2xl font-bold text-[#FFD700]">{officersWithStats.length}</div>
-    
-    {/* LIST SEMUA OFFICER (URUT ABJAD) */}
-    <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
-      {officersWithStats
-        .sort((a, b) => a.full_name.localeCompare(b.full_name)) // Urut abjad A-Z
-        .map(officer => (
-          <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded transition-colors">
-            <span className="text-[#A7D8FF] truncate max-w-[180px]" title={officer.full_name}>
-              {officer.full_name}
-            </span>
-            <span className="text-[#FFD700] font-medium ml-2">${officer.finalNet}</span>
-          </div>
-        ))
-      }
-    </div>
-    
-    {/* FOOTER: Total jumlah orang */}
-    <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
-      {officersWithStats.length} orang
-    </div>
+  {/* CARD 1: Total Officers + LIST NAMA SAJA (TANPA NOMINAL) */}
+<div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+  <div className="text-[#A7D8FF] text-sm">Total Officers</div>
+  <div className="text-2xl font-bold text-[#FFD700]">{officersWithStats.length}</div>
+  
+  {/* LIST NAMA SAJA - URUT ABJAD */}
+  <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
+    {officersWithStats
+      .sort((a, b) => a.full_name.localeCompare(b.full_name)) // Urut abjad A-Z
+      .map(officer => (
+        <div key={officer.id} className="hover:bg-[#FFD700]/5 px-1 py-0.5 rounded transition-colors">
+          <span className="text-[#A7D8FF]" title={officer.full_name}>
+            {officer.full_name}
+          </span>
+        </div>
+      ))
+    }
   </div>
+  
+  {/* FOOTER: Total jumlah orang */}
+  <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
+    {officersWithStats.length} orang
+  </div>
+</div>
 
   {/* CARD 2: Total NET + LIST PER ORANG */}
   <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
