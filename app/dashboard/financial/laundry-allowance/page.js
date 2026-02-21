@@ -12,19 +12,20 @@ export default function LaundryAllowancePage() {
   const [selectedMonth, setSelectedMonth] = useState('February');
   const [selectedYear, setSelectedYear] = useState('2026');
   const [searchTerm, setSearchTerm] = useState('');
+  const [paymentStatus, setPaymentStatus] = useState({});
 
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                   'July', 'August', 'September', 'October', 'November', 'December'];
   const years = ['2025', '2026', '2027'];
-  const LAUNDRY_RATE = 15; // Fixed $15 per month
+  const LAUNDRY_RATE = 15;
 
   // ===========================================
-  // FUNGSI GET PERIOD (21 PREV MONTH - 20 CURRENT MONTH)
+  // GET PERIOD
   // ===========================================
   const getPeriod = (month, year) => {
     const monthIndex = months.indexOf(month);
     
-    if (monthIndex === 0) { // January
+    if (monthIndex === 0) {
       return {
         start: `${parseInt(year) - 1}-12-21`,
         end: `${year}-01-20`,
@@ -40,29 +41,108 @@ export default function LaundryAllowancePage() {
   };
 
   // ===========================================
-  // FETCH OFFICERS
+  // FETCH OFFICERS & PAYMENT STATUS
   // ===========================================
   useEffect(() => {
-    fetchOfficers();
-  }, []);
+    fetchData();
+  }, [selectedMonth, selectedYear]);
 
-  const fetchOfficers = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
+      const period = getPeriod(selectedMonth, selectedYear);
       
-      const { data, error } = await supabase
+      // 1. Ambil officers REGULAR & TRAINING
+      const { data: officersData, error: officersError } = await supabase
         .from('officers')
         .select('*')
-        .in('status', ['REGULAR', 'TRAINING']) // Hanya REGULAR & TRAINING
+        .in('status', ['REGULAR', 'TRAINING'])
         .order('full_name', { ascending: true });
+
+      if (officersError) throw officersError;
+
+      // 2. Ambil status pembayaran laundry
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('laundry_payments')
+        .select('*')
+        .eq('bulan', `${selectedMonth} ${selectedYear}`);
+
+      if (paymentError) throw paymentError;
+
+      // 3. Map status ke officer
+      const statusMap = {};
+      paymentData?.forEach(p => {
+        statusMap[p.officer_id] = p.is_paid;
+      });
+
+      setOfficers(officersData || []);
+      setPaymentStatus(statusMap);
+      
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ===========================================
+  // TOGGLE PAYMENT STATUS (HANYA ADMIN)
+  // ===========================================
+  const togglePayment = async (officerId, officerName, currentStatus) => {
+    if (!isAdmin) {
+      alert('Hanya admin yang bisa mengubah status pembayaran');
+      return;
+    }
+
+    try {
+      const newStatus = !currentStatus;
+      const bulan = `${selectedMonth} ${selectedYear}`;
+      const period = getPeriod(selectedMonth, selectedYear);
+
+      // Simpan ke tabel laundry_payments
+      const { error } = await supabase
+        .from('laundry_payments')
+        .upsert({
+          officer_id: officerId,
+          officer_name: officerName,
+          bulan: bulan,
+          periode_start: period.start,
+          periode_end: period.end,
+          amount: LAUNDRY_RATE,
+          is_paid: newStatus,
+          paid_at: newStatus ? new Date().toISOString() : null,
+          paid_by: newStatus ? user?.email : null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'officer_id, bulan' });
 
       if (error) throw error;
 
-      setOfficers(data || []);
+      // Simpan ke audit_logs untuk recent activity
+      await supabase
+        .from('audit_logs')
+        .insert({
+          table_name: 'laundry_payments',
+          record_id: officerId,
+          action: 'UPDATE',
+          new_data: { 
+            officer_name: officerName,
+            bulan: bulan,
+            is_paid: newStatus,
+            amount: LAUNDRY_RATE
+          },
+          changed_by: user?.email,
+          changed_at: new Date().toISOString()
+        });
+
+      // Update state
+      setPaymentStatus(prev => ({
+        ...prev,
+        [officerId]: newStatus
+      }));
+
     } catch (error) {
-      console.error('Error fetching officers:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error updating payment:', error);
+      alert('Gagal mengupdate status pembayaran');
     }
   };
 
@@ -88,7 +168,7 @@ export default function LaundryAllowancePage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
-      {/* Header with Back button */}
+      {/* Header */}
       <div className="mb-6 flex items-center gap-4 flex-wrap">
         <Link 
           href="/dashboard/financial" 
@@ -103,12 +183,12 @@ export default function LaundryAllowancePage() {
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-[#FFD700]">🧺 LAUNDRY ALLOWANCE</h1>
           <p className="text-[#A7D8FF] mt-1">
-            {isAdmin ? '👑 Admin Mode' : '👤 Staff Mode'} - Fixed $15 per month
+            {isAdmin ? '👑 Admin Mode (bisa edit status)' : '👤 Staff Mode (read only)'}
           </p>
         </div>
       </div>
 
-      {/* Filter Section */}
+      {/* Filter */}
       <div className="mb-6 flex flex-wrap gap-4">
         <select 
           className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
@@ -145,16 +225,25 @@ export default function LaundryAllowancePage() {
         </div>
       </div>
 
-      {/* Summary Card */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total Officers</div>
           <div className="text-2xl font-bold text-[#FFD700]">{filteredOfficers.length}</div>
         </div>
         
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Rate per Officer</div>
-          <div className="text-2xl font-bold text-green-400">${LAUNDRY_RATE}</div>
+          <div className="text-[#A7D8FF] text-sm">Sudah Dibayar</div>
+          <div className="text-2xl font-bold text-green-400">
+            {Object.values(paymentStatus).filter(v => v === true).length}
+          </div>
+        </div>
+
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="text-[#A7D8FF] text-sm">Belum Dibayar</div>
+          <div className="text-2xl font-bold text-red-400">
+            {filteredOfficers.length - Object.values(paymentStatus).filter(v => v === true).length}
+          </div>
         </div>
         
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
@@ -165,7 +254,7 @@ export default function LaundryAllowancePage() {
         </div>
       </div>
 
-      {/* Officers List */}
+      {/* Officers List with Payment Status */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
         <div className="p-4 border-b border-[#FFD700]/30">
           <h2 className="text-xl font-bold text-[#FFD700]">
@@ -175,29 +264,59 @@ export default function LaundryAllowancePage() {
         
         {filteredOfficers.length > 0 ? (
           <div className="divide-y divide-[#FFD700]/30">
-            {filteredOfficers.map((officer) => (
-              <div key={officer.id} className="p-4 hover:bg-[#0B1A33]/50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
-                    <div className="text-sm text-[#A7D8FF] mt-1">
-                      {officer.department} • {officer.status}
-                    </div>
-                    {officer.join_date && (
-                      <div className="text-xs text-[#A7D8FF] mt-1">
-                        Join: {new Date(officer.join_date).toLocaleDateString('id-ID')}
+            {filteredOfficers.map((officer) => {
+              const isPaid = paymentStatus[officer.id] || false;
+              
+              return (
+                <div key={officer.id} className="p-4 hover:bg-[#0B1A33]/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="font-bold text-[#FFD700]">{officer.full_name}</div>
+                      <div className="text-sm text-[#A7D8FF] mt-1">
+                        {officer.department} • {officer.status}
                       </div>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-green-400">${LAUNDRY_RATE}</div>
-                    <div className="text-xs text-[#A7D8FF] mt-1">
-                      {selectedMonth} {selectedYear}
+                    </div>
+                    
+                    <div className="flex items-center gap-6">
+                      {/* Amount */}
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-green-400">${LAUNDRY_RATE}</div>
+                        <div className="text-xs text-[#A7D8FF]">{selectedMonth} {selectedYear}</div>
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="w-24 text-center">
+                        {isPaid ? (
+                          <span className="inline-flex items-center gap-1 bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-medium border border-green-500/30">
+                            <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                            PAID
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm font-medium border border-red-500/30">
+                            <span className="w-2 h-2 bg-red-400 rounded-full"></span>
+                            UNPAID
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Toggle Button (Admin Only) */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => togglePayment(officer.id, officer.full_name, isPaid)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            isPaid 
+                              ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30' 
+                              : 'bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30'
+                          }`}
+                        >
+                          {isPaid ? 'Mark Unpaid' : 'Mark Paid'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="p-8 text-center text-[#A7D8FF]">
@@ -214,9 +333,14 @@ export default function LaundryAllowancePage() {
         <span className="text-[#FFD700] font-bold">
           Total Officers: {filteredOfficers.length}
         </span>
-        <span className="text-[#FFD700] font-bold">
-          Total Laundry: ${filteredOfficers.length * LAUNDRY_RATE}
-        </span>
+        <div className="flex gap-4">
+          <span className="text-green-400 font-bold">
+            Paid: ${Object.values(paymentStatus).filter(v => v).length * LAUNDRY_RATE}
+          </span>
+          <span className="text-red-400 font-bold">
+            Unpaid: ${(filteredOfficers.length - Object.values(paymentStatus).filter(v => v).length) * LAUNDRY_RATE}
+          </span>
+        </div>
       </div>
     </div>
   );
