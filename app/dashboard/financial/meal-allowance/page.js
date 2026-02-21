@@ -453,12 +453,42 @@ export default function MealAllowancePage() {
     <div className="text-2xl font-bold text-[#FFD700]">{officersWithStats.length}</div>
   </div>
 
-  {/* CARD 2: Total NET */}
+  {/* CARD 2: Total NET + LIST PER ORANG */}
   <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
     <div className="text-[#A7D8FF] text-sm">Total NET</div>
     <div className="text-2xl font-bold text-[#FFD700]">
       ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}
     </div>
+    
+    {/* LIST NET PER ORANG - HANYA YANG > 0 */}
+    <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
+      {officersWithStats
+        .filter(o => o.finalNet > 0)
+        .sort((a, b) => b.finalNet - a.finalNet)
+        .map(officer => (
+          <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded transition-colors">
+            <span className="text-[#A7D8FF] truncate max-w-[160px]" title={officer.full_name}>
+              {officer.full_name}
+            </span>
+            <span className="text-[#FFD700] font-medium ml-2">${officer.finalNet}</span>
+          </div>
+        ))
+      }
+      
+      {/* KALAU TIDAK ADA NET > 0 */}
+      {officersWithStats.filter(o => o.finalNet > 0).length === 0 && (
+        <div className="text-[#A7D8FF] text-center py-2 italic text-xs">
+          ✨ Tidak ada data NET
+        </div>
+      )}
+    </div>
+    
+    {/* FOOTER: Total jumlah orang */}
+    {officersWithStats.filter(o => o.finalNet > 0).length > 0 && (
+      <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
+        {officersWithStats.filter(o => o.finalNet > 0).length} orang
+      </div>
+    )}
   </div>
 
   {/* CARD 3: Total Kasbon + LIST PER ORANG */}
@@ -491,7 +521,7 @@ export default function MealAllowancePage() {
       )}
     </div>
     
-    {/* FOOTER: Total jumlah orang yang punya kasbon (optional) */}
+    {/* FOOTER: Total jumlah orang yang punya kasbon */}
     {officersWithStats.filter(o => o.kasbon > 0).length > 0 && (
       <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
         {officersWithStats.filter(o => o.kasbon > 0).length} orang
@@ -499,12 +529,44 @@ export default function MealAllowancePage() {
     )}
   </div>
 
-  {/* CARD 4: Total ETC */}
+  {/* CARD 4: Total ETC + LIST PER ORANG */}
   <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
     <div className="text-[#A7D8FF] text-sm">Total ETC</div>
     <div className="text-2xl font-bold text-green-400">
       ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.etc || 0), 0))}
     </div>
+    
+    {/* LIST ETC PER ORANG - HANYA YANG TIDAK 0 */}
+    <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
+      {officersWithStats
+        .filter(o => o.etc !== 0)
+        .sort((a, b) => b.etc - a.etc)
+        .map(officer => (
+          <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded transition-colors">
+            <span className="text-[#A7D8FF] truncate max-w-[160px]" title={officer.full_name}>
+              {officer.full_name}
+            </span>
+            <span className={`font-medium ml-2 ${officer.etc > 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {officer.etc > 0 ? '+' : ''}{officer.etc}
+            </span>
+          </div>
+        ))
+      }
+      
+      {/* KALAU SEMUA ETC = 0 */}
+      {officersWithStats.filter(o => o.etc !== 0).length === 0 && (
+        <div className="text-[#A7D8FF] text-center py-2 italic text-xs">
+          ✨ Tidak ada ETC
+        </div>
+      )}
+    </div>
+    
+    {/* FOOTER: Total jumlah orang dengan ETC */}
+    {officersWithStats.filter(o => o.etc !== 0).length > 0 && (
+      <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
+        {officersWithStats.filter(o => o.etc !== 0).length} orang
+      </div>
+    )}
   </div>
 </div>
 
