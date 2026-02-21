@@ -105,7 +105,7 @@ export default function DashboardContent() {
   />
   
   <DashboardCard
-    title="Active Officers"
+    title="Data Officers GROUP-X"
     value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
     icon={<span className="text-2xl">👨‍💼</span>}
     color="gold"
