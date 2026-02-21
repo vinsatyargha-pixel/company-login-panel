@@ -15,11 +15,14 @@ export default function DashboardContent() {
     totalAssets: 0,
     activeOfficers: 0,
   });
+  const [activities, setActivities] = useState([]);
+  const [loadingActivities, setLoadingActivities] = useState(true);
 
   const { user, userJobRole, isAdmin } = useAuth();
 
   useEffect(() => {
     fetchDashboardData();
+    fetchRecentActivities();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -47,6 +50,85 @@ export default function DashboardContent() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // ===========================================
+  // FUNGSI RECENT ACTIVITY
+  // ===========================================
+  const fetchRecentActivities = async () => {
+    try {
+      setLoadingActivities(true);
+      
+      // Ambil 10 aktivitas terakhir dari meal allowance
+      const { data, error } = await supabase
+        .from('meal_allowance_snapshot')
+        .select(`
+          officer_name,
+          kasbon,
+          etc,
+          etc_note,
+          cuti_count,
+          last_edited_by,
+          last_edited_at,
+          bulan
+        `)
+        .not('last_edited_at', 'is', null)
+        .order('last_edited_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      // Format data
+      const formattedActivities = (data || []).map(item => ({
+        id: item.last_edited_at,
+        officer: item.officer_name,
+        bulan: item.bulan,
+        timestamp: item.last_edited_at,
+        changes: formatChanges(item),
+        raw: item
+      }));
+
+      setActivities(formattedActivities);
+    } catch (error) {
+      console.error('Error fetching activities:', error);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
+  const formatChanges = (item) => {
+    const changes = [];
+    if (item.kasbon > 0) changes.push(`kasbon $${item.kasbon}`);
+    if (item.cuti_count > 0) changes.push(`cuti ${item.cuti_count} hari`);
+    if (item.etc !== 0) {
+      changes.push(`etc ${item.etc > 0 ? '+' : ''}${item.etc}`);
+    }
+    if (item.etc_note && item.etc_note.trim() !== '') {
+      changes.push(`"${item.etc_note}"`);
+    }
+    return changes;
+  };
+
+  const formatTimeAgo = (timestamp) => {
+    const now = new Date();
+    const past = new Date(timestamp);
+    const diffMs = now - past;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return past.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+  };
+
+  const getActivityIcon = (changes) => {
+    if (changes.some(c => c.includes('kasbon'))) return '💰';
+    if (changes.some(c => c.includes('cuti'))) return '🏖️';
+    if (changes.some(c => c.includes('etc'))) return '🔄';
+    return '📝';
   };
 
   if (loading) return (
@@ -94,62 +176,122 @@ export default function DashboardContent() {
       </header>
 
       {/* ROYAL GOLD CARDS */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-  <DashboardCard
-    title="Asset Group-X"
-    value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
-    icon="💎"
-    color="gold"
-    href="/dashboard/assets"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  <DashboardCard
-    title="Data Officers GROUP-X"
-    value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
-    icon={<span className="text-2xl">👨‍💼</span>}
-    color="gold"
-    href="/dashboard/officers/active"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  <DashboardCard
-    title="Schedule Officers GROUP-X"
-    value="Calendar"
-    icon="📅"
-    color="gold"
-    href="/dashboard/schedule"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  <DashboardCard
-    title="Financial Summary GROUP-X"
-    value="Management"
-    icon="💰"
-    color="gold"
-    href="/dashboard/financial"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-</div> {/* <-- PENTING: TUTUP GRID DISINI */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <DashboardCard
+          title="Asset GROUP-X"
+          value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
+          icon="💎"
+          color="gold"
+          href="/dashboard/assets"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Data Officers GROUP-X"
+          value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
+          icon={<span className="text-2xl">👨‍💼</span>}
+          color="gold"
+          href="/dashboard/officers/active"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Schedule Officers GROUP-X"
+          value="Calendar"
+          icon="📅"
+          color="gold"
+          href="/dashboard/schedule"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Financial Summary GROUP-X"
+          value="Management"
+          icon="💰"
+          color="gold"
+          href="/dashboard/financial"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+      </div>
 
-      {/* Quick Access section - UDAH DI LUAR GRID */}
+      {/* Quick Access section */}
       <div className="mb-8">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">Quick Access</h2>
         <QuickLinks />
       </div>
 
+      {/* RECENT ACTIVITY - REAL DATA FROM MEAL ALLOWANCE */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Recent Activity</h2>
-        <div className="space-y-4">
-          <div className="border-l-4 border-[#32CD32] pl-4 py-2">
-            <p className="font-medium text-white">New transaction batch processed</p>
-            <p className="text-sm text-[#A7D8FF]">by System • 10 min ago</p>
-          </div>
-          <div className="border-l-4 border-[#FFD700] pl-4 py-2">
-            <p className="font-medium text-white">Tamara Halim joined GROUP-X</p>
-            <p className="text-sm text-[#A7D8FF]">by Admin • 2 hours ago</p>
-          </div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-[#FFD700]">Recent Activity</h2>
+          {activities.length > 0 && (
+            <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-1 rounded-full">
+              {activities.length} updates
+            </span>
+          )}
         </div>
+        
+        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
+          {loadingActivities ? (
+            // Loading skeleton
+            [...Array(3)].map((_, i) => (
+              <div key={i} className="border-l-4 border-[#FFD700]/30 pl-4 py-2 animate-pulse">
+                <div className="h-4 bg-[#1A2F4A] rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-[#1A2F4A] rounded w-1/2"></div>
+              </div>
+            ))
+          ) : activities.length > 0 ? (
+            activities.map((activity, index) => (
+              <div 
+                key={activity.id} 
+                className="border-l-4 border-[#FFD700] pl-4 py-2 hover:bg-[#1A2F4A]/30 transition-colors rounded-r-lg"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">{getActivityIcon(activity.changes)}</span>
+                  <div className="flex-1">
+                    <p className="font-medium text-white">
+                      <span className="text-[#FFD700]">{activity.officer}</span>
+                      {activity.changes.length > 0 ? (
+                        <> • {activity.changes.join(' • ')}</>
+                      ) : (
+                        ' • updated data'
+                      )}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-[#A7D8FF] mt-1">
+                      <span>by Admin</span>
+                      <span>•</span>
+                      <span>{formatTimeAgo(activity.timestamp)}</span>
+                      <span>•</span>
+                      <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full">
+                        {activity.bulan}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-[#A7D8FF]">
+              <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p>Belum ada aktivitas terbaru</p>
+              <p className="text-sm mt-1">Edit data Meal Allowance untuk memulai</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer dengan link ke halaman activity (opsional) */}
+        {activities.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-[#FFD700]/20 text-right">
+            <button 
+              onClick={() => window.location.href = '/dashboard/activity-log'}
+              className="text-sm text-[#FFD700] hover:text-[#FFD700]/80 transition-colors"
+            >
+              View all activity →
+            </button>
+          </div>
+        )}
       </div>
 
       {showResetModal && (
