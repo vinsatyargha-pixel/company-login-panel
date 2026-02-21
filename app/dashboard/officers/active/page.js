@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 
 export default function ActiveOfficersPage() {
   const router = useRouter();
-  const { isAdmin, loading: authLoading } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,10 +20,29 @@ export default function ActiveOfficersPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [officerToDelete, setOfficerToDelete] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [adminId, setAdminId] = useState(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Ambil admin ID berdasarkan user email
+  useEffect(() => {
+    if (user?.email) {
+      const getAdminId = async () => {
+        const { data } = await supabase
+          .from('officers')
+          .select('id')
+          .ilike('email', user.email)
+          .maybeSingle();
+        
+        if (data) {
+          setAdminId(data.id);
+        }
+      };
+      getAdminId();
+    }
+  }, [user]);
 
   useEffect(() => {
     if (mounted && !authLoading) {
@@ -101,10 +120,32 @@ export default function ActiveOfficersPage() {
     setShowEditModal(true);
   };
 
-  const handleOfficerUpdated = (updatedOfficer) => {
-    setOfficers(officers.map(o => o.id === updatedOfficer.id ? updatedOfficer : o));
-    setShowEditModal(false);
-    showNotification('success', 'Data officer berhasil diupdate');
+  const handleOfficerUpdated = async (updatedOfficer) => {
+    try {
+      // 1. Update state
+      setOfficers(officers.map(o => o.id === updatedOfficer.id ? updatedOfficer : o));
+      
+      // 2. Simpan ke audit logs (snapshot)
+      if (adminId) {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            table_name: 'officers',
+            record_id: updatedOfficer.id,
+            action: 'UPDATE',
+            new_data: updatedOfficer,
+            changed_by: adminId,
+            changed_at: new Date().toISOString()
+          });
+      }
+      
+      setShowEditModal(false);
+      showNotification('success', 'Data officer berhasil diupdate');
+      
+    } catch (error) {
+      console.error('Error in handleOfficerUpdated:', error);
+      showNotification('error', 'Gagal mengupdate data officer');
+    }
   };
 
   const handleDeleteClick = (officer, e) => {
@@ -123,6 +164,21 @@ export default function ActiveOfficersPage() {
     if (!officerToDelete) return;
     
     try {
+      // 1. Simpan ke audit logs dulu (sebelum dihapus)
+      if (adminId) {
+        await supabase
+          .from('audit_logs')
+          .insert({
+            table_name: 'officers',
+            record_id: officerToDelete.id,
+            action: 'DELETE',
+            old_data: officerToDelete,
+            changed_by: adminId,
+            changed_at: new Date().toISOString()
+          });
+      }
+      
+      // 2. Hapus dari tabel officers
       const { error } = await supabase
         .from('officers')
         .delete()
@@ -130,6 +186,7 @@ export default function ActiveOfficersPage() {
 
       if (error) throw error;
 
+      // 3. Update state
       setOfficers(officers.filter(o => o.id !== officerToDelete.id));
       setShowDeleteModal(false);
       setOfficerToDelete(null);
