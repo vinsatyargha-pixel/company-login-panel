@@ -210,35 +210,33 @@ export default function ActiveOfficersPage() {
 
   if (!mounted || authLoading || loading) {
     return (
-      <div className="p-6 min-h-screen flex items-center justify-center bg-white">
+      <div className="p-6 min-h-screen flex items-center justify-center bg-[#0B1A33]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
-          <p className="mt-4 text-black font-medium">Loading officers...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700] mx-auto"></div>
+          <p className="mt-4 text-[#FFD700] font-medium">Loading officers...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 w-full min-h-screen bg-white">
+    <div className="p-4 md:p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       {/* NOTIFICATION */}
       {notification && (
         <div className={`mb-4 p-3 rounded-lg flex items-center justify-between border ${
-          notification.type === 'success' ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300'
+          notification.type === 'success' ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'
         }`}>
           <div className="flex items-center gap-2">
-            <svg className={`w-5 h-5 ${notification.type === 'success' ? 'text-green-600' : 'text-red-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {notification.type === 'success' ? (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               ) : (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               )}
             </svg>
-            <span className={`font-medium text-sm ${notification.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
-              {notification.message}
-            </span>
+            <span className="font-medium text-sm">{notification.message}</span>
           </div>
-          <button onClick={() => setNotification(null)} className="text-gray-600 hover:text-gray-800">
+          <button onClick={() => setNotification(null)} className="hover:opacity-80">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -250,7 +248,7 @@ export default function ActiveOfficersPage() {
       <div className="mb-6">
         <Link 
           href="/dashboard" 
-          className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-3 text-sm font-medium"
+          className="inline-flex items-center text-[#FFD700] hover:text-[#FFD700]/80 mb-3 text-sm font-medium"
         >
           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -258,11 +256,11 @@ export default function ActiveOfficersPage() {
           BACK TO DASHBOARD
         </Link>
         
-        <h1 className="text-2xl font-bold text-black">LIST OFFICERS GROUP-X</h1>
-        <p className="text-gray-600 text-sm mt-1">Daftar officer di GROUP-X</p>
+        <h1 className="text-2xl font-bold text-[#FFD700]">LIST OFFICERS GROUP-X</h1>
+        <p className="text-[#A7D8FF] text-sm mt-1">Daftar officer di GROUP-X</p>
       </div>
 
-      {/* STATS CARDS */}
+      {/* STATS CARDS - TETAP WARNA ASLI */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mb-6">
         <div className="bg-blue-50 border border-blue-200 rounded p-2">
           <div className="text-xs font-bold text-blue-800">TOTAL</div>
@@ -291,16 +289,16 @@ export default function ActiveOfficersPage() {
       </div>
 
       {/* FILTER & SEARCH */}
-      <div className="mb-4 p-3 border border-gray-300 rounded-lg bg-white">
+      <div className="mb-4 p-3 border border-[#FFD700]/30 rounded-lg bg-[#1A2F4A]">
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex flex-wrap items-center gap-1 text-sm">
-            <span className="font-bold text-black mr-1">Status:</span>
-            <button onClick={() => setFilter('ALL')} className={`px-2 py-1 rounded ${filter === 'ALL' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-black hover:bg-gray-200'}`}>ALL ({stats.total})</button>
-            <button onClick={() => setFilter('REGULAR')} className={`px-2 py-1 rounded ${filter === 'REGULAR' ? 'bg-green-600 text-white' : 'bg-green-50 text-green-800 hover:bg-green-100'}`}>REGULAR ({stats.regular})</button>
-            <button onClick={() => setFilter('TRAINING')} className={`px-2 py-1 rounded ${filter === 'TRAINING' ? 'bg-yellow-500 text-white' : 'bg-yellow-50 text-yellow-800 hover:bg-yellow-100'}`}>TRAINING ({stats.training})</button>
-            <button onClick={() => setFilter('RESIGN')} className={`px-2 py-1 rounded ${filter === 'RESIGN' ? 'bg-red-600 text-white' : 'bg-red-50 text-red-800 hover:bg-red-100'}`}>RESIGN ({stats.resign})</button>
-            <button onClick={() => setFilter('TERMINATE')} className={`px-2 py-1 rounded ${filter === 'TERMINATE' ? 'bg-rose-700 text-white' : 'bg-rose-50 text-rose-800 hover:bg-rose-100'}`}>TERMINATE ({stats.terminate})</button>
-            <button onClick={() => setFilter('CHANGE GROUP')} className={`px-2 py-1 rounded ${filter === 'CHANGE GROUP' ? 'bg-purple-600 text-white' : 'bg-purple-50 text-purple-800 hover:bg-purple-100'}`}>CHANGE GROUP ({stats.changeGroup})</button>
+            <span className="font-bold text-[#FFD700] mr-1">Status:</span>
+            <button onClick={() => setFilter('ALL')} className={`px-2 py-1 rounded ${filter === 'ALL' ? 'bg-[#FFD700] text-black' : 'bg-[#0B1A33] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}>ALL ({stats.total})</button>
+            <button onClick={() => setFilter('REGULAR')} className={`px-2 py-1 rounded ${filter === 'REGULAR' ? 'bg-green-600 text-white' : 'bg-green-900/30 text-green-400 hover:bg-green-800/50'}`}>REGULAR ({stats.regular})</button>
+            <button onClick={() => setFilter('TRAINING')} className={`px-2 py-1 rounded ${filter === 'TRAINING' ? 'bg-yellow-500 text-white' : 'bg-yellow-900/30 text-yellow-400 hover:bg-yellow-800/50'}`}>TRAINING ({stats.training})</button>
+            <button onClick={() => setFilter('RESIGN')} className={`px-2 py-1 rounded ${filter === 'RESIGN' ? 'bg-red-600 text-white' : 'bg-red-900/30 text-red-400 hover:bg-red-800/50'}`}>RESIGN ({stats.resign})</button>
+            <button onClick={() => setFilter('TERMINATE')} className={`px-2 py-1 rounded ${filter === 'TERMINATE' ? 'bg-rose-700 text-white' : 'bg-rose-900/30 text-rose-400 hover:bg-rose-800/50'}`}>TERMINATE ({stats.terminate})</button>
+            <button onClick={() => setFilter('CHANGE GROUP')} className={`px-2 py-1 rounded ${filter === 'CHANGE GROUP' ? 'bg-purple-600 text-white' : 'bg-purple-900/30 text-purple-400 hover:bg-purple-800/50'}`}>CHANGE GROUP ({stats.changeGroup})</button>
           </div>
 
           <div className="flex flex-1 gap-2">
@@ -310,9 +308,9 @@ export default function ActiveOfficersPage() {
                 placeholder="Search..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 text-sm text-black"
+                className="w-full bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg pl-8 pr-3 py-1.5 text-sm text-white placeholder-[#A7D8FF]/50"
               />
-              <svg className="w-4 h-4 absolute left-2 top-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 absolute left-2 top-2 text-[#A7D8FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
@@ -321,14 +319,14 @@ export default function ActiveOfficersPage() {
             {isAdmin ? (
               <Link
                 href="/dashboard/officers/add"
-                className="inline-flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
+                className="inline-flex items-center gap-1 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black font-bold px-3 py-1.5 rounded-lg whitespace-nowrap"
               >
                 <span>+</span> ADD
               </Link>
             ) : (
               <button
                 disabled
-                className="inline-flex items-center gap-1 bg-gray-400 text-white text-sm font-bold px-3 py-1.5 rounded-lg whitespace-nowrap cursor-not-allowed"
+                className="inline-flex items-center gap-1 bg-gray-600 text-gray-300 px-3 py-1.5 rounded-lg whitespace-nowrap cursor-not-allowed"
                 title="Only admin can add"
               >
                 <span>+</span> ADD
@@ -340,8 +338,8 @@ export default function ActiveOfficersPage() {
 
       {/* LISTING NAME */}
       <div className="mb-3">
-        <div className="bg-gray-100 border border-gray-300 rounded-lg p-2">
-          <div className="flex items-center gap-2 text-sm text-black">
+        <div className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg p-2">
+          <div className="flex items-center gap-2 text-sm text-[#A7D8FF]">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -350,8 +348,8 @@ export default function ActiveOfficersPage() {
         </div>
       </div>
 
-      {/* OFFICERS TABLE */}
-      <div className="border border-gray-300 rounded-lg overflow-x-auto bg-white">
+      {/* OFFICERS TABLE - TETAP PUTIH */}
+      <div className="border border-[#FFD700]/30 rounded-lg overflow-x-auto bg-white">
         <table className="w-full text-sm">
           <thead className="bg-gradient-to-r from-gray-100 to-gray-50 border-b border-gray-300">
             <tr className="text-black font-bold">
@@ -493,16 +491,16 @@ export default function ActiveOfficersPage() {
       </div>
 
       {/* FOOTER */}
-      <div className="mt-4 p-2 border border-gray-300 rounded-lg bg-gray-50 text-sm text-black">
+      <div className="mt-4 p-2 border border-[#FFD700]/30 rounded-lg bg-[#1A2F4A] text-sm text-[#A7D8FF]">
         <div className="flex justify-between">
           <span>Showing {filteredOfficers.length} of {stats.total} officers</span>
           <span>{new Date().toLocaleDateString('id-ID')}</span>
         </div>
       </div>
 
-      {/* DELETE MODAL */}
+      {/* DELETE MODAL - TETAP PUTIH DI TENGAH NAVY */}
       {showDeleteModal && officerToDelete && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-sm w-full p-4">
             <h3 className="text-lg font-bold text-black mb-2">Hapus Officer?</h3>
             <p className="text-sm text-black mb-4">Yakin ingin menghapus {officerToDelete.full_name}?</p>

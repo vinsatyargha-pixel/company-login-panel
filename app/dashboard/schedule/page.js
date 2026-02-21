@@ -266,29 +266,29 @@ const fetchOfficers = async () => {
 
   if (!mounted || loading || officersLoading) {
     return (
-      <div className="p-6 min-h-screen flex items-center justify-center bg-white">
+      <div className="p-6 min-h-screen flex items-center justify-center bg-[#0B1A33]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
-          <p className="mt-4 text-black font-medium">Loading schedule...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700] mx-auto"></div>
+          <p className="mt-4 text-[#FFD700] font-medium">Loading schedule...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 w-full min-h-screen bg-white">
+    <div className="p-4 md:p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       <div className="mb-4">
-        <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
+        <Link href="/dashboard" className="inline-flex items-center text-[#FFD700] hover:text-[#FFD700]/80 text-sm font-medium">
           ← BACK TO DASHBOARD
         </Link>
       </div>
 
       <div className="mb-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-black">X-GROUP SCHEDULE {selectedYear}</h1>
+        <h1 className="text-xl font-bold text-[#FFD700]">X-GROUP SCHEDULE {selectedYear}</h1>
         <select
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
-          className="border border-gray-300 rounded px-2 py-1 text-sm bg-white text-black"
+          className="border border-[#FFD700]/30 rounded px-2 py-1 text-sm bg-[#1A2F4A] text-white"
         >
           {years.map(year => (
             <option key={year} value={year}>{year}</option>
@@ -298,11 +298,11 @@ const fetchOfficers = async () => {
 
       <div className="mb-2 flex items-end justify-between">
         <div className="flex items-center gap-4">
-          <span className="font-medium text-black">Pilih Bulan:</span>
+          <span className="font-medium text-white">Pilih Bulan:</span>
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-1 text-sm bg-white text-black"
+            className="border border-[#FFD700]/30 rounded px-3 py-1 text-sm bg-[#1A2F4A] text-white"
           >
             {months.map(month => (
               <option key={month} value={month}>{month}</option>
@@ -310,13 +310,14 @@ const fetchOfficers = async () => {
           </select>
         </div>
         
-        <div className="text-sm text-black mb-1">
-          <span className="mr-6">Month Before: <span className="font-bold">{monthBefore}</span></span>
-          <span>Month Now: <span className="font-bold">{selectedMonth}</span></span>
+        <div className="text-sm text-[#A7D8FF] mb-1">
+          <span className="mr-6">Month Before: <span className="font-bold text-[#FFD700]">{monthBefore}</span></span>
+          <span>Month Now: <span className="font-bold text-[#FFD700]">{selectedMonth}</span></span>
         </div>
       </div>
 
-      <div className="border border-gray-300 rounded overflow-x-auto bg-white shadow-sm" style={{ maxWidth: '100%', overflowX: 'auto' }}>
+      {/* TABEL TETAP PUTIH DI DALAM KOTAK */}
+      <div className="border border-[#FFD700]/30 rounded overflow-x-auto bg-white shadow-lg" style={{ maxWidth: '100%', overflowX: 'auto' }}>
         <table className="w-full text-xs border-collapse" style={{ minWidth: '2000px' }}>
           <thead>
             <tr className="bg-gray-100 border-b border-gray-300">
@@ -437,8 +438,8 @@ const fetchOfficers = async () => {
         </table>
       </div>
 
-      <div className="mt-4 p-3 bg-gray-50 border border-gray-300 rounded text-xs">
-        <div className="flex flex-wrap gap-4 text-black">
+      <div className="mt-4 p-3 bg-[#1A2F4A] border border-[#FFD700]/30 rounded text-xs">
+        <div className="flex flex-wrap gap-4 text-[#A7D8FF]">
           <span><span className="inline-block w-3 h-3 bg-blue-100"></span> P = PAGI</span>
           <span><span className="inline-block w-3 h-3 bg-purple-900"></span> M = MALAM</span>
           <span><span className="inline-block w-3 h-3 bg-green-300"></span> S = SIANG</span>
