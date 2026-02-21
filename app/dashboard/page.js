@@ -273,7 +273,7 @@ export default function DashboardContent() {
 
       {/* RECENT ACTIVITY - HANYA OFFICERS */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Recent Activity - Officers</h2>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Recent Activity - By Admin</h2>
         
         <div className="space-y-2">
           {loadingActivities ? (
