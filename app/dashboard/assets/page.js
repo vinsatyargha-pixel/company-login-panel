@@ -139,83 +139,83 @@ export default function AssetsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 min-h-screen flex items-center justify-center">
+      <div className="p-6 min-h-screen flex items-center justify-center bg-[#0B1A33]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto"></div>
-          <p className="mt-4 text-black">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700] mx-auto"></div>
+          <p className="mt-4 text-[#FFD700]">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 w-full min-h-screen bg-white">
+    <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       {/* HEADER WITH BACK BUTTON */}
       <div className="mb-8">
-        <button
-          onClick={() => window.history.back()}
-          className="flex items-center text-blue-600 hover:text-blue-800 mb-4 font-medium"
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center text-[#FFD700] hover:text-[#FFD700]/80 mb-4 font-medium"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          BACK
-        </button>
+          BACK TO DASHBOARD
+        </Link>
         
-        <h1 className="text-3xl font-bold text-black">ASSET GROUP-X</h1>
-        <p className="text-gray-700 mt-2">Monitoring transaksi deposit & withdrawal</p>
-        <p className="text-sm text-blue-600 mt-1">Date Range: {displayDateRange}</p>
+        <h1 className="text-3xl font-bold text-[#FFD700]">ASSET GROUP-X</h1>
+        <p className="text-[#A7D8FF] mt-2">Monitoring transaksi deposit & withdrawal</p>
+        <p className="text-sm text-[#FFD700]/80 mt-1">Date Range: {displayDateRange}</p>
       </div>
 
       {/* FILTER - ENHANCED WITH CUSTOM DATE */}
-      <div className="mb-8 p-4 border border-gray-300 rounded-lg">
+      <div className="mb-8 p-4 border border-[#FFD700]/30 rounded-lg bg-[#1A2F4A]">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1">
-            <span className="font-bold text-black mb-2 block">FILTER DATE RANGE:</span>
+            <span className="font-bold text-[#FFD700] mb-2 block">FILTER DATE RANGE:</span>
             
             {/* Quick Filter Buttons */}
             <div className="flex flex-wrap gap-2 mb-3">
               <button
                 onClick={() => setDateFilter('yesterday')}
-                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'yesterday' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'yesterday' ? 'bg-[#FFD700] text-black' : 'bg-[#0B1A33] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}
               >
                 Kemarin
               </button>
               <button
                 onClick={() => setDateFilter('week')}
-                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'week' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'week' ? 'bg-[#FFD700] text-black' : 'bg-[#0B1A33] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}
               >
                 7 Hari
               </button>
               <button
                 onClick={() => setDateFilter('month')}
-                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'month' ? 'bg-[#FFD700] text-black' : 'bg-[#0B1A33] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}
               >
                 30 Hari
               </button>
               <button
                 onClick={() => setDateFilter('3month')}
-                className={`px-3 py-1.5 rounded text-sm ${dateFilter === '3month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === '3month' ? 'bg-[#FFD700] text-black' : 'bg-[#0B1A33] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}
               >
                 3 Bulan
               </button>
               <button
                 onClick={() => setDateFilter('6month')}
-                className={`px-3 py-1.5 rounded text-sm ${dateFilter === '6month' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === '6month' ? 'bg-[#FFD700] text-black' : 'bg-[#0B1A33] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}
               >
                 6 Bulan
               </button>
               <button
                 onClick={() => setDateFilter('year')}
-                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'year' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-black hover:bg-gray-300'}`}
+                className={`px-3 py-1.5 rounded text-sm ${dateFilter === 'year' ? 'bg-[#FFD700] text-black' : 'bg-[#0B1A33] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}
               >
                 1 Tahun
               </button>
             </div>
             
             {/* Custom Date Range */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-3 border-t border-gray-200">
-              <span className="text-gray-700 font-medium">Custom Range:</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 pt-3 border-t border-[#FFD700]/20">
+              <span className="text-[#A7D8FF] font-medium">Custom Range:</span>
               <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="date"
@@ -224,10 +224,10 @@ export default function AssetsPage() {
                     setCustomStartDate(e.target.value);
                     setDateFilter('custom');
                   }}
-                  className="border border-gray-400 rounded px-3 py-1.5 text-black bg-white"
+                  className="border border-[#FFD700]/30 rounded px-3 py-1.5 text-white bg-[#0B1A33]"
                   placeholder="Start date"
                 />
-                <span className="text-gray-700">to</span>
+                <span className="text-[#A7D8FF]">to</span>
                 <input
                   type="date"
                   value={customEndDate}
@@ -235,7 +235,7 @@ export default function AssetsPage() {
                     setCustomEndDate(e.target.value);
                     setDateFilter('custom');
                   }}
-                  className="border border-gray-400 rounded px-3 py-1.5 text-black bg-white"
+                  className="border border-[#FFD700]/30 rounded px-3 py-1.5 text-white bg-[#0B1A33]"
                   placeholder="End date"
                 />
                 <button
@@ -245,7 +245,7 @@ export default function AssetsPage() {
                     setCustomEndDate(today);
                     setDateFilter('custom');
                   }}
-                  className="px-3 py-1.5 bg-gray-200 text-black rounded text-sm hover:bg-gray-300"
+                  className="px-3 py-1.5 bg-[#0B1A33] text-[#A7D8FF] rounded text-sm hover:bg-[#2A3F5A] border border-[#FFD700]/30"
                 >
                   Today
                 </button>
@@ -254,8 +254,8 @@ export default function AssetsPage() {
           </div>
           
           <div className="text-right">
-            <div className="text-2xl font-bold text-blue-600">{assets.length} ASSETS</div>
-            <p className="text-sm text-gray-600">in GROUP-X</p>
+            <div className="text-2xl font-bold text-[#FFD700]">{assets.length} ASSETS</div>
+            <p className="text-sm text-[#A7D8FF]">in GROUP-X</p>
           </div>
         </div>
       </div>
@@ -263,20 +263,20 @@ export default function AssetsPage() {
       {/* 3 STATS CARDS - BLACK, RED, BLUE */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         {/* APPROVED - BLACK */}
-        <div className="border border-gray-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-black mb-4">APPROVED</h3>
+        <div className="border border-[#FFD700]/30 rounded-lg p-4 bg-[#1A2F4A]">
+          <h3 className="text-lg font-bold text-white mb-4">APPROVED</h3>
           <div className="space-y-3">
-            <div className="border-b pb-2">
-              <p className="text-gray-700">Deposit</p>
-              <p className="text-xl font-bold text-black">{formatIDR(stats.deposit.approved)}</p>
-              <p className="text-sm text-gray-600">
+            <div className="border-b border-[#FFD700]/20 pb-2">
+              <p className="text-[#A7D8FF]">Deposit</p>
+              <p className="text-xl font-bold text-white">{formatIDR(stats.deposit.approved)}</p>
+              <p className="text-sm text-[#A7D8FF]/70">
                 {transactions.filter(t => t.transaction_type === 'DEPOSIT' && t.transaction_status === 'APPROVED').length} forms
               </p>
             </div>
             <div>
-              <p className="text-gray-700">Withdrawal</p>
-              <p className="text-xl font-bold text-black">{formatIDR(stats.withdrawal.approved)}</p>
-              <p className="text-sm text-gray-600">
+              <p className="text-[#A7D8FF]">Withdrawal</p>
+              <p className="text-xl font-bold text-white">{formatIDR(stats.withdrawal.approved)}</p>
+              <p className="text-sm text-[#A7D8FF]/70">
                 {transactions.filter(t => t.transaction_type === 'WITHDRAWAL' && t.transaction_status === 'APPROVED').length} forms
               </p>
             </div>
@@ -284,20 +284,20 @@ export default function AssetsPage() {
         </div>
 
         {/* REJECTED - RED */}
-        <div className="border border-gray-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-red-600 mb-4">REJECTED</h3>
+        <div className="border border-[#FFD700]/30 rounded-lg p-4 bg-[#1A2F4A]">
+          <h3 className="text-lg font-bold text-red-400 mb-4">REJECTED</h3>
           <div className="space-y-3">
-            <div className="border-b pb-2">
-              <p className="text-gray-700">Deposit</p>
-              <p className="text-xl font-bold text-red-600">{formatIDR(stats.deposit.rejected)}</p>
-              <p className="text-sm text-gray-600">
+            <div className="border-b border-[#FFD700]/20 pb-2">
+              <p className="text-[#A7D8FF]">Deposit</p>
+              <p className="text-xl font-bold text-red-400">{formatIDR(stats.deposit.rejected)}</p>
+              <p className="text-sm text-[#A7D8FF]/70">
                 {transactions.filter(t => t.transaction_type === 'DEPOSIT' && t.transaction_status === 'REJECTED').length} forms
               </p>
             </div>
             <div>
-              <p className="text-gray-700">Withdrawal</p>
-              <p className="text-xl font-bold text-red-600">{formatIDR(stats.withdrawal.rejected)}</p>
-              <p className="text-sm text-gray-600">
+              <p className="text-[#A7D8FF]">Withdrawal</p>
+              <p className="text-xl font-bold text-red-400">{formatIDR(stats.withdrawal.rejected)}</p>
+              <p className="text-sm text-[#A7D8FF]/70">
                 {transactions.filter(t => t.transaction_type === 'WITHDRAWAL' && t.transaction_status === 'REJECTED').length} forms
               </p>
             </div>
@@ -305,20 +305,20 @@ export default function AssetsPage() {
         </div>
 
         {/* FAILED - BLUE */}
-        <div className="border border-gray-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-blue-600 mb-4">FAILED</h3>
+        <div className="border border-[#FFD700]/30 rounded-lg p-4 bg-[#1A2F4A]">
+          <h3 className="text-lg font-bold text-blue-400 mb-4">FAILED</h3>
           <div className="space-y-3">
-            <div className="border-b pb-2">
-              <p className="text-gray-700">Deposit</p>
-              <p className="text-xl font-bold text-blue-600">{formatIDR(stats.deposit.failed)}</p>
-              <p className="text-sm text-gray-600">
+            <div className="border-b border-[#FFD700]/20 pb-2">
+              <p className="text-[#A7D8FF]">Deposit</p>
+              <p className="text-xl font-bold text-blue-400">{formatIDR(stats.deposit.failed)}</p>
+              <p className="text-sm text-[#A7D8FF]/70">
                 {transactions.filter(t => t.transaction_type === 'DEPOSIT' && t.transaction_status === 'FAILED').length} forms
               </p>
             </div>
             <div>
-              <p className="text-gray-700">Withdrawal</p>
-              <p className="text-xl font-bold text-blue-600">{formatIDR(stats.withdrawal.failed)}</p>
-              <p className="text-sm text-gray-600">
+              <p className="text-[#A7D8FF]">Withdrawal</p>
+              <p className="text-xl font-bold text-blue-400">{formatIDR(stats.withdrawal.failed)}</p>
+              <p className="text-sm text-[#A7D8FF]/70">
                 {transactions.filter(t => t.transaction_type === 'WITHDRAWAL' && t.transaction_status === 'FAILED').length} forms
               </p>
             </div>
@@ -326,11 +326,11 @@ export default function AssetsPage() {
         </div>
       </div>
 
-      {/* ADD BUTTON - BLUE */}
+      {/* ADD BUTTON - GOLD */}
       <div className="mb-6">
         <Link
           href="/assets/add"
-          className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded"
+          className="inline-flex items-center gap-2 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black font-bold px-6 py-3 rounded"
         >
           <span className="text-xl">+</span>
           TAMBAH ASSET BARU
@@ -357,18 +357,18 @@ export default function AssetsPage() {
           });
 
           return (
-            <div key={asset.id} className="border border-gray-300 rounded-lg overflow-hidden">
-              {/* ASSET HEADER - BLACK */}
-              <div className="bg-gray-100 px-6 py-4 border-b border-gray-300">
+            <div key={asset.id} className="border border-[#FFD700]/30 rounded-lg overflow-hidden bg-[#1A2F4A]">
+              {/* ASSET HEADER - GOLD */}
+              <div className="bg-[#0B1A33] px-6 py-4 border-b border-[#FFD700]/30">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-xl font-bold text-black">
+                    <h3 className="text-xl font-bold text-[#FFD700]">
                       {asset.asset_name}
-                      {asset.wlb_code && <span className="ml-2 text-blue-600">({asset.wlb_code})</span>}
+                      {asset.wlb_code && <span className="ml-2 text-[#A7D8FF]">({asset.wlb_code})</span>}
                     </h3>
-                    <p className="text-gray-700">Code: {asset.asset_code}</p>
+                    <p className="text-[#A7D8FF]">Code: {asset.asset_code}</p>
                   </div>
-                  <span className="px-3 py-1 bg-black text-white text-sm font-bold rounded">
+                  <span className="px-3 py-1 bg-[#FFD700] text-black text-sm font-bold rounded">
                     ACTIVE
                   </span>
                 </div>
@@ -379,20 +379,20 @@ export default function AssetsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* APPROVED COLUMN */}
                   <div>
-                    <h4 className="font-bold text-black mb-3 text-lg border-b pb-2">APPROVED</h4>
+                    <h4 className="font-bold text-white mb-3 text-lg border-b border-[#FFD700]/20 pb-2">APPROVED</h4>
                     <div className="space-y-4">
                       <div>
-                        <p className="text-gray-700 font-medium">Deposit</p>
-                        <p className="text-2xl font-bold text-black">{formatIDR(assetStats.deposit.approved)}</p>
-                        <div className="flex justify-between text-sm text-gray-600 mt-1">
+                        <p className="text-[#A7D8FF] font-medium">Deposit</p>
+                        <p className="text-2xl font-bold text-white">{formatIDR(assetStats.deposit.approved)}</p>
+                        <div className="flex justify-between text-sm text-[#A7D8FF]/70 mt-1">
                           <span>{assetTrans.filter(t => t.transaction_type === 'DEPOSIT' && t.transaction_status === 'APPROVED').length} forms</span>
                           <span>{total > 0 ? ((assetTrans.filter(t => t.transaction_type === 'DEPOSIT' && t.transaction_status === 'APPROVED').length / total) * 100).toFixed(1) : 0}%</span>
                         </div>
                       </div>
                       <div>
-                        <p className="text-gray-700 font-medium">Withdrawal</p>
-                        <p className="text-2xl font-bold text-black">{formatIDR(assetStats.withdrawal.approved)}</p>
-                        <div className="flex justify-between text-sm text-gray-600 mt-1">
+                        <p className="text-[#A7D8FF] font-medium">Withdrawal</p>
+                        <p className="text-2xl font-bold text-white">{formatIDR(assetStats.withdrawal.approved)}</p>
+                        <div className="flex justify-between text-sm text-[#A7D8FF]/70 mt-1">
                           <span>{assetTrans.filter(t => t.transaction_type === 'WITHDRAWAL' && t.transaction_status === 'APPROVED').length} forms</span>
                           <span>{total > 0 ? ((assetTrans.filter(t => t.transaction_type === 'WITHDRAWAL' && t.transaction_status === 'APPROVED').length / total) * 100).toFixed(1) : 0}%</span>
                         </div>
@@ -402,20 +402,20 @@ export default function AssetsPage() {
 
                   {/* REJECTED COLUMN */}
                   <div>
-                    <h4 className="font-bold text-red-600 mb-3 text-lg border-b pb-2">REJECTED</h4>
+                    <h4 className="font-bold text-red-400 mb-3 text-lg border-b border-[#FFD700]/20 pb-2">REJECTED</h4>
                     <div className="space-y-4">
                       <div>
-                        <p className="text-gray-700 font-medium">Deposit</p>
-                        <p className="text-2xl font-bold text-red-600">{formatIDR(assetStats.deposit.rejected)}</p>
-                        <div className="flex justify-between text-sm text-gray-600 mt-1">
+                        <p className="text-[#A7D8FF] font-medium">Deposit</p>
+                        <p className="text-2xl font-bold text-red-400">{formatIDR(assetStats.deposit.rejected)}</p>
+                        <div className="flex justify-between text-sm text-[#A7D8FF]/70 mt-1">
                           <span>{assetTrans.filter(t => t.transaction_type === 'DEPOSIT' && t.transaction_status === 'REJECTED').length} forms</span>
                           <span>{total > 0 ? ((assetTrans.filter(t => t.transaction_type === 'DEPOSIT' && t.transaction_status === 'REJECTED').length / total) * 100).toFixed(1) : 0}%</span>
                         </div>
                       </div>
                       <div>
-                        <p className="text-gray-700 font-medium">Withdrawal</p>
-                        <p className="text-2xl font-bold text-red-600">{formatIDR(assetStats.withdrawal.rejected)}</p>
-                        <div className="flex justify-between text-sm text-gray-600 mt-1">
+                        <p className="text-[#A7D8FF] font-medium">Withdrawal</p>
+                        <p className="text-2xl font-bold text-red-400">{formatIDR(assetStats.withdrawal.rejected)}</p>
+                        <div className="flex justify-between text-sm text-[#A7D8FF]/70 mt-1">
                           <span>{assetTrans.filter(t => t.transaction_type === 'WITHDRAWAL' && t.transaction_status === 'REJECTED').length} forms</span>
                           <span>{total > 0 ? ((assetTrans.filter(t => t.transaction_type === 'WITHDRAWAL' && t.transaction_status === 'REJECTED').length / total) * 100).toFixed(1) : 0}%</span>
                         </div>
@@ -425,20 +425,20 @@ export default function AssetsPage() {
 
                   {/* FAILED COLUMN */}
                   <div>
-                    <h4 className="font-bold text-blue-600 mb-3 text-lg border-b pb-2">FAILED</h4>
+                    <h4 className="font-bold text-blue-400 mb-3 text-lg border-b border-[#FFD700]/20 pb-2">FAILED</h4>
                     <div className="space-y-4">
                       <div>
-                        <p className="text-gray-700 font-medium">Deposit</p>
-                        <p className="text-2xl font-bold text-blue-600">{formatIDR(assetStats.deposit.failed)}</p>
-                        <div className="flex justify-between text-sm text-gray-600 mt-1">
+                        <p className="text-[#A7D8FF] font-medium">Deposit</p>
+                        <p className="text-2xl font-bold text-blue-400">{formatIDR(assetStats.deposit.failed)}</p>
+                        <div className="flex justify-between text-sm text-[#A7D8FF]/70 mt-1">
                           <span>{assetTrans.filter(t => t.transaction_type === 'DEPOSIT' && t.transaction_status === 'FAILED').length} forms</span>
                           <span>{total > 0 ? ((assetTrans.filter(t => t.transaction_type === 'DEPOSIT' && t.transaction_status === 'FAILED').length / total) * 100).toFixed(1) : 0}%</span>
                         </div>
                       </div>
                       <div>
-                        <p className="text-gray-700 font-medium">Withdrawal</p>
-                        <p className="text-2xl font-bold text-blue-600">{formatIDR(assetStats.withdrawal.failed)}</p>
-                        <div className="flex justify-between text-sm text-gray-600 mt-1">
+                        <p className="text-[#A7D8FF] font-medium">Withdrawal</p>
+                        <p className="text-2xl font-bold text-blue-400">{formatIDR(assetStats.withdrawal.failed)}</p>
+                        <div className="flex justify-between text-sm text-[#A7D8FF]/70 mt-1">
                           <span>{assetTrans.filter(t => t.transaction_type === 'WITHDRAWAL' && t.transaction_status === 'FAILED').length} forms</span>
                           <span>{total > 0 ? ((assetTrans.filter(t => t.transaction_type === 'WITHDRAWAL' && t.transaction_status === 'FAILED').length / total) * 100).toFixed(1) : 0}%</span>
                         </div>
@@ -448,10 +448,10 @@ export default function AssetsPage() {
                 </div>
 
                 {/* VIEW DETAILS LINK */}
-                <div className="mt-6 pt-6 border-t border-gray-300 text-right">
+                <div className="mt-6 pt-6 border-t border-[#FFD700]/20 text-right">
                   <Link
                     href={`/assets/${asset.id}`}
-                    className="inline-flex items-center text-blue-600 hover:text-blue-800 font-bold"
+                    className="inline-flex items-center text-[#FFD700] hover:text-[#FFD700]/80 font-bold"
                   >
                     LIHAT DETAIL →
                   </Link>
@@ -464,15 +464,15 @@ export default function AssetsPage() {
 
       {/* EMPTY STATE */}
       {assets.length === 0 && (
-        <div className="border border-gray-300 rounded-lg p-12 text-center">
-          <div className="w-16 h-16 border-2 border-gray-400 rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="border border-[#FFD700]/30 rounded-lg p-12 text-center bg-[#1A2F4A]">
+          <div className="w-16 h-16 border-2 border-[#FFD700]/30 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl">🚚</span>
           </div>
-          <h3 className="text-xl font-bold text-black mb-2">BELUM ADA ASSET</h3>
-          <p className="text-gray-700 mb-6">Tambahkan asset pertama Anda</p>
+          <h3 className="text-xl font-bold text-[#FFD700] mb-2">BELUM ADA ASSET</h3>
+          <p className="text-[#A7D8FF] mb-6">Tambahkan asset pertama Anda</p>
           <Link
             href="/assets/add"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded"
+            className="inline-flex items-center gap-2 bg-[#FFD700] hover:bg-[#FFD700]/80 text-black font-bold px-6 py-3 rounded"
           >
             <span className="text-xl">+</span>
             TAMBAH ASSET PERTAMA
