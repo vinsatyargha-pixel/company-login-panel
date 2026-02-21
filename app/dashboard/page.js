@@ -140,13 +140,17 @@ export default function DashboardContent() {
       };
     });
 
-    // 6. GABUNGIN
-    const allActivities = [...mealActivities, ...auditActivities]
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, 10);
+    // 6. GABUNGIN & SORTIR (ambil 10 terbaru)
+const allActivities = [...mealActivities, ...auditActivities]
+  .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  // .slice(0, 10);  // HAPUS INI DULU BUAT TEST
 
-    console.log('📦 FINAL ACTIVITIES:', allActivities);
-    setActivities(allActivities);
+console.log('📦 MEAL ACTIVITIES:', mealActivities);
+console.log('📦 AUDIT ACTIVITIES:', auditActivities);
+console.log('📦 ALL ACTIVITIES (before slice):', allActivities);
+console.log('📦 ALL ACTIVITIES (length):', allActivities.length);
+
+setActivities(allActivities); // PAKAI SEMUA DULU
     
   } catch (error) {
     console.error('❌ Fatal Error:', error);
