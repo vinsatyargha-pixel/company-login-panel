@@ -59,8 +59,8 @@ export default function DashboardContent() {
   try {
     setLoadingActivities(true);
     
-    // 1. Ambil data snapshot dulu (tanpa join)
-    const { data: snapshotData, error: snapshotError } = await supabase
+    // 1. AMBIL DARI MEAL ALLOWANCE SNAPSHOT
+    const { data: mealData, error: mealError } = await supabase
       .from('meal_allowance_snapshot')
       .select(`
         officer_name,
@@ -76,15 +76,24 @@ export default function DashboardContent() {
       .order('last_edited_at', { ascending: false })
       .limit(10);
 
-    if (snapshotError) throw snapshotError;
-    
-    console.log('📸 Snapshot data:', snapshotData);
+    if (mealError) throw mealError;
 
-    // 2. Kumpulkan semua admin IDs
-    const adminIds = [...new Set(snapshotData.map(item => item.last_edited_by).filter(Boolean))];
-    
-    // 3. Ambil data admin
+    // 2. AMBIL DARI AUDIT LOGS (Officers)
+    const { data: auditData, error: auditError } = await supabase
+      .from('audit_logs')
+      .select(`
+        *,
+        officers!changed_by (full_name, email)
+      `)
+      .order('changed_at', { ascending: false })
+      .limit(10);
+
+    if (auditError) throw auditError;
+
+    // 3. AMBIL DATA ADMIN UNTUK MEAL ALLOWANCE
+    const adminIds = [...new Set(mealData.map(item => item.last_edited_by).filter(Boolean))];
     let adminMap = {};
+    
     if (adminIds.length > 0) {
       const { data: admins } = await supabase
         .from('officers')
@@ -97,18 +106,48 @@ export default function DashboardContent() {
       }, {});
     }
 
-    // 4. Format activities
-    const formattedActivities = (snapshotData || []).map(item => ({
-      id: item.last_edited_at,
+    // 4. FORMAT MEAL ALLOWANCE ACTIVITIES
+    const mealActivities = (mealData || []).map(item => ({
+      id: `meal-${item.last_edited_at}`,
+      module: 'Meal Allowance',
       officer: item.officer_name,
       bulan: item.bulan,
       timestamp: item.last_edited_at,
       adminName: adminMap[item.last_edited_by] || 'Admin',
-      changes: formatChanges(item)
+      changes: formatMealChanges(item),
+      icon: getMealIcon(item)
     }));
 
-    console.log('🎯 Formatted activities:', formattedActivities);
-    setActivities(formattedActivities);
+    // 5. FORMAT AUDIT LOGS ACTIVITIES (Officers)
+    const auditActivities = (auditData || []).map(item => {
+      let changes = [];
+      if (item.action === 'UPDATE') {
+        changes = ['updated data'];
+      } else if (item.action === 'DELETE') {
+        changes = ['deleted officer'];
+      } else if (item.action === 'INSERT') {
+        changes = ['added new officer'];
+      }
+
+      return {
+        id: `audit-${item.changed_at}`,
+        module: 'Officers',
+        officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
+        bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+        timestamp: item.changed_at,
+        adminName: item.officers?.full_name || item.officers?.email || 'Admin',
+        changes: changes,
+        icon: item.action === 'INSERT' ? '➕' : item.action === 'DELETE' ? '❌' : '✏️'
+      };
+    });
+
+    // 6. GABUNGIN & SORTIR (ambil 10 terbaru)
+    const allActivities = [...mealActivities, ...auditActivities]
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 10);
+
+    console.log('📸 All activities:', allActivities);
+    setActivities(allActivities);
     
   } catch (error) {
     console.error('Error fetching activities:', error);
@@ -117,18 +156,26 @@ export default function DashboardContent() {
   }
 };
 
-  const formatChanges = (item) => {
-    const changes = [];
-    if (item.kasbon > 0) changes.push(`kasbon $${item.kasbon}`);
-    if (item.cuti_count > 0) changes.push(`cuti ${item.cuti_count} hari`);
-    if (item.etc !== 0) {
-      changes.push(`etc ${item.etc > 0 ? '+' : ''}${item.etc}`);
-    }
-    if (item.etc_note && item.etc_note.trim() !== '') {
-      changes.push(`"${item.etc_note}"`);
-    }
-    return changes;
-  };
+// Helper functions
+const formatMealChanges = (item) => {
+  const changes = [];
+  if (item.kasbon > 0) changes.push(`kasbon $${item.kasbon}`);
+  if (item.cuti_count > 0) changes.push(`cuti ${item.cuti_count} hari`);
+  if (item.etc !== 0) {
+    changes.push(`etc ${item.etc > 0 ? '+' : ''}${item.etc}`);
+  }
+  if (item.etc_note && item.etc_note.trim() !== '') {
+    changes.push(`"${item.etc_note}"`);
+  }
+  return changes;
+};
+
+const getMealIcon = (item) => {
+  if (item.kasbon > 0) return '💰';
+  if (item.cuti_count > 0) return '🏖️';
+  if (item.etc !== 0) return '🔄';
+  return '🍽️';
+};
 
   const formatTimeAgo = (timestamp) => {
     const now = new Date();
@@ -264,38 +311,44 @@ export default function DashboardContent() {
           ) : activities.length > 0 ? (
             activities.map((activity, index) => (
               <div 
-                key={activity.id} 
-                className="border-l-4 border-[#FFD700] pl-4 py-2 hover:bg-[#1A2F4A]/30 transition-colors rounded-r-lg"
-              >
-                <div className="flex items-start gap-2">
-                  <span className="text-lg">{getActivityIcon(activity.changes)}</span>
-                  <div className="flex-1">
-                    <p className="font-medium text-white">
-                      <span className="text-[#FFD700]">{activity.officer}</span>
-                      {activity.changes.length > 0 ? (
-                        <> • {activity.changes.join(' • ')}</>
-                      ) : (
-                        ' • updated data'
-                      )}
-                    </p>
-                    <div className="flex items-center gap-2 text-sm text-[#A7D8FF] mt-1">
-                      {/* BY ADMIN dengan nama real dari database */}
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                        {activity.adminName}
-                      </span>
-                      <span>•</span>
-                      <span>{formatTimeAgo(activity.timestamp)}</span>
-                      <span>•</span>
-                      <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full">
-                        {activity.bulan}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+    key={activity.id} 
+    className="border-l-4 border-[#FFD700] pl-4 py-2 hover:bg-[#1A2F4A]/30 transition-colors rounded-r-lg"
+  >
+    <div className="flex items-start gap-2">
+      <span className="text-lg">{activity.icon || '📝'}</span>
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full text-[#FFD700]">
+            {activity.module}
+          </span>
+          <span className="font-medium text-white">
+            <span className="text-[#FFD700]">{activity.officer}</span>
+          </span>
+        </div>
+        <p className="text-sm text-white">
+          {activity.changes.length > 0 ? (
+            activity.changes.join(' • ')
+          ) : (
+            'updated data'
+          )}
+        </p>
+        <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-1">
+          <span className="flex items-center gap-1">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+            {activity.adminName}
+          </span>
+          <span>•</span>
+          <span>{formatTimeAgo(activity.timestamp)}</span>
+          <span>•</span>
+          <span className="px-2 py-0.5 bg-[#1A2F4A] rounded-full text-xs">
+            {activity.bulan}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
             ))
           ) : (
             <div className="text-center py-8 text-[#A7D8FF]">
