@@ -267,7 +267,7 @@ export default function DashboardContent() {
 
       {/* Quick Access section */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Quick Access</h2>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Admin Quick Access</h2>
         <QuickLinks />
       </div>
 
