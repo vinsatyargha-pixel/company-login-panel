@@ -18,7 +18,7 @@ export default function MealAllowancePage() {
   const [availableDepartments, setAvailableDepartments] = useState(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
   
   // State untuk status PAID/UNPAID
-  const [paymentStatus, setPaymentStatus] = useState({});
+  const [paymentStatus, setPaymentStatus] = useState({ isPaid: false, paidAt: null, paidBy: null });
   const [updatingStatus, setUpdatingStatus] = useState(false);
   
   const [editingOfficer, setEditingOfficer] = useState(null);
@@ -243,6 +243,8 @@ export default function MealAllowancePage() {
       
       // Cari admin ID
       let adminId = null;
+      let adminName = 'Admin';
+      
       if (user?.email) {
         const { data: adminData } = await supabase
           .from('officers')
@@ -252,6 +254,7 @@ export default function MealAllowancePage() {
         
         if (adminData) {
           adminId = adminData.id;
+          adminName = adminData.full_name || user.email;
         }
       }
 
@@ -265,7 +268,10 @@ export default function MealAllowancePage() {
 
       const { error } = await supabase
         .from('meal_allowance_payments')
-        .upsert(paymentData, { onConflict: 'bulan' });
+        .upsert(paymentData, { 
+          onConflict: 'bulan',
+          ignoreDuplicates: false 
+        });
 
       if (error) throw error;
 
@@ -281,6 +287,7 @@ export default function MealAllowancePage() {
           changed_at: new Date().toISOString()
         });
 
+      // Update state langsung
       setPaymentStatus({ 
         isPaid: newStatus, 
         paidAt: newStatus ? new Date().toISOString() : null,
@@ -291,7 +298,7 @@ export default function MealAllowancePage() {
       
     } catch (error) {
       console.error('Error updating payment status:', error);
-      alert('❌ Gagal mengubah status pembayaran');
+      alert('❌ Gagal mengubah status pembayaran: ' + error.message);
     } finally {
       setUpdatingStatus(false);
     }
