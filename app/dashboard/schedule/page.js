@@ -66,12 +66,32 @@ export default function SchedulePage() {
   const years = ['2026', '2027', '2028', '2029', '2030', '2031', '2032'];
 
   // ===========================================
+  // FUNGSI CEK HARI (SABTU/MINGGU)
+  // ===========================================
+  const isWeekend = (day, month, year) => {
+    // Buat tanggal dengan parameter yang benar
+    // Perlu dipastikan month dalam format angka (0-11)
+    let monthIndex;
+    if (month === monthBefore) {
+      // Untuk bulan sebelumnya, kita perlu tahun yang mungkin berbeda
+      const prevDate = new Date(`${month} 1, ${year}`);
+      monthIndex = prevDate.getMonth();
+    } else {
+      monthIndex = months.indexOf(month);
+    }
+    
+    const date = new Date(parseInt(year), monthIndex, parseInt(day));
+    const dayOfWeek = date.getDay(); // 0 = Minggu, 6 = Sabtu
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  };
+
+  // ===========================================
   // FUNGSI AUTO-SELECT BULAN BERDASARKAN TANGGAL
   // ===========================================
   const getCurrentMonthByCutoff = () => {
     const today = new Date();
     const currentDate = today.getDate();
-    const currentMonthIndex = today.getMonth(); // 0 = January, 1 = February, etc.
+    const currentMonthIndex = today.getMonth();
     const currentYear = today.getFullYear();
     
     console.log('📅 Today:', today);
@@ -380,12 +400,26 @@ const fetchOfficers = async () => {
             </tr>
             
             <tr className="bg-gray-50 border-b border-gray-300">
-              {dateColumns.map((date, idx) => (
-                <th key={idx} className="px-1 py-1 text-center font-medium text-black border-r border-gray-300 min-w-[30px]">
-                  {date.day}<br/>
-                  <span className="text-[10px] text-gray-600">{date.month.substring(0,3)}</span>
-                </th>
-              ))}
+              {dateColumns.map((date, idx) => {
+                // Cek apakah tanggal ini weekend (Sabtu/Minggu)
+                const isWeekendDay = isWeekend(date.day, date.month, selectedYear);
+                
+                return (
+                  <th 
+                    key={idx} 
+                    className={`px-1 py-1 text-center font-medium border-r border-gray-300 min-w-[30px] ${
+                      isWeekendDay 
+                        ? 'text-red-600 font-bold' 
+                        : 'text-black'
+                    }`}
+                  >
+                    {date.day}<br/>
+                    <span className={`text-[10px] ${isWeekendDay ? 'text-red-400' : 'text-gray-600'}`}>
+                      {date.month.substring(0,3)}
+                    </span>
+                  </th>
+                );
+              })}
               {totalColumns.map((col, idx) => (
                 <th key={idx} className="px-1 py-1 text-left font-medium text-black border-r border-gray-300 min-w-[60px]">
                   {col}
