@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import DashboardCard from '@/components/DashboardCard';
-import QuickLinks from '@/components/QuickLinks';
 import LogoutButton from '@/components/LogoutButton';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import SpinningX from '@/components/SpinningX'; // Perhatikan nama file!
+import SpinningX from '@/components/SpinningX';
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
@@ -54,7 +53,7 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FUNGSI RECENT ACTIVITY - HANYA OFFICERS
+  // FUNGSI RECENT ACTIVITY
   // ===========================================
   const fetchRecentActivities = async () => {
     try {
@@ -172,6 +171,46 @@ export default function DashboardContent() {
     return past.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   };
 
+  // Menu items untuk quick access
+  const menuItems = [
+    {
+      title: '📊 ANALYTICS',
+      description: 'Attendance & Division Overview',
+      href: '/dashboard/analytics',
+      icon: '📊',
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/10',
+      adminOnly: false
+    },
+    {
+      title: '📥 DATA RAW',
+      description: 'Import CS, DP, WD Data',
+      href: '/dashboard/data-raw',
+      icon: '📥',
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/10',
+      adminOnly: true
+    },
+    {
+      title: '📈 OFFICERS KPI',
+      description: 'Officers Key Performance Indicators',
+      href: '/dashboard/officers-kpi',
+      icon: '📈',
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/10',
+      adminOnly: false
+    },
+    {
+      title: '⚙️ SETTINGS',
+      description: 'Access Role & Reset Password',
+      href: '/dashboard/settings',
+      icon: '⚙️',
+      color: 'text-orange-400',
+      bgColor: 'bg-orange-500/10',
+      adminOnly: true
+    }
+  ];
+
   if (loading) return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
       <div className="text-center">
@@ -185,7 +224,6 @@ export default function DashboardContent() {
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          {/* NEON GLOWING TITLE - X MUTER DI TENGAH */}
           <h1 className="relative text-5xl font-bold">
             <span className="absolute inset-0 text-[#FFD700] blur-2xl opacity-70 animate-pulse flex items-center">
               GROUP<SpinningX size={16} /> Dashboard
@@ -265,13 +303,45 @@ export default function DashboardContent() {
         />
       </div>
 
-      {/* Quick Access section */}
+      {/* QUICK MENU SECTION */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Admin Quick Access</h2>
-        <QuickLinks />
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Quick Menu</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {menuItems.map((item, index) => {
+            // Skip admin-only items for non-admin users
+            if (item.adminOnly && !isAdmin) return null;
+            
+            return (
+              <a
+                key={index}
+                href={item.href}
+                className="bg-[#1A2F4A] p-5 rounded-xl border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_25px_#FFD700] transition-all duration-300 group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-14 h-14 rounded-full ${item.bgColor} flex items-center justify-center text-3xl`}>
+                    {item.icon}
+                  </div>
+                  <div className="flex-1">
+                    <div className={`font-bold text-lg ${item.color} group-hover:text-[#FFD700] transition-colors`}>
+                      {item.title}
+                    </div>
+                    <div className="text-xs text-[#A7D8FF] mt-1">
+                      {item.description}
+                    </div>
+                    {item.adminOnly && (
+                      <span className="inline-block mt-1 text-[10px] bg-[#FFD700]/10 text-[#FFD700] px-2 py-0.5 rounded-full">
+                        Admin Only
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </a>
+            );
+          })}
+        </div>
       </div>
 
-      {/* RECENT ACTIVITY - HANYA OFFICERS */}
+      {/* RECENT ACTIVITY */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Recent Activity Edit Database - By Admin</h2>
         
