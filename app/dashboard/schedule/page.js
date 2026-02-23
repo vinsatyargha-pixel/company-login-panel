@@ -65,12 +65,54 @@ export default function SchedulePage() {
   
   const years = ['2026', '2027', '2028', '2029', '2030', '2031', '2032'];
 
+  // ===========================================
+  // FUNGSI AUTO-SELECT BULAN BERDASARKAN TANGGAL
+  // ===========================================
+  const getCurrentMonthByCutoff = () => {
+    const today = new Date();
+    const currentDate = today.getDate();
+    const currentMonthIndex = today.getMonth(); // 0 = January, 1 = February, etc.
+    const currentYear = today.getFullYear();
+    
+    console.log('📅 Today:', today);
+    console.log('📅 Current Date:', currentDate);
+    console.log('📅 Current Month Index:', currentMonthIndex);
+    console.log('📅 Current Year:', currentYear);
+    
+    // Aturan cutoff: 
+    // - Jika tanggal > 20, maka bulan yang ditampilkan adalah bulan depan
+    // - Jika tanggal <= 20, maka bulan yang ditampilkan adalah bulan sekarang
+    if (currentDate > 20) {
+      // Bulan depan
+      let nextMonthIndex = currentMonthIndex + 1;
+      let nextYear = currentYear;
+      
+      if (nextMonthIndex > 11) { // Desember ke Januari
+        nextMonthIndex = 0;
+        nextYear = currentYear + 1;
+      }
+      
+      setSelectedYear(nextYear.toString());
+      setSelectedMonth(months[nextMonthIndex]);
+      console.log('📅 Selected Month (Next):', months[nextMonthIndex]);
+      console.log('📅 Selected Year (Next):', nextYear);
+    } else {
+      // Bulan sekarang
+      setSelectedYear(currentYear.toString());
+      setSelectedMonth(months[currentMonthIndex]);
+      console.log('📅 Selected Month (Current):', months[currentMonthIndex]);
+      console.log('📅 Selected Year (Current):', currentYear);
+    }
+  };
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
     if (mounted) {
+      // Set default bulan berdasarkan tanggal hari ini
+      getCurrentMonthByCutoff();
       fetchOfficers();
     }
   }, [mounted]);
