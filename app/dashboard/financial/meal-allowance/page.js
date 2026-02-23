@@ -37,29 +37,34 @@ export default function MealAllowancePage() {
   // AUTO-SELECT BULAN BERDASARKAN TANGGAL (CUTOFF 20)
   // ===========================================
   const getCurrentMonthByCutoff = () => {
-    const today = new Date();
-    const currentDate = today.getDate();
-    const currentMonthIndex = today.getMonth();
-    const currentYear = today.getFullYear();
+  const today = new Date();
+  const currentDate = today.getDate();
+  const currentMonthIndex = today.getMonth();
+  const currentYear = today.getFullYear();
+  
+  if (currentDate > 20) {
+    // Bulan depan
+    let nextMonthIndex = currentMonthIndex + 1;
+    let nextYear = currentYear;
     
-    if (currentDate > 20) {
-      // Bulan depan
-      let nextMonthIndex = currentMonthIndex + 1;
-      let nextYear = currentYear;
-      
-      if (nextMonthIndex > 11) {
-        nextMonthIndex = 0;
-        nextYear = currentYear + 1;
-      }
-      
-      setSelectedYear(nextYear.toString());
-      setSelectedMonth(months[nextMonthIndex]);
-    } else {
-      // Bulan sekarang
-      setSelectedYear(currentYear.toString());
-      setSelectedMonth(months[currentMonthIndex]);
+    if (nextMonthIndex > 11) {
+      nextMonthIndex = 0;
+      nextYear = currentYear + 1;
     }
-  };
+    
+    setSelectedYear(nextYear.toString());
+    setSelectedMonth(months[nextMonthIndex]);
+  } else {
+    // Bulan sekarang
+    setSelectedYear(currentYear.toString());
+    setSelectedMonth(months[currentMonthIndex]);
+  }
+  
+  // LANGSUNG FETCH STATUS
+  setTimeout(() => {
+    fetchPaymentStatus();
+  }, 50);
+};
 
   // ===========================================
   // HELPER FUNCTIONS
@@ -205,14 +210,15 @@ export default function MealAllowancePage() {
   }, [isAdmin]);
 
   useEffect(() => {
-    fetchData();
-    fetchPaymentStatus();
-    
-    // RESET STATE biar ga kebawa bulan sebelumnya
-    setEditingOfficer(null);
-    setEditForm({ kasbon: 0, cuti: 0, etc: 0, etc_note: '' });
-    
-  }, [selectedMonth, selectedYear]);
+  fetchData();
+  // JANGAN panggil fetchPaymentStatus() di sini lagi karena udah di timeout
+  // fetchPaymentStatus();
+  
+  // RESET STATE
+  setEditingOfficer(null);
+  setEditForm({ kasbon: 0, cuti: 0, etc: 0, etc_note: '' });
+  
+}, [selectedMonth, selectedYear]);
 
   const fetchPaymentStatus = async () => {
     try {
