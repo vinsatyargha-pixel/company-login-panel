@@ -17,6 +17,7 @@ export default function DashboardContent() {
   });
   const [activities, setActivities] = useState([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
+  const [showActivityTooltip, setShowActivityTooltip] = useState(false);
 
   const { user, userJobRole, isAdmin } = useAuth();
 
@@ -223,6 +224,7 @@ export default function DashboardContent() {
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        {/* LEFT SIDE - Title & Welcome */}
         <div>
           <h1 className="relative text-5xl font-bold">
             <span className="absolute inset-0 text-[#FFD700] blur-2xl opacity-70 animate-pulse flex items-center">
@@ -237,7 +239,59 @@ export default function DashboardContent() {
           </p>
         </div>
         
+        {/* RIGHT SIDE - User Profile & Recent Activity */}
         <div className="flex items-center gap-4">
+          {/* RECENT ACTIVITY NOTIFICATION */}
+          <div className="relative">
+            <button
+              onClick={() => window.location.href = '/dashboard/activity-log'}
+              onMouseEnter={() => setShowActivityTooltip(true)}
+              onMouseLeave={() => setShowActivityTooltip(false)}
+              className="relative bg-[#1A2F4A] hover:bg-[#2A3F5A] p-3 rounded-lg border border-[#FFD700]/30 transition-all group"
+              title="View all activity"
+            >
+              <svg className="w-6 h-6 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              
+              {/* NOTIFICATION BADGE - muncul kalau ada aktivitas baru */}
+              {activities.length > 0 && (
+                <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold animate-pulse">
+                  1
+                </span>
+              )}
+            </button>
+            
+            {/* TOOLTIP - muncul pas hover */}
+            {showActivityTooltip && activities.length > 0 && (
+              <div className="absolute right-0 mt-2 w-72 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg p-3 z-50 shadow-xl">
+                <p className="text-[#FFD700] text-sm font-bold mb-2 flex items-center gap-2">
+                  <span>🔔 Recent Updates</span>
+                  <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-0.5 rounded-full">
+                    {activities.length} total
+                  </span>
+                </p>
+                {activities.slice(0, 3).map((act, idx) => (
+                  <div key={idx} className="text-xs text-[#A7D8FF] mb-2 pb-2 border-b border-[#FFD700]/20 last:border-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-white font-bold">{act.officer}</span>
+                      <span className="text-[10px] text-[#A7D8FF]">• {formatTimeAgo(act.timestamp)}</span>
+                    </div>
+                    <div className="text-[10px] mt-1 text-white bg-[#0B1A33] p-1 rounded">
+                      {act.changes?.[0] || 'Updated data'}
+                    </div>
+                  </div>
+                ))}
+                <div className="text-center mt-2 pt-2 border-t border-[#FFD700]/20">
+                  <span className="text-xs text-[#FFD700] hover:text-[#FFD700]/80 cursor-pointer" onClick={() => window.location.href = '/dashboard/activity-log'}>
+                    View all activity →
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* USER PROFILE CARD */}
           <div className="bg-[#0B1A33] rounded-lg shadow-lg border border-[#FFD700]/30 p-3 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#FFD700]/20 flex items-center justify-center">
               <svg className="w-5 h-5 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,7 +362,6 @@ export default function DashboardContent() {
         <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Performance & Settings Menu</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {menuItems.map((item, index) => {
-            // Skip admin-only items for non-admin users
             if (item.adminOnly && !isAdmin) return null;
             
             return (
@@ -339,74 +392,6 @@ export default function DashboardContent() {
             );
           })}
         </div>
-      </div>
-
-      {/* RECENT ACTIVITY */}
-      <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Recent Activity Edit Database - By Admin</h2>
-        
-        <div className="space-y-2">
-          {loadingActivities ? (
-            [...Array(3)].map((_, i) => (
-              <div key={i} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 animate-pulse">
-                <div className="h-4 bg-[#0B1A33] rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-[#0B1A33] rounded w-1/2"></div>
-              </div>
-            ))
-          ) : activities.length > 0 ? (
-            activities.slice(0, 10).map((act, idx) => (
-              <div key={idx} className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 hover:bg-[#1A2F4A]/80 transition-all">
-                <div className="flex items-start gap-2">
-                  <span className="text-lg">{act.icon || '👤'}</span>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs bg-[#0B1A33] px-2 py-0.5 rounded-full text-[#FFD700] border border-[#FFD700]/30">
-                        Officers
-                      </span>
-                      <span className="font-bold text-[#FFD700]">{act.officer}</span>
-                    </div>
-                    
-                    <div className="text-white text-sm mt-1">
-                      {act.changes?.map((change, i) => (
-                        <div key={i} className="flex items-start gap-1">
-                          <span className="text-[#A7D8FF]">•</span>
-                          <span>{change}</span>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-xs text-[#A7D8FF] mt-2">
-                      <span>{act.adminName}</span>
-                      <span>•</span>
-                      <span>{formatTimeAgo(act.timestamp)}</span>
-                      <span>•</span>
-                      <span className="px-2 py-0.5 bg-[#0B1A33] rounded-full border border-[#FFD700]/20">{act.bulan}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-8 text-[#A7D8FF]">
-              <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p>Belum ada aktivitas terbaru</p>
-              <p className="text-sm mt-1">Edit data officer untuk memulai</p>
-            </div>
-          )}
-        </div>
-
-        {activities.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-[#FFD700]/20 text-right">
-            <button 
-              onClick={() => window.location.href = '/dashboard/activity-log'}
-              className="text-sm text-[#FFD700] hover:text-[#FFD700]/80 transition-colors drop-shadow-[0_0_5px_#FFD700]"
-            >
-              View all activity →
-            </button>
-          </div>
-        )}
       </div>
 
       {showResetModal && (
