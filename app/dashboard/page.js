@@ -18,12 +18,45 @@ export default function DashboardContent() {
   const [activities, setActivities] = useState([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [showActivityTooltip, setShowActivityTooltip] = useState(false);
+  
+  // STATE UNTUK NOTIFIKASI
+  const [lastReadTimestamp, setLastReadTimestamp] = useState(null);
+  const [hasNewActivity, setHasNewActivity] = useState(false);
 
   const { user, userJobRole, isAdmin } = useAuth();
 
   useEffect(() => {
     fetchDashboardData();
     fetchRecentActivities();
+  }, []);
+
+  // LOAD LAST READ TIMESTAMP DARI LOCALSTORAGE
+  useEffect(() => {
+    const saved = localStorage.getItem('lastReadActivity');
+    if (saved) {
+      setLastReadTimestamp(saved);
+    }
+  }, []);
+
+  // CEK APAKAH ADA AKTIVITAS BARU
+  useEffect(() => {
+    if (activities.length > 0) {
+      const latestActivity = new Date(activities[0].timestamp).getTime();
+      const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
+      setHasNewActivity(latestActivity > lastRead);
+    }
+  }, [activities, lastReadTimestamp]);
+
+  // LISTEN EVENT DARI ACTIVITY LOG
+  useEffect(() => {
+    const handleActivityRead = () => {
+      const saved = localStorage.getItem('lastReadActivity');
+      if (saved) {
+        setLastReadTimestamp(saved);
+      }
+    };
+    window.addEventListener('activityRead', handleActivityRead);
+    return () => window.removeEventListener('activityRead', handleActivityRead);
   }, []);
 
   const fetchDashboardData = async () => {
@@ -254,8 +287,8 @@ export default function DashboardContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               
-              {/* NOTIFICATION BADGE - muncul kalau ada aktivitas baru */}
-              {activities.length > 0 && (
+              {/* NOTIFICATION BADGE - muncul kalau ada aktivitas baru BELUM DIBACA */}
+              {hasNewActivity && (
                 <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold animate-pulse">
                   1
                 </span>

@@ -12,7 +12,22 @@ export default function ActivityLogPage() {
 
   useEffect(() => {
     fetchAllActivities();
+    // MARK AS READ - ketika halaman activity log dibuka
+    markActivitiesAsRead();
   }, []);
+
+  // ===========================================
+  // MARK AS READ - simpan timestamp terakhir ke localStorage
+  // ===========================================
+  const markActivitiesAsRead = () => {
+    if (activities.length > 0) {
+      const latestTimestamp = activities[0].timestamp;
+      localStorage.setItem('lastReadActivity', latestTimestamp);
+      
+      // Optional: trigger event buat dashboard tahu kalau udah dibaca
+      window.dispatchEvent(new Event('activityRead'));
+    }
+  };
 
   const fetchAllActivities = async () => {
     try {
@@ -75,7 +90,7 @@ export default function ActivityLogPage() {
         icon: getMealIcon(item)
       }));
 
-      // 5. FORMAT AUDIT LOGS ACTIVITIES (Officers) - DENGAN BEFORE-AFTER
+      // 5. FORMAT AUDIT LOGS ACTIVITIES (Officers)
       const auditActivities = (auditData || []).map(item => {
         let changes = [];
         let icon = '👤';
@@ -103,7 +118,7 @@ export default function ActivityLogPage() {
         };
       });
 
-      // 6. GABUNGIN & SORTIR (dari terbaru ke lama)
+      // 6. GABUNGIN & SORTIR
       const allActivities = [...mealActivities, ...auditActivities]
         .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
@@ -139,71 +154,48 @@ export default function ActivityLogPage() {
   };
 
   // ===========================================
-  // FORMAT CHANGES UNTUK OFFICERS (BEFORE-AFTER DETAIL)
+  // FORMAT CHANGES UNTUK OFFICERS
   // ===========================================
   const formatOfficerChanges = (oldData, newData) => {
     if (!oldData || !newData) return ['📝 Updated data'];
     
     const changes = [];
     
-    // 1. ROOM CHANGE
     if (oldData.room !== newData.room) {
       changes.push(`🏠 Room: ${oldData.room || 'empty'} → ${newData.room || 'empty'}`);
     }
-    
-    // 2. STATUS CHANGE
     if (oldData.status !== newData.status) {
       changes.push(`📊 Status: ${oldData.status || 'empty'} → ${newData.status || 'empty'}`);
     }
-    
-    // 3. DEPARTMENT CHANGE
     if (oldData.department !== newData.department) {
       changes.push(`🏢 Department: ${oldData.department || 'empty'} → ${newData.department || 'empty'}`);
     }
-    
-    // 4. JOIN DATE CHANGE
     if (oldData.join_date !== newData.join_date) {
       const oldDate = oldData.join_date ? new Date(oldData.join_date).toLocaleDateString('id-ID') : 'empty';
       const newDate = newData.join_date ? new Date(newData.join_date).toLocaleDateString('id-ID') : 'empty';
       changes.push(`📅 Join date: ${oldDate} → ${newDate}`);
     }
-    
-    // 5. NAME CHANGE
     if (oldData.full_name !== newData.full_name) {
       changes.push(`👤 Name: ${oldData.full_name || 'empty'} → ${newData.full_name || 'empty'}`);
     }
-    
-    // 6. PANEL ID CHANGE
     if (oldData.panel_id !== newData.panel_id) {
       changes.push(`🆔 Panel ID: ${oldData.panel_id || 'empty'} → ${newData.panel_id || 'empty'}`);
     }
-    
-    // 7. NATIONALITY CHANGE
     if (oldData.nationality !== newData.nationality) {
       changes.push(`🌏 Nationality: ${oldData.nationality || 'empty'} → ${newData.nationality || 'empty'}`);
     }
-    
-    // 8. GENDER CHANGE
     if (oldData.gender !== newData.gender) {
       changes.push(`⚥ Gender: ${oldData.gender || 'empty'} → ${newData.gender || 'empty'}`);
     }
-    
-    // 9. BANK ACCOUNT CHANGE
     if (oldData.bank_account !== newData.bank_account) {
       changes.push(`💰 Bank account: updated`);
     }
-    
-    // 10. PHONE CHANGE
     if (oldData.phone !== newData.phone) {
       changes.push(`📱 Phone: ${oldData.phone || 'empty'} → ${newData.phone || 'empty'}`);
     }
-    
-    // 11. TELEGRAM CHANGE
     if (oldData.telegram_id !== newData.telegram_id) {
       changes.push(`✈️ Telegram: ${oldData.telegram_id || 'empty'} → ${newData.telegram_id || 'empty'}`);
     }
-    
-    // 12. EMAIL CHANGE
     if (oldData.email !== newData.email) {
       changes.push(`📧 Email: ${oldData.email || 'empty'} → ${newData.email || 'empty'}`);
     }
@@ -211,9 +203,6 @@ export default function ActivityLogPage() {
     return changes.length > 0 ? changes : ['📝 Updated data'];
   };
 
-  // ===========================================
-  // FORMAT TIME AGO
-  // ===========================================
   const formatTimeAgo = (timestamp) => {
     const past = new Date(timestamp);
     return past.toLocaleString('id-ID', {
@@ -225,21 +214,16 @@ export default function ActivityLogPage() {
     });
   };
 
-  // ===========================================
-  // GET ACTIVITY ICON (SUDAH ADA DI DATA)
-  // ===========================================
-  // Tidak perlu fungsi getActivityIcon lagi karena icon sudah di data
-
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] flex items-center justify-center">
+      <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
+    <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       {/* Header dengan tombol back */}
       <div className="mb-6 flex items-center gap-4">
         <Link 
@@ -256,7 +240,7 @@ export default function ActivityLogPage() {
 
       {/* Main content */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
-        {/* Header dengan filter module (optional) */}
+        {/* Header dengan total count */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-[#FFD700]">All Activities</h2>
           <div className="flex items-center gap-3">
@@ -284,11 +268,9 @@ export default function ActivityLogPage() {
                 className="border-l-4 border-[#FFD700] pl-4 py-3 hover:bg-[#1A2F4A]/30 transition-colors rounded-r-lg"
               >
                 <div className="flex items-start gap-3">
-                  {/* Icon berdasarkan tipe perubahan */}
                   <span className="text-xl">{activity.icon}</span>
                   
                   <div className="flex-1">
-                    {/* Module badge & officer name */}
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full text-[#FFD700] border border-[#FFD700]/30">
                         {activity.module}
@@ -296,7 +278,6 @@ export default function ActivityLogPage() {
                       <span className="font-bold text-[#FFD700]">{activity.officer}</span>
                     </div>
                     
-                    {/* Changes - Multiple lines jika perlu */}
                     <div className="text-white text-sm mb-1 space-y-1">
                       {activity.changes.map((change, i) => (
                         <div key={i} className="flex items-start gap-1">
@@ -306,7 +287,6 @@ export default function ActivityLogPage() {
                       ))}
                     </div>
                     
-                    {/* Metadata: admin, waktu, bulan */}
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#A7D8FF] mt-2">
                       <span className="flex items-center gap-1">
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
