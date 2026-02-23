@@ -17,6 +17,10 @@ export default function MealAllowancePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [availableDepartments, setAvailableDepartments] = useState(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
   
+  // State untuk status PAID/UNPAID
+  const [paymentStatus, setPaymentStatus] = useState({});
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  
   const [editingOfficer, setEditingOfficer] = useState(null);
   const [editForm, setEditForm] = useState({
     kasbon: 0,
@@ -28,6 +32,34 @@ export default function MealAllowancePage() {
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                   'July', 'August', 'September', 'October', 'November', 'December'];
   const years = ['2025', '2026', '2027'];
+
+  // ===========================================
+  // AUTO-SELECT BULAN BERDASARKAN TANGGAL (CUTOFF 20)
+  // ===========================================
+  const getCurrentMonthByCutoff = () => {
+    const today = new Date();
+    const currentDate = today.getDate();
+    const currentMonthIndex = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    if (currentDate > 20) {
+      // Bulan depan
+      let nextMonthIndex = currentMonthIndex + 1;
+      let nextYear = currentYear;
+      
+      if (nextMonthIndex > 11) {
+        nextMonthIndex = 0;
+        nextYear = currentYear + 1;
+      }
+      
+      setSelectedYear(nextYear.toString());
+      setSelectedMonth(months[nextMonthIndex]);
+    } else {
+      // Bulan sekarang
+      setSelectedYear(currentYear.toString());
+      setSelectedMonth(months[currentMonthIndex]);
+    }
+  };
 
   // ===========================================
   // HELPER FUNCTIONS
@@ -158,6 +190,11 @@ export default function MealAllowancePage() {
   // ===========================================
 
   useEffect(() => {
+    // Set default bulan berdasarkan tanggal hari ini
+    getCurrentMonthByCutoff();
+  }, []);
+
+  useEffect(() => {
     if (!isAdmin) {
       setAvailableDepartments(['CS DP WD']);
       setSelectedDept('CS DP WD');
@@ -169,7 +206,96 @@ export default function MealAllowancePage() {
 
   useEffect(() => {
     fetchData();
+    fetchPaymentStatus();
   }, [selectedMonth, selectedYear]);
+
+  const fetchPaymentStatus = async () => {
+    try {
+      const bulan = `${selectedMonth} ${selectedYear}`;
+      const { data, error } = await supabase
+        .from('meal_allowance_payments')
+        .select('*')
+        .eq('bulan', bulan)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') throw error;
+      
+      if (data) {
+        setPaymentStatus({ isPaid: data.is_paid, paidAt: data.paid_at, paidBy: data.paid_by });
+      } else {
+        setPaymentStatus({ isPaid: false, paidAt: null, paidBy: null });
+      }
+    } catch (error) {
+      console.error('Error fetching payment status:', error);
+    }
+  };
+
+  const togglePaymentStatus = async () => {
+    if (!isAdmin) {
+      alert('Hanya admin yang bisa mengubah status pembayaran');
+      return;
+    }
+
+    try {
+      setUpdatingStatus(true);
+      const bulan = `${selectedMonth} ${selectedYear}`;
+      const newStatus = !paymentStatus.isPaid;
+      
+      // Cari admin ID
+      let adminId = null;
+      if (user?.email) {
+        const { data: adminData } = await supabase
+          .from('officers')
+          .select('id, full_name')
+          .ilike('email', user.email)
+          .maybeSingle();
+        
+        if (adminData) {
+          adminId = adminData.id;
+        }
+      }
+
+      const paymentData = {
+        bulan: bulan,
+        is_paid: newStatus,
+        paid_at: newStatus ? new Date().toISOString() : null,
+        paid_by: newStatus ? adminId : null,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('meal_allowance_payments')
+        .upsert(paymentData, { onConflict: 'bulan' });
+
+      if (error) throw error;
+
+      // Simpan ke audit logs
+      await supabase
+        .from('audit_logs')
+        .insert({
+          table_name: 'meal_allowance_payments',
+          record_id: bulan,
+          action: 'UPDATE',
+          new_data: { bulan, is_paid: newStatus },
+          changed_by: adminId,
+          changed_at: new Date().toISOString()
+        });
+
+      setPaymentStatus({ 
+        isPaid: newStatus, 
+        paidAt: newStatus ? new Date().toISOString() : null,
+        paidBy: newStatus ? adminId : null
+      });
+
+      alert(`✅ Status pembagian UM diubah menjadi ${newStatus ? 'PAID' : 'UNPAID'}`);
+      
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      alert('❌ Gagal mengubah status pembayaran');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -309,7 +435,7 @@ export default function MealAllowancePage() {
       const { data: adminData } = await supabase
         .from('officers')
         .select('id, full_name')
-        .ilike('email', user.email)  // <-- INI YANG DIUBAH
+        .ilike('email', user.email)
         .maybeSingle();
       
       if (adminData) {
@@ -401,15 +527,18 @@ export default function MealAllowancePage() {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
+      <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
+          <p className="mt-4 text-[#FFD700]">Loading data...</p>
+        </div>
       </div>
     );
   }
 
   if (selectedMonth === 'January') {
     return (
-      <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#0B1A33] text-white">
+      <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
         <div className="mb-6 flex items-center gap-4 flex-wrap">
           <Link href="/dashboard/financial" className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -448,147 +577,98 @@ export default function MealAllowancePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-  {/* CARD 1: Total Officers + LIST NAMA SAJA (TANPA NOMINAL) */}
-<div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-  <div className="text-[#A7D8FF] text-sm">Total Officers</div>
-  <div className="text-2xl font-bold text-[#FFD700]">{officersWithStats.length}</div>
-  
-  {/* LIST NAMA SAJA - URUT ABJAD */}
-  <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
-    {officersWithStats
-      .sort((a, b) => a.full_name.localeCompare(b.full_name)) // Urut abjad A-Z
-      .map(officer => (
-        <div key={officer.id} className="hover:bg-[#FFD700]/5 px-1 py-0.5 rounded transition-colors">
-          <span className="text-[#A7D8FF]" title={officer.full_name}>
-            {officer.full_name}
-          </span>
-        </div>
-      ))
-    }
-  </div>
-  
-  {/* FOOTER: Total jumlah orang */}
-  <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
-    {officersWithStats.length} orang
-  </div>
-</div>
-
-  {/* CARD 2: Total NET + LIST PER ORANG */}
-  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-    <div className="text-[#A7D8FF] text-sm">Total NET</div>
-    <div className="text-2xl font-bold text-[#FFD700]">
-      ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}
-    </div>
-    
-    {/* LIST NET PER ORANG - HANYA YANG > 0 */}
-    <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
-      {officersWithStats
-        .filter(o => o.finalNet > 0)
-        .sort((a, b) => b.finalNet - a.finalNet) // Urut nominal terbesar
-        .map(officer => (
-          <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded transition-colors">
-            <span className="text-[#A7D8FF] truncate max-w-[160px]" title={officer.full_name}>
-              {officer.full_name}
-            </span>
-            <span className="text-[#FFD700] font-medium ml-2">${officer.finalNet}</span>
+        {/* CARD 1: Total Officers */}
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="text-[#A7D8FF] text-sm">Total Officers</div>
+          <div className="text-2xl font-bold text-[#FFD700]">{officersWithStats.length}</div>
+          <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1">
+            {officersWithStats
+              .sort((a, b) => a.full_name.localeCompare(b.full_name))
+              .map(officer => (
+                <div key={officer.id} className="hover:bg-[#FFD700]/5 px-1 py-0.5 rounded">
+                  <span className="text-[#A7D8FF]">{officer.full_name}</span>
+                </div>
+              ))}
           </div>
-        ))
-      }
-      
-      {/* KALAU TIDAK ADA NET > 0 */}
-      {officersWithStats.filter(o => o.finalNet > 0).length === 0 && (
-        <div className="text-[#A7D8FF] text-center py-2 italic text-xs">
-          ✨ Tidak ada data NET
-        </div>
-      )}
-    </div>
-    
-    {/* FOOTER: Total jumlah orang */}
-    {officersWithStats.filter(o => o.finalNet > 0).length > 0 && (
-      <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
-        {officersWithStats.filter(o => o.finalNet > 0).length} orang
-      </div>
-    )}
-  </div>
-
-  {/* CARD 3: Total Kasbon + LIST PER ORANG */}
-  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-    <div className="text-[#A7D8FF] text-sm">Total Kasbon</div>
-    <div className="text-2xl font-bold text-red-400">
-      ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.kasbon || 0), 0))}
-    </div>
-    
-    {/* LIST KASBON PER ORANG - HANYA YANG > 0 */}
-    <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
-      {officersWithStats
-        .filter(o => o.kasbon > 0)
-        .sort((a, b) => b.kasbon - a.kasbon)
-        .map(officer => (
-          <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded transition-colors">
-            <span className="text-[#A7D8FF] truncate max-w-[160px]" title={officer.full_name}>
-              {officer.full_name}
-            </span>
-            <span className="text-red-400 font-medium ml-2">${officer.kasbon}</span>
+          <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
+            {officersWithStats.length} orang
           </div>
-        ))
-      }
-      
-      {/* KALAU TIDAK ADA KASBON */}
-      {officersWithStats.filter(o => o.kasbon > 0).length === 0 && (
-        <div className="text-[#A7D8FF] text-center py-2 italic text-xs">
-          ✨ Tidak ada kasbon
         </div>
-      )}
-    </div>
-    
-    {/* FOOTER: Total jumlah orang yang punya kasbon */}
-    {officersWithStats.filter(o => o.kasbon > 0).length > 0 && (
-      <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
-        {officersWithStats.filter(o => o.kasbon > 0).length} orang
-      </div>
-    )}
-  </div>
 
-  {/* CARD 4: Total ETC + LIST PER ORANG */}
-  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-    <div className="text-[#A7D8FF] text-sm">Total ETC</div>
-    <div className="text-2xl font-bold text-green-400">
-      ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.etc || 0), 0))}
-    </div>
-    
-    {/* LIST ETC PER ORANG - HANYA YANG TIDAK 0 */}
-    <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-[#FFD700]/20 scrollbar-track-transparent">
-      {officersWithStats
-        .filter(o => o.etc !== 0)
-        .sort((a, b) => b.etc - a.etc)
-        .map(officer => (
-          <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded transition-colors">
-            <span className="text-[#A7D8FF] truncate max-w-[160px]" title={officer.full_name}>
-              {officer.full_name}
-            </span>
-            <span className={`font-medium ml-2 ${officer.etc > 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {officer.etc > 0 ? '+' : ''}{officer.etc}
-            </span>
+        {/* CARD 2: Total NET */}
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="text-[#A7D8FF] text-sm">Total NET</div>
+          <div className="text-2xl font-bold text-[#FFD700]">
+            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}
           </div>
-        ))
-      }
-      
-      {/* KALAU SEMUA ETC = 0 */}
-      {officersWithStats.filter(o => o.etc !== 0).length === 0 && (
-        <div className="text-[#A7D8FF] text-center py-2 italic text-xs">
-          ✨ Tidak ada ETC
+          <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1">
+            {officersWithStats
+              .filter(o => o.finalNet > 0)
+              .sort((a, b) => b.finalNet - a.finalNet)
+              .map(officer => (
+                <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded">
+                  <span className="text-[#A7D8FF] truncate max-w-[160px]">{officer.full_name}</span>
+                  <span className="text-[#FFD700] font-medium ml-2">${officer.finalNet}</span>
+                </div>
+              ))}
+          </div>
+          {officersWithStats.filter(o => o.finalNet > 0).length > 0 && (
+            <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
+              {officersWithStats.filter(o => o.finalNet > 0).length} orang
+            </div>
+          )}
         </div>
-      )}
-    </div>
-    
-    {/* FOOTER: Total jumlah orang dengan ETC */}
-    {officersWithStats.filter(o => o.etc !== 0).length > 0 && (
-      <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
-        {officersWithStats.filter(o => o.etc !== 0).length} orang
+
+        {/* CARD 3: Total Kasbon */}
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="text-[#A7D8FF] text-sm">Total Kasbon</div>
+          <div className="text-2xl font-bold text-red-400">
+            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.kasbon || 0), 0))}
+          </div>
+          <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1">
+            {officersWithStats
+              .filter(o => o.kasbon > 0)
+              .sort((a, b) => b.kasbon - a.kasbon)
+              .map(officer => (
+                <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded">
+                  <span className="text-[#A7D8FF] truncate max-w-[160px]">{officer.full_name}</span>
+                  <span className="text-red-400 font-medium ml-2">${officer.kasbon}</span>
+                </div>
+              ))}
+          </div>
+          {officersWithStats.filter(o => o.kasbon > 0).length > 0 && (
+            <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
+              {officersWithStats.filter(o => o.kasbon > 0).length} orang
+            </div>
+          )}
+        </div>
+
+        {/* CARD 4: Total ETC */}
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="text-[#A7D8FF] text-sm">Total ETC</div>
+          <div className="text-2xl font-bold text-green-400">
+            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.etc || 0), 0))}
+          </div>
+          <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1">
+            {officersWithStats
+              .filter(o => o.etc !== 0)
+              .sort((a, b) => b.etc - a.etc)
+              .map(officer => (
+                <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded">
+                  <span className="text-[#A7D8FF] truncate max-w-[160px]">{officer.full_name}</span>
+                  <span className={`font-medium ml-2 ${officer.etc > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {officer.etc > 0 ? '+' : ''}{officer.etc}
+                  </span>
+                </div>
+              ))}
+          </div>
+          {officersWithStats.filter(o => o.etc !== 0).length > 0 && (
+            <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
+              {officersWithStats.filter(o => o.etc !== 0).length} orang
+            </div>
+          )}
+        </div>
       </div>
-    )}
-  </div>
-</div>
 
       <div className="mb-6 flex flex-wrap gap-4">
         <select className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
@@ -604,14 +684,50 @@ export default function MealAllowancePage() {
       </div>
 
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4 items-center">
           <div>
             <span className="text-[#A7D8FF]">Data dari schedule:</span> 
             <span className="text-white font-medium">{getPreviousMonth(selectedMonth, selectedYear)}</span>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
             <span className="text-[#A7D8FF]">Pembagian UM:</span> 
             <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span>
+          </div>
+          
+          {/* STATUS PAID/UNPAID BUTTON */}
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-[#A7D8FF]">Status:</span>
+            {isAdmin ? (
+              <button
+                onClick={togglePaymentStatus}
+                disabled={updatingStatus}
+                className={`relative inline-flex items-center gap-2 px-4 py-1.5 rounded-lg font-medium transition-all ${
+                  paymentStatus.isPaid
+                    ? 'bg-green-500 text-white hover:bg-green-600 shadow-[0_0_15px_#10b981]'
+                    : 'bg-gray-600 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {paymentStatus.isPaid ? (
+                  <>
+                    <span>✅ PAID</span>
+                    <span className="text-xs opacity-75">(click to UNPAID)</span>
+                  </>
+                ) : (
+                  <>
+                    <span>⏳ UNPAID</span>
+                    <span className="text-xs opacity-75">(click to PAID)</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <span className={`px-4 py-1.5 rounded-lg font-medium ${
+                paymentStatus.isPaid
+                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                  : 'bg-gray-600/20 text-gray-400 border border-gray-500/30'
+              }`}>
+                {paymentStatus.isPaid ? '✅ PAID' : '⏳ UNPAID'}
+              </span>
+            )}
           </div>
         </div>
       </div>
