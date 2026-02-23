@@ -23,6 +23,10 @@ export default function DashboardContent() {
   const [lastReadTimestamp, setLastReadTimestamp] = useState(null);
   const [hasNewActivity, setHasNewActivity] = useState(false);
 
+  // STATE UNTUK FILTER CHARTS
+  const [chartFilter, setChartFilter] = useState('weekly');
+  const [chartYear, setChartYear] = useState('2026');
+
   const { user, userJobRole, isAdmin } = useAuth();
 
   useEffect(() => {
@@ -40,18 +44,18 @@ export default function DashboardContent() {
 
   // CEK APAKAH ADA AKTIVITAS BARU
   useEffect(() => {
-  if (activities.length > 0) {
-    const latestActivity = new Date(activities[0].timestamp).getTime();
-    const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
-    
-    console.log('🔍 DEBUG NOTIFIKASI:');
-    console.log('📌 Latest Activity:', new Date(latestActivity).toLocaleString());
-    console.log('📌 Last Read:', lastReadTimestamp ? new Date(lastReadTimestamp).toLocaleString() : 'Tidak ada');
-    console.log('📌 Has New:', latestActivity > lastRead);
-    
-    setHasNewActivity(latestActivity > lastRead);
-  }
-}, [activities, lastReadTimestamp]);
+    if (activities.length > 0) {
+      const latestActivity = new Date(activities[0].timestamp).getTime();
+      const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
+      
+      console.log('🔍 DEBUG NOTIFIKASI:');
+      console.log('📌 Latest Activity:', new Date(latestActivity).toLocaleString());
+      console.log('📌 Last Read:', lastReadTimestamp ? new Date(lastReadTimestamp).toLocaleString() : 'Tidak ada');
+      console.log('📌 Has New:', latestActivity > lastRead);
+      
+      setHasNewActivity(latestActivity > lastRead);
+    }
+  }, [activities, lastReadTimestamp]);
 
   // LISTEN EVENT DARI ACTIVITY LOG
   useEffect(() => {
@@ -211,7 +215,7 @@ export default function DashboardContent() {
     return past.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   };
 
-  // Menu items untuk performance & settings
+  // Menu items untuk performance & settings (URUTAN SUDAH DITUKAR)
   const menuItems = [
     {
       title: '📊 ANALYTICS',
@@ -220,6 +224,15 @@ export default function DashboardContent() {
       icon: '📊',
       color: 'text-blue-400',
       bgColor: 'bg-blue-500/10',
+      adminOnly: false
+    },
+    {
+      title: '📈 OFFICERS KPI',
+      description: 'Officers Key Performance Indicators',
+      href: '/dashboard/officers-kpi',
+      icon: '📈',
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/10',
       adminOnly: false
     },
     {
@@ -232,15 +245,6 @@ export default function DashboardContent() {
       adminOnly: true
     },
     {
-      title: '📈 OFFICERS KPI',
-      description: 'Officers Key Performance Indicators',
-      href: '/dashboard/officers-kpi',
-      icon: '📈',
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10',
-      adminOnly: false
-    },
-    {
       title: '⚙️ SETTINGS',
       description: 'Access Role & Reset Password',
       href: '/dashboard/settings',
@@ -250,6 +254,16 @@ export default function DashboardContent() {
       adminOnly: true
     }
   ];
+
+  const filterOptions = [
+    { value: 'daily', label: 'Daily (Kemarin)' },
+    { value: 'weekly', label: 'Weekly' },
+    { value: 'monthly', label: 'Monthly' },
+    { value: 'semester', label: 'Semester' },
+    { value: 'yearly', label: 'Tahunan' }
+  ];
+
+  const yearOptions = ['2024', '2025', '2026', '2027', '2028'];
 
   if (loading) return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
@@ -396,8 +410,78 @@ export default function DashboardContent() {
         />
       </div>
 
-      {/* PERFORMANCE & SETTINGS MENU */}
-      <div className="mb-8">
+      {/* DASHBOARD CHARTS SECTION - BARU */}
+      <div className="mb-12">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-[#FFD700] drop-shadow-[0_0_8px_#FFD700]">
+            📈 Performance Overview
+          </h2>
+          
+          {/* FILTER CONTROLS */}
+          <div className="flex gap-2">
+            <select 
+              value={chartFilter}
+              onChange={(e) => setChartFilter(e.target.value)}
+              className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white text-sm"
+            >
+              {filterOptions.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            
+            <select 
+              value={chartYear}
+              onChange={(e) => setChartYear(e.target.value)}
+              className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white text-sm"
+            >
+              {yearOptions.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        
+        {/* PLACEHOLDER CHARTS */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Bar Chart Placeholder */}
+          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 h-64 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-6xl mb-3">📊</div>
+              <p className="text-[#A7D8FF]">Bar Chart - Performance Metrics</p>
+              <p className="text-xs text-[#FFD700] mt-2">Filter: {filterOptions.find(f => f.value === chartFilter)?.label} {chartYear}</p>
+            </div>
+          </div>
+          
+          {/* Line Chart Placeholder */}
+          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 h-64 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-6xl mb-3">📈</div>
+              <p className="text-[#A7D8FF]">Line Chart - Trends</p>
+              <p className="text-xs text-[#FFD700] mt-2">(Coming Soon)</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Table Placeholder */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-bold text-[#FFD700]">Detailed Performance Table</h3>
+            <span className="text-xs bg-[#0B1A33] text-[#A7D8FF] px-3 py-1 rounded-full">
+              {filterOptions.find(f => f.value === chartFilter)?.label} {chartYear}
+            </span>
+          </div>
+          <div className="h-48 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-4xl mb-2">📋</div>
+              <p className="text-[#A7D8FF]">Performance data table</p>
+              <p className="text-xs text-[#FFD700] mt-2">(Coming Soon)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* PERFORMANCE & SETTINGS MENU - DIPINDAH KE BAWAH DENGAN BORDER */}
+      <div className="mt-12 pt-6 border-t border-[#FFD700]/20">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Performance & Settings Menu</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {menuItems.map((item, index) => {
