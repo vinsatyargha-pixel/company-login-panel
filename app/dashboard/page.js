@@ -7,7 +7,7 @@ import LogoutButton from '@/components/LogoutButton';
 import ResetPasswordModal from '@/components/ResetPasswordModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
-import SpinningX from '@/components/SpinningX';
+import SpinningX from '@/components/SpinningX'; // Perhatikan nama file!
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
@@ -265,88 +265,11 @@ export default function DashboardContent() {
         />
       </div>
 
-      {/* QUICK ACCESS SECTION */}
+      {/* Quick Access section */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Quick Access</h2>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Admin Quick Access</h2>
         <QuickLinks />
       </div>
-
-      {/* DATA IMPORT SECTION - ADMIN ONLY */}
-      {isAdmin && (
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700] flex items-center gap-2">
-            <span>📥</span> Data Import
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Import CS Data Raw */}
-            <Link href="/dashboard/settings/data-import/cs" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl text-blue-400">📄</span>
-                <div>
-                  <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Import CS Data Raw</div>
-                  <div className="text-xs text-[#A7D8FF] mt-1">Customer Service</div>
-                </div>
-              </div>
-            </Link>
-
-            {/* Import DP Data Raw */}
-            <Link href="/dashboard/settings/data-import/dp" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl text-green-400">📄</span>
-                <div>
-                  <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Import DP Data Raw</div>
-                  <div className="text-xs text-[#A7D8FF] mt-1">Deposit</div>
-                </div>
-              </div>
-            </Link>
-
-            {/* Import WD Data Raw */}
-            <Link href="/dashboard/settings/data-import/wd" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl text-orange-400">📄</span>
-                <div>
-                  <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Import WD Data Raw</div>
-                  <div className="text-xs text-[#A7D8FF] mt-1">Withdrawal</div>
-                </div>
-              </div>
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* SETTINGS SECTION - ADMIN ONLY */}
-      {isAdmin && (
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700] flex items-center gap-2">
-            <span>⚙️</span> Settings
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Access Role Editing */}
-            <Link href="/dashboard/settings/access-role" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl text-purple-400">👥</span>
-                <div>
-                  <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Access Role Editing</div>
-                  <div className="text-xs text-[#A7D8FF] mt-1">Edit user roles & permissions</div>
-                </div>
-              </div>
-            </Link>
-
-            {/* Reset Password Staff */}
-            <Link href="/dashboard/settings/reset-password" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl text-yellow-400">🔑</span>
-                <div>
-                  <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Reset Password Staff</div>
-                  <div className="text-xs text-[#A7D8FF] mt-1">Reset password for staff</div>
-                </div>
-              </div>
-            </Link>
-          </div>
-        </div>
-      )}
 
       {/* RECENT ACTIVITY - HANYA OFFICERS */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
