@@ -16,10 +16,6 @@ export default function MealAllowancePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [availableDepartments, setAvailableDepartments] = useState(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
   
-  // State untuk status PAID/UNPAID per officer
-  const [officerPayments, setOfficerPayments] = useState({});
-  const [updatingOfficer, setUpdatingOfficer] = useState(null);
-  
   const [editingOfficer, setEditingOfficer] = useState(null);
   const [editForm, setEditForm] = useState({
     kasbon: 0,
@@ -27,6 +23,7 @@ export default function MealAllowancePage() {
     etc: 0,
     etc_note: ''
   });
+  const [updatingPayment, setUpdatingPayment] = useState(null);
 
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -165,44 +162,68 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // TOGGLE PAYMENT STATUS PER OFFICER
+  // TOGGLE PAYMENT STATUS
   // ===========================================
-  const toggleOfficerPayment = async (officerId, officerName, currentStatus) => {
-    if (!isAdmin) {
-      alert('Hanya admin yang bisa mengubah status pembayaran');
-      return;
-    }
+  const togglePaymentStatus = async (officerId) => {
+    if (!isAdmin) return;
 
     try {
-      setUpdatingOfficer(officerId);
-      const newStatus = !currentStatus;
+      setUpdatingPayment(officerId);
+      const officer = officers.find(o => o.id === officerId);
+      if (!officer) return;
+
+      const newPaidStatus = !officer.is_paid;
       const bulan = `${selectedMonth} ${selectedYear}`;
       
+      // Cari admin ID
+      let adminId = null;
+      let adminName = 'Admin';
+      
+      if (user?.email) {
+        const { data: adminData } = await supabase
+          .from('officers')
+          .select('id, full_name')
+          .ilike('email', user.email)
+          .maybeSingle();
+        
+        if (adminData) {
+          adminId = adminData.id;
+          adminName = adminData.full_name || user.email;
+        }
+      }
+
+      // Update snapshot dengan status paid
       const { error } = await supabase
-        .from('meal_allowance_officer_payments')
-        .upsert({
-          officer_id: officerId,
-          officer_name: officerName,
-          bulan: bulan,
-          is_paid: newStatus,
-          paid_at: newStatus ? new Date().toISOString() : null,
-          paid_by: newStatus ? user?.email : null,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'officer_id, bulan' });
+        .from('meal_allowance_snapshot')
+        .update({
+          is_paid: newPaidStatus,
+          paid_at: newPaidStatus ? new Date().toISOString() : null,
+          paid_by: newPaidStatus ? adminId : null,
+          is_locked: newPaidStatus // Kunci data kalau sudah PAID
+        })
+        .eq('officer_id', officerId)
+        .eq('bulan', bulan);
 
       if (error) throw error;
 
       // Update state
-      setOfficerPayments(prev => ({
-        ...prev,
-        [officerId]: newStatus
-      }));
+      setOfficers(prev => prev.map(o => 
+        o.id === officerId 
+          ? { 
+              ...o, 
+              is_paid: newPaidStatus,
+              paid_at: newPaidStatus ? new Date().toISOString() : null,
+              paid_by: newPaidStatus ? adminName : null,
+              is_locked: newPaidStatus
+            }
+          : o
+      ));
 
     } catch (error) {
-      console.error('Error updating payment:', error);
+      console.error('Error updating payment status:', error);
       alert('Gagal mengupdate status pembayaran');
     } finally {
-      setUpdatingOfficer(null);
+      setUpdatingPayment(null);
     }
   };
 
@@ -258,26 +279,17 @@ export default function MealAllowancePage() {
       const schedule = scheduleResult.data || [];
       setScheduleData(schedule);
       
-      // Ambil snapshot meal allowance
+      // Ambil snapshot dengan semua kolom termasuk is_paid
       const { data: snapData } = await supabase
         .from('meal_allowance_snapshot')
-        .select('officer_id, cuti_count, kasbon, etc, etc_note, last_edited_by, last_edited_at')
+        .select(`
+          officer_id, cuti_count, kasbon, etc, etc_note, 
+          last_edited_by, last_edited_at,
+          is_paid, paid_at, paid_by, is_locked
+        `)
         .eq('bulan', bulan);
       
-      // Ambil status pembayaran per officer
-      const { data: paymentData } = await supabase
-        .from('meal_allowance_officer_payments')
-        .select('*')
-        .eq('bulan', bulan);
-      
-      // Map status pembayaran
-      const paymentMap = {};
-      paymentData?.forEach(p => {
-        paymentMap[p.officer_id] = p.is_paid;
-      });
-      setOfficerPayments(paymentMap);
-      
-      // Ambil data admin
+      // Ambil data admin untuk mapping
       const { data: adminData } = await supabase
         .from('officers')
         .select('id, full_name, email')
@@ -286,7 +298,7 @@ export default function MealAllowancePage() {
       const adminMap = {};
       adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
       
-      // Gabungin data officers
+      // Gabungin data
       const officersWithStats = (officersData || []).map(officer => {
         const usia = hitungUSIA(officer.full_name, schedule);
         const snapshot = snapData?.find(s => s.officer_id === officer.id);
@@ -313,7 +325,12 @@ export default function MealAllowancePage() {
           rek: rek,
           link: link,
           lastEditedBy: snapshot?.last_edited_by ? adminMap[snapshot.last_edited_by] : null,
-          lastEditedAt: snapshot?.last_edited_at || null
+          lastEditedAt: snapshot?.last_edited_at || null,
+          // Status paid dari snapshot
+          is_paid: snapshot?.is_paid || false,
+          paid_at: snapshot?.paid_at || null,
+          paid_by: snapshot?.paid_by ? adminMap[snapshot.paid_by] : null,
+          is_locked: snapshot?.is_locked || false
         };
       });
       
@@ -340,6 +357,10 @@ export default function MealAllowancePage() {
 
   const handleEditClick = (officer) => {
     if (!isAdmin) return;
+    if (officer.is_locked) {
+      alert('Data ini sudah terkunci karena sudah PAID');
+      return;
+    }
     setEditingOfficer(officer);
     setEditForm({
       kasbon: officer.kasbon || 0,
@@ -351,6 +372,11 @@ export default function MealAllowancePage() {
 
   const handleEditSave = async () => {
     if (!isAdmin) return;
+    if (editingOfficer.is_locked) {
+      alert('Data ini sudah terkunci karena sudah PAID');
+      setEditingOfficer(null);
+      return;
+    }
     
     try {
       if (editForm.kasbon < 0 || editForm.cuti < 0) {
@@ -405,7 +431,12 @@ export default function MealAllowancePage() {
         etc: editForm.etc || 0,
         etc_note: editForm.etc_note,
         last_edited_by: adminId,
-        last_edited_at: new Date().toISOString()
+        last_edited_at: new Date().toISOString(),
+        // Status paid tetap dipertahankan
+        is_paid: officer.is_paid,
+        paid_at: officer.paid_at,
+        paid_by: officer.is_paid ? adminId : null,
+        is_locked: officer.is_locked
       };
       
       const { error } = await supabase
@@ -458,6 +489,10 @@ export default function MealAllowancePage() {
     'CAPTAIN': officersWithStats.filter(o => o.department === 'CAPTAIN'),
     'AM': officersWithStats.filter(o => o.department === 'AM')
   };
+
+  // Hitung total paid/unpaid
+  const totalPaid = officersWithStats.filter(o => o.is_paid).length;
+  const totalUnpaid = officersWithStats.filter(o => !o.is_paid).length;
 
   // ===========================================
   // RENDER
@@ -634,6 +669,12 @@ export default function MealAllowancePage() {
             <span className="text-[#A7D8FF]">Pembagian UM:</span> 
             <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span>
           </div>
+          
+          {/* Summary Paid/Unpaid */}
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-green-400 font-medium">Paid: {totalPaid}</span>
+            <span className="text-red-400 font-medium">Unpaid: {totalUnpaid}</span>
+          </div>
         </div>
       </div>
 
@@ -655,6 +696,11 @@ export default function MealAllowancePage() {
                     <div>
                       <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
                       <div className="text-xs text-[#A7D8FF]">Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
+                      {officer.paid_by && (
+                        <div className="text-xs text-green-400 mt-1">
+                          Paid by: {officer.paid_by}
+                        </div>
+                      )}
                     </div>
                     <div className="mt-2 md:mt-0 text-right">
                       <div className="text-[#A7D8FF] text-xs font-medium">{officer.bank}</div>
@@ -715,54 +761,61 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {/* LOG EDIT & PAYMENT STATUS */}
-                  <div className="flex items-center justify-between mt-2">
-                    {/* Log Edit */}
+                  {/* Status PAID & Action Buttons */}
+                  <div className="flex items-center justify-between mt-4 pt-2 border-t border-[#FFD700]/20">
+                    {/* Last Edited Info */}
                     {(officer.lastEditedBy || officer.lastEditedAt) && (
                       <div className="text-[10px] text-[#A7D8FF]">
                         Last edited by: {officer.lastEditedBy || 'Admin'} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
                       </div>
                     )}
                     
-                    {/* Payment Status & Button */}
+                    {/* Payment Status & Buttons */}
                     <div className="flex items-center gap-3 ml-auto">
                       {/* Status Badge */}
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        officerPayments[officer.id] 
+                        officer.is_paid 
                           ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
                           : 'bg-red-500/20 text-red-400 border border-red-500/30'
                       }`}>
-                        {officerPayments[officer.id] ? 'PAID' : 'UNPAID'}
+                        {officer.is_paid ? 'PAID' : 'UNPAID'}
                       </span>
 
-                      {/* Toggle Button (Admin Only) */}
+                      {/* PAID/UNPAID Button (Admin Only) */}
                       {isAdmin && (
                         <button
-                          onClick={() => toggleOfficerPayment(officer.id, officer.full_name, officerPayments[officer.id])}
-                          disabled={updatingOfficer === officer.id}
+                          onClick={() => togglePaymentStatus(officer.id)}
+                          disabled={updatingPayment === officer.id}
                           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                            officerPayments[officer.id]
+                            officer.is_paid
                               ? 'bg-green-500 text-white shadow-[0_0_20px_#10b981] border-2 border-green-400 hover:bg-green-600' 
                               : 'bg-gray-600 text-gray-300 hover:bg-gray-700 border-2 border-transparent'
                           }`}
                         >
-                          {officerPayments[officer.id] ? 'PAID ✓' : 'Mark Paid'}
+                          {officer.is_paid ? 'PAID ✓' : 'Mark Paid'}
+                        </button>
+                      )}
+
+                      {/* Edit Button (Admin Only) - Disabled if locked */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleEditClick(officer)}
+                          disabled={officer.is_locked}
+                          className={`px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all ${
+                            officer.is_locked
+                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                              : 'bg-[#FFD700] hover:bg-[#FFD700]/80 text-black'
+                          }`}
+                          title={officer.is_locked ? 'Data terkunci karena sudah PAID' : 'Edit KASBON/ETC/CUTI'}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                          <span>Edit</span>
                         </button>
                       )}
                     </div>
                   </div>
-                  
-                  {/* Tombol Edit KASBON/ETC/CUTI (tetap ada) */}
-                  {isAdmin && (
-                    <div className="flex justify-end mt-2">
-                      <button onClick={() => handleEditClick(officer)} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                        <span>Edit KASBON/ETC/CUTI</span>
-                      </button>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -773,13 +826,10 @@ export default function MealAllowancePage() {
       {/* Footer */}
       <div className="mt-6 p-4 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg flex justify-between items-center">
         <span className="text-[#FFD700] font-bold">Total Officers: {officersWithStats.length}</span>
-        <div className="flex gap-4">
-          <span className="text-green-400 font-bold">
-            Paid: ${Object.values(officerPayments).filter(v => v).length}
-          </span>
-          <span className="text-red-400 font-bold">
-            Unpaid: ${Object.values(officerPayments).filter(v => !v).length}
-          </span>
+        <div className="flex gap-6">
+          <span className="text-green-400 font-bold">Paid: {totalPaid}</span>
+          <span className="text-red-400 font-bold">Unpaid: {totalUnpaid}</span>
+          <span className="text-[#FFD700] font-bold">Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}</span>
         </div>
       </div>
 
