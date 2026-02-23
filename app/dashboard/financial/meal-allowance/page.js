@@ -17,9 +17,8 @@ export default function MealAllowancePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [availableDepartments, setAvailableDepartments] = useState(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
   
-  // State untuk status PAID/UNPAID
-  const [paymentStatus, setPaymentStatus] = useState({ isPaid: false, paidAt: null, paidBy: null });
-  const [updatingStatus, setUpdatingStatus] = useState(false);
+  // State untuk status PAID/UNPAID (OTOMATIS BERDASARKAN TANGGAL)
+  const [paymentStatus, setPaymentStatus] = useState({ isPaid: false, paidAt: null });
   
   const [editingOfficer, setEditingOfficer] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -37,34 +36,53 @@ export default function MealAllowancePage() {
   // AUTO-SELECT BULAN BERDASARKAN TANGGAL (CUTOFF 20)
   // ===========================================
   const getCurrentMonthByCutoff = () => {
-  const today = new Date();
-  const currentDate = today.getDate();
-  const currentMonthIndex = today.getMonth();
-  const currentYear = today.getFullYear();
-  
-  if (currentDate > 20) {
-    // Bulan depan
-    let nextMonthIndex = currentMonthIndex + 1;
-    let nextYear = currentYear;
+    const today = new Date();
+    const currentDate = today.getDate();
+    const currentMonthIndex = today.getMonth();
+    const currentYear = today.getFullYear();
     
-    if (nextMonthIndex > 11) {
-      nextMonthIndex = 0;
-      nextYear = currentYear + 1;
+    if (currentDate > 20) {
+      // Bulan depan
+      let nextMonthIndex = currentMonthIndex + 1;
+      let nextYear = currentYear;
+      
+      if (nextMonthIndex > 11) {
+        nextMonthIndex = 0;
+        nextYear = currentYear + 1;
+      }
+      
+      setSelectedYear(nextYear.toString());
+      setSelectedMonth(months[nextMonthIndex]);
+    } else {
+      // Bulan sekarang
+      setSelectedYear(currentYear.toString());
+      setSelectedMonth(months[currentMonthIndex]);
     }
+  };
+
+  // ===========================================
+  // FUNGSI MENENTUKAN STATUS PAID/UNPAID BERDASARKAN TANGGAL
+  // ===========================================
+  const getPaymentStatusByDate = () => {
+    const today = new Date();
+    const selectedMonthIndex = months.indexOf(selectedMonth);
     
-    setSelectedYear(nextYear.toString());
-    setSelectedMonth(months[nextMonthIndex]);
-  } else {
-    // Bulan sekarang
-    setSelectedYear(currentYear.toString());
-    setSelectedMonth(months[currentMonthIndex]);
-  }
-  
-  // LANGSUNG FETCH STATUS
-  setTimeout(() => {
-    fetchPaymentStatus();
-  }, 50);
-};
+    // Tentukan tanggal pembagian (1 selectedMonth selectedYear)
+    const distributionDate = new Date(parseInt(selectedYear), selectedMonthIndex, 1);
+    
+    // Bandingkan dengan hari ini
+    const isPaid = today >= distributionDate;
+    
+    console.log('📅 Selected Month:', selectedMonth, selectedYear);
+    console.log('📅 Distribution Date:', distributionDate);
+    console.log('📅 Today:', today);
+    console.log('📅 Is Paid:', isPaid);
+    
+    setPaymentStatus({ 
+      isPaid, 
+      paidAt: isPaid ? distributionDate.toISOString() : null
+    });
+  };
 
   // ===========================================
   // HELPER FUNCTIONS
@@ -210,111 +228,14 @@ export default function MealAllowancePage() {
   }, [isAdmin]);
 
   useEffect(() => {
-  fetchData();
-  // JANGAN panggil fetchPaymentStatus() di sini lagi karena udah di timeout
-  // fetchPaymentStatus();
-  
-  // RESET STATE
-  setEditingOfficer(null);
-  setEditForm({ kasbon: 0, cuti: 0, etc: 0, etc_note: '' });
-  
-}, [selectedMonth, selectedYear]);
-
-  const fetchPaymentStatus = async () => {
-    try {
-      const bulan = `${selectedMonth} ${selectedYear}`;
-      console.log('🔍 Fetching status untuk bulan:', bulan);
-      
-      const { data, error } = await supabase
-        .from('meal_allowance_payments')
-        .select('*')
-        .eq('bulan', bulan)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      console.log('📊 Data status:', data);
-      
-      if (data) {
-        setPaymentStatus({ isPaid: data.is_paid, paidAt: data.paid_at, paidBy: data.paid_by });
-      } else {
-        // Kalau belum ada data, set default UNPAID
-        setPaymentStatus({ isPaid: false, paidAt: null, paidBy: null });
-      }
-    } catch (error) {
-      console.error('Error fetching payment status:', error);
-    }
-  };
-
-  const togglePaymentStatus = async () => {
-    if (!isAdmin) {
-      alert('Hanya admin yang bisa mengubah status pembayaran');
-      return;
-    }
-
-    try {
-      setUpdatingStatus(true);
-      const bulan = `${selectedMonth} ${selectedYear}`;
-      const newStatus = !paymentStatus.isPaid;
-      
-      // Cari admin ID
-      let adminId = null;
-      let adminName = 'Admin';
-      
-      if (user?.email) {
-        const { data: adminData } = await supabase
-          .from('officers')
-          .select('id, full_name')
-          .ilike('email', user.email)
-          .maybeSingle();
-        
-        if (adminData) {
-          adminId = adminData.id;
-          adminName = adminData.full_name || user.email;
-        }
-      }
-
-      const paymentData = {
-        bulan: bulan,
-        is_paid: newStatus,
-        paid_at: newStatus ? new Date().toISOString() : null,
-        paid_by: newStatus ? adminId : null,
-        updated_at: new Date().toISOString()
-      };
-
-      const { error } = await supabase
-        .from('meal_allowance_payments')
-        .upsert(paymentData, { 
-          onConflict: 'bulan',
-          ignoreDuplicates: false 
-        });
-
-      if (error) throw error;
-
-      // Simpan ke audit logs
-      await supabase
-        .from('audit_logs')
-        .insert({
-          table_name: 'meal_allowance_payments',
-          record_id: bulan,
-          action: 'UPDATE',
-          new_data: { bulan, is_paid: newStatus },
-          changed_by: adminId,
-          changed_at: new Date().toISOString()
-        });
-
-      // PAKSA FETCH ULANG DARI DATABASE
-      await fetchPaymentStatus();
-      
-      alert(`✅ Status pembagian UM diubah menjadi ${newStatus ? 'PAID' : 'UNPAID'}`);
-      
-    } catch (error) {
-      console.error('Error updating payment status:', error);
-      alert('❌ Gagal mengubah status pembayaran: ' + error.message);
-    } finally {
-      setUpdatingStatus(false);
-    }
-  };
+    fetchData();
+    getPaymentStatusByDate(); // PAKAI LOGIC TANGGAL, BUKAN DATABASE
+    
+    // RESET STATE biar ga kebawa bulan sebelumnya
+    setEditingOfficer(null);
+    setEditForm({ kasbon: 0, cuti: 0, etc: 0, etc_note: '' });
+    
+  }, [selectedMonth, selectedYear]);
 
   const fetchData = async () => {
     try {
@@ -713,40 +634,16 @@ export default function MealAllowancePage() {
             <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span>
           </div>
           
-          {/* STATUS PAID/UNPAID BUTTON */}
+          {/* STATUS PAID/UNPAID - READ ONLY */}
           <div className="ml-auto flex items-center gap-2">
             <span className="text-[#A7D8FF]">Status:</span>
-            {isAdmin ? (
-              <button
-                onClick={togglePaymentStatus}
-                disabled={updatingStatus}
-                className={`relative inline-flex items-center gap-2 px-4 py-1.5 rounded-lg font-medium transition-all ${
-                  paymentStatus.isPaid
-                    ? 'bg-green-500 text-white hover:bg-green-600 shadow-[0_0_15px_#10b981]'
-                    : 'bg-gray-600 text-gray-300 hover:bg-gray-700'
-                }`}
-              >
-                {paymentStatus.isPaid ? (
-                  <>
-                    <span>✅ PAID</span>
-                    <span className="text-xs opacity-75">(click to UNPAID)</span>
-                  </>
-                ) : (
-                  <>
-                    <span>⏳ UNPAID</span>
-                    <span className="text-xs opacity-75">(click to PAID)</span>
-                  </>
-                )}
-              </button>
-            ) : (
-              <span className={`px-4 py-1.5 rounded-lg font-medium ${
-                paymentStatus.isPaid
-                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                  : 'bg-gray-600/20 text-gray-400 border border-gray-500/30'
-              }`}>
-                {paymentStatus.isPaid ? '✅ PAID' : '⏳ UNPAID'}
-              </span>
-            )}
+            <span className={`px-4 py-1.5 rounded-lg font-medium ${
+              paymentStatus.isPaid
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : 'bg-gray-600/20 text-gray-400 border border-gray-500/30'
+            }`}>
+              {paymentStatus.isPaid ? '✅ PAID' : '⏳ UNPAID'}
+            </span>
           </div>
         </div>
       </div>
