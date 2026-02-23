@@ -40,12 +40,18 @@ export default function DashboardContent() {
 
   // CEK APAKAH ADA AKTIVITAS BARU
   useEffect(() => {
-    if (activities.length > 0) {
-      const latestActivity = new Date(activities[0].timestamp).getTime();
-      const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
-      setHasNewActivity(latestActivity > lastRead);
-    }
-  }, [activities, lastReadTimestamp]);
+  if (activities.length > 0) {
+    const latestActivity = new Date(activities[0].timestamp).getTime();
+    const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
+    
+    console.log('🔍 DEBUG NOTIFIKASI:');
+    console.log('📌 Latest Activity:', new Date(latestActivity).toLocaleString());
+    console.log('📌 Last Read:', lastReadTimestamp ? new Date(lastReadTimestamp).toLocaleString() : 'Tidak ada');
+    console.log('📌 Has New:', latestActivity > lastRead);
+    
+    setHasNewActivity(latestActivity > lastRead);
+  }
+}, [activities, lastReadTimestamp]);
 
   // LISTEN EVENT DARI ACTIVITY LOG
   useEffect(() => {
