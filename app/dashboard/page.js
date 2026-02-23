@@ -266,10 +266,93 @@ export default function DashboardContent() {
       </div>
 
       {/* Quick Access section */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Admin Quick Access</h2>
-        <QuickLinks />
+<div className="mb-8">
+  <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Admin Quick Access</h2>
+  
+  {/* Quick Access Grid */}
+  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    {/* Analytics Performance - NEW */}
+    <Link href="/dashboard/analytics" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
+      <div className="flex items-center gap-3">
+        <span className="text-3xl text-[#FFD700]">📊</span>
+        <div>
+          <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Analytics Performance</div>
+          <div className="text-xs text-[#A7D8FF] mt-1">Performance metrics</div>
+        </div>
       </div>
+    </Link>
+
+    {/* Officers Database (existing) */}
+    <Link href="/dashboard/officers/active" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
+      <div className="flex items-center gap-3">
+        <span className="text-3xl">👨‍💼</span>
+        <div>
+          <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Officers Database</div>
+          <div className="text-xs text-[#A7D8FF] mt-1">Manage all officers</div>
+        </div>
+      </div>
+    </Link>
+
+    {/* Settings/Data Import - NEW (Admin Only) */}
+    {isAdmin && (
+      <Link href="/dashboard/settings" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl text-[#FFD700]">⚙️</span>
+          <div>
+            <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Settings/Data Import</div>
+            <div className="text-xs text-[#A7D8FF] mt-1">Admin only</div>
+          </div>
+        </div>
+      </Link>
+    )}
+
+    {/* Export Data Report (existing) */}
+    <Link href="/dashboard/reports" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
+      <div className="flex items-center gap-3">
+        <span className="text-3xl">📄</span>
+        <div>
+          <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Export Data Report</div>
+          <div className="text-xs text-[#A7D8FF] mt-1">Generate PDF/Excel</div>
+        </div>
+      </div>
+    </Link>
+
+    {/* Schedule (existing) */}
+    <Link href="/dashboard/schedule" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
+      <div className="flex items-center gap-3">
+        <span className="text-3xl">📅</span>
+        <div>
+          <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Schedule</div>
+          <div className="text-xs text-[#A7D8FF] mt-1">View & edit shifts</div>
+        </div>
+      </div>
+    </Link>
+
+    {/* Analytics KPI (existing) */}
+    <Link href="/dashboard/analytics" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
+      <div className="flex items-center gap-3">
+        <span className="text-3xl">📈</span>
+        <div>
+          <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Analytics KPI</div>
+          <div className="text-xs text-[#A7D8FF] mt-1">Detailed reports</div>
+        </div>
+      </div>
+    </Link>
+
+    {/* Admin Panel (existing) - Admin Only */}
+    {isAdmin && (
+      <Link href="/dashboard/admin" className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all group">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl">👑</span>
+          <div>
+            <div className="font-bold text-white group-hover:text-[#FFD700] transition-colors">Admin Panel</div>
+            <div className="text-xs text-[#A7D8FF] mt-1">Admin access</div>
+          </div>
+        </div>
+      </Link>
+    )}
+  </div>
+</div>
 
       {/* RECENT ACTIVITY - HANYA OFFICERS */}
       <div className="bg-[#0B1A33] rounded-xl shadow-lg border border-[#FFD700]/30 p-6">
