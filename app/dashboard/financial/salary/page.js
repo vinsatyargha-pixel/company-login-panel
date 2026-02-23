@@ -40,7 +40,7 @@ export default function SalaryPage() {
               Halaman Salary sedang dalam pengembangan
             </p>
             <p className="text-lg text-[#A7D8FF]/70">
-              Kami akan segera hadirkan fitur pengelolaan gaji officer
+              (Menunggu persetujuan tim HRD untuk dapat mengakses halaman ini karena bersifat privasi, jika di izinkan setiap karyawan hanya dapat mengecek salary masing-masing)
             </p>
           </div>
 

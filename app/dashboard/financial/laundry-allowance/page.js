@@ -20,6 +20,34 @@ export default function LaundryAllowancePage() {
   const LAUNDRY_RATE = 15;
 
   // ===========================================
+  // AUTO-SELECT BULAN BERDASARKAN TANGGAL (CUTOFF 20)
+  // ===========================================
+  const getCurrentMonthByCutoff = () => {
+    const today = new Date();
+    const currentDate = today.getDate();
+    const currentMonthIndex = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    if (currentDate > 20) {
+      // Bulan depan
+      let nextMonthIndex = currentMonthIndex + 1;
+      let nextYear = currentYear;
+      
+      if (nextMonthIndex > 11) {
+        nextMonthIndex = 0;
+        nextYear = currentYear + 1;
+      }
+      
+      setSelectedYear(nextYear.toString());
+      setSelectedMonth(months[nextMonthIndex]);
+    } else {
+      // Bulan sekarang
+      setSelectedYear(currentYear.toString());
+      setSelectedMonth(months[currentMonthIndex]);
+    }
+  };
+
+  // ===========================================
   // GET PERIOD
   // ===========================================
   const getPeriod = (month, year) => {
@@ -43,6 +71,11 @@ export default function LaundryAllowancePage() {
   // ===========================================
   // FETCH OFFICERS & PAYMENT STATUS
   // ===========================================
+  useEffect(() => {
+    // Set default bulan berdasarkan tanggal hari ini
+    getCurrentMonthByCutoff();
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, [selectedMonth, selectedYear]);
@@ -301,17 +334,17 @@ export default function LaundryAllowancePage() {
 
                       {/* Toggle Button (Admin Only) */}
                       {isAdmin && (
-  <button
-    onClick={() => togglePayment(officer.id, officer.full_name, isPaid)}
-    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-      isPaid 
-        ? 'bg-green-500 text-white shadow-[0_0_20px_#10b981] border-2 border-green-400 hover:bg-green-600' 
-        : 'bg-gray-600 text-gray-300 hover:bg-gray-700 border-2 border-transparent'
-    }`}
-  >
-    {isPaid ? 'PAID ✓' : 'Mark Paid'}
-  </button>
-)}
+                        <button
+                          onClick={() => togglePayment(officer.id, officer.full_name, isPaid)}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                            isPaid 
+                              ? 'bg-green-500 text-white shadow-[0_0_20px_#10b981] border-2 border-green-400 hover:bg-green-600' 
+                              : 'bg-gray-600 text-gray-300 hover:bg-gray-700 border-2 border-transparent'
+                          }`}
+                        >
+                          {isPaid ? 'PAID ✓' : 'Mark Paid'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
