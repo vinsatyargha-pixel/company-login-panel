@@ -207,11 +207,18 @@ export default function MealAllowancePage() {
   useEffect(() => {
     fetchData();
     fetchPaymentStatus();
+    
+    // RESET STATE biar ga kebawa bulan sebelumnya
+    setEditingOfficer(null);
+    setEditForm({ kasbon: 0, cuti: 0, etc: 0, etc_note: '' });
+    
   }, [selectedMonth, selectedYear]);
 
   const fetchPaymentStatus = async () => {
     try {
       const bulan = `${selectedMonth} ${selectedYear}`;
+      console.log('🔍 Fetching status untuk bulan:', bulan);
+      
       const { data, error } = await supabase
         .from('meal_allowance_payments')
         .select('*')
@@ -220,9 +227,12 @@ export default function MealAllowancePage() {
 
       if (error && error.code !== 'PGRST116') throw error;
       
+      console.log('📊 Data status:', data);
+      
       if (data) {
         setPaymentStatus({ isPaid: data.is_paid, paidAt: data.paid_at, paidBy: data.paid_by });
       } else {
+        // Kalau belum ada data, set default UNPAID
         setPaymentStatus({ isPaid: false, paidAt: null, paidBy: null });
       }
     } catch (error) {
@@ -287,13 +297,9 @@ export default function MealAllowancePage() {
           changed_at: new Date().toISOString()
         });
 
-      // Update state langsung
-      setPaymentStatus({ 
-        isPaid: newStatus, 
-        paidAt: newStatus ? new Date().toISOString() : null,
-        paidBy: newStatus ? adminId : null
-      });
-
+      // PAKSA FETCH ULANG DARI DATABASE
+      await fetchPaymentStatus();
+      
       alert(`✅ Status pembagian UM diubah menjadi ${newStatus ? 'PAID' : 'UNPAID'}`);
       
     } catch (error) {
