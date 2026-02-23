@@ -9,7 +9,6 @@ export default function MealAllowancePage() {
   const { user, userJobRole, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [officers, setOfficers] = useState([]);
-  const [mealRates, setMealRates] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('February');
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedDept, setSelectedDept] = useState('All');
@@ -42,7 +41,6 @@ export default function MealAllowancePage() {
     const currentYear = today.getFullYear();
     
     if (currentDate > 20) {
-      // Bulan depan
       let nextMonthIndex = currentMonthIndex + 1;
       let nextYear = currentYear;
       
@@ -54,7 +52,6 @@ export default function MealAllowancePage() {
       setSelectedYear(nextYear.toString());
       setSelectedMonth(months[nextMonthIndex]);
     } else {
-      // Bulan sekarang
       setSelectedYear(currentYear.toString());
       setSelectedMonth(months[currentMonthIndex]);
     }
@@ -66,17 +63,8 @@ export default function MealAllowancePage() {
   const getPaymentStatusByDate = () => {
     const today = new Date();
     const selectedMonthIndex = months.indexOf(selectedMonth);
-    
-    // Tentukan tanggal pembagian (1 selectedMonth selectedYear)
     const distributionDate = new Date(parseInt(selectedYear), selectedMonthIndex, 1);
-    
-    // Bandingkan dengan hari ini
     const isPaid = today >= distributionDate;
-    
-    console.log('📅 Selected Month:', selectedMonth, selectedYear);
-    console.log('📅 Distribution Date:', distributionDate);
-    console.log('📅 Today:', today);
-    console.log('📅 Is Paid:', isPaid);
     
     setPaymentStatus({ 
       isPaid, 
@@ -136,9 +124,6 @@ export default function MealAllowancePage() {
     return null;
   };
 
-  // ===========================================
-  // FUNGSI GET PREVIOUS MONTH (BUAT LABEL)
-  // ===========================================
   const getPreviousMonth = (month, year) => {
     const monthIndex = months.indexOf(month);
     if (monthIndex === 0) {
@@ -148,9 +133,6 @@ export default function MealAllowancePage() {
     }
   };
 
-  // ===========================================
-  // FUNGSI GET PREVIOUS MONTH DATA (LENGKAP DENGAN PERIODE)
-  // ===========================================
   const getPreviousMonthData = (month, year) => {
     const monthIndex = months.indexOf(month);
     if (monthIndex === 0) {
@@ -171,28 +153,16 @@ export default function MealAllowancePage() {
     }
   };
 
-  // ===========================================
-  // FUNGSI HITUNG USIA (LANGSUNG DARI SCHEDULE)
-  // ===========================================
   const hitungUSIA = (officerName, schedule = scheduleData) => {
     const totals = {
-      OFF: 0,
-      SAKIT: 0,
-      IZIN: 0,
-      ABSEN: 0,
-      CUTI: 0,
-      'UNPAID LEAVE': 0,
-      SPECIAL: 0,
-      DIRUMAHKAN: 0,
-      RESIGN: 0,
-      TERMINATED: 0,
-      'BELUM JOIN': 0
+      OFF: 0, SAKIT: 0, IZIN: 0, ABSEN: 0, CUTI: 0,
+      'UNPAID LEAVE': 0, SPECIAL: 0, DIRUMAHKAN: 0,
+      RESIGN: 0, TERMINATED: 0, 'BELUM JOIN': 0
     };
     
     schedule.forEach(day => {
       const status = day[officerName];
       if (!status) return;
-      
       if (totals.hasOwnProperty(status)) {
         totals[status] += 1;
       }
@@ -213,7 +183,6 @@ export default function MealAllowancePage() {
   // ===========================================
 
   useEffect(() => {
-    // Set default bulan berdasarkan tanggal hari ini
     getCurrentMonthByCutoff();
   }, []);
 
@@ -229,12 +198,9 @@ export default function MealAllowancePage() {
 
   useEffect(() => {
     fetchData();
-    getPaymentStatusByDate(); // PAKAI LOGIC TANGGAL, BUKAN DATABASE
-    
-    // RESET STATE biar ga kebawa bulan sebelumnya
+    getPaymentStatusByDate();
     setEditingOfficer(null);
     setEditForm({ kasbon: 0, cuti: 0, etc: 0, etc_note: '' });
-    
   }, [selectedMonth, selectedYear]);
 
   const fetchData = async () => {
@@ -248,19 +214,14 @@ export default function MealAllowancePage() {
       }
       
       const bulan = `${selectedMonth} ${selectedYear}`;
-      
-      // AMBIL BULAN SEBELUMNYA UNTUK SCHEDULE
       const prev = getPreviousMonthData(selectedMonth, selectedYear);
-      console.log(`Fetching schedule for: ${prev.month} ${prev.year} (data untuk ${selectedMonth} ${selectedYear})`);
       
-      // Ambil data officers
       const { data: officersData } = await supabase
         .from('officers')
         .select('*')
         .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
         .eq('status', 'REGULAR');
       
-      // AMBIL SCHEDULE DARI BULAN SEBELUMNYA
       const scheduleResponse = await fetch(
         `/api/schedule?year=${prev.year}&month=${prev.month}`
       );
@@ -268,13 +229,11 @@ export default function MealAllowancePage() {
       const schedule = scheduleResult.data || [];
       setScheduleData(schedule);
       
-      // Ambil snapshot
       const { data: snapData } = await supabase
         .from('meal_allowance_snapshot')
         .select('officer_id, cuti_count, kasbon, etc, etc_note, last_edited_by, last_edited_at')
         .eq('bulan', bulan);
       
-      // Ambil data admin
       const { data: adminData } = await supabase
         .from('officers')
         .select('id, full_name, email')
@@ -283,7 +242,6 @@ export default function MealAllowancePage() {
       const adminMap = {};
       adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
       
-      // Gabungin data
       const officersWithStats = (officersData || []).map(officer => {
         const usia = hitungUSIA(officer.full_name, schedule);
         const snapshot = snapData?.find(s => s.officer_id === officer.id);
@@ -314,7 +272,6 @@ export default function MealAllowancePage() {
         };
       });
       
-      // Hitung umNet
       const withUmNet = officersWithStats.map(o => {
         const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
         const denda = o.alphaCount * 50;
@@ -347,98 +304,93 @@ export default function MealAllowancePage() {
   };
 
   const handleEditSave = async () => {
-  if (!isAdmin) return;
-  
-  try {
-    if (editForm.kasbon < 0 || editForm.cuti < 0) {
-      alert('⚠️ Kasbon dan Cuti tidak boleh negatif');
-      return;
-    }
+    if (!isAdmin) return;
     
-    const bulan = `${selectedMonth} ${selectedYear}`;
-    const officer = editingOfficer;
-    
-    // HITUNG PERIODE PAKAI FUNGSI (SUDAH TERSEDIA GLOBAL)
-    const prev = getPreviousMonthData(selectedMonth, selectedYear);
-    
-    // Hitung ulang UM Net
-    const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
-    const denda = officer.alphaCount * 50;
-    const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
-    
-    // CARI NAMA ADMIN (CASE INSENSITIVE)
-    let adminName = 'Unknown';
-    let adminId = null;
-    
-    if (user?.email) {
-      // PAKE ILIKE BIAR CASE INSENSITIVE
-      const { data: adminData } = await supabase
-        .from('officers')
-        .select('id, full_name')
-        .ilike('email', user.email)
-        .maybeSingle();
-      
-      if (adminData) {
-        adminName = adminData.full_name || user.email;
-        adminId = adminData.id;
-      } else {
-        adminName = user.email;
+    try {
+      if (editForm.kasbon < 0 || editForm.cuti < 0) {
+        alert('⚠️ Kasbon dan Cuti tidak boleh negatif');
+        return;
       }
+      
+      const bulan = `${selectedMonth} ${selectedYear}`;
+      const officer = editingOfficer;
+      const prev = getPreviousMonthData(selectedMonth, selectedYear);
+      
+      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
+      const denda = officer.alphaCount * 50;
+      const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
+      
+      let adminName = 'Unknown';
+      let adminId = null;
+      
+      if (user?.email) {
+        const { data: adminData } = await supabase
+          .from('officers')
+          .select('id, full_name')
+          .ilike('email', user.email)
+          .maybeSingle();
+        
+        if (adminData) {
+          adminName = adminData.full_name || user.email;
+          adminId = adminData.id;
+        } else {
+          adminName = user.email;
+        }
+      }
+      
+      const snapshotData = {
+        officer_id: officer.id,
+        officer_name: officer.full_name,
+        department: officer.department,
+        join_date: officer.join_date,
+        bulan: bulan,
+        periode_start: prev.start,
+        periode_end: prev.end,
+        base_amount: officer.baseAmount,
+        prorate: officer.prorate,
+        off_count: officer.offCount || 0,
+        sakit_count: officer.sakitCount || 0,
+        cuti_count: editForm.cuti,
+        izin_count: officer.izinCount || 0,
+        unpaid_count: officer.unpaidCount || 0,
+        alpha_count: officer.alphaCount || 0,
+        um_net: umNetBaru,
+        kasbon: editForm.kasbon,
+        etc: editForm.etc || 0,
+        etc_note: editForm.etc_note,
+        last_edited_by: adminId,
+        last_edited_at: new Date().toISOString()
+      };
+      
+      const { error } = await supabase
+        .from('meal_allowance_snapshot')
+        .upsert(snapshotData, { onConflict: 'officer_id, bulan' });
+      
+      if (error) throw error;
+      
+      setOfficers(prev => prev.map(o => 
+        o.id === officer.id 
+          ? { 
+              ...o, 
+              kasbon: editForm.kasbon,
+              cutiCount: editForm.cuti,
+              etc: editForm.etc || 0,
+              etc_note: editForm.etc_note,
+              umNet: umNetBaru,
+              lastEditedBy: adminName,
+              lastEditedAt: new Date().toISOString()
+            }
+          : o
+      ));
+      
+      alert(`✅ Data berhasil diupdate oleh ${adminName}`);
+      setEditingOfficer(null);
+      
+    } catch (error) {
+      console.error('Error updating:', error);
+      alert('❌ Gagal update data: ' + error.message);
     }
-    
-    const snapshotData = {
-      officer_id: officer.id,
-      officer_name: officer.full_name,
-      department: officer.department,
-      join_date: officer.join_date,
-      bulan: bulan,
-      periode_start: prev.start,
-      periode_end: prev.end,
-      base_amount: officer.baseAmount,
-      prorate: officer.prorate,
-      off_count: officer.offCount || 0,
-      sakit_count: officer.sakitCount || 0,
-      cuti_count: editForm.cuti,
-      izin_count: officer.izinCount || 0,
-      unpaid_count: officer.unpaidCount || 0,
-      alpha_count: officer.alphaCount || 0,
-      um_net: umNetBaru,
-      kasbon: editForm.kasbon,
-      etc: editForm.etc || 0,
-      etc_note: editForm.etc_note,
-      last_edited_by: adminId,
-      last_edited_at: new Date().toISOString()
-    };
-    
-    const { error } = await supabase
-      .from('meal_allowance_snapshot')
-      .upsert(snapshotData, { onConflict: 'officer_id, bulan' });
-    
-    if (error) throw error;
-    
-    setOfficers(prev => prev.map(o => 
-      o.id === officer.id 
-        ? { 
-            ...o, 
-            kasbon: editForm.kasbon,
-            cutiCount: editForm.cuti,
-            etc: editForm.etc || 0,
-            etc_note: editForm.etc_note,
-            umNet: umNetBaru,
-            lastEditedBy: adminName,
-            lastEditedAt: new Date().toISOString()
-          }
-        : o
-    ));
-    
-    alert(`✅ Data berhasil diupdate oleh ${adminName}`);
-    setEditingOfficer(null);
-    
-  } catch (error) {
-    console.error('Error updating:', error);
-    alert('❌ Gagal update data: ' + error.message);
-  }
-};
+  };
 
   // ===========================================
   // FILTER & PROCESS OFFICERS
@@ -516,8 +468,9 @@ export default function MealAllowancePage() {
         </div>
       </div>
 
+      {/* 4 Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {/* CARD 1: Total Officers */}
+        {/* Total Officers */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total Officers</div>
           <div className="text-2xl font-bold text-[#FFD700]">{officersWithStats.length}</div>
@@ -535,7 +488,7 @@ export default function MealAllowancePage() {
           </div>
         </div>
 
-        {/* CARD 2: Total NET */}
+        {/* Total NET */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total NET</div>
           <div className="text-2xl font-bold text-[#FFD700]">
@@ -559,7 +512,7 @@ export default function MealAllowancePage() {
           )}
         </div>
 
-        {/* CARD 3: Total Kasbon */}
+        {/* Total Kasbon */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total Kasbon</div>
           <div className="text-2xl font-bold text-red-400">
@@ -583,7 +536,7 @@ export default function MealAllowancePage() {
           )}
         </div>
 
-        {/* CARD 4: Total ETC */}
+        {/* Total ETC */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total ETC</div>
           <div className="text-2xl font-bold text-green-400">
@@ -610,6 +563,7 @@ export default function MealAllowancePage() {
         </div>
       </div>
 
+      {/* Filters */}
       <div className="mb-6 flex flex-wrap gap-4">
         <select className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
           {months.map(month => <option key={month} value={month}>{month}</option>)}
@@ -623,6 +577,7 @@ export default function MealAllowancePage() {
         <input type="text" placeholder="Search name..." className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px]" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
       </div>
 
+      {/* Info Bar */}
       <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
         <div className="flex flex-wrap gap-4 items-center">
           <div>
@@ -648,6 +603,7 @@ export default function MealAllowancePage() {
         </div>
       </div>
 
+      {/* Officers List by Department */}
       {['CS DP WD', 'CAPTAIN', 'AM'].map(dept => {
         if (dept !== 'CS DP WD' && !isAdmin) return null;
         if (groupedOfficers[dept]?.length === 0) return null;
@@ -660,7 +616,7 @@ export default function MealAllowancePage() {
             <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
               {groupedOfficers[dept].map((officer) => (
                 <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                  {/* BARIS 1: Nama, Join Date, Bank */}
+                  {/* Officer content - same as before */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
                     <div>
                       <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
@@ -670,79 +626,65 @@ export default function MealAllowancePage() {
                       <div className="text-[#A7D8FF] text-xs font-medium">{officer.bank}</div>
                       <div className="text-xs text-white break-all">{officer.rek}</div>
                       {officer.link && (
-                        <a href={officer.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#FFD700] hover:underline block break-all mt-1" title={officer.link}>
+                        <a href={officer.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#FFD700] hover:underline block break-all mt-1">
                           {officer.link}
                         </a>
                       )}
                     </div>
                   </div>
                   
-                  {/* BARIS 2: Angka-angka */}
                   <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
                       <span className="font-medium text-white">${Math.round(officer.baseAmount || 0)}</span>
                     </div>
-                    
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                    
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Rate/hari:</span>
                       <span className="font-medium text-white">${officer.prorate || 0}</span>
                     </div>
-                    
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                    
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">S/I/U/A:</span>
                       <span className="font-medium text-white">
                         {officer.sakitCount || 0}/{officer.izinCount || 0}/{officer.unpaidCount || 0}/{officer.alphaCount || 0}
                       </span>
                     </div>
-                    
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                    
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Cuti Manual:</span>
                       <span className="font-medium text-yellow-400">{officer.cutiCount || 0}</span>
                     </div>
-                    
                     <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                    
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">NET:</span>
                       <span className="font-bold text-[#FFD700]">${officer.finalNet || 0}</span>
                     </div>
                   </div>
                   
-                  {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                       <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
                       <div className="font-medium text-red-400">${officer.kasbon || 0}</div>
                     </div>
-                    
                     <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                       <div className="text-[#A7D8FF] text-xs mb-1">🔄 ETC/PRORATE</div>
                       <div className={`font-medium ${(officer.etc || 0) > 0 ? 'text-green-400' : (officer.etc || 0) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                         {(officer.etc || 0) > 0 ? '+' : ''}{officer.etc || 0}
                       </div>
                     </div>
-                    
                     <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                       <div className="text-[#A7D8FF] text-xs mb-1">📝 NOTES</div>
                       <div className="text-sm text-white truncate" title={officer.etc_note}>{officer.etc_note || '-'}</div>
                     </div>
                   </div>
                   
-                  {/* LOG EDIT */}
                   {(officer.lastEditedBy || officer.lastEditedAt) && (
                     <div className="text-[10px] text-[#A7D8FF] mb-2 text-right">
                       Last edited by: {officer.lastEditedBy || 'Admin'} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
                     </div>
                   )}
                   
-                  {/* Tombol Edit */}
                   {isAdmin && (
                     <div className="flex justify-end">
                       <button onClick={() => handleEditClick(officer)} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all">
@@ -760,12 +702,13 @@ export default function MealAllowancePage() {
         );
       })}
 
+      {/* Footer */}
       <div className="mt-6 p-4 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg flex justify-between items-center">
         <span className="text-[#FFD700] font-bold">Total Officers: {officersWithStats.length}</span>
         <span className="text-[#FFD700] font-bold">Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}</span>
       </div>
 
-      {/* MODAL EDIT */}
+      {/* Edit Modal */}
       {editingOfficer && isAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
@@ -777,7 +720,7 @@ export default function MealAllowancePage() {
                 <input type="text" value={editForm.kasbon} onChange={(e) => {
                   const value = e.target.value.replace(/[^0-9]/g, '');
                   setEditForm({...editForm, kasbon: value ? parseInt(value) : 0});
-                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="0" inputMode="numeric" />
+                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="0" />
               </div>
               
               <div>
@@ -785,7 +728,7 @@ export default function MealAllowancePage() {
                 <input type="text" value={editForm.cuti} onChange={(e) => {
                   const value = e.target.value.replace(/[^0-9]/g, '');
                   setEditForm({...editForm, cuti: value ? parseInt(value) : 0});
-                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="0" inputMode="numeric" />
+                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="0" />
                 <p className="text-[10px] text-[#A7D8FF] mt-1">*Akan mengganti hitungan cuti dari schedule</p>
               </div>
               
