@@ -16,8 +16,9 @@ export default function MealAllowancePage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [availableDepartments, setAvailableDepartments] = useState(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
   
-  // State untuk status PAID/UNPAID (OTOMATIS BERDASARKAN TANGGAL)
-  const [paymentStatus, setPaymentStatus] = useState({ isPaid: false, paidAt: null });
+  // State untuk status PAID/UNPAID per officer
+  const [officerPayments, setOfficerPayments] = useState({});
+  const [updatingOfficer, setUpdatingOfficer] = useState(null);
   
   const [editingOfficer, setEditingOfficer] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -55,21 +56,6 @@ export default function MealAllowancePage() {
       setSelectedYear(currentYear.toString());
       setSelectedMonth(months[currentMonthIndex]);
     }
-  };
-
-  // ===========================================
-  // FUNGSI MENENTUKAN STATUS PAID/UNPAID BERDASARKAN TANGGAL
-  // ===========================================
-  const getPaymentStatusByDate = () => {
-    const today = new Date();
-    const selectedMonthIndex = months.indexOf(selectedMonth);
-    const distributionDate = new Date(parseInt(selectedYear), selectedMonthIndex, 1);
-    const isPaid = today >= distributionDate;
-    
-    setPaymentStatus({ 
-      isPaid, 
-      paidAt: isPaid ? distributionDate.toISOString() : null
-    });
   };
 
   // ===========================================
@@ -179,6 +165,48 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
+  // TOGGLE PAYMENT STATUS PER OFFICER
+  // ===========================================
+  const toggleOfficerPayment = async (officerId, officerName, currentStatus) => {
+    if (!isAdmin) {
+      alert('Hanya admin yang bisa mengubah status pembayaran');
+      return;
+    }
+
+    try {
+      setUpdatingOfficer(officerId);
+      const newStatus = !currentStatus;
+      const bulan = `${selectedMonth} ${selectedYear}`;
+      
+      const { error } = await supabase
+        .from('meal_allowance_officer_payments')
+        .upsert({
+          officer_id: officerId,
+          officer_name: officerName,
+          bulan: bulan,
+          is_paid: newStatus,
+          paid_at: newStatus ? new Date().toISOString() : null,
+          paid_by: newStatus ? user?.email : null,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'officer_id, bulan' });
+
+      if (error) throw error;
+
+      // Update state
+      setOfficerPayments(prev => ({
+        ...prev,
+        [officerId]: newStatus
+      }));
+
+    } catch (error) {
+      console.error('Error updating payment:', error);
+      alert('Gagal mengupdate status pembayaran');
+    } finally {
+      setUpdatingOfficer(null);
+    }
+  };
+
+  // ===========================================
   // DATA FETCHING
   // ===========================================
 
@@ -198,7 +226,6 @@ export default function MealAllowancePage() {
 
   useEffect(() => {
     fetchData();
-    getPaymentStatusByDate();
     setEditingOfficer(null);
     setEditForm({ kasbon: 0, cuti: 0, etc: 0, etc_note: '' });
   }, [selectedMonth, selectedYear]);
@@ -216,12 +243,14 @@ export default function MealAllowancePage() {
       const bulan = `${selectedMonth} ${selectedYear}`;
       const prev = getPreviousMonthData(selectedMonth, selectedYear);
       
+      // Ambil data officers
       const { data: officersData } = await supabase
         .from('officers')
         .select('*')
         .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
         .eq('status', 'REGULAR');
       
+      // Ambil schedule
       const scheduleResponse = await fetch(
         `/api/schedule?year=${prev.year}&month=${prev.month}`
       );
@@ -229,11 +258,26 @@ export default function MealAllowancePage() {
       const schedule = scheduleResult.data || [];
       setScheduleData(schedule);
       
+      // Ambil snapshot meal allowance
       const { data: snapData } = await supabase
         .from('meal_allowance_snapshot')
         .select('officer_id, cuti_count, kasbon, etc, etc_note, last_edited_by, last_edited_at')
         .eq('bulan', bulan);
       
+      // Ambil status pembayaran per officer
+      const { data: paymentData } = await supabase
+        .from('meal_allowance_officer_payments')
+        .select('*')
+        .eq('bulan', bulan);
+      
+      // Map status pembayaran
+      const paymentMap = {};
+      paymentData?.forEach(p => {
+        paymentMap[p.officer_id] = p.is_paid;
+      });
+      setOfficerPayments(paymentMap);
+      
+      // Ambil data admin
       const { data: adminData } = await supabase
         .from('officers')
         .select('id, full_name, email')
@@ -242,6 +286,7 @@ export default function MealAllowancePage() {
       const adminMap = {};
       adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
       
+      // Gabungin data officers
       const officersWithStats = (officersData || []).map(officer => {
         const usia = hitungUSIA(officer.full_name, schedule);
         const snapshot = snapData?.find(s => s.officer_id === officer.id);
@@ -272,6 +317,7 @@ export default function MealAllowancePage() {
         };
       });
       
+      // Hitung umNet
       const withUmNet = officersWithStats.map(o => {
         const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
         const denda = o.alphaCount * 50;
@@ -588,18 +634,6 @@ export default function MealAllowancePage() {
             <span className="text-[#A7D8FF]">Pembagian UM:</span> 
             <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span>
           </div>
-          
-          {/* STATUS PAID/UNPAID - READ ONLY */}
-          <div className="ml-auto flex items-center gap-2">
-            <span className="text-[#A7D8FF]">Status:</span>
-            <span className={`px-4 py-1.5 rounded-lg font-medium ${
-              paymentStatus.isPaid
-                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                : 'bg-gray-600/20 text-gray-400 border border-gray-500/30'
-            }`}>
-              {paymentStatus.isPaid ? '✅ PAID' : '⏳ UNPAID'}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -616,7 +650,7 @@ export default function MealAllowancePage() {
             <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
               {groupedOfficers[dept].map((officer) => (
                 <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                  {/* Officer content - same as before */}
+                  {/* BARIS 1: Nama, Join Date, Bank */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
                     <div>
                       <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
@@ -633,6 +667,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
+                  {/* BARIS 2: Angka-angka */}
                   <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
                     <div className="flex items-center gap-1">
                       <span className="text-[#A7D8FF] text-xs">Pokok:</span>
@@ -662,6 +697,7 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
+                  {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
                       <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
@@ -679,14 +715,46 @@ export default function MealAllowancePage() {
                     </div>
                   </div>
                   
-                  {(officer.lastEditedBy || officer.lastEditedAt) && (
-                    <div className="text-[10px] text-[#A7D8FF] mb-2 text-right">
-                      Last edited by: {officer.lastEditedBy || 'Admin'} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
+                  {/* LOG EDIT & PAYMENT STATUS */}
+                  <div className="flex items-center justify-between mt-2">
+                    {/* Log Edit */}
+                    {(officer.lastEditedBy || officer.lastEditedAt) && (
+                      <div className="text-[10px] text-[#A7D8FF]">
+                        Last edited by: {officer.lastEditedBy || 'Admin'} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
+                      </div>
+                    )}
+                    
+                    {/* Payment Status & Button */}
+                    <div className="flex items-center gap-3 ml-auto">
+                      {/* Status Badge */}
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        officerPayments[officer.id] 
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      }`}>
+                        {officerPayments[officer.id] ? 'PAID' : 'UNPAID'}
+                      </span>
+
+                      {/* Toggle Button (Admin Only) */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => toggleOfficerPayment(officer.id, officer.full_name, officerPayments[officer.id])}
+                          disabled={updatingOfficer === officer.id}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                            officerPayments[officer.id]
+                              ? 'bg-green-500 text-white shadow-[0_0_20px_#10b981] border-2 border-green-400 hover:bg-green-600' 
+                              : 'bg-gray-600 text-gray-300 hover:bg-gray-700 border-2 border-transparent'
+                          }`}
+                        >
+                          {officerPayments[officer.id] ? 'PAID ✓' : 'Mark Paid'}
+                        </button>
+                      )}
                     </div>
-                  )}
+                  </div>
                   
+                  {/* Tombol Edit KASBON/ETC/CUTI (tetap ada) */}
                   {isAdmin && (
-                    <div className="flex justify-end">
+                    <div className="flex justify-end mt-2">
                       <button onClick={() => handleEditClick(officer)} className="bg-[#FFD700] hover:bg-[#FFD700]/80 text-black px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -705,7 +773,14 @@ export default function MealAllowancePage() {
       {/* Footer */}
       <div className="mt-6 p-4 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg flex justify-between items-center">
         <span className="text-[#FFD700] font-bold">Total Officers: {officersWithStats.length}</span>
-        <span className="text-[#FFD700] font-bold">Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}</span>
+        <div className="flex gap-4">
+          <span className="text-green-400 font-bold">
+            Paid: ${Object.values(officerPayments).filter(v => v).length}
+          </span>
+          <span className="text-red-400 font-bold">
+            Unpaid: ${Object.values(officerPayments).filter(v => !v).length}
+          </span>
+        </div>
       </div>
 
       {/* Edit Modal */}
