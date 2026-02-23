@@ -12,22 +12,17 @@ export default function ActivityLogPage() {
 
   useEffect(() => {
     fetchAllActivities();
-    // MARK AS READ - ketika halaman activity log dibuka
-    markActivitiesAsRead();
   }, []);
 
-  // ===========================================
-  // MARK AS READ - simpan timestamp terakhir ke localStorage
-  // ===========================================
-  const markActivitiesAsRead = () => {
+  // MARK AS READ - jalan SETELAH activities berhasil di-fetch
+  useEffect(() => {
     if (activities.length > 0) {
       const latestTimestamp = activities[0].timestamp;
       localStorage.setItem('lastReadActivity', latestTimestamp);
-      
-      // Optional: trigger event buat dashboard tahu kalau udah dibaca
       window.dispatchEvent(new Event('activityRead'));
+      console.log('✅ Activity marked as read:', latestTimestamp);
     }
-  };
+  }, [activities]);
 
   const fetchAllActivities = async () => {
     try {
