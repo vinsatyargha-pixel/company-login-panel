@@ -171,7 +171,7 @@ export default function DashboardContent() {
     return past.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   };
 
-  // Menu items untuk quick access
+  // Menu items untuk performance & settings
   const menuItems = [
     {
       title: '📊 ANALYTICS',
@@ -303,9 +303,9 @@ export default function DashboardContent() {
         />
       </div>
 
-      {/* QUICK MENU SECTION */}
+      {/* PERFORMANCE & SETTINGS MENU */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Quick Menu</h2>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Performance & Settings Menu</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {menuItems.map((item, index) => {
             // Skip admin-only items for non-admin users
