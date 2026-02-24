@@ -239,27 +239,49 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FUNGSI RECENT ACTIVITY
+  // FUNGSI RECENT ACTIVITY - YANG LENGKAP
   // ===========================================
   const fetchRecentActivities = async () => {
     try {
       setLoadingActivities(true);
       
-      const { data: auditData } = await supabase
+      const { data: auditData, error: auditError } = await supabase
         .from('audit_logs')
         .select(`
           *,
           officers!changed_by (full_name, email)
         `)
-        .order('changed_at', { ascending: false })
+        .order('changed_at', { ascending: false, nullsFirst: false })
         .limit(20);
 
-      const auditActivities = (auditData || []).map(item => ({
-        id: `audit-${item.changed_at}`,
-        officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
-        timestamp: item.changed_at,
-        changes: formatOfficerChanges(item.old_data, item.new_data)
-      }));
+      if (auditError) console.error('Audit Error:', auditError);
+
+      const auditActivities = (auditData || []).map(item => {
+        let changes = [];
+        let icon = '👤';
+        
+        if (item.action === 'UPDATE') {
+          changes = formatOfficerChanges(item.old_data, item.new_data);
+          icon = '✏️';
+        } else if (item.action === 'DELETE') {
+          changes = [`❌ Deleted officer: ${item.old_data?.full_name || 'Unknown'}`];
+          icon = '❌';
+        } else if (item.action === 'INSERT') {
+          changes = [`➕ Added new officer: ${item.new_data?.full_name || 'Unknown'}`];
+          icon = '➕';
+        }
+
+        return {
+          id: `audit-${item.changed_at}-${item.old_data?.full_name || item.new_data?.full_name || 'unknown'}`,
+          module: 'Officers',
+          officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
+          bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+          timestamp: item.changed_at,
+          adminName: item.officers?.full_name || item.officers?.email || 'Admin',
+          changes: changes,
+          icon: icon
+        };
+      });
 
       setActivities(auditActivities);
       
@@ -270,20 +292,69 @@ export default function DashboardContent() {
     }
   };
 
+  // ===========================================
+  // FORMAT CHANGES UNTUK OFFICERS - YANG LENGKAP
+  // ===========================================
   const formatOfficerChanges = (oldData, newData) => {
     if (!oldData || !newData) return ['📝 Updated data'];
-    return ['📝 Data updated']; // Simplified for brevity
+    
+    const changes = [];
+    
+    if (oldData.room !== newData.room) {
+      changes.push(`🏠 Room: ${oldData.room || 'empty'} → ${newData.room || 'empty'}`);
+    }
+    if (oldData.status !== newData.status) {
+      changes.push(`📊 Status: ${oldData.status || 'empty'} → ${newData.status || 'empty'}`);
+    }
+    if (oldData.department !== newData.department) {
+      changes.push(`🏢 Department: ${oldData.department || 'empty'} → ${newData.department || 'empty'}`);
+    }
+    if (oldData.join_date !== newData.join_date) {
+      const oldDate = oldData.join_date ? new Date(oldData.join_date).toLocaleDateString('id-ID') : 'empty';
+      const newDate = newData.join_date ? new Date(newData.join_date).toLocaleDateString('id-ID') : 'empty';
+      changes.push(`📅 Join date: ${oldDate} → ${newDate}`);
+    }
+    if (oldData.full_name !== newData.full_name) {
+      changes.push(`👤 Name: ${oldData.full_name || 'empty'} → ${newData.full_name || 'empty'}`);
+    }
+    if (oldData.panel_id !== newData.panel_id) {
+      changes.push(`🆔 Panel ID: ${oldData.panel_id || 'empty'} → ${newData.panel_id || 'empty'}`);
+    }
+    if (oldData.nationality !== newData.nationality) {
+      changes.push(`🌏 Nationality: ${oldData.nationality || 'empty'} → ${newData.nationality || 'empty'}`);
+    }
+    if (oldData.gender !== newData.gender) {
+      changes.push(`⚥ Gender: ${oldData.gender || 'empty'} → ${newData.gender || 'empty'}`);
+    }
+    if (oldData.bank_account !== newData.bank_account) {
+      changes.push(`💰 Bank account: updated`);
+    }
+    if (oldData.phone !== newData.phone) {
+      changes.push(`📱 Phone: ${oldData.phone || 'empty'} → ${newData.phone || 'empty'}`);
+    }
+    if (oldData.telegram_id !== newData.telegram_id) {
+      changes.push(`✈️ Telegram: ${oldData.telegram_id || 'empty'} → ${newData.telegram_id || 'empty'}`);
+    }
+    if (oldData.email !== newData.email) {
+      changes.push(`📧 Email: ${oldData.email || 'empty'} → ${newData.email || 'empty'}`);
+    }
+    
+    return changes.length > 0 ? changes : ['📝 Updated data'];
   };
 
   const formatTimeAgo = (timestamp) => {
     const now = new Date();
     const past = new Date(timestamp);
-    const diffMins = Math.floor((now - past) / 60000);
-    
+    const diffMs = now - past;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
     if (diffMins < 1) return 'just now';
     if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)} hours ago`;
-    return `${Math.floor(diffMins / 1440)} days ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return past.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   };
 
   // Menu items
@@ -361,33 +432,52 @@ export default function DashboardContent() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* Activity Button */}
+          {/* RECENT ACTIVITY NOTIFICATION - YANG LENGKAP */}
           <div className="relative">
             <button
               onClick={() => window.location.href = '/dashboard/activity-log'}
               onMouseEnter={() => setShowActivityTooltip(true)}
               onMouseLeave={() => setShowActivityTooltip(false)}
-              className="relative bg-[#1A2F4A] hover:bg-[#2A3F5A] p-3 rounded-lg border border-[#FFD700]/30"
+              className="relative bg-[#1A2F4A] hover:bg-[#2A3F5A] p-3 rounded-lg border border-[#FFD700]/30 transition-all group"
+              title="View all activity"
             >
               <svg className="w-6 h-6 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
+              
+              {/* NOTIFICATION BADGE */}
               {hasNewActivity && (
-                <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold animate-pulse">1</span>
+                <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold animate-pulse">
+                  1
+                </span>
               )}
             </button>
             
+            {/* TOOLTIP - LENGKAP DENGAN CHANGES */}
             {showActivityTooltip && activities.length > 0 && (
               <div className="absolute right-0 mt-2 w-72 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg p-3 z-50 shadow-xl">
-                <p className="text-[#FFD700] text-sm font-bold mb-2">🔔 Recent Updates</p>
+                <p className="text-[#FFD700] text-sm font-bold mb-2 flex items-center gap-2">
+                  <span>🔔 Recent Updates</span>
+                  <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-0.5 rounded-full">
+                    {activities.length} total
+                  </span>
+                </p>
                 {activities.slice(0, 3).map((act, idx) => (
                   <div key={idx} className="text-xs text-[#A7D8FF] mb-2 pb-2 border-b border-[#FFD700]/20 last:border-0">
                     <div className="flex items-center gap-1">
                       <span className="text-white font-bold">{act.officer}</span>
-                      <span className="text-[10px]">• {formatTimeAgo(act.timestamp)}</span>
+                      <span className="text-[10px] text-[#A7D8FF]">• {formatTimeAgo(act.timestamp)}</span>
+                    </div>
+                    <div className="text-[10px] mt-1 text-white bg-[#0B1A33] p-1 rounded">
+                      {act.changes?.[0] || 'Updated data'}
                     </div>
                   </div>
                 ))}
+                <div className="text-center mt-2 pt-2 border-t border-[#FFD700]/20">
+                  <span className="text-xs text-[#FFD700] hover:text-[#FFD700]/80 cursor-pointer" onClick={() => window.location.href = '/dashboard/activity-log'}>
+                    View all activity →
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -432,12 +522,10 @@ export default function DashboardContent() {
         </select>
       </div>
 
-      {/* =========================================== */}
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
-      {/* =========================================== */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: TRAFFIC VOLUME (ATAS KIRI) */}
+        {/* KOLOM 1: TRAFFIC VOLUME */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Traffic Volume</h3>
           <div className="h-64">
@@ -463,7 +551,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD (ATAS TENGAH) */}
+        {/* KOLOM 2: DEPOSIT METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Deposit Method</h3>
           <div className="space-y-3">
@@ -476,7 +564,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD (ATAS KANAN) */}
+        {/* KOLOM 3: WITHDRAWAL METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Withdrawal Method</h3>
           <div className="space-y-3">
@@ -493,7 +581,7 @@ export default function DashboardContent() {
       {/* ROW 2 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: CUSTOMER SUPPORT LINE (BAWAH KIRI) */}
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Support Line</h3>
           <div className="space-y-3">
@@ -508,7 +596,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: ASSET PERFORMANCE (BAWAH TENGAH) */}
+        {/* KOLOM 2: ASSET PERFORMANCE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">📈 Asset Performance</h3>
           <div className="h-64">
@@ -524,7 +612,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 3: OFFICER PERFORMANCE (BAWAH KANAN) */}
+        {/* KOLOM 3: OFFICER PERFORMANCE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Officer Performance</h3>
           <div className="h-64">
