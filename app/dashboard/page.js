@@ -46,7 +46,7 @@ export default function DashboardContent() {
   // STATE UNTUK AVAILABLE SERVICES
   // ===========================================
   const [depositMethods, setDepositMethods] = useState({
-    BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false
+    BCA: false, BNI: false, BRI: false, Mandiri: false, DANA: false, NexusPay: false
   });
   
   const [withdrawalMethods, setWithdrawalMethods] = useState({
@@ -560,7 +560,7 @@ export default function DashboardContent() {
 
         {/* KOLOM 2: DEPOSIT METHOD - LAMPU + SWITCH + ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method (Receiver)</h3>
           <div className="space-y-4">
             {Object.entries(depositMethods).map(([bank, isActive]) => (
               <div key={bank} className="flex items-center justify-between">
@@ -593,7 +593,7 @@ export default function DashboardContent() {
 
         {/* KOLOM 3: WITHDRAWAL METHOD - LAMPU + SWITCH + ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender Bank)</h3>
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender)</h3>
           <div className="space-y-4">
             {Object.entries(withdrawalMethods).map(([bank, isActive]) => (
               <div key={bank} className="flex items-center justify-between">
