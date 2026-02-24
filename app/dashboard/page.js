@@ -46,7 +46,7 @@ export default function DashboardContent() {
   // STATE UNTUK AVAILABLE SERVICES
   // ===========================================
   const [depositMethods, setDepositMethods] = useState({
-    BCA: false, BNI: false, BRI: false, Mandiri: false, DANA: false, NexusPay: false
+    BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false
   });
   
   const [withdrawalMethods, setWithdrawalMethods] = useState({
@@ -55,6 +55,13 @@ export default function DashboardContent() {
   
   const [supportLines, setSupportLines] = useState({
     liveChat: false, whatsapp: false
+  });
+
+  // STATE UNTUK UPDATE
+  const [updatingStatus, setUpdatingStatus] = useState({
+    deposit: false,
+    withdrawal: false,
+    support: false
   });
 
   // ===========================================
@@ -118,6 +125,41 @@ export default function DashboardContent() {
     window.addEventListener('activityRead', handleActivityRead);
     return () => window.removeEventListener('activityRead', handleActivityRead);
   }, []);
+
+  // ===========================================
+  // FUNGSI TOGGLE SERVICE (ON/OFF)
+  // ===========================================
+  const handleToggleService = async (type, serviceName, newStatus) => {
+    try {
+      if (type === 'deposit') {
+        setUpdatingStatus(prev => ({ ...prev, deposit: true }));
+        // TODO: Update ke Supabase
+        // const { error } = await supabase
+        //   .from('bank_accounts')
+        //   .update({ status: newStatus ? 'active' : 'inactive' })
+        //   .eq('bank_name', serviceName)
+        //   .eq('type', 'deposit')
+        
+        // Update local state
+        setDepositMethods(prev => ({ ...prev, [serviceName]: newStatus }));
+        
+      } else if (type === 'withdrawal') {
+        setUpdatingStatus(prev => ({ ...prev, withdrawal: true }));
+        // TODO: Update ke Supabase
+        setWithdrawalMethods(prev => ({ ...prev, [serviceName]: newStatus }));
+        
+      } else if (type === 'support') {
+        setUpdatingStatus(prev => ({ ...prev, support: true }));
+        // TODO: Update ke Supabase
+        setSupportLines(prev => ({ ...prev, [serviceName]: newStatus }));
+      }
+      
+    } catch (error) {
+      console.error('Error updating status:', error);
+    } finally {
+      setUpdatingStatus({ deposit: false, withdrawal: false, support: false });
+    }
+  };
 
   // ===========================================
   // FETCH DATA
@@ -551,37 +593,51 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD - DENGAN LAMPU ON/OFF */}
+        {/* KOLOM 2: DEPOSIT METHOD - DENGAN SWITCH */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
           <div className="space-y-3">
             {Object.entries(depositMethods).map(([bank, isActive]) => (
               <div key={bank} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                  <span className="text-white">{bank}</span>
-                </div>
-                <span className={`text-xs font-medium ${isActive ? 'text-green-400' : 'text-red-400'}`}>
-                  {isActive ? 'ON' : 'OFF'}
-                </span>
+                <span className="text-white">{bank}</span>
+                <button
+                  onClick={() => handleToggleService('deposit', bank, !isActive)}
+                  disabled={updatingStatus.deposit}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    isActive ? 'bg-green-500' : 'bg-gray-600'
+                  } ${updatingStatus.deposit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isActive ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
             ))}
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN LAMPU ON/OFF */}
+        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN SWITCH */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender Bank)</h3>
           <div className="space-y-3">
             {Object.entries(withdrawalMethods).map(([bank, isActive]) => (
               <div key={bank} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                  <span className="text-white">{bank}</span>
-                </div>
-                <span className={`text-xs font-medium ${isActive ? 'text-green-400' : 'text-red-400'}`}>
-                  {isActive ? 'ON' : 'OFF'}
-                </span>
+                <span className="text-white">{bank}</span>
+                <button
+                  onClick={() => handleToggleService('withdrawal', bank, !isActive)}
+                  disabled={updatingStatus.withdrawal}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    isActive ? 'bg-green-500' : 'bg-gray-600'
+                  } ${updatingStatus.withdrawal ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      isActive ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
               </div>
             ))}
           </div>
@@ -591,27 +647,41 @@ export default function DashboardContent() {
       {/* ROW 2 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: CUSTOMER SUPPORT LINE - DENGAN LAMPU ON/OFF */}
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE - DENGAN SWITCH */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Service Support Line</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className={`w-3 h-3 rounded-full ${supportLines.liveChat ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                <span className="text-white">Live Chat (Omega)</span>
-              </div>
-              <span className={`text-xs font-medium ${supportLines.liveChat ? 'text-green-400' : 'text-red-400'}`}>
-                {supportLines.liveChat ? 'ON' : 'OFF'}
-              </span>
+              <span className="text-white">Live Chat (Omega)</span>
+              <button
+                onClick={() => handleToggleService('support', 'liveChat', !supportLines.liveChat)}
+                disabled={updatingStatus.support}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                  supportLines.liveChat ? 'bg-green-500' : 'bg-gray-600'
+                } ${updatingStatus.support ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    supportLines.liveChat ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className={`w-3 h-3 rounded-full ${supportLines.whatsapp ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                <span className="text-white">Whatsapp (Official)</span>
-              </div>
-              <span className={`text-xs font-medium ${supportLines.whatsapp ? 'text-green-400' : 'text-red-400'}`}>
-                {supportLines.whatsapp ? 'ON' : 'OFF'}
-              </span>
+              <span className="text-white">Whatsapp (Official)</span>
+              <button
+                onClick={() => handleToggleService('support', 'whatsapp', !supportLines.whatsapp)}
+                disabled={updatingStatus.support}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                  supportLines.whatsapp ? 'bg-green-500' : 'bg-gray-600'
+                } ${updatingStatus.support ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    supportLines.whatsapp ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </div>
