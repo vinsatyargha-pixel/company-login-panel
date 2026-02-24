@@ -467,45 +467,99 @@ export default function DataBankPage() {
               </button>
             </div>
             
-            <div className="space-y-3 text-white">
-              <div className="bg-[#0B1A33] p-3 rounded-lg">
-                <div className="text-[#A7D8FF] text-sm">Bank</div>
-                <div className="font-bold">{selectedBank.bank}</div>
-              </div>
-              
-              <div className="bg-[#0B1A33] p-3 rounded-lg">
-                <div className="text-[#A7D8FF] text-sm">Account Name</div>
-                <div className="font-bold">{selectedBank.account_name}</div>
-              </div>
-              
-              <div className="bg-[#0B1A33] p-3 rounded-lg">
-                <div className="text-[#A7D8FF] text-sm">Account Number</div>
-                <div className="font-bold font-mono">{selectedBank.account_number}</div>
-              </div>
-              
-              <div className="bg-[#0B1A33] p-3 rounded-lg">
-                <div className="text-[#A7D8FF] text-sm">User ID / PIN</div>
-                <div className="font-mono text-sm">
-                  {/* Ini bisa diisi dari data login nanti */}
-                  <p>User ID: -</p>
-                  <p>PIN: -</p>
-                </div>
-              </div>
-              
-              <div className="bg-[#0B1A33] p-3 rounded-lg">
-                <div className="text-[#A7D8FF] text-sm">Role / Type</div>
-                <div>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    selectedBank.type === 'deposit' ? 'bg-blue-500/20 text-blue-400' :
-                    selectedBank.type === 'withdrawal' ? 'bg-purple-500/20 text-purple-400' :
-                    'bg-green-500/20 text-green-400'
-                  }`}>
-                    {selectedBank.type === 'deposit' ? 'Deposit' : 
-                     selectedBank.type === 'withdrawal' ? 'Withdrawal' : 'Both'}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <div className="bg-[#0B1A33] p-3 rounded-lg">
+  <div className="text-[#A7D8FF] text-sm">User ID / PIN</div>
+  <div className="font-mono text-sm space-y-1 mt-2">
+    {selectedBank.login_info?.user_id_1 && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">User ID 1:</span>
+        <span className="text-white">{selectedBank.login_info.user_id_1}</span>
+      </p>
+    )}
+    {selectedBank.login_info?.pin_1 && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">PIN 1:</span>
+        <span className="text-white">{selectedBank.login_info.pin_1}</span>
+      </p>
+    )}
+    
+    {selectedBank.login_info?.mybca_user && (
+      <p className="flex justify-between border-t border-[#FFD700]/20 pt-2 mt-2">
+        <span className="text-[#A7D8FF]">MYBCA User:</span>
+        <span className="text-white">{selectedBank.login_info.mybca_user}</span>
+      </p>
+    )}
+    {selectedBank.login_info?.user_id_2 && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">User ID 2:</span>
+        <span className="text-white">{selectedBank.login_info.user_id_2}</span>
+      </p>
+    )}
+    {selectedBank.login_info?.pass_1 && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">Password:</span>
+        <span className="text-white">{selectedBank.login_info.pass_1}</span>
+      </p>
+    )}
+    {selectedBank.login_info?.pin_2 && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">PIN 2:</span>
+        <span className="text-white">{selectedBank.login_info.pin_2}</span>
+      </p>
+    )}
+    
+    {selectedBank.login_info?.mbank_user && (
+      <p className="flex justify-between border-t border-[#FFD700]/20 pt-2 mt-2">
+        <span className="text-[#A7D8FF]">MBANK User:</span>
+        <span className="text-white">{selectedBank.login_info.mbank_user}</span>
+      </p>
+    )}
+    {selectedBank.login_info?.user_id_3 && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">User ID 3:</span>
+        <span className="text-white">{selectedBank.login_info.user_id_3}</span>
+      </p>
+    )}
+    {selectedBank.login_info?.pass_2 && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">Password 2:</span>
+        <span className="text-white">{selectedBank.login_info.pass_2}</span>
+      </p>
+    )}
+    {selectedBank.login_info?.pin_3 && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">PIN 3:</span>
+        <span className="text-white">{selectedBank.login_info.pin_3}</span>
+      </p>
+    )}
+    
+    {selectedBank.login_info?.pin_transaksi && (
+      <p className="flex justify-between border-t border-[#FFD700]/20 pt-2 mt-2">
+        <span className="text-[#A7D8FF]">PIN Transaksi:</span>
+        <span className="text-white">{selectedBank.login_info.pin_transaksi}</span>
+      </p>
+    )}
+    {selectedBank.login_info?.pass_transaksi && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">Pass Transaksi:</span>
+        <span className="text-white">{selectedBank.login_info.pass_transaksi}</span>
+      </p>
+    )}
+    
+    {selectedBank.login_info?.hp && (
+      <p className="flex justify-between border-t border-[#FFD700]/20 pt-2 mt-2">
+        <span className="text-[#A7D8FF]">HP:</span>
+        <span className="text-white">{selectedBank.login_info.hp}</span>
+      </p>
+    )}
+    {selectedBank.login_info?.email && (
+      <p className="flex justify-between">
+        <span className="text-[#A7D8FF]">Email:</span>
+        <span className="text-white">{selectedBank.login_info.email}</span>
+      </p>
+    )}
+  </div>
+</div>
             
             <button
               onClick={() => setShowPopup(false)}

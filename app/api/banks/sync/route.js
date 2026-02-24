@@ -17,23 +17,56 @@ export async function POST() {
       const columns = lines[i].split(',');
       if (columns.length < 30) continue;
       
-      // Kolom AD (29): Bank - Nama - No Rek
-      const rawData = columns[29]?.replace(/"/g, '').trim();
+      // Data dasar dari kolom yang udah kita pake
+      const rawData = columns[29]?.replace(/"/g, '').trim(); // Kolom AD
       if (!rawData) continue;
       
-      // Kolom W (22): Tipe (DEPOSIT / WITHDRAW)
-      const rawType = columns[22]?.replace(/"/g, '').trim().toUpperCase();
+      const rawType = columns[22]?.replace(/"/g, '').trim().toUpperCase(); // Kolom W
+      const masaAktif = columns[23]?.replace(/"/g, '').trim() || '-'; // Kolom X
+      const typeBank = columns[24]?.replace(/"/g, '').trim() || '-'; // Kolom Y
+      const statusKolom = columns[25]?.replace(/"/g, '').trim().toUpperCase(); // Kolom Z
       
-      // Kolom X (23): Masa Aktif
-      const masaAktif = columns[23]?.replace(/"/g, '').trim() || '-';
+      // ===========================================
+      // DATA LOGIN DARI KOLOM A - R
+      // ===========================================
+      const loginData = {
+        // Kolom A (0): BANK - udah ada di bank
+        // Kolom B (1): NAMA - udah ada di account_name
+        // Kolom C (2): NO REK - udah ada di account_number
+        
+        // Login utama
+        user_id_1: columns[3]?.replace(/"/g, '').trim() || null,      // Kolom D
+        pin_1: columns[4]?.replace(/"/g, '').trim() || null,          // Kolom E
+        
+        // MYBCA
+        mybca_user: columns[5]?.replace(/"/g, '').trim() || null,      // Kolom F
+        user_id_2: columns[6]?.replace(/"/g, '').trim() || null,       // Kolom G
+        pass_1: columns[7]?.replace(/"/g, '').trim() || null,          // Kolom H
+        pin_2: columns[8]?.replace(/"/g, '').trim() || null,           // Kolom I
+        
+        // MBANK
+        mbank_user: columns[9]?.replace(/"/g, '').trim() || null,       // Kolom J
+        user_id_3: columns[10]?.replace(/"/g, '').trim() || null,      // Kolom K
+        pass_2: columns[11]?.replace(/"/g, '').trim() || null,         // Kolom L
+        pin_3: columns[12]?.replace(/"/g, '').trim() || null,          // Kolom M
+        
+        // Transaksi
+        pin_transaksi: columns[13]?.replace(/"/g, '').trim() || null,  // Kolom N
+        pass_transaksi: columns[14]?.replace(/"/g, '').trim() || null, // Kolom O
+        
+        // Alternatif
+        user_id_4: columns[15]?.replace(/"/g, '').trim() || null,      // Kolom P
+        pass_3: columns[16]?.replace(/"/g, '').trim() || null,         // Kolom Q
+        pin_4: columns[17]?.replace(/"/g, '').trim() || null,          // Kolom R
+        
+        // Tambahan
+        agent: columns[18]?.replace(/"/g, '').trim() || null,          // Kolom S
+        pin_token: columns[19]?.replace(/"/g, '').trim() || null,      // Kolom T
+        hp: columns[20]?.replace(/"/g, '').trim() || null,             // Kolom U
+        email: columns[21]?.replace(/"/g, '').trim() || null,          // Kolom V
+      };
       
-      // Kolom Y (24): TYPE BANK (MOBILE / SOFTOKEN / dll)
-      const typeBank = columns[24]?.replace(/"/g, '').trim() || '-';
-      
-      // Kolom Z (25): STATUS (AKTIF / TAKEDOWN) - INI YANG DIPAKAI!
-      const statusKolom = columns[25]?.replace(/"/g, '').trim().toUpperCase();
-      
-      // Parse kolom AD
+      // Parse kolom AD: "JENIS BANK - NAMA - NO REK"
       const parts = rawData.split(' - ').map(p => p.trim());
       
       if (parts.length >= 2) {
@@ -43,22 +76,20 @@ export async function POST() {
         
         if (!bank || !accountNumber) continue;
         
-        // Tentukan tipe dari kolom W
         const isWithdrawal = rawType === 'WITHDRAW' || rawType === 'WITHDRAWAL';
-        
-        // Tentukan status dari kolom Z: true = AKTIF (Active), false = TAKEDOWN
         const isActive = statusKolom === 'AKTIF';
         
         banks.push({
           bank,
           account_name: accountName,
           account_number: accountNumber,
-          status: isActive, // true = Active, false = Takedown
+          status: isActive,
           display: !isWithdrawal,
           used: isWithdrawal,
           type: isWithdrawal ? 'withdrawal' : 'deposit',
           masa_aktif: masaAktif,
           type_bank: typeBank,
+          login_info: loginData, // ⬅️ SEMUA DATA LOGIN DISIMPAN DI SINI
           source: 'google_sheets',
           last_sync_at: new Date(),
           first_seen_at: new Date(),
@@ -91,7 +122,7 @@ export async function POST() {
       .delete()
       .eq('source', 'google_sheets');
 
-    // 6. Insert data baru
+    // 6. Insert data baru (login_info otomatis tersimpan sebagai JSON)
     const { error } = await supabase
       .from('bank_accounts')
       .insert(uniqueBanks);
