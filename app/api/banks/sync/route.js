@@ -8,67 +8,40 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
 
-    // 2. Split per baris
-    const lines = csvText.split('\n');
+    // 2. Split per baris dan filter
+    const lines = csvText.split('\n').filter(line => line.includes('YES'));
     
-    let banks = [];
-    let currentSection = null;
+    const banks = [];
     
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i].trim();
-      if (!line) continue;
+    for (const line of lines) {
+      // Skip header
+      if (line.includes('DISPLAY') || line.includes('USED')) continue;
       
-      // Deteksi section
-      if (line.includes('DEPOSIT')) {
-        currentSection = 'deposit';
-        i += 2; // Skip header
-        continue;
-      }
-      if (line.includes('WITHDRAW')) {
-        currentSection = 'withdrawal';
-        i += 2; // Skip header
-        continue;
-      }
+      // Split sederhana
+      const parts = line.split(',');
       
-      // Skip kalo belum masuk section
-      if (!currentSection) continue;
+      // Cari yang ada BCA, BNI, BRI, MANDIRI
+      const bankName = parts[3]?.replace(/"/g, '') || '';
+      if (!['BCA', 'BNI', 'BRI', 'MANDIRI'].includes(bankName)) continue;
       
-      // HANDLE KHUSUS: BCA punya enter di tengah
-      // Gabungin baris berikutnya kalo baris ini diawali kutip dan gak diakhiri kutip
-      if (line.startsWith('"') && !line.endsWith('"')) {
-        // Ini baris yang terpotong, gabung dengan baris berikutnya
-        line = line + lines[i + 1].trim();
-        i++; // Skip baris berikutnya
-      }
+      const accountName = parts[4]?.replace(/"/g, '').replace(/\n/g, '') || '';
+      const accountNumber = parts[5]?.replace(/"/g, '') || '';
       
-      // Split CSV sederhana (koma)
-      const columns = line.split(',').map(col => 
-        col.replace(/^"|"$/g, '').trim() // Hapus kutip di awal/akhir
-      );
-      
-      // Cek kolom B (index 1) harus YES
-      if (columns[1] !== 'YES') continue;
-      
-      // Ambil data
-      const bank = columns[3] || '';
-      const accountName = columns[4] || '';
-      const accountNumber = columns[5] || '';
-      
-      // Cek status AKTIF di kolom manapun
-      const isActive = columns.some(col => col === 'AKTIF');
-      
-      if (!bank || !accountNumber) continue;
+      // Tentukan tipe dari baris (apakah ada kata DEPOSIT atau WITHDRAW di atasnya)
+      const isDeposit = csvText.substring(0, csvText.indexOf(line)).includes('DEPOSIT');
       
       banks.push({
-        bank,
+        bank: bankName,
         account_name: accountName,
         account_number: accountNumber,
-        status: isActive,
+        status: true, // Paksa true dulu
+        display: isDeposit,
+        used: !isDeposit,
+        type: isDeposit ? 'deposit' : 'withdrawal',
         source: 'google_sheets',
         last_sync_at: new Date(),
-        display: currentSection === 'deposit',
-        used: currentSection === 'withdrawal',
-        type: currentSection
+        first_seen_at: new Date(),
+        updated_at: new Date()
       });
     }
 
@@ -78,28 +51,17 @@ export async function POST() {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // 4. Hapus data sheets lama
-    await supabase
-      .from('bank_accounts')
-      .delete()
-      .eq('source', 'google_sheets');
-
-    // 5. Insert data baru
-    const { error } = await supabase
-      .from('bank_accounts')
-      .insert(banks.map(b => ({
-        ...b,
-        first_seen_at: new Date(),
-        updated_at: new Date()
-      })));
+    // 4. Hapus dan insert ulang
+    await supabase.from('bank_accounts').delete().eq('source', 'google_sheets');
+    
+    const { error } = await supabase.from('bank_accounts').insert(banks);
 
     if (error) throw error;
 
     return NextResponse.json({
       success: true,
-      message: `Sync berhasil: ${banks.length} bank diproses`,
-      banks: banks.map(b => b.bank),
-      detail: banks
+      message: `Sync berhasil: ${banks.length} bank`,
+      banks: banks.map(b => b.bank)
     });
 
   } catch (error) {
@@ -109,4 +71,8 @@ export async function POST() {
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ message: 'Gunakan POST method' });
 }
