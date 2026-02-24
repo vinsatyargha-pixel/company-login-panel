@@ -46,7 +46,7 @@ export default function DashboardContent() {
   // STATE UNTUK AVAILABLE SERVICES
   // ===========================================
   const [depositMethods, setDepositMethods] = useState({
-    BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false
+    BCA: false, BNI: false, BRI: false, Mandiri: false, DANA: false, NexusPay: false
   });
   
   const [withdrawalMethods, setWithdrawalMethods] = useState({
@@ -551,27 +551,37 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD */}
+        {/* KOLOM 2: DEPOSIT METHOD - DENGAN LAMPU ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Deposit Method</h3>
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
           <div className="space-y-3">
             {Object.entries(depositMethods).map(([bank, isActive]) => (
-              <div key={bank} className="flex items-center gap-3">
-                <input type="checkbox" checked={isActive} readOnly className="w-5 h-5 accent-green-500" />
-                <span className="text-white">{bank}</span>
+              <div key={bank} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                  <span className="text-white">{bank}</span>
+                </div>
+                <span className={`text-xs font-medium ${isActive ? 'text-green-400' : 'text-red-400'}`}>
+                  {isActive ? 'ON' : 'OFF'}
+                </span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD */}
+        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN LAMPU ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Withdrawal Method</h3>
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender Bank)</h3>
           <div className="space-y-3">
             {Object.entries(withdrawalMethods).map(([bank, isActive]) => (
-              <div key={bank} className="flex items-center gap-3">
-                <input type="checkbox" checked={isActive} readOnly className="w-5 h-5 accent-green-500" />
-                <span className="text-white">{bank}</span>
+              <div key={bank} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className={`w-3 h-3 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                  <span className="text-white">{bank}</span>
+                </div>
+                <span className={`text-xs font-medium ${isActive ? 'text-green-400' : 'text-red-400'}`}>
+                  {isActive ? 'ON' : 'OFF'}
+                </span>
               </div>
             ))}
           </div>
@@ -581,17 +591,27 @@ export default function DashboardContent() {
       {/* ROW 2 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE - DENGAN LAMPU ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Support Line</h3>
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Service Support Line</h3>
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <input type="checkbox" checked={supportLines.liveChat} readOnly className="w-5 h-5 accent-green-500" />
-              <span className="text-white">Live Chat (Omega)</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className={`w-3 h-3 rounded-full ${supportLines.liveChat ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                <span className="text-white">Live Chat (Omega)</span>
+              </div>
+              <span className={`text-xs font-medium ${supportLines.liveChat ? 'text-green-400' : 'text-red-400'}`}>
+                {supportLines.liveChat ? 'ON' : 'OFF'}
+              </span>
             </div>
-            <div className="flex items-center gap-3">
-              <input type="checkbox" checked={supportLines.whatsapp} readOnly className="w-5 h-5 accent-green-500" />
-              <span className="text-white">Whatsapp (Official)</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className={`w-3 h-3 rounded-full ${supportLines.whatsapp ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                <span className="text-white">Whatsapp (Official)</span>
+              </div>
+              <span className={`text-xs font-medium ${supportLines.whatsapp ? 'text-green-400' : 'text-red-400'}`}>
+                {supportLines.whatsapp ? 'ON' : 'OFF'}
+              </span>
             </div>
           </div>
         </div>
