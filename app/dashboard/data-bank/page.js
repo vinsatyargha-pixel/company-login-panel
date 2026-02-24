@@ -499,12 +499,21 @@ export default function DataBankPage() {
                   </div>
                 )}
 
-                {/* Token & Agent */}
-                {(selectedBank.login_info.pin_token || selectedBank.login_info.agent) && (
+                {/* Token & Agent - HAPUS EMAIL & HP */}
+                {(selectedBank.login_info.pin_token) && (
                   <div className="bg-[#0B1A33] p-4 rounded-lg">
-                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔧 Token & Agent</h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔧 Token</h4>
+                    <div className="grid grid-cols-1 gap-3">
                       {selectedBank.login_info.pin_token && <div><div className="text-[#A7D8FF] text-xs">PIN Token</div><div className="text-white font-mono">{selectedBank.login_info.pin_token}</div></div>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Agent - PISAHKAN DARI TOKEN */}
+                {(selectedBank.login_info.agent) && (
+                  <div className="bg-[#0B1A33] p-4 rounded-lg">
+                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🤝 Agent</h4>
+                    <div className="grid grid-cols-1 gap-3">
                       {selectedBank.login_info.agent && <div><div className="text-[#A7D8FF] text-xs">Agent</div><div className="text-white font-mono">{selectedBank.login_info.agent}</div></div>}
                     </div>
                   </div>
