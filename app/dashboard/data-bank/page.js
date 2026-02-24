@@ -429,7 +429,7 @@ export default function DataBankPage() {
         </div>
       </div>
 
-      {/* POPUP INFO LOGIN - FINAL TANPA EMAIL & HP */}
+      {/* POPUP INFO LOGIN - FINAL DENGAN FIX MBANK PIN */}
       {showPopup && selectedBank && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] border-2 border-[#FFD700] rounded-xl p-6 max-w-2xl w-full mx-4 shadow-[0_0_50px_#FFD700] max-h-[80vh] overflow-y-auto">
@@ -463,7 +463,8 @@ export default function DataBankPage() {
                 )}
 
                 {/* MYBCA */}
-                {(selectedBank.login_info.mybca_user || selectedBank.login_info.user_id_2 || selectedBank.login_info.pass_1 || selectedBank.login_info.pin_2) && (
+                {(selectedBank.login_info.mybca_user || selectedBank.login_info.user_id_2 || 
+                  selectedBank.login_info.pass_1 || selectedBank.login_info.pin_2) && (
                   <div className="bg-[#0B1A33] p-4 rounded-lg">
                     <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🏦 MYBCA</h4>
                     <div className="grid grid-cols-2 gap-3">
@@ -475,15 +476,36 @@ export default function DataBankPage() {
                   </div>
                 )}
 
-                {/* MBANK */}
-                {(selectedBank.login_info.mbank_user || selectedBank.login_info.user_id_3 || selectedBank.login_info.pass_2 || selectedBank.login_info.pin_3) && (
+                {/* MBANK - FIX: User ID diganti jadi PIN */}
+                {(selectedBank.login_info.mbank_user || selectedBank.login_info.user_id_3 || 
+                  selectedBank.login_info.pass_2 || selectedBank.login_info.pin_3) && (
                   <div className="bg-[#0B1A33] p-4 rounded-lg">
                     <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">💳 MBANK</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.login_info.mbank_user && <div><div className="text-[#A7D8FF] text-xs">User</div><div className="text-white font-mono">{selectedBank.login_info.mbank_user}</div></div>}
-                      {selectedBank.login_info.user_id_3 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.login_info.user_id_3}</div></div>}
-                      {selectedBank.login_info.pass_2 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.login_info.pass_2}</div></div>}
-                      {selectedBank.login_info.pin_3 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.login_info.pin_3}</div></div>}
+                      {selectedBank.login_info.mbank_user && (
+                        <div>
+                          <div className="text-[#A7D8FF] text-xs">User</div>
+                          <div className="text-white font-mono">{selectedBank.login_info.mbank_user}</div>
+                        </div>
+                      )}
+                      {selectedBank.login_info.user_id_3 && (
+                        <div>
+                          <div className="text-[#A7D8FF] text-xs">PIN</div> {/* ← GANTI DARI "User ID" JADI "PIN" */}
+                          <div className="text-white font-mono">{selectedBank.login_info.user_id_3}</div>
+                        </div>
+                      )}
+                      {selectedBank.login_info.pass_2 && (
+                        <div>
+                          <div className="text-[#A7D8FF] text-xs">Password</div>
+                          <div className="text-white font-mono">{selectedBank.login_info.pass_2}</div>
+                        </div>
+                      )}
+                      {selectedBank.login_info.pin_3 && (
+                        <div>
+                          <div className="text-[#A7D8FF] text-xs">PIN</div>
+                          <div className="text-white font-mono">{selectedBank.login_info.pin_3}</div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -495,26 +517,6 @@ export default function DataBankPage() {
                     <div className="grid grid-cols-2 gap-3">
                       {selectedBank.login_info.pin_transaksi && <div><div className="text-[#A7D8FF] text-xs">PIN Transaksi</div><div className="text-white font-mono">{selectedBank.login_info.pin_transaksi}</div></div>}
                       {selectedBank.login_info.pass_transaksi && <div><div className="text-[#A7D8FF] text-xs">Password Transaksi</div><div className="text-white font-mono">{selectedBank.login_info.pass_transaksi}</div></div>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Token & Agent - HAPUS EMAIL & HP */}
-                {(selectedBank.login_info.pin_token) && (
-                  <div className="bg-[#0B1A33] p-4 rounded-lg">
-                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔧 Token</h4>
-                    <div className="grid grid-cols-1 gap-3">
-                      {selectedBank.login_info.pin_token && <div><div className="text-[#A7D8FF] text-xs">PIN Token</div><div className="text-white font-mono">{selectedBank.login_info.pin_token}</div></div>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Agent - PISAHKAN DARI TOKEN */}
-                {(selectedBank.login_info.agent) && (
-                  <div className="bg-[#0B1A33] p-4 rounded-lg">
-                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🤝 Agent</h4>
-                    <div className="grid grid-cols-1 gap-3">
-                      {selectedBank.login_info.agent && <div><div className="text-[#A7D8FF] text-xs">Agent</div><div className="text-white font-mono">{selectedBank.login_info.agent}</div></div>}
                     </div>
                   </div>
                 )}
