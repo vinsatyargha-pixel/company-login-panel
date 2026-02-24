@@ -1,60 +1,46 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { parse } from 'csv-parse/sync';
 
 export async function POST() {
   try {
-    // 1. Fetch CSV
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1435714791&single=true&output=csv';
     const response = await fetch(csvUrl);
     const csvText = await response.text();
 
-    // 2. Split per baris
-    const lines = csvText.split('\n');
+    const records = parse(csvText, { skip_empty_lines: true, trim: true });
     
-    let banks = [];
     let currentSection = null;
-    
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-      
-      // Deteksi section DEPOSIT
-      if (line.includes('DEPOSIT')) {
+    const banks = [];
+
+    for (let i = 0; i < records.length; i++) {
+      const row = records[i];
+      if (!row || row.length === 0) continue;
+
+      if (row[0]?.includes('DEPOSIT')) {
         currentSection = 'deposit';
-        i += 2; // Skip header
+        i += 2;
         continue;
       }
-      
-      // Deteksi section WITHDRAW
-      if (line.includes('WITHDRAW')) {
+      if (row[0]?.includes('WITHDRAW')) {
         currentSection = 'withdrawal';
-        i += 2; // Skip header
+        i += 2;
         continue;
       }
-      
-      // Skip kalo belum masuk section
-      if (!currentSection) continue;
-      
-      // Ambil data dengan split sederhana
-      const columns = line.split(',');
-      
-      // Kolom B harus YES
-      if (columns[1] !== 'YES') continue;
-      
-      const bank = columns[3]?.replace(/"/g, '') || '';
-      const accountName = columns[4]?.replace(/"/g, '').replace(/\n/g, '') || '';
-      const accountNumber = columns[5]?.replace(/"/g, '') || '';
-      
-      if (!bank || !accountNumber) continue;
-      
+
+      if (!row[3] || row[1] !== 'YES') continue;
+
+      const cleanRow = row.map(cell => cell?.replace(/\n/g, '').trim() || '');
+      const isActive = cleanRow[26] === 'AKTIF' || cleanRow[27] === 'AKTIF';
+
       banks.push({
-        bank,
-        account_name: accountName,
-        account_number: accountNumber,
-        status: true,
+        bank: cleanRow[3],
+        account_name: cleanRow[4],
+        account_number: cleanRow[5],
+        status: isActive,
         display: currentSection === 'deposit',
         used: currentSection === 'withdrawal',
-        type: currentSection, // <-- INI PENTING!
+        type: currentSection,
         source: 'google_sheets',
         last_sync_at: new Date(),
         first_seen_at: new Date(),
@@ -62,33 +48,23 @@ export async function POST() {
       });
     }
 
-    // 3. Koneksi Supabase
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // 4. Hapus data lama
     await supabase.from('bank_accounts').delete().eq('source', 'google_sheets');
-
-    // 5. Insert data baru
+    
     const { error } = await supabase.from('bank_accounts').insert(banks);
-
     if (error) throw error;
 
-    return NextResponse.json({
-      success: true,
-      message: `Sync berhasil: ${banks.length} bank`,
-      deposit: banks.filter(b => b.type === 'deposit').length,
-      withdrawal: banks.filter(b => b.type === 'withdrawal').length
+    return NextResponse.json({ 
+      success: true, 
+      message: `Sync: ${banks.length} bank` 
     });
 
   } catch (error) {
-    console.error('Sync error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
