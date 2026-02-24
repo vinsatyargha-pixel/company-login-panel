@@ -361,74 +361,50 @@ export default function DataBankPage() {
               ) : (
                 filteredBanks.map((bank) => (
                   <tr key={bank.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                    {/* Status */}
                     <td className="py-3 px-4">
                       <span className={`inline-flex items-center gap-1 ${bank.status ? 'text-green-400' : 'text-red-400'}`}>
                         <span className={`w-2 h-2 rounded-full ${bank.status ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
                         {bank.status ? 'Active' : 'Takedown'}
                       </span>
                     </td>
-                    
-                    {/* Display/Used */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        {bank.display && (
-                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">Display</span>
-                        )}
-                        {bank.used && (
-                          <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">Used</span>
-                        )}
+                        {bank.display && <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">Display</span>}
+                        {bank.used && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">Used</span>}
                       </div>
                     </td>
-                    
-                    {/* Bank */}
                     <td className="py-3 px-4 text-white font-medium">{bank.bank}</td>
-                    
-                    {/* Account Name */}
                     <td className="py-3 px-4 text-white">{bank.account_name || '-'}</td>
-                    
-                    {/* Account Number - Klik untuk info login */}
                     <td className="py-3 px-4">
                       <button
                         onClick={() => handleAccountClick(bank)}
                         className="text-white font-mono hover:text-[#FFD700] transition-colors underline decoration-dotted underline-offset-2"
-                        title="Klik untuk lihat info login"
                       >
                         {bank.account_number || '-'}
                       </button>
                     </td>
-                    
-                    {/* Role */}
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         bank.type === 'deposit' ? 'bg-blue-500/20 text-blue-400' :
                         bank.type === 'withdrawal' ? 'bg-purple-500/20 text-purple-400' :
                         'bg-green-500/20 text-green-400'
                       }`}>
-                        {bank.type === 'deposit' && 'Deposit'}
-                        {bank.type === 'withdrawal' && 'Withdrawal'}
-                        {bank.type === 'both' && 'Both'}
+                        {bank.type === 'deposit' ? 'Deposit' : bank.type === 'withdrawal' ? 'Withdrawal' : 'Both'}
                       </span>
                     </td>
-                    
-                    {/* Type Bank */}
                     <td className="py-3 px-4">
                       <span className="px-2 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400">
                         {bank.type_bank || '-'}
                       </span>
                     </td>
-                    
-                    {/* Masa Aktif */}
                     <td className="py-3 px-4 text-[#A7D8FF] text-sm">
                       {bank.masa_aktif || '-'}
                     </td>
-                    
-                    {/* Actions */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleStatusToggle(bank.id, bank.status)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
                             bank.status 
                               ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
                               : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
@@ -438,7 +414,7 @@ export default function DataBankPage() {
                         </button>
                         <button
                           onClick={() => handleDelete(bank.id)}
-                          className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
+                          className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30"
                           title="Hapus"
                         >
                           🗑️
@@ -453,188 +429,90 @@ export default function DataBankPage() {
         </div>
       </div>
 
-      {/* POPUP INFO LOGIN - TANPA EMAIL & HP */}
+      {/* POPUP INFO LOGIN - FINAL TANPA EMAIL & HP */}
       {showPopup && selectedBank && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] border-2 border-[#FFD700] rounded-xl p-6 max-w-2xl w-full mx-4 shadow-[0_0_50px_#FFD700] max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#1A2F4A] z-10 pb-2">
               <h3 className="text-xl font-bold text-[#FFD700]">🔐 Info Login {selectedBank.bank}</h3>
-              <button
-                onClick={() => setShowPopup(false)}
-                className="text-[#A7D8FF] hover:text-white text-2xl"
-              >
-                ×
-              </button>
+              <button onClick={() => setShowPopup(false)} className="text-[#A7D8FF] hover:text-white text-2xl">×</button>
             </div>
             
             {/* Data Utama */}
             <div className="bg-[#0B1A33] p-4 rounded-lg mb-4">
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-[#A7D8FF] text-xs">Bank</div>
-                  <div className="text-white font-bold">{selectedBank.bank}</div>
-                </div>
-                <div>
-                  <div className="text-[#A7D8FF] text-xs">Account Name</div>
-                  <div className="text-white font-bold">{selectedBank.account_name}</div>
-                </div>
-                <div>
-                  <div className="text-[#A7D8FF] text-xs">Account Number</div>
-                  <div className="text-white font-mono">{selectedBank.account_number}</div>
-                </div>
-                <div>
-                  <div className="text-[#A7D8FF] text-xs">Role</div>
-                  <div className={`px-2 py-1 inline-block rounded-full text-xs ${
-                    selectedBank.type === 'deposit' ? 'bg-blue-500/20 text-blue-400' :
-                    'bg-purple-500/20 text-purple-400'
-                  }`}>
-                    {selectedBank.type === 'deposit' ? 'Deposit' : 'Withdrawal'}
-                  </div>
-                </div>
+                <div><div className="text-[#A7D8FF] text-xs">Bank</div><div className="text-white font-bold">{selectedBank.bank}</div></div>
+                <div><div className="text-[#A7D8FF] text-xs">Account Name</div><div className="text-white font-bold">{selectedBank.account_name}</div></div>
+                <div><div className="text-[#A7D8FF] text-xs">Account Number</div><div className="text-white font-mono">{selectedBank.account_number}</div></div>
+                <div><div className="text-[#A7D8FF] text-xs">Role</div><div className={`px-2 py-1 inline-block rounded-full text-xs ${selectedBank.type === 'deposit' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>{selectedBank.type === 'deposit' ? 'Deposit' : 'Withdrawal'}</div></div>
               </div>
             </div>
 
-            {/* Login Info - Group by Type */}
+            {/* Login Info */}
             {selectedBank.login_info && (
               <div className="space-y-4">
-                
-                {/* LOGIN UTAMA */}
+                {/* Login Utama */}
                 {(selectedBank.login_info.user_id_1 || selectedBank.login_info.pin_1) && (
                   <div className="bg-[#0B1A33] p-4 rounded-lg">
                     <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔑 Login Utama</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.login_info.user_id_1 && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">User ID</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.user_id_1}</div>
-                        </div>
-                      )}
-                      {selectedBank.login_info.pin_1 && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">PIN</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.pin_1}</div>
-                        </div>
-                      )}
+                      {selectedBank.login_info.user_id_1 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.login_info.user_id_1}</div></div>}
+                      {selectedBank.login_info.pin_1 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.login_info.pin_1}</div></div>}
                     </div>
                   </div>
                 )}
 
                 {/* MYBCA */}
-                {(selectedBank.login_info.mybca_user || selectedBank.login_info.user_id_2 || 
-                  selectedBank.login_info.pass_1 || selectedBank.login_info.pin_2) && (
+                {(selectedBank.login_info.mybca_user || selectedBank.login_info.user_id_2 || selectedBank.login_info.pass_1 || selectedBank.login_info.pin_2) && (
                   <div className="bg-[#0B1A33] p-4 rounded-lg">
                     <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🏦 MYBCA</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.login_info.mybca_user && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">User</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.mybca_user}</div>
-                        </div>
-                      )}
-                      {selectedBank.login_info.user_id_2 && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">User ID</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.user_id_2}</div>
-                        </div>
-                      )}
-                      {selectedBank.login_info.pass_1 && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">Password</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.pass_1}</div>
-                        </div>
-                      )}
-                      {selectedBank.login_info.pin_2 && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">PIN</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.pin_2}</div>
-                        </div>
-                      )}
+                      {selectedBank.login_info.mybca_user && <div><div className="text-[#A7D8FF] text-xs">User</div><div className="text-white font-mono">{selectedBank.login_info.mybca_user}</div></div>}
+                      {selectedBank.login_info.user_id_2 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.login_info.user_id_2}</div></div>}
+                      {selectedBank.login_info.pass_1 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.login_info.pass_1}</div></div>}
+                      {selectedBank.login_info.pin_2 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.login_info.pin_2}</div></div>}
                     </div>
                   </div>
                 )}
 
                 {/* MBANK */}
-                {(selectedBank.login_info.mbank_user || selectedBank.login_info.user_id_3 || 
-                  selectedBank.login_info.pass_2 || selectedBank.login_info.pin_3) && (
+                {(selectedBank.login_info.mbank_user || selectedBank.login_info.user_id_3 || selectedBank.login_info.pass_2 || selectedBank.login_info.pin_3) && (
                   <div className="bg-[#0B1A33] p-4 rounded-lg">
                     <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">💳 MBANK</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.login_info.mbank_user && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">User</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.mbank_user}</div>
-                        </div>
-                      )}
-                      {selectedBank.login_info.user_id_3 && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">User ID</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.user_id_3}</div>
-                        </div>
-                      )}
-                      {selectedBank.login_info.pass_2 && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">Password</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.pass_2}</div>
-                        </div>
-                      )}
-                      {selectedBank.login_info.pin_3 && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">PIN</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.pin_3}</div>
-                        </div>
-                      )}
+                      {selectedBank.login_info.mbank_user && <div><div className="text-[#A7D8FF] text-xs">User</div><div className="text-white font-mono">{selectedBank.login_info.mbank_user}</div></div>}
+                      {selectedBank.login_info.user_id_3 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.login_info.user_id_3}</div></div>}
+                      {selectedBank.login_info.pass_2 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.login_info.pass_2}</div></div>}
+                      {selectedBank.login_info.pin_3 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.login_info.pin_3}</div></div>}
                     </div>
                   </div>
                 )}
 
-                {/* TRANSAKSI */}
+                {/* Transaksi */}
                 {(selectedBank.login_info.pin_transaksi || selectedBank.login_info.pass_transaksi) && (
                   <div className="bg-[#0B1A33] p-4 rounded-lg">
                     <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">💰 Transaksi</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.login_info.pin_transaksi && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">PIN Transaksi</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.pin_transaksi}</div>
-                        </div>
-                      )}
-                      {selectedBank.login_info.pass_transaksi && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">Password Transaksi</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.pass_transaksi}</div>
-                        </div>
-                      )}
+                      {selectedBank.login_info.pin_transaksi && <div><div className="text-[#A7D8FF] text-xs">PIN Transaksi</div><div className="text-white font-mono">{selectedBank.login_info.pin_transaksi}</div></div>}
+                      {selectedBank.login_info.pass_transaksi && <div><div className="text-[#A7D8FF] text-xs">Password Transaksi</div><div className="text-white font-mono">{selectedBank.login_info.pass_transaksi}</div></div>}
                     </div>
                   </div>
                 )}
 
-                {/* TOKEN & AGENT */}
+                {/* Token & Agent */}
                 {(selectedBank.login_info.pin_token || selectedBank.login_info.agent) && (
                   <div className="bg-[#0B1A33] p-4 rounded-lg">
                     <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔧 Token & Agent</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.login_info.pin_token && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">PIN Token</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.pin_token}</div>
-                        </div>
-                      )}
-                      {selectedBank.login_info.agent && (
-                        <div>
-                          <div className="text-[#A7D8FF] text-xs">Agent</div>
-                          <div className="text-white font-mono">{selectedBank.login_info.agent}</div>
-                        </div>
-                      )}
+                      {selectedBank.login_info.pin_token && <div><div className="text-[#A7D8FF] text-xs">PIN Token</div><div className="text-white font-mono">{selectedBank.login_info.pin_token}</div></div>}
+                      {selectedBank.login_info.agent && <div><div className="text-[#A7D8FF] text-xs">Agent</div><div className="text-white font-mono">{selectedBank.login_info.agent}</div></div>}
                     </div>
                   </div>
                 )}
               </div>
             )}
             
-            <button
-              onClick={() => setShowPopup(false)}
-              className="mt-6 w-full bg-[#FFD700] text-[#0B1A33] py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 transition-colors"
-            >
+            <button onClick={() => setShowPopup(false)} className="mt-6 w-full bg-[#FFD700] text-[#0B1A33] py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 transition-colors">
               Tutup
             </button>
           </div>
@@ -648,7 +526,7 @@ export default function DataBankPage() {
         <span className="flex items-center gap-1">💰 Deposit</span>
         <span className="flex items-center gap-1">💸 Withdrawal</span>
         <span className="flex items-center gap-1">📊 From Google Sheets</span>
-        <span className="flex items-center gap-1">🔍 Klik No. Rekening untuk info login</span>
+        <span className="flex items-center gap-1">🔍 Klik No. Rekening</span>
       </div>
     </div>
   );
