@@ -8,36 +8,53 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
 
-    // 2. Split per baris dan filter
-    const lines = csvText.split('\n').filter(line => line.includes('YES'));
+    // 2. Split per baris
+    const lines = csvText.split('\n');
     
-    const banks = [];
+    let banks = [];
+    let currentSection = null;
     
-    for (const line of lines) {
-      // Skip header
-      if (line.includes('DISPLAY') || line.includes('USED')) continue;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
       
-      // Split sederhana
-      const parts = line.split(',');
+      // Deteksi section DEPOSIT
+      if (line.includes('DEPOSIT')) {
+        currentSection = 'deposit';
+        i += 2; // Skip header
+        continue;
+      }
       
-      // Cari yang ada BCA, BNI, BRI, MANDIRI
-      const bankName = parts[3]?.replace(/"/g, '') || '';
-      if (!['BCA', 'BNI', 'BRI', 'MANDIRI'].includes(bankName)) continue;
+      // Deteksi section WITHDRAW
+      if (line.includes('WITHDRAW')) {
+        currentSection = 'withdrawal';
+        i += 2; // Skip header
+        continue;
+      }
       
-      const accountName = parts[4]?.replace(/"/g, '').replace(/\n/g, '') || '';
-      const accountNumber = parts[5]?.replace(/"/g, '') || '';
+      // Skip kalo belum masuk section
+      if (!currentSection) continue;
       
-      // Tentukan tipe dari baris (apakah ada kata DEPOSIT atau WITHDRAW di atasnya)
-      const isDeposit = csvText.substring(0, csvText.indexOf(line)).includes('DEPOSIT');
+      // Ambil data dengan split sederhana
+      const columns = line.split(',');
+      
+      // Kolom B harus YES
+      if (columns[1] !== 'YES') continue;
+      
+      const bank = columns[3]?.replace(/"/g, '') || '';
+      const accountName = columns[4]?.replace(/"/g, '').replace(/\n/g, '') || '';
+      const accountNumber = columns[5]?.replace(/"/g, '') || '';
+      
+      if (!bank || !accountNumber) continue;
       
       banks.push({
-        bank: bankName,
+        bank,
         account_name: accountName,
         account_number: accountNumber,
-        status: true, // Paksa true dulu
-        display: isDeposit,
-        used: !isDeposit,
-        type: isDeposit ? 'deposit' : 'withdrawal',
+        status: true,
+        display: currentSection === 'deposit',
+        used: currentSection === 'withdrawal',
+        type: currentSection, // <-- INI PENTING!
         source: 'google_sheets',
         last_sync_at: new Date(),
         first_seen_at: new Date(),
@@ -51,9 +68,10 @@ export async function POST() {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // 4. Hapus dan insert ulang
+    // 4. Hapus data lama
     await supabase.from('bank_accounts').delete().eq('source', 'google_sheets');
-    
+
+    // 5. Insert data baru
     const { error } = await supabase.from('bank_accounts').insert(banks);
 
     if (error) throw error;
@@ -61,7 +79,8 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       message: `Sync berhasil: ${banks.length} bank`,
-      banks: banks.map(b => b.bank)
+      deposit: banks.filter(b => b.type === 'deposit').length,
+      withdrawal: banks.filter(b => b.type === 'withdrawal').length
     });
 
   } catch (error) {
