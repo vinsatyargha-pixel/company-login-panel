@@ -80,21 +80,41 @@ export async function POST() {
         const isActive = statusKolom === 'AKTIF';
         
         banks.push({
-          bank,
-          account_name: accountName,
-          account_number: accountNumber,
-          status: isActive,
-          display: !isWithdrawal,
-          used: isWithdrawal,
-          type: isWithdrawal ? 'withdrawal' : 'deposit',
-          masa_aktif: masaAktif,
-          type_bank: typeBank,
-          login_info: loginData, // ⬅️ SEMUA DATA LOGIN DISIMPAN DI SINI
-          source: 'google_sheets',
-          last_sync_at: new Date(),
-          first_seen_at: new Date(),
-          updated_at: new Date()
-        });
+  bank,
+  account_name: accountName,
+  account_number: accountNumber,
+  status: isActive,
+  display: !isWithdrawal,
+  used: isWithdrawal,
+  type: isWithdrawal ? 'withdrawal' : 'deposit',
+  masa_aktif: masaAktif,
+  type_bank: typeBank,
+  login_info: {  // ⬅️ PASTIKAN INI ADA!
+    user_id_1: columns[3]?.replace(/"/g, '').trim() || null,
+    pin_1: columns[4]?.replace(/"/g, '').trim() || null,
+    mybca_user: columns[5]?.replace(/"/g, '').trim() || null,
+    user_id_2: columns[6]?.replace(/"/g, '').trim() || null,
+    pass_1: columns[7]?.replace(/"/g, '').trim() || null,
+    pin_2: columns[8]?.replace(/"/g, '').trim() || null,
+    mbank_user: columns[9]?.replace(/"/g, '').trim() || null,
+    user_id_3: columns[10]?.replace(/"/g, '').trim() || null,
+    pass_2: columns[11]?.replace(/"/g, '').trim() || null,
+    pin_3: columns[12]?.replace(/"/g, '').trim() || null,
+    pin_transaksi: columns[13]?.replace(/"/g, '').trim() || null,
+    pass_transaksi: columns[14]?.replace(/"/g, '').trim() || null,
+    user_id_4: columns[15]?.replace(/"/g, '').trim() || null,
+    pass_3: columns[16]?.replace(/"/g, '').trim() || null,
+    pin_4: columns[17]?.replace(/"/g, '').trim() || null,
+    agent: columns[18]?.replace(/"/g, '').trim() || null,
+    pin_token: columns[19]?.replace(/"/g, '').trim() || null,
+    hp: columns[20]?.replace(/"/g, '').trim() || null,
+    email: columns[21]?.replace(/"/g, '').trim() || null
+  },
+  source: 'google_sheets',
+  last_sync_at: new Date(),
+  first_seen_at: new Date(),
+  updated_at: new Date()
+});
       }
     }
 
