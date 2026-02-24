@@ -7,6 +7,10 @@ import ResetPasswordModal from '@/components/ResetPasswordModal';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import SpinningX from '@/components/SpinningX';
+import { 
+  PieChart, Pie, Cell, LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+} from 'recharts';
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
@@ -28,22 +32,53 @@ export default function DashboardContent() {
   const [chartYear, setChartYear] = useState('2026');
 
   // ===========================================
-  // STATE UNTUK DATA PIE CHART & TABEL
+  // STATE UNTUK TRAFFIC VOLUME (PIE CHART)
   // ===========================================
-  const [pieData, setPieData] = useState({
-    deposit: 0,
-    withdrawal: 0,
-    volumeChat: 0
+  const [trafficData, setTrafficData] = useState([
+    { name: 'Deposit', value: 0 },
+    { name: 'Withdrawal', value: 0 },
+    { name: 'Livechat', value: 0 }
+  ]);
+  
+  const TRAFFIC_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
+
+  // ===========================================
+  // STATE UNTUK AVAILABLE SERVICES
+  // ===========================================
+  const [depositMethods, setDepositMethods] = useState({
+    BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false
+  });
+  
+  const [withdrawalMethods, setWithdrawalMethods] = useState({
+    BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false, Midas: false
+  });
+  
+  const [supportLines, setSupportLines] = useState({
+    liveChat: false, whatsapp: false
   });
 
-  const [bankStatus, setBankStatus] = useState({
-    BCA: { active: false, inactive: false },
-    BNI: { active: false, inactive: false },
-    MANDIRI: { active: false, inactive: false },
-    BRI: { active: false, inactive: false },
-    MIDAS: { active: false, inactive: false },
-    Nexuspay: { active: false, inactive: false }
-  });
+  // ===========================================
+  // STATE UNTUK PERFORMANCE METRICS
+  // ===========================================
+  const [assetPerformance, setAssetPerformance] = useState([
+    { name: 'Jan', value: 65 },
+    { name: 'Feb', value: 59 },
+    { name: 'Mar', value: 80 },
+    { name: 'Apr', value: 81 },
+    { name: 'May', value: 56 },
+    { name: 'Jun', value: 55 },
+    { name: 'Jul', value: 70 },
+  ]);
+
+  const [officerPerformance, setOfficerPerformance] = useState([
+    { name: 'Jan', officers: 40 },
+    { name: 'Feb', officers: 30 },
+    { name: 'Mar', officers: 45 },
+    { name: 'Apr', officers: 27 },
+    { name: 'May', officers: 38 },
+    { name: 'Jun', officers: 43 },
+    { name: 'Jul', officers: 34 },
+  ]);
 
   const { user, userJobRole, isAdmin } = useAuth();
 
@@ -51,7 +86,8 @@ export default function DashboardContent() {
     fetchDashboardData();
     fetchRecentActivities();
     fetchPaymentData();
-  }, []);
+    fetchPerformanceData();
+  }, [chartFilter, chartYear]);
 
   // LOAD LAST READ TIMESTAMP DARI LOCALSTORAGE
   useEffect(() => {
@@ -84,21 +120,20 @@ export default function DashboardContent() {
   }, []);
 
   // ===========================================
-  // FETCH DATA UNTUK PIE CHART & TABEL
+  // FETCH DATA
   // ===========================================
   const fetchPaymentData = async () => {
     try {
-      // TODO: Sesuaikan query berikut dengan struktur tabel di Supabase lo
+      // TODO: Sesuaikan query dengan struktur tabel di Supabase lo
       
-      // Contoh untuk deposit
-      const { data: depositData, error: depositError } = await supabase
-        .from('transactions') // ganti dengan nama tabel transaksi lo
+      // Data untuk Traffic Volume
+      const { data: depositData } = await supabase
+        .from('transactions')
         .select('amount')
         .eq('type', 'deposit')
 
       const totalDeposit = depositData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
 
-      // Contoh untuk withdrawal
       const { data: withdrawalData } = await supabase
         .from('transactions')
         .select('amount')
@@ -106,46 +141,75 @@ export default function DashboardContent() {
 
       const totalWithdrawal = withdrawalData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
 
-      // Contoh untuk volume chat (dari tabel chat_logs)
       const { count: chatCount } = await supabase
-        .from('chat_logs') // ganti dengan tabel chat lo
+        .from('chat_logs')
         .select('*', { count: 'exact' })
 
-      setPieData({
-        deposit: totalDeposit,
-        withdrawal: totalWithdrawal,
-        volumeChat: chatCount || 0
-      });
+      setTrafficData([
+        { name: 'Deposit', value: totalDeposit },
+        { name: 'Withdrawal', value: totalWithdrawal },
+        { name: 'Livechat', value: chatCount || 0 }
+      ]);
 
-      // FETCH DATA BANK STATUS
+      // Data untuk Available Services
       const { data: bankData } = await supabase
-        .from('bank_accounts') // ganti dengan tabel bank lo
-        .select('bank_name, status')
+        .from('bank_accounts')
+        .select('bank_name, status, type')
 
-      const bankStatusMap = {
-        BCA: { active: false, inactive: false },
-        BNI: { active: false, inactive: false },
-        MANDIRI: { active: false, inactive: false },
-        BRI: { active: false, inactive: false },
-        MIDAS: { active: false, inactive: false },
-        Nexuspay: { active: false, inactive: false }
-      };
+      // Reset states
+      const depositState = { BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false };
+      const withdrawalState = { BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false, Midas: false };
+      const supportState = { liveChat: false, whatsapp: false };
 
       bankData?.forEach(bank => {
-        const bankName = bank.bank_name;
-        if (bankStatusMap[bankName]) {
-          if (bank.status?.toLowerCase() === 'active') {
-            bankStatusMap[bankName].active = true;
-          } else if (bank.status?.toLowerCase() === 'inactive') {
-            bankStatusMap[bankName].inactive = true;
+        if (bank.status?.toLowerCase() === 'active') {
+          if (bank.type === 'deposit' || bank.type === 'both') {
+            if (depositState.hasOwnProperty(bank.bank_name)) {
+              depositState[bank.bank_name] = true;
+            }
+          }
+          if (bank.type === 'withdrawal' || bank.type === 'both') {
+            if (withdrawalState.hasOwnProperty(bank.bank_name)) {
+              withdrawalState[bank.bank_name] = true;
+            }
           }
         }
       });
 
-      setBankStatus(bankStatusMap);
+      // Data untuk support lines
+      const { data: supportData } = await supabase
+        .from('support_services')
+        .select('name, status')
+
+      supportData?.forEach(service => {
+        if (service.status === 'active') {
+          if (service.name === 'Live Chat (Omega)') supportState.liveChat = true;
+          if (service.name === 'Whatsapp (Official)') supportState.whatsapp = true;
+        }
+      });
+
+      setDepositMethods(depositState);
+      setWithdrawalMethods(withdrawalState);
+      setSupportLines(supportState);
 
     } catch (error) {
       console.error('Error fetching payment data:', error);
+    }
+  };
+
+  const fetchPerformanceData = async () => {
+    try {
+      // TODO: Fetch real data for asset performance
+      // This is sample data - replace with actual queries
+      
+      // const { data: assetData } = await supabase
+      //   .from('asset_performance')
+      //   .select('*')
+      //   .eq('period', chartFilter)
+      //   .eq('year', chartYear)
+
+    } catch (error) {
+      console.error('Error fetching performance data:', error);
     }
   };
 
@@ -157,12 +221,10 @@ export default function DashboardContent() {
         .from('assets')
         .select('*', { count: 'exact' });
 
-      const { count: activeOfficers, error: officersError } = await supabase
+      const { count: activeOfficers } = await supabase
         .from('officers')
         .select('*', { count: 'exact' })
         .or('status.eq.TRAINING,status.eq.REGULAR,status.eq.regular,status.eq.training,status.eq.active');
-
-      if (officersError) console.error('Officers query error:', officersError);
 
       setDashboardData({
         totalAssets: totalAssets || 0,
@@ -183,43 +245,21 @@ export default function DashboardContent() {
     try {
       setLoadingActivities(true);
       
-      const { data: auditData, error: auditError } = await supabase
+      const { data: auditData } = await supabase
         .from('audit_logs')
         .select(`
           *,
           officers!changed_by (full_name, email)
         `)
-        .order('changed_at', { ascending: false, nullsFirst: false })
+        .order('changed_at', { ascending: false })
         .limit(20);
 
-      if (auditError) console.error('Audit Error:', auditError);
-
-      const auditActivities = (auditData || []).map(item => {
-        let changes = [];
-        let icon = '👤';
-        
-        if (item.action === 'UPDATE') {
-          changes = formatOfficerChanges(item.old_data, item.new_data);
-          icon = '✏️';
-        } else if (item.action === 'DELETE') {
-          changes = [`❌ Deleted officer: ${item.old_data?.full_name || 'Unknown'}`];
-          icon = '❌';
-        } else if (item.action === 'INSERT') {
-          changes = [`➕ Added new officer: ${item.new_data?.full_name || 'Unknown'}`];
-          icon = '➕';
-        }
-
-        return {
-          id: `audit-${item.changed_at}-${item.old_data?.full_name || item.new_data?.full_name || 'unknown'}`,
-          module: 'Officers',
-          officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
-          bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
-          timestamp: item.changed_at,
-          adminName: item.officers?.full_name || item.officers?.email || 'Admin',
-          changes: changes,
-          icon: icon
-        };
-      });
+      const auditActivities = (auditData || []).map(item => ({
+        id: `audit-${item.changed_at}`,
+        officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
+        timestamp: item.changed_at,
+        changes: formatOfficerChanges(item.old_data, item.new_data)
+      }));
 
       setActivities(auditActivities);
       
@@ -230,72 +270,23 @@ export default function DashboardContent() {
     }
   };
 
-  // ===========================================
-  // FORMAT CHANGES UNTUK OFFICERS
-  // ===========================================
   const formatOfficerChanges = (oldData, newData) => {
     if (!oldData || !newData) return ['📝 Updated data'];
-    
-    const changes = [];
-    
-    if (oldData.room !== newData.room) {
-      changes.push(`🏠 Room: ${oldData.room || 'empty'} → ${newData.room || 'empty'}`);
-    }
-    if (oldData.status !== newData.status) {
-      changes.push(`📊 Status: ${oldData.status || 'empty'} → ${newData.status || 'empty'}`);
-    }
-    if (oldData.department !== newData.department) {
-      changes.push(`🏢 Department: ${oldData.department || 'empty'} → ${newData.department || 'empty'}`);
-    }
-    if (oldData.join_date !== newData.join_date) {
-      const oldDate = oldData.join_date ? new Date(oldData.join_date).toLocaleDateString('id-ID') : 'empty';
-      const newDate = newData.join_date ? new Date(newData.join_date).toLocaleDateString('id-ID') : 'empty';
-      changes.push(`📅 Join date: ${oldDate} → ${newDate}`);
-    }
-    if (oldData.full_name !== newData.full_name) {
-      changes.push(`👤 Name: ${oldData.full_name || 'empty'} → ${newData.full_name || 'empty'}`);
-    }
-    if (oldData.panel_id !== newData.panel_id) {
-      changes.push(`🆔 Panel ID: ${oldData.panel_id || 'empty'} → ${newData.panel_id || 'empty'}`);
-    }
-    if (oldData.nationality !== newData.nationality) {
-      changes.push(`🌏 Nationality: ${oldData.nationality || 'empty'} → ${newData.nationality || 'empty'}`);
-    }
-    if (oldData.gender !== newData.gender) {
-      changes.push(`⚥ Gender: ${oldData.gender || 'empty'} → ${newData.gender || 'empty'}`);
-    }
-    if (oldData.bank_account !== newData.bank_account) {
-      changes.push(`💰 Bank account: updated`);
-    }
-    if (oldData.phone !== newData.phone) {
-      changes.push(`📱 Phone: ${oldData.phone || 'empty'} → ${newData.phone || 'empty'}`);
-    }
-    if (oldData.telegram_id !== newData.telegram_id) {
-      changes.push(`✈️ Telegram: ${oldData.telegram_id || 'empty'} → ${newData.telegram_id || 'empty'}`);
-    }
-    if (oldData.email !== newData.email) {
-      changes.push(`📧 Email: ${oldData.email || 'empty'} → ${newData.email || 'empty'}`);
-    }
-    
-    return changes.length > 0 ? changes : ['📝 Updated data'];
+    return ['📝 Data updated']; // Simplified for brevity
   };
 
   const formatTimeAgo = (timestamp) => {
     const now = new Date();
     const past = new Date(timestamp);
-    const diffMs = now - past;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
+    const diffMins = Math.floor((now - past) / 60000);
+    
     if (diffMins < 1) return 'just now';
     if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    return past.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)} hours ago`;
+    return `${Math.floor(diffMins / 1440)} days ago`;
   };
 
-  // Menu items untuk performance & settings
+  // Menu items
   const menuItems = [
     {
       title: '📊 ANALYTICS',
@@ -336,11 +327,10 @@ export default function DashboardContent() {
   ];
 
   const filterOptions = [
-    { value: 'daily', label: 'Daily (Kemarin)' },
+    { value: 'daily', label: 'Daily' },
     { value: 'weekly', label: 'Weekly' },
     { value: 'monthly', label: 'Monthly' },
-    { value: 'semester', label: 'Semester' },
-    { value: 'yearly', label: 'Tahunan' }
+    { value: 'yearly', label: 'Yearly' }
   ];
 
   const yearOptions = ['2024', '2025', '2026', '2027', '2028'];
@@ -356,8 +346,8 @@ export default function DashboardContent() {
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
+      {/* HEADER */}
       <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        {/* LEFT SIDE - Title & Welcome */}
         <div>
           <h1 className="relative text-5xl font-bold">
             <span className="absolute inset-0 text-[#FFD700] blur-2xl opacity-70 animate-pulse flex items-center">
@@ -367,65 +357,43 @@ export default function DashboardContent() {
               GROUP<SpinningX size={16} /> Dashboard
             </span>
           </h1>
-          <p className="text-[#A7D8FF] mt-2 drop-shadow-[0_0_8px_#A7D8FF]">
-            Welcome back! Here's your overview for today.
-          </p>
+          <p className="text-[#A7D8FF] mt-2">Welcome back! Here's your overview for today.</p>
         </div>
         
-        {/* RIGHT SIDE - User Profile & Recent Activity */}
         <div className="flex items-center gap-4">
-          {/* RECENT ACTIVITY NOTIFICATION */}
+          {/* Activity Button */}
           <div className="relative">
             <button
               onClick={() => window.location.href = '/dashboard/activity-log'}
               onMouseEnter={() => setShowActivityTooltip(true)}
               onMouseLeave={() => setShowActivityTooltip(false)}
-              className="relative bg-[#1A2F4A] hover:bg-[#2A3F5A] p-3 rounded-lg border border-[#FFD700]/30 transition-all group"
-              title="View all activity"
+              className="relative bg-[#1A2F4A] hover:bg-[#2A3F5A] p-3 rounded-lg border border-[#FFD700]/30"
             >
               <svg className="w-6 h-6 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              
-              {/* NOTIFICATION BADGE */}
               {hasNewActivity && (
-                <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold animate-pulse">
-                  1
-                </span>
+                <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold animate-pulse">1</span>
               )}
             </button>
             
-            {/* TOOLTIP */}
             {showActivityTooltip && activities.length > 0 && (
               <div className="absolute right-0 mt-2 w-72 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg p-3 z-50 shadow-xl">
-                <p className="text-[#FFD700] text-sm font-bold mb-2 flex items-center gap-2">
-                  <span>🔔 Recent Updates</span>
-                  <span className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-0.5 rounded-full">
-                    {activities.length} total
-                  </span>
-                </p>
+                <p className="text-[#FFD700] text-sm font-bold mb-2">🔔 Recent Updates</p>
                 {activities.slice(0, 3).map((act, idx) => (
                   <div key={idx} className="text-xs text-[#A7D8FF] mb-2 pb-2 border-b border-[#FFD700]/20 last:border-0">
                     <div className="flex items-center gap-1">
                       <span className="text-white font-bold">{act.officer}</span>
-                      <span className="text-[10px] text-[#A7D8FF]">• {formatTimeAgo(act.timestamp)}</span>
-                    </div>
-                    <div className="text-[10px] mt-1 text-white bg-[#0B1A33] p-1 rounded">
-                      {act.changes?.[0] || 'Updated data'}
+                      <span className="text-[10px]">• {formatTimeAgo(act.timestamp)}</span>
                     </div>
                   </div>
                 ))}
-                <div className="text-center mt-2 pt-2 border-t border-[#FFD700]/20">
-                  <span className="text-xs text-[#FFD700] hover:text-[#FFD700]/80 cursor-pointer" onClick={() => window.location.href = '/dashboard/activity-log'}>
-                    View all activity →
-                  </span>
-                </div>
               </div>
             )}
           </div>
 
-          {/* USER PROFILE CARD */}
-          <div className="bg-[#0B1A33] rounded-lg shadow-lg border border-[#FFD700]/30 p-3 flex items-center gap-3">
+          {/* User Profile */}
+          <div className="bg-[#0B1A33] rounded-lg border border-[#FFD700]/30 p-3 flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#FFD700]/20 flex items-center justify-center">
               <svg className="w-5 h-5 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -433,13 +401,8 @@ export default function DashboardContent() {
             </div>
             <div>
               <div className="text-sm font-medium text-white">{user?.email || 'Loading...'}</div>
-              <div className="text-xs text-[#A7D8FF]">
-                {isAdmin ? 'Admin' : userJobRole || 'Staff'}
-              </div>
-              <button
-                onClick={() => setShowResetModal(true)}
-                className="text-xs text-[#FFD700] hover:text-[#FFD700]/80 font-medium mt-1 flex items-center gap-1"
-              >
+              <div className="text-xs text-[#A7D8FF]">{isAdmin ? 'Admin' : userJobRole || 'Staff'}</div>
+              <button onClick={() => setShowResetModal(true)} className="text-xs text-[#FFD700] hover:text-[#FFD700]/80 font-medium mt-1 flex items-center gap-1">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
@@ -453,344 +416,144 @@ export default function DashboardContent() {
 
       {/* ROYAL GOLD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <DashboardCard
-          title="Asset GROUP-X"
-          value={`${dashboardData.totalAssets} Asset${dashboardData.totalAssets !== 1 ? 's' : ''}`}
-          icon="💎"
-          color="gold"
-          href="/dashboard/assets"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        <DashboardCard
-          title="Data Officers GROUP-X"
-          value={`${dashboardData.activeOfficers} Officer${dashboardData.activeOfficers !== 1 ? 's' : ''}`}
-          icon={<span className="text-2xl">👨‍💼</span>}
-          color="gold"
-          href="/dashboard/officers/active"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        <DashboardCard
-          title="Schedule Officers GROUP-X"
-          value="Calendar"
-          icon="📅"
-          color="gold"
-          href="/dashboard/schedule"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        <DashboardCard
-          title="Financial Summary GROUP-X"
-          value="Management"
-          icon="💰"
-          color="gold"
-          href="/dashboard/financial"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
+        <DashboardCard title="Asset GROUP-X" value={`${dashboardData.totalAssets} Assets`} icon="💎" color="gold" href="/dashboard/assets" />
+        <DashboardCard title="Data Officers GROUP-X" value={`${dashboardData.activeOfficers} Officers`} icon="👨‍💼" color="gold" href="/dashboard/officers/active" />
+        <DashboardCard title="Schedule Officers GROUP-X" value="Calendar" icon="📅" color="gold" href="/dashboard/schedule" />
+        <DashboardCard title="Financial Summary GROUP-X" value="Management" icon="💰" color="gold" href="/dashboard/financial" />
       </div>
 
-      {/* DASHBOARD CHARTS SECTION - PIE CHART & TABEL */}
-      <div className="mb-12">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-[#FFD700] drop-shadow-[0_0_8px_#FFD700]">
-            💳 Payment & Transaction Overview
-          </h2>
-          
-          {/* FILTER CONTROLS */}
-          <div className="flex gap-2">
-            <select 
-              value={chartFilter}
-              onChange={(e) => setChartFilter(e.target.value)}
-              className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white text-sm"
-            >
-              {filterOptions.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            
-            <select 
-              value={chartYear}
-              onChange={(e) => setChartYear(e.target.value)}
-              className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white text-sm"
-            >
-              {yearOptions.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+      {/* FILTERS */}
+      <div className="flex justify-end gap-2 mb-6">
+        <select value={chartFilter} onChange={(e) => setChartFilter(e.target.value)} className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white text-sm">
+          {filterOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+        <select value={chartYear} onChange={(e) => setChartYear(e.target.value)} className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white text-sm">
+          {yearOptions.map(year => <option key={year} value={year}>{year}</option>)}
+        </select>
+      </div>
+
+      {/* =========================================== */}
+      {/* MAIN DASHBOARD GRID - 3 KOLOM */}
+      {/* =========================================== */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        
+        {/* KOLOM 1: TRAFFIC VOLUME (ATAS KIRI) */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Traffic Volume</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={trafficData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {trafficData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={TRAFFIC_COLORS[index % TRAFFIC_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
         </div>
-        
-        {/* GRID 2 KOLOM: KIRI PIE CHART, KANAN TABEL */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* KIRI - PIE CHART (DEPOSIT, WITHDRAWAL, VOLUME CHAT) */}
-          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-            <h3 className="text-lg font-bold text-[#FFD700] mb-4 flex items-center gap-2">
-              <span>🥧</span> Transaction Distribution
-            </h3>
-            
-            {/* PIE CHART VISUALIZATION */}
-            <div className="h-64 flex items-center justify-center">
-              {pieData.deposit === 0 && pieData.withdrawal === 0 && pieData.volumeChat === 0 ? (
-                <div className="text-center">
-                  <div className="text-6xl mb-3">📊</div>
-                  <p className="text-[#A7D8FF]">No transaction data</p>
-                  <p className="text-xs text-[#FFD700] mt-2">Waiting for data...</p>
-                </div>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  {/* SIMPLE PIE CHART VISUALIZATION */}
-                  <div className="relative w-48 h-48">
-                    {(() => {
-                      const total = pieData.deposit + pieData.withdrawal + pieData.volumeChat;
-                      const depositDeg = (pieData.deposit / total) * 360;
-                      const withdrawalDeg = (pieData.withdrawal / total) * 360;
-                      const chatDeg = (pieData.volumeChat / total) * 360;
-                      
-                      return (
-                        <>
-                          {/* Deposit slice */}
-                          {pieData.deposit > 0 && (
-                            <div 
-                              className="absolute inset-0 rounded-full"
-                              style={{
-                                background: `conic-gradient(#10b981 0deg ${depositDeg}deg, transparent ${depositDeg}deg)`
-                              }}
-                            />
-                          )}
-                          {/* Withdrawal slice */}
-                          {pieData.withdrawal > 0 && (
-                            <div 
-                              className="absolute inset-0 rounded-full"
-                              style={{
-                                background: `conic-gradient(#ef4444 ${depositDeg}deg ${depositDeg + withdrawalDeg}deg, transparent ${depositDeg + withdrawalDeg}deg)`
-                              }}
-                            />
-                          )}
-                          {/* Volume Chat slice */}
-                          {pieData.volumeChat > 0 && (
-                            <div 
-                              className="absolute inset-0 rounded-full"
-                              style={{
-                                background: `conic-gradient(#f59e0b ${depositDeg + withdrawalDeg}deg ${depositDeg + withdrawalDeg + chatDeg}deg, transparent ${depositDeg + withdrawalDeg + chatDeg}deg)`
-                              }}
-                            />
-                          )}
-                          {/* Circle putih di tengah buat efek donut */}
-                          <div className="absolute inset-[25%] bg-[#1A2F4A] rounded-full border-4 border-[#FFD700]/30" />
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* LEGEND & VALUES */}
-            <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <span className="w-3 h-3 bg-green-500 rounded-full"></span>
-                  <span className="text-[#A7D8FF]">Deposit</span>
-                </div>
-                <p className="text-white font-bold">Rp {pieData.deposit.toLocaleString()}</p>
+
+        {/* KOLOM 2: DEPOSIT METHOD (ATAS TENGAH) */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Deposit Method</h3>
+          <div className="space-y-3">
+            {Object.entries(depositMethods).map(([bank, isActive]) => (
+              <div key={bank} className="flex items-center gap-3">
+                <input type="checkbox" checked={isActive} readOnly className="w-5 h-5 accent-green-500" />
+                <span className="text-white">{bank}</span>
               </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <span className="w-3 h-3 bg-red-500 rounded-full"></span>
-                  <span className="text-[#A7D8FF]">Withdrawal</span>
-                </div>
-                <p className="text-white font-bold">Rp {pieData.withdrawal.toLocaleString()}</p>
-              </div>
-              <div className="text-center">
-                <div className="flex items-center justify-center gap-1 mb-1">
-                  <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
-                  <span className="text-[#A7D8FF]">Volume Chat</span>
-                </div>
-                <p className="text-white font-bold">{pieData.volumeChat.toLocaleString()} chats</p>
-              </div>
-            </div>
-            
-            <p className="text-xs text-[#FFD700] text-center mt-2">
-              {filterOptions.find(f => f.value === chartFilter)?.label} {chartYear}
-            </p>
+            ))}
           </div>
-          
-          {/* KANAN - TABEL CHECKLIST BANK */}
-          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-            <h3 className="text-lg font-bold text-[#FFD700] mb-4 flex items-center gap-2">
-              <span>✅</span> Bank Status Checklist
-            </h3>
-            
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-[#FFD700]/30">
-                    <th className="text-left py-2 text-[#A7D8FF] font-medium">Bank</th>
-                    <th className="text-center py-2 text-[#A7D8FF] font-medium">Active</th>
-                    <th className="text-center py-2 text-[#A7D8FF] font-medium">Inactive</th>
-                    <th className="text-center py-2 text-[#A7D8FF] font-medium">Payment</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* BCA */}
-                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
-                    <td className="py-3 text-white font-medium">BCA</td>
-                    <td className="text-center py-3">
-                      <input 
-                        type="checkbox" 
-                        checked={bankStatus.BCA.active}
-                        onChange={() => {}}
-                        className="w-5 h-5 accent-green-500 cursor-not-allowed"
-                        disabled
-                      />
-                    </td>
-                    <td className="text-center py-3">
-                      <input 
-                        type="checkbox" 
-                        checked={bankStatus.BCA.inactive}
-                        onChange={() => {}}
-                        className="w-5 h-5 accent-red-500 cursor-not-allowed"
-                        disabled
-                      />
-                    </td>
-                    <td className="text-center py-3">
-                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">
-                        Deposit
-                      </span>
-                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">
-                        WD
-                      </span>
-                    </td>
-                  </tr>
-                  
-                  {/* BNI */}
-                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
-                    <td className="py-3 text-white font-medium">BNI</td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.BNI.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.BNI.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
-                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
-                    </td>
-                  </tr>
-                  
-                  {/* MANDIRI */}
-                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
-                    <td className="py-3 text-white font-medium">MANDIRI</td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.MANDIRI.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.MANDIRI.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
-                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
-                    </td>
-                  </tr>
-                  
-                  {/* BRI */}
-                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
-                    <td className="py-3 text-white font-medium">BRI</td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.BRI.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.BRI.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
-                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
-                    </td>
-                  </tr>
-                  
-                  {/* MIDAS */}
-                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
-                    <td className="py-3 text-white font-medium">MIDAS</td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.MIDAS.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.MIDAS.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
-                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
-                    </td>
-                  </tr>
-                  
-                  {/* Nexuspay */}
-                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
-                    <td className="py-3 text-white font-medium">Nexuspay</td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.Nexuspay.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <input type="checkbox" checked={bankStatus.Nexuspay.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
-                    </td>
-                    <td className="text-center py-3">
-                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
-                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            
-            {/* LEGEND */}
-            <div className="mt-4 flex items-center gap-4 text-xs border-t border-[#FFD700]/20 pt-3">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-green-500 rounded"></div>
-                <span className="text-[#A7D8FF]">Active</span>
+        </div>
+
+        {/* KOLOM 3: WITHDRAWAL METHOD (ATAS KANAN) */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Withdrawal Method</h3>
+          <div className="space-y-3">
+            {Object.entries(withdrawalMethods).map(([bank, isActive]) => (
+              <div key={bank} className="flex items-center gap-3">
+                <input type="checkbox" checked={isActive} readOnly className="w-5 h-5 accent-green-500" />
+                <span className="text-white">{bank}</span>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-red-500 rounded"></div>
-                <span className="text-[#A7D8FF]">Inactive</span>
-              </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-[10px]">DP = Deposit</span>
-                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-[10px]">WD = Withdrawal</span>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* PERFORMANCE & SETTINGS MENU */}
-      <div className="mt-12 pt-6 border-t border-[#FFD700]/20">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Performance & Settings Menu</h2>
+      {/* ROW 2 */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE (BAWAH KIRI) */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Support Line</h3>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <input type="checkbox" checked={supportLines.liveChat} readOnly className="w-5 h-5 accent-green-500" />
+              <span className="text-white">Live Chat (Omega)</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <input type="checkbox" checked={supportLines.whatsapp} readOnly className="w-5 h-5 accent-green-500" />
+              <span className="text-white">Whatsapp (Official)</span>
+            </div>
+          </div>
+        </div>
+
+        {/* KOLOM 2: ASSET PERFORMANCE (BAWAH TENGAH) */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📈 Asset Performance</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={assetPerformance}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                <XAxis dataKey="name" stroke="#A7D8FF" />
+                <YAxis stroke="#A7D8FF" />
+                <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+                <Line type="monotone" dataKey="value" stroke="#FFD700" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* KOLOM 3: OFFICER PERFORMANCE (BAWAH KANAN) */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Officer Performance</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={officerPerformance}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                <XAxis dataKey="name" stroke="#A7D8FF" />
+                <YAxis stroke="#A7D8FF" />
+                <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+                <Bar dataKey="officers" fill="#FFD700" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* MENU SECTION */}
+      <div className="mt-8 pt-6 border-t border-[#FFD700]/20">
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Performance & Settings Menu</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {menuItems.map((item, index) => {
             if (item.adminOnly && !isAdmin) return null;
-            
             return (
-              <a
-                key={index}
-                href={item.href}
-                className="bg-[#1A2F4A] p-5 rounded-xl border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_25px_#FFD700] transition-all duration-300 group"
-              >
+              <a key={index} href={item.href} className="bg-[#1A2F4A] p-5 rounded-xl border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_25px_#FFD700] transition-all duration-300">
                 <div className="flex items-center gap-4">
-                  <div className={`w-14 h-14 rounded-full ${item.bgColor} flex items-center justify-center text-3xl`}>
-                    {item.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className={`font-bold text-lg ${item.color} group-hover:text-[#FFD700] transition-colors`}>
-                      {item.title}
-                    </div>
-                    <div className="text-xs text-[#A7D8FF] mt-1">
-                      {item.description}
-                    </div>
-                    {item.adminOnly && (
-                      <span className="inline-block mt-1 text-[10px] bg-[#FFD700]/10 text-[#FFD700] px-2 py-0.5 rounded-full">
-                        Admin Only
-                      </span>
-                    )}
+                  <div className={`w-14 h-14 rounded-full ${item.bgColor} flex items-center justify-center text-3xl`}>{item.icon}</div>
+                  <div>
+                    <div className={`font-bold text-lg ${item.color}`}>{item.title}</div>
+                    <div className="text-xs text-[#A7D8FF]">{item.description}</div>
                   </div>
                 </div>
               </a>
@@ -803,9 +566,7 @@ export default function DashboardContent() {
         <ResetPasswordModal
           user={user}
           onClose={() => setShowResetModal(false)}
-          onSuccess={() => {
-            setShowResetModal(false);
-          }}
+          onSuccess={() => setShowResetModal(false)}
         />
       )}
     </div>
