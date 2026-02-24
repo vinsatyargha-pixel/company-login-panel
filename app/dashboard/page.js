@@ -27,11 +27,30 @@ export default function DashboardContent() {
   const [chartFilter, setChartFilter] = useState('weekly');
   const [chartYear, setChartYear] = useState('2026');
 
+  // ===========================================
+  // STATE UNTUK DATA PIE CHART & TABEL
+  // ===========================================
+  const [pieData, setPieData] = useState({
+    deposit: 0,
+    withdrawal: 0,
+    volumeChat: 0
+  });
+
+  const [bankStatus, setBankStatus] = useState({
+    BCA: { active: false, inactive: false },
+    BNI: { active: false, inactive: false },
+    MANDIRI: { active: false, inactive: false },
+    BRI: { active: false, inactive: false },
+    MIDAS: { active: false, inactive: false },
+    Nexuspay: { active: false, inactive: false }
+  });
+
   const { user, userJobRole, isAdmin } = useAuth();
 
   useEffect(() => {
     fetchDashboardData();
     fetchRecentActivities();
+    fetchPaymentData();
   }, []);
 
   // LOAD LAST READ TIMESTAMP DARI LOCALSTORAGE
@@ -48,11 +67,6 @@ export default function DashboardContent() {
       const latestActivity = new Date(activities[0].timestamp).getTime();
       const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
       
-      console.log('🔍 DEBUG NOTIFIKASI:');
-      console.log('📌 Latest Activity:', new Date(latestActivity).toLocaleString());
-      console.log('📌 Last Read:', lastReadTimestamp ? new Date(lastReadTimestamp).toLocaleString() : 'Tidak ada');
-      console.log('📌 Has New:', latestActivity > lastRead);
-      
       setHasNewActivity(latestActivity > lastRead);
     }
   }, [activities, lastReadTimestamp]);
@@ -68,6 +82,72 @@ export default function DashboardContent() {
     window.addEventListener('activityRead', handleActivityRead);
     return () => window.removeEventListener('activityRead', handleActivityRead);
   }, []);
+
+  // ===========================================
+  // FETCH DATA UNTUK PIE CHART & TABEL
+  // ===========================================
+  const fetchPaymentData = async () => {
+    try {
+      // TODO: Sesuaikan query berikut dengan struktur tabel di Supabase lo
+      
+      // Contoh untuk deposit
+      const { data: depositData, error: depositError } = await supabase
+        .from('transactions') // ganti dengan nama tabel transaksi lo
+        .select('amount')
+        .eq('type', 'deposit')
+
+      const totalDeposit = depositData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
+
+      // Contoh untuk withdrawal
+      const { data: withdrawalData } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('type', 'withdrawal')
+
+      const totalWithdrawal = withdrawalData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
+
+      // Contoh untuk volume chat (dari tabel chat_logs)
+      const { count: chatCount } = await supabase
+        .from('chat_logs') // ganti dengan tabel chat lo
+        .select('*', { count: 'exact' })
+
+      setPieData({
+        deposit: totalDeposit,
+        withdrawal: totalWithdrawal,
+        volumeChat: chatCount || 0
+      });
+
+      // FETCH DATA BANK STATUS
+      const { data: bankData } = await supabase
+        .from('bank_accounts') // ganti dengan tabel bank lo
+        .select('bank_name, status')
+
+      const bankStatusMap = {
+        BCA: { active: false, inactive: false },
+        BNI: { active: false, inactive: false },
+        MANDIRI: { active: false, inactive: false },
+        BRI: { active: false, inactive: false },
+        MIDAS: { active: false, inactive: false },
+        Nexuspay: { active: false, inactive: false }
+      };
+
+      bankData?.forEach(bank => {
+        const bankName = bank.bank_name;
+        if (bankStatusMap[bankName]) {
+          if (bank.status?.toLowerCase() === 'active') {
+            bankStatusMap[bankName].active = true;
+          } else if (bank.status?.toLowerCase() === 'inactive') {
+            bankStatusMap[bankName].inactive = true;
+          }
+        }
+      });
+
+      setBankStatus(bankStatusMap);
+
+    } catch (error) {
+      console.error('Error fetching payment data:', error);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -215,7 +295,7 @@ export default function DashboardContent() {
     return past.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
   };
 
-  // Menu items untuk performance & settings (URUTAN SUDAH DITUKAR)
+  // Menu items untuk performance & settings
   const menuItems = [
     {
       title: '📊 ANALYTICS',
@@ -307,7 +387,7 @@ export default function DashboardContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               
-              {/* NOTIFICATION BADGE - muncul kalau ada aktivitas baru BELUM DIBACA */}
+              {/* NOTIFICATION BADGE */}
               {hasNewActivity && (
                 <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold animate-pulse">
                   1
@@ -315,7 +395,7 @@ export default function DashboardContent() {
               )}
             </button>
             
-            {/* TOOLTIP - muncul pas hover */}
+            {/* TOOLTIP */}
             {showActivityTooltip && activities.length > 0 && (
               <div className="absolute right-0 mt-2 w-72 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg p-3 z-50 shadow-xl">
                 <p className="text-[#FFD700] text-sm font-bold mb-2 flex items-center gap-2">
@@ -410,11 +490,11 @@ export default function DashboardContent() {
         />
       </div>
 
-      {/* DASHBOARD CHARTS SECTION - BARU */}
+      {/* DASHBOARD CHARTS SECTION - PIE CHART & TABEL */}
       <div className="mb-12">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-[#FFD700] drop-shadow-[0_0_8px_#FFD700]">
-            📈 Performance Overview
+            💳 Payment & Transaction Overview
           </h2>
           
           {/* FILTER CONTROLS */}
@@ -441,46 +521,248 @@ export default function DashboardContent() {
           </div>
         </div>
         
-        {/* PLACEHOLDER CHARTS */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Bar Chart Placeholder */}
-          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 h-64 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-6xl mb-3">📊</div>
-              <p className="text-[#A7D8FF]">Bar Chart - Performance Metrics</p>
-              <p className="text-xs text-[#FFD700] mt-2">Filter: {filterOptions.find(f => f.value === chartFilter)?.label} {chartYear}</p>
+        {/* GRID 2 KOLOM: KIRI PIE CHART, KANAN TABEL */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* KIRI - PIE CHART (DEPOSIT, WITHDRAWAL, VOLUME CHAT) */}
+          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+            <h3 className="text-lg font-bold text-[#FFD700] mb-4 flex items-center gap-2">
+              <span>🥧</span> Transaction Distribution
+            </h3>
+            
+            {/* PIE CHART VISUALIZATION */}
+            <div className="h-64 flex items-center justify-center">
+              {pieData.deposit === 0 && pieData.withdrawal === 0 && pieData.volumeChat === 0 ? (
+                <div className="text-center">
+                  <div className="text-6xl mb-3">📊</div>
+                  <p className="text-[#A7D8FF]">No transaction data</p>
+                  <p className="text-xs text-[#FFD700] mt-2">Waiting for data...</p>
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  {/* SIMPLE PIE CHART VISUALIZATION */}
+                  <div className="relative w-48 h-48">
+                    {(() => {
+                      const total = pieData.deposit + pieData.withdrawal + pieData.volumeChat;
+                      const depositDeg = (pieData.deposit / total) * 360;
+                      const withdrawalDeg = (pieData.withdrawal / total) * 360;
+                      const chatDeg = (pieData.volumeChat / total) * 360;
+                      
+                      return (
+                        <>
+                          {/* Deposit slice */}
+                          {pieData.deposit > 0 && (
+                            <div 
+                              className="absolute inset-0 rounded-full"
+                              style={{
+                                background: `conic-gradient(#10b981 0deg ${depositDeg}deg, transparent ${depositDeg}deg)`
+                              }}
+                            />
+                          )}
+                          {/* Withdrawal slice */}
+                          {pieData.withdrawal > 0 && (
+                            <div 
+                              className="absolute inset-0 rounded-full"
+                              style={{
+                                background: `conic-gradient(#ef4444 ${depositDeg}deg ${depositDeg + withdrawalDeg}deg, transparent ${depositDeg + withdrawalDeg}deg)`
+                              }}
+                            />
+                          )}
+                          {/* Volume Chat slice */}
+                          {pieData.volumeChat > 0 && (
+                            <div 
+                              className="absolute inset-0 rounded-full"
+                              style={{
+                                background: `conic-gradient(#f59e0b ${depositDeg + withdrawalDeg}deg ${depositDeg + withdrawalDeg + chatDeg}deg, transparent ${depositDeg + withdrawalDeg + chatDeg}deg)`
+                              }}
+                            />
+                          )}
+                          {/* Circle putih di tengah buat efek donut */}
+                          <div className="absolute inset-[25%] bg-[#1A2F4A] rounded-full border-4 border-[#FFD700]/30" />
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
+            
+            {/* LEGEND & VALUES */}
+            <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                  <span className="text-[#A7D8FF]">Deposit</span>
+                </div>
+                <p className="text-white font-bold">Rp {pieData.deposit.toLocaleString()}</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+                  <span className="text-[#A7D8FF]">Withdrawal</span>
+                </div>
+                <p className="text-white font-bold">Rp {pieData.withdrawal.toLocaleString()}</p>
+              </div>
+              <div className="text-center">
+                <div className="flex items-center justify-center gap-1 mb-1">
+                  <span className="w-3 h-3 bg-orange-500 rounded-full"></span>
+                  <span className="text-[#A7D8FF]">Volume Chat</span>
+                </div>
+                <p className="text-white font-bold">{pieData.volumeChat.toLocaleString()} chats</p>
+              </div>
+            </div>
+            
+            <p className="text-xs text-[#FFD700] text-center mt-2">
+              {filterOptions.find(f => f.value === chartFilter)?.label} {chartYear}
+            </p>
           </div>
           
-          {/* Line Chart Placeholder */}
-          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 h-64 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-6xl mb-3">📈</div>
-              <p className="text-[#A7D8FF]">Line Chart - Trends</p>
-              <p className="text-xs text-[#FFD700] mt-2">(Coming Soon)</p>
+          {/* KANAN - TABEL CHECKLIST BANK */}
+          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+            <h3 className="text-lg font-bold text-[#FFD700] mb-4 flex items-center gap-2">
+              <span>✅</span> Bank Status Checklist
+            </h3>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#FFD700]/30">
+                    <th className="text-left py-2 text-[#A7D8FF] font-medium">Bank</th>
+                    <th className="text-center py-2 text-[#A7D8FF] font-medium">Active</th>
+                    <th className="text-center py-2 text-[#A7D8FF] font-medium">Inactive</th>
+                    <th className="text-center py-2 text-[#A7D8FF] font-medium">Payment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* BCA */}
+                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
+                    <td className="py-3 text-white font-medium">BCA</td>
+                    <td className="text-center py-3">
+                      <input 
+                        type="checkbox" 
+                        checked={bankStatus.BCA.active}
+                        onChange={() => {}}
+                        className="w-5 h-5 accent-green-500 cursor-not-allowed"
+                        disabled
+                      />
+                    </td>
+                    <td className="text-center py-3">
+                      <input 
+                        type="checkbox" 
+                        checked={bankStatus.BCA.inactive}
+                        onChange={() => {}}
+                        className="w-5 h-5 accent-red-500 cursor-not-allowed"
+                        disabled
+                      />
+                    </td>
+                    <td className="text-center py-3">
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">
+                        Deposit
+                      </span>
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">
+                        WD
+                      </span>
+                    </td>
+                  </tr>
+                  
+                  {/* BNI */}
+                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
+                    <td className="py-3 text-white font-medium">BNI</td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.BNI.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.BNI.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
+                    </td>
+                  </tr>
+                  
+                  {/* MANDIRI */}
+                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
+                    <td className="py-3 text-white font-medium">MANDIRI</td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.MANDIRI.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.MANDIRI.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
+                    </td>
+                  </tr>
+                  
+                  {/* BRI */}
+                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
+                    <td className="py-3 text-white font-medium">BRI</td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.BRI.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.BRI.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
+                    </td>
+                  </tr>
+                  
+                  {/* MIDAS */}
+                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
+                    <td className="py-3 text-white font-medium">MIDAS</td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.MIDAS.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.MIDAS.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
+                    </td>
+                  </tr>
+                  
+                  {/* Nexuspay */}
+                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
+                    <td className="py-3 text-white font-medium">Nexuspay</td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.Nexuspay.active} disabled className="w-5 h-5 accent-green-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <input type="checkbox" checked={bankStatus.Nexuspay.inactive} disabled className="w-5 h-5 accent-red-500 cursor-not-allowed" />
+                    </td>
+                    <td className="text-center py-3">
+                      <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">Deposit</span>
+                      <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs ml-1">WD</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </div>
-        </div>
-        
-        {/* Table Placeholder */}
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-bold text-[#FFD700]">Detailed Performance Table</h3>
-            <span className="text-xs bg-[#0B1A33] text-[#A7D8FF] px-3 py-1 rounded-full">
-              {filterOptions.find(f => f.value === chartFilter)?.label} {chartYear}
-            </span>
-          </div>
-          <div className="h-48 flex items-center justify-center">
-            <div className="text-center">
-              <div className="text-4xl mb-2">📋</div>
-              <p className="text-[#A7D8FF]">Performance data table</p>
-              <p className="text-xs text-[#FFD700] mt-2">(Coming Soon)</p>
+            
+            {/* LEGEND */}
+            <div className="mt-4 flex items-center gap-4 text-xs border-t border-[#FFD700]/20 pt-3">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-green-500 rounded"></div>
+                <span className="text-[#A7D8FF]">Active</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-red-500 rounded"></div>
+                <span className="text-[#A7D8FF]">Inactive</span>
+              </div>
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-[10px]">DP = Deposit</span>
+                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-[10px]">WD = Withdrawal</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* PERFORMANCE & SETTINGS MENU - DIPINDAH KE BAWAH DENGAN BORDER */}
+      {/* PERFORMANCE & SETTINGS MENU */}
       <div className="mt-12 pt-6 border-t border-[#FFD700]/20">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4 drop-shadow-[0_0_8px_#FFD700]">Performance & Settings Menu</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
