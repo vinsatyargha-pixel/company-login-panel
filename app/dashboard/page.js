@@ -43,7 +43,13 @@ export default function DashboardContent() {
   const TRAFFIC_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
 
   // ===========================================
-  // STATE UNTUK AVAILABLE SERVICES
+  // STATE UNTUK BANK ACCOUNTS (DARI SUPABASE)
+  // ===========================================
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [loadingBanks, setLoadingBanks] = useState(true);
+
+  // ===========================================
+  // STATE UNTUK AVAILABLE SERVICES (MANUAL TOGGLE)
   // ===========================================
   const [depositMethods, setDepositMethods] = useState({
     BCA: false, BNI: false, BRI: false, Mandiri: false, DANA: false, NexusPay: false
@@ -89,6 +95,26 @@ export default function DashboardContent() {
 
   const { user, userJobRole, isAdmin } = useAuth();
 
+  // ===========================================
+  // FETCH BANK ACCOUNTS DARI SUPABASE
+  // ===========================================
+  const fetchBankAccounts = async () => {
+    try {
+      setLoadingBanks(true);
+      const { data, error } = await supabase
+        .from('bank_accounts')
+        .select('*')
+        .eq('status', true); // HANYA AMBIL YANG ACTIVE!
+
+      if (error) throw error;
+      setBankAccounts(data || []);
+    } catch (error) {
+      console.error('Error fetching bank accounts:', error);
+    } finally {
+      setLoadingBanks(false);
+    }
+  };
+
   // LOAD DARI LOCALSTORAGE (HANYA DI BROWSER)
   useEffect(() => {
     const savedDeposit = localStorage.getItem('depositMethods');
@@ -131,6 +157,7 @@ export default function DashboardContent() {
     fetchRecentActivities();
     fetchPaymentData();
     fetchPerformanceData();
+    fetchBankAccounts(); // AMBIL DATA BANK
   }, [chartFilter, chartYear]);
 
   // LOAD LAST READ TIMESTAMP DARI LOCALSTORAGE
@@ -193,8 +220,6 @@ export default function DashboardContent() {
   // ===========================================
   const fetchPaymentData = async () => {
     try {
-      // TODO: Sesuaikan query dengan struktur tabel di Supabase lo
-      
       // Data untuk Traffic Volume
       const { data: depositData } = await supabase
         .from('transactions')
@@ -219,38 +244,6 @@ export default function DashboardContent() {
         { name: 'Withdrawal', value: totalWithdrawal },
         { name: 'Livechat', value: chatCount || 0 }
       ]);
-
-      // Data dari Supabase (opsional)
-      const { data: bankData } = await supabase
-        .from('bank_accounts')
-        .select('bank_name, status, type')
-
-      // Update dengan data dari Supabase (tapi jangan timpa yang udah di-set user)
-      if (bankData) {
-        setDepositMethods(prev => {
-          const newState = { ...prev };
-          bankData.forEach(bank => {
-            if (bank.type === 'deposit' || bank.type === 'both') {
-              if (newState.hasOwnProperty(bank.bank_name) && prev[bank.bank_name] === false) {
-                newState[bank.bank_name] = bank.status?.toLowerCase() === 'active';
-              }
-            }
-          });
-          return newState;
-        });
-
-        setWithdrawalMethods(prev => {
-          const newState = { ...prev };
-          bankData.forEach(bank => {
-            if (bank.type === 'withdrawal' || bank.type === 'both') {
-              if (newState.hasOwnProperty(bank.bank_name) && prev[bank.bank_name] === false) {
-                newState[bank.bank_name] = bank.status?.toLowerCase() === 'active';
-              }
-            }
-          });
-          return newState;
-        });
-      }
 
     } catch (error) {
       console.error('Error fetching payment data:', error);
@@ -481,59 +474,58 @@ export default function DashboardContent() {
       </header>
 
       {/* ROYAL GOLD CARDS - DENGAN MENU ACCOUNT BANK MANAGEMENT */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-  {/* Asset */}
-  <DashboardCard
-    title="Asset GROUP-X"
-    value={`${dashboardData.totalAssets} Assets`}
-    icon="💎"
-    color="gold"
-    href="/dashboard/assets"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  {/* ACCOUNT BANK MANAGEMENT - MENU BARU */}
-  <DashboardCard
-    title="Account Bank Management"
-    value="Manage Banks"
-    icon="🏦"
-    color="gold"
-    href="/dashboard/data-bank"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  {/* Data Officers */}
-  <DashboardCard
-    title="Data Officers GROUP-X"
-    value={`${dashboardData.activeOfficers} Officers`}
-    icon={<span className="text-2xl">👨‍💼</span>}
-    color="gold"
-    href="/dashboard/officers/active"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  {/* Schedule Officers */}
-  <DashboardCard
-    title="Schedule Officers GROUP-X"
-    value="Calendar"
-    icon="📅"
-    color="gold"
-    href="/dashboard/schedule"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  {/* Financial Summary */}
-  <DashboardCard
-    title="Financial Summary GROUP-X"
-    value="Management"
-    icon="💰"
-    color="gold"
-    href="/dashboard/financial"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        {/* Asset */}
+        <DashboardCard
+          title="Asset GROUP-X"
+          value={`${dashboardData.totalAssets} Assets`}
+          icon="💎"
+          color="gold"
+          href="/dashboard/assets"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        {/* ACCOUNT BANK MANAGEMENT */}
+        <DashboardCard
+          title="Account Bank Management"
+          value="Manage Banks"
+          icon="🏦"
+          color="gold"
+          href="/dashboard/data-bank"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        {/* Data Officers */}
+        <DashboardCard
+          title="Data Officers GROUP-X"
+          value={`${dashboardData.activeOfficers} Officers`}
+          icon={<span className="text-2xl">👨‍💼</span>}
+          color="gold"
+          href="/dashboard/officers/active"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        {/* Schedule Officers */}
+        <DashboardCard
+          title="Schedule Officers GROUP-X"
+          value="Calendar"
+          icon="📅"
+          color="gold"
+          href="/dashboard/schedule"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        {/* Financial Summary */}
+        <DashboardCard
+          title="Financial Summary GROUP-X"
+          value="Management"
+          icon="💰"
+          color="gold"
+          href="/dashboard/financial"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+      </div>
 
-      
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
@@ -563,69 +555,73 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD - LAMPU + SWITCH + ON/OFF */}
+        {/* KOLOM 2: DEPOSIT METHOD - DARI SUPABASE + FILTER ACTIVE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method (Receiver)</h3>
           <div className="space-y-4">
-            {Object.entries(depositMethods).map(([bank, isActive]) => (
-              <div key={bank} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                  <span className="text-white text-sm">{bank}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-medium ${isActive ? 'text-green-400' : 'text-red-400'}`}>
-                    {isActive ? 'ON' : 'OFF'}
-                  </span>
-                  <button
-                    onClick={() => handleToggleService('deposit', bank, !isActive)}
-                    disabled={updatingStatus.deposit}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                      isActive ? 'bg-green-500' : 'bg-gray-600'
-                    } ${updatingStatus.deposit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  >
-                    <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                        isActive ? 'translate-x-5' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-            ))}
+            {loadingBanks ? (
+              <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
+            ) : (
+              bankAccounts
+                .filter(bank => bank.type === 'deposit' || bank.type === 'both')
+                .map((bank) => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-2">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span className="text-white text-sm font-medium">{bank.bank}</span>
+                      </div>
+                      <span className="text-[#A7D8FF] text-xs ml-4">
+                        {bank.account_name} {bank.account_number}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                      <button
+                        disabled
+                        className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
+                      >
+                        <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+            )}
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD - LAMPU + SWITCH + ON/OFF */}
+        {/* KOLOM 3: WITHDRAWAL METHOD - DARI SUPABASE + FILTER ACTIVE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender)</h3>
           <div className="space-y-4">
-            {Object.entries(withdrawalMethods).map(([bank, isActive]) => (
-              <div key={bank} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                  <span className="text-white text-sm">{bank}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-medium ${isActive ? 'text-green-400' : 'text-red-400'}`}>
-                    {isActive ? 'ON' : 'OFF'}
-                  </span>
-                  <button
-                    onClick={() => handleToggleService('withdrawal', bank, !isActive)}
-                    disabled={updatingStatus.withdrawal}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
-                      isActive ? 'bg-green-500' : 'bg-gray-600'
-                    } ${updatingStatus.withdrawal ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                  >
-                    <span
-                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                        isActive ? 'translate-x-5' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-            ))}
+            {loadingBanks ? (
+              <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
+            ) : (
+              bankAccounts
+                .filter(bank => bank.type === 'withdrawal' || bank.type === 'both')
+                .map((bank) => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-2">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span className="text-white text-sm font-medium">{bank.bank}</span>
+                      </div>
+                      <span className="text-[#A7D8FF] text-xs ml-4">
+                        {bank.account_name} {bank.account_number}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                      <button
+                        disabled
+                        className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
+                      >
+                        <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+            )}
           </div>
         </div>
       </div>
@@ -724,7 +720,7 @@ export default function DashboardContent() {
       {/* MENU SECTION */}
       <div className="mt-8 pt-6 border-t border-[#FFD700]/20">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">Performance & Settings Menu</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {menuItems.map((item, index) => {
             if (item.adminOnly && !isAdmin) return null;
             return (

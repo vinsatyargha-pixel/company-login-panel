@@ -10,25 +10,26 @@ export default function DataBankPage() {
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState(null);
   const [syncResult, setSyncResult] = useState(null);
-  const [activeTab, setActiveTab] = useState('all'); // 'all', 'deposit', 'withdrawal'
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'takedown'
+  const [activeTab, setActiveTab] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  
+  // State untuk popup info login
+  const [selectedBank, setSelectedBank] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
     fetchBanks();
   }, []);
 
-  // Filter banks ketika activeTab atau statusFilter berubah
   useEffect(() => {
     let filtered = [...banks];
     
-    // Filter by type (deposit/withdrawal)
     if (activeTab === 'deposit') {
       filtered = filtered.filter(b => b.type === 'deposit' || b.type === 'both');
     } else if (activeTab === 'withdrawal') {
       filtered = filtered.filter(b => b.type === 'withdrawal' || b.type === 'both');
     }
     
-    // Filter by status (active/takedown)
     if (statusFilter === 'active') {
       filtered = filtered.filter(b => b.status === true);
     } else if (statusFilter === 'takedown') {
@@ -105,6 +106,12 @@ export default function DataBankPage() {
     } catch (error) {
       console.error('Error deleting bank:', error);
     }
+  };
+
+  // Fungsi untuk menampilkan popup info login
+  const handleAccountClick = (bank) => {
+    setSelectedBank(bank);
+    setShowPopup(true);
   };
 
   const stats = {
@@ -186,7 +193,6 @@ export default function DataBankPage() {
           </div>
         )}
 
-        {/* Sync Summary */}
         {syncResult && (
           <div className="mt-4 bg-[#0B1A33] rounded-lg border border-[#FFD700]/30 p-4">
             <h4 className="text-[#FFD700] font-medium mb-3 flex items-center gap-2">
@@ -248,7 +254,7 @@ export default function DataBankPage() {
         </div>
       </div>
 
-      {/* Filter Tabs - Type */}
+      {/* Filter Tabs */}
       <div className="mb-4 flex items-center gap-2 border-b border-[#FFD700]/20 pb-2 flex-wrap">
         <button
           onClick={() => setActiveTab('all')}
@@ -282,7 +288,7 @@ export default function DataBankPage() {
         </button>
       </div>
 
-      {/* Filter Tabs - Status (Active/Takedown) */}
+      {/* Status Filter */}
       <div className="mb-4 flex items-center gap-2 pb-2 flex-wrap">
         <span className="text-[#A7D8FF] text-sm mr-2">Status:</span>
         <button
@@ -319,18 +325,18 @@ export default function DataBankPage() {
         </button>
       </div>
 
-      {/* Tabel Bank */}
+      {/* Tabel Bank - SUSUNAN BARU */}
       <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
               <tr>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Status</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Display/Used</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Bank</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Account Name</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Account Number</th>
-                <th className="text-left py-3 px-4 text-[#FFD700]">Type</th>
-                <th className="text-left py-3 px-4 text-[#FFD700]">Display/Used</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Role</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Type Bank</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Masa Aktif</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Actions</th>
@@ -355,15 +361,44 @@ export default function DataBankPage() {
               ) : (
                 filteredBanks.map((bank) => (
                   <tr key={bank.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                    {/* Status (Active/Takedown) */}
                     <td className="py-3 px-4">
                       <span className={`inline-flex items-center gap-1 ${bank.status ? 'text-green-400' : 'text-red-400'}`}>
                         <span className={`w-2 h-2 rounded-full ${bank.status ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
                         {bank.status ? 'Active' : 'Takedown'}
                       </span>
                     </td>
+                    
+                    {/* Display/Used */}
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        {bank.display && (
+                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">Display</span>
+                        )}
+                        {bank.used && (
+                          <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">Used</span>
+                        )}
+                      </div>
+                    </td>
+                    
+                    {/* Bank */}
                     <td className="py-3 px-4 text-white font-medium">{bank.bank}</td>
+                    
+                    {/* Account Name */}
                     <td className="py-3 px-4 text-white">{bank.account_name || '-'}</td>
-                    <td className="py-3 px-4 text-white font-mono">{bank.account_number || '-'}</td>
+                    
+                    {/* Account Number - Bisa di-klik */}
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => handleAccountClick(bank)}
+                        className="text-white font-mono hover:text-[#FFD700] transition-colors underline decoration-dotted underline-offset-2"
+                        title="Klik untuk lihat info login"
+                      >
+                        {bank.account_number || '-'}
+                      </button>
+                    </td>
+                    
+                    {/* Role (dari kolom type) */}
                     <td className="py-3 px-4">
                       <span className={`px-2 py-1 rounded-full text-xs ${
                         bank.type === 'deposit' ? 'bg-blue-500/20 text-blue-400' :
@@ -375,36 +410,32 @@ export default function DataBankPage() {
                         {bank.type === 'both' && 'Both'}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        {bank.display && (
-                          <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">Display</span>
-                        )}
-                        {bank.used && (
-                          <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">Used</span>
-                        )}
-                      </div>
-                    </td>
+                    
+                    {/* Type Bank */}
                     <td className="py-3 px-4">
                       <span className="px-2 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400">
                         {bank.type_bank || '-'}
                       </span>
                     </td>
+                    
+                    {/* Masa Aktif */}
                     <td className="py-3 px-4 text-[#A7D8FF] text-sm">
                       {bank.masa_aktif || '-'}
                     </td>
+                    
+                    {/* Actions */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleStatusToggle(bank.id, bank.status)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                            bank.status 
-                              ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
-                              : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                          }`}
-                        >
-                          Toggle {bank.status ? '→ Takedown' : '→ Active'}
-                        </button>
+  onClick={() => handleStatusToggle(bank.id, bank.status)}
+  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+    bank.status 
+      ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
+      : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+  }`}
+>
+  {bank.status ? 'Active' : 'Takedown'}
+</button>
                         <button
                           onClick={() => handleDelete(bank.id)}
                           className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
@@ -422,6 +453,70 @@ export default function DataBankPage() {
         </div>
       </div>
 
+      {/* POPUP INFO LOGIN */}
+      {showPopup && selectedBank && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#1A2F4A] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full mx-4 shadow-[0_0_50px_#FFD700]">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-[#FFD700]">🔐 Info Login</h3>
+              <button
+                onClick={() => setShowPopup(false)}
+                className="text-[#A7D8FF] hover:text-white text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="space-y-3 text-white">
+              <div className="bg-[#0B1A33] p-3 rounded-lg">
+                <div className="text-[#A7D8FF] text-sm">Bank</div>
+                <div className="font-bold">{selectedBank.bank}</div>
+              </div>
+              
+              <div className="bg-[#0B1A33] p-3 rounded-lg">
+                <div className="text-[#A7D8FF] text-sm">Account Name</div>
+                <div className="font-bold">{selectedBank.account_name}</div>
+              </div>
+              
+              <div className="bg-[#0B1A33] p-3 rounded-lg">
+                <div className="text-[#A7D8FF] text-sm">Account Number</div>
+                <div className="font-bold font-mono">{selectedBank.account_number}</div>
+              </div>
+              
+              <div className="bg-[#0B1A33] p-3 rounded-lg">
+                <div className="text-[#A7D8FF] text-sm">User ID / PIN</div>
+                <div className="font-mono text-sm">
+                  {/* Ini bisa diisi dari data login nanti */}
+                  <p>User ID: -</p>
+                  <p>PIN: -</p>
+                </div>
+              </div>
+              
+              <div className="bg-[#0B1A33] p-3 rounded-lg">
+                <div className="text-[#A7D8FF] text-sm">Role / Type</div>
+                <div>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    selectedBank.type === 'deposit' ? 'bg-blue-500/20 text-blue-400' :
+                    selectedBank.type === 'withdrawal' ? 'bg-purple-500/20 text-purple-400' :
+                    'bg-green-500/20 text-green-400'
+                  }`}>
+                    {selectedBank.type === 'deposit' ? 'Deposit' : 
+                     selectedBank.type === 'withdrawal' ? 'Withdrawal' : 'Both'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={() => setShowPopup(false)}
+              className="mt-6 w-full bg-[#FFD700] text-[#0B1A33] py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 transition-colors"
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Footer Info */}
       <div className="mt-4 text-xs text-[#A7D8FF] flex items-center justify-end gap-4 flex-wrap">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Active</span>
@@ -429,6 +524,7 @@ export default function DataBankPage() {
         <span className="flex items-center gap-1">💰 Deposit</span>
         <span className="flex items-center gap-1">💸 Withdrawal</span>
         <span className="flex items-center gap-1">📊 From Google Sheets</span>
+        <span className="flex items-center gap-1">🔍 Klik No. Rekening untuk info login</span>
       </div>
     </div>
   );
