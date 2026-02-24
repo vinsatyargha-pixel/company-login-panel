@@ -1,4 +1,3 @@
-// app/api/banks/sync/route.js
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { parse } from 'csv-parse/sync';
@@ -8,8 +7,13 @@ export async function POST() {
     // 1. Fetch CSV dari Google Sheets
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1435714791&single=true&output=csv';
     const response = await fetch(csvUrl);
-    const csvText = await response.text();
     
+    if (!response.ok) {
+      throw new Error(`Gagal fetch CSV: ${response.status}`);
+    }
+    
+    const csvText = await response.text();
+
     // 2. Parse CSV
     const records = parse(csvText, {
       skip_empty_lines: true,
@@ -19,31 +23,35 @@ export async function POST() {
     // 3. Deteksi bagian DEPOSIT dan WITHDRAW
     let currentSection = null;
     const banks = [];
-    
+
     for (let i = 0; i < records.length; i++) {
       const row = records[i];
-      
+      if (!row || row.length === 0) continue;
+
       // Deteksi section DEPOSIT
-      if (row[0] === 'DEPOSIT') {
+      if (row[0]?.includes('DEPOSIT')) {
         currentSection = 'deposit';
-        i += 2; // Skip header rows
+        i += 2; // Skip 2 baris header
         continue;
       }
-      
+
       // Deteksi section WITHDRAW
-      if (row[0] === 'WITHDRAW') {
+      if (row[0]?.includes('WITHDRAW')) {
         currentSection = 'withdrawal';
-        i += 2; // Skip header rows
+        i += 2; // Skip 2 baris header
         continue;
       }
-      
-      // Proses data berdasarkan section
-      if (currentSection === 'deposit' && row[1] === 'YES') {
+
+      // Skip baris kosong
+      if (!row[3] || row[3].trim() === '') continue;
+
+      // Proses DEPOSIT (Display YES)
+      if (currentSection === 'deposit' && row[1]?.trim() === 'YES') {
         banks.push({
-          bank: row[3], // JENIS BANK
-          account_name: row[4]?.replace(/\n/g, '').trim(), // NAMA BANK
-          account_number: row[5]?.toString().trim(), // NO REK
-          status: row[27] === 'AKTIF', // STATUS BANK
+          bank: row[3]?.trim() || '',
+          account_name: row[4]?.replace(/\n/g, '').trim() || '',
+          account_number: row[5]?.toString().trim() || '',
+          status: row[27]?.trim() === 'AKTIF',
           display: true,
           used: false,
           type: 'deposit',
@@ -51,13 +59,14 @@ export async function POST() {
           last_sync_at: new Date()
         });
       }
-      
-      if (currentSection === 'withdrawal' && row[1] === 'YES') {
+
+      // Proses WITHDRAWAL (Used YES)
+      if (currentSection === 'withdrawal' && row[1]?.trim() === 'YES') {
         banks.push({
-          bank: row[3], // JENIS BANK
-          account_name: row[4]?.replace(/\n/g, '').trim(), // NAMA BANK
-          account_number: row[5]?.toString().trim(), // NO REK
-          status: row[27] === 'AKTIF', // STATUS BANK
+          bank: row[3]?.trim() || '',
+          account_name: row[4]?.replace(/\n/g, '').trim() || '',
+          account_number: row[5]?.toString().trim() || '',
+          status: row[27]?.trim() === 'AKTIF',
           display: false,
           used: true,
           type: 'withdrawal',
@@ -73,36 +82,27 @@ export async function POST() {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // 5. Ambil semua data bank yang ada di database
+    // 5. Ambil data existing
     const { data: existingBanks } = await supabase
       .from('bank_accounts')
       .select('*');
 
-    // 6. Logic sync pintar
-    const results = {
-      new: [],
-      updated: [],
-      unchanged: [],
-      manual_only: []
-    };
+    // 6. Logic sync
+    const results = { new: [], updated: [], unchanged: [], manual_only: [] };
 
     for (const sheetBank of banks) {
-      // Cari apakah bank ini udah ada di database
       const existing = existingBanks?.find(
         b => b.bank === sheetBank.bank && 
              b.account_number === sheetBank.account_number
       );
 
       if (!existing) {
-        // BANK BARU! Tambahin
         const { data } = await supabase
           .from('bank_accounts')
-          .insert(sheetBank)
+          .insert([{ ...sheetBank, first_seen_at: new Date() }])
           .select();
-        results.new.push(data[0]);
-        
+        if (data) results.new.push(data[0]);
       } else {
-        // Bank udah ada, cek apakah ada perubahan
         const hasChanges = 
           existing.account_name !== sheetBank.account_name ||
           existing.status !== sheetBank.status ||
@@ -110,7 +110,6 @@ export async function POST() {
           existing.used !== sheetBank.used;
 
         if (hasChanges) {
-          // Update data
           const { data } = await supabase
             .from('bank_accounts')
             .update({
@@ -119,14 +118,18 @@ export async function POST() {
             })
             .eq('id', existing.id)
             .select();
-          results.updated.push(data[0]);
+          if (data) results.updated.push(data[0]);
         } else {
+          await supabase
+            .from('bank_accounts')
+            .update({ last_sync_at: new Date() })
+            .eq('id', existing.id);
           results.unchanged.push(existing);
         }
       }
     }
 
-    // 7. Tandai bank yang cuma ada di database (manual input)
+    // 7. Tandai manual only
     const sheetKeys = banks.map(b => `${b.bank}-${b.account_number}`);
     results.manual_only = existingBanks?.filter(b => 
       !sheetKeys.includes(`${b.bank}-${b.account_number}`) &&
@@ -141,8 +144,7 @@ export async function POST() {
         updated_banks: results.updated.length,
         unchanged_banks: results.unchanged.length,
         manual_banks: results.manual_only.length
-      },
-      details: results
+      }
     });
 
   } catch (error) {
@@ -152,4 +154,9 @@ export async function POST() {
       { status: 500 }
     );
   }
+}
+
+// Untuk testing GET
+export async function GET() {
+  return NextResponse.json({ message: 'Gunakan POST method untuk sync' });
 }
