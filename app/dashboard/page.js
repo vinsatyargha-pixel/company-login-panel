@@ -43,27 +43,18 @@ export default function DashboardContent() {
   const TRAFFIC_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
 
   // ===========================================
-  // STATE UNTUK AVAILABLE SERVICES - DARI LOCALSTORAGE
+  // STATE UNTUK AVAILABLE SERVICES
   // ===========================================
-  const [depositMethods, setDepositMethods] = useState(() => {
-    const saved = localStorage.getItem('depositMethods');
-    return saved ? JSON.parse(saved) : {
-      BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false
-    };
+  const [depositMethods, setDepositMethods] = useState({
+    BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false
   });
   
-  const [withdrawalMethods, setWithdrawalMethods] = useState(() => {
-    const saved = localStorage.getItem('withdrawalMethods');
-    return saved ? JSON.parse(saved) : {
-      BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false, Midas: false
-    };
+  const [withdrawalMethods, setWithdrawalMethods] = useState({
+    BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false, Midas: false
   });
   
-  const [supportLines, setSupportLines] = useState(() => {
-    const saved = localStorage.getItem('supportLines');
-    return saved ? JSON.parse(saved) : {
-      liveChat: false, whatsapp: false
-    };
+  const [supportLines, setSupportLines] = useState({
+    liveChat: false, whatsapp: false
   });
 
   // STATE UNTUK UPDATE
@@ -98,17 +89,41 @@ export default function DashboardContent() {
 
   const { user, userJobRole, isAdmin } = useAuth();
 
+  // LOAD DARI LOCALSTORAGE (HANYA DI BROWSER)
+  useEffect(() => {
+    const savedDeposit = localStorage.getItem('depositMethods');
+    if (savedDeposit) {
+      setDepositMethods(JSON.parse(savedDeposit));
+    }
+    
+    const savedWithdrawal = localStorage.getItem('withdrawalMethods');
+    if (savedWithdrawal) {
+      setWithdrawalMethods(JSON.parse(savedWithdrawal));
+    }
+    
+    const savedSupport = localStorage.getItem('supportLines');
+    if (savedSupport) {
+      setSupportLines(JSON.parse(savedSupport));
+    }
+  }, []);
+
   // SIMPAN KE LOCALSTORAGE SETIAP KALI STATE BERUBAH
   useEffect(() => {
-    localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
+    }
   }, [depositMethods]);
 
   useEffect(() => {
-    localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
+    }
   }, [withdrawalMethods]);
 
   useEffect(() => {
-    localStorage.setItem('supportLines', JSON.stringify(supportLines));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('supportLines', JSON.stringify(supportLines));
+    }
   }, [supportLines]);
 
   useEffect(() => {
@@ -155,24 +170,14 @@ export default function DashboardContent() {
     try {
       if (type === 'deposit') {
         setUpdatingStatus(prev => ({ ...prev, deposit: true }));
-        // Update ke Supabase (uncomment kalau sudah siap)
-        // const { error } = await supabase
-        //   .from('bank_accounts')
-        //   .update({ status: newStatus ? 'active' : 'inactive' })
-        //   .eq('bank_name', serviceName)
-        //   .eq('type', 'deposit')
-        
-        // Update local state
         setDepositMethods(prev => ({ ...prev, [serviceName]: newStatus }));
         
       } else if (type === 'withdrawal') {
         setUpdatingStatus(prev => ({ ...prev, withdrawal: true }));
-        // Update ke Supabase
         setWithdrawalMethods(prev => ({ ...prev, [serviceName]: newStatus }));
         
       } else if (type === 'support') {
         setUpdatingStatus(prev => ({ ...prev, support: true }));
-        // Update ke Supabase
         setSupportLines(prev => ({ ...prev, [serviceName]: newStatus }));
       }
       
@@ -215,46 +220,37 @@ export default function DashboardContent() {
         { name: 'Livechat', value: chatCount || 0 }
       ]);
 
-      // Data untuk Available Services
+      // Data dari Supabase (opsional)
       const { data: bankData } = await supabase
         .from('bank_accounts')
         .select('bank_name, status, type')
 
-      // Data untuk support lines
-      const { data: supportData } = await supabase
-        .from('support_services')
-        .select('name, status')
+      // Update dengan data dari Supabase (tapi jangan timpa yang udah di-set user)
+      if (bankData) {
+        setDepositMethods(prev => {
+          const newState = { ...prev };
+          bankData.forEach(bank => {
+            if (bank.type === 'deposit' || bank.type === 'both') {
+              if (newState.hasOwnProperty(bank.bank_name) && prev[bank.bank_name] === false) {
+                newState[bank.bank_name] = bank.status?.toLowerCase() === 'active';
+              }
+            }
+          });
+          return newState;
+        });
 
-      // Update state dengan data dari Supabase
-      const depositState = { ...depositMethods };
-      const withdrawalState = { ...withdrawalMethods };
-      const supportState = { ...supportLines };
-
-      bankData?.forEach(bank => {
-        if (bank.type === 'deposit' || bank.type === 'both') {
-          if (depositState.hasOwnProperty(bank.bank_name)) {
-            depositState[bank.bank_name] = bank.status?.toLowerCase() === 'active';
-          }
-        }
-        if (bank.type === 'withdrawal' || bank.type === 'both') {
-          if (withdrawalState.hasOwnProperty(bank.bank_name)) {
-            withdrawalState[bank.bank_name] = bank.status?.toLowerCase() === 'active';
-          }
-        }
-      });
-
-      supportData?.forEach(service => {
-        if (service.name === 'Live Chat (Omega)') {
-          supportState.liveChat = service.status === 'active';
-        }
-        if (service.name === 'Whatsapp (Official)') {
-          supportState.whatsapp = service.status === 'active';
-        }
-      });
-
-      setDepositMethods(depositState);
-      setWithdrawalMethods(withdrawalState);
-      setSupportLines(supportState);
+        setWithdrawalMethods(prev => {
+          const newState = { ...prev };
+          bankData.forEach(bank => {
+            if (bank.type === 'withdrawal' || bank.type === 'both') {
+              if (newState.hasOwnProperty(bank.bank_name) && prev[bank.bank_name] === false) {
+                newState[bank.bank_name] = bank.status?.toLowerCase() === 'active';
+              }
+            }
+          });
+          return newState;
+        });
+      }
 
     } catch (error) {
       console.error('Error fetching payment data:', error);
@@ -263,15 +259,7 @@ export default function DashboardContent() {
 
   const fetchPerformanceData = async () => {
     try {
-      // TODO: Fetch real data for asset performance
-      // This is sample data - replace with actual queries
-      
-      // const { data: assetData } = await supabase
-      //   .from('asset_performance')
-      //   .select('*')
-      //   .eq('period', chartFilter)
-      //   .eq('year', chartYear)
-
+      // TODO: Fetch real data
     } catch (error) {
       console.error('Error fetching performance data:', error);
     }
@@ -303,49 +291,27 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FUNGSI RECENT ACTIVITY - YANG LENGKAP
+  // FUNGSI RECENT ACTIVITY
   // ===========================================
   const fetchRecentActivities = async () => {
     try {
       setLoadingActivities(true);
       
-      const { data: auditData, error: auditError } = await supabase
+      const { data: auditData } = await supabase
         .from('audit_logs')
         .select(`
           *,
           officers!changed_by (full_name, email)
         `)
-        .order('changed_at', { ascending: false, nullsFirst: false })
+        .order('changed_at', { ascending: false })
         .limit(20);
 
-      if (auditError) console.error('Audit Error:', auditError);
-
-      const auditActivities = (auditData || []).map(item => {
-        let changes = [];
-        let icon = '👤';
-        
-        if (item.action === 'UPDATE') {
-          changes = formatOfficerChanges(item.old_data, item.new_data);
-          icon = '✏️';
-        } else if (item.action === 'DELETE') {
-          changes = [`❌ Deleted officer: ${item.old_data?.full_name || 'Unknown'}`];
-          icon = '❌';
-        } else if (item.action === 'INSERT') {
-          changes = [`➕ Added new officer: ${item.new_data?.full_name || 'Unknown'}`];
-          icon = '➕';
-        }
-
-        return {
-          id: `audit-${item.changed_at}-${item.old_data?.full_name || item.new_data?.full_name || 'unknown'}`,
-          module: 'Officers',
-          officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
-          bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
-          timestamp: item.changed_at,
-          adminName: item.officers?.full_name || item.officers?.email || 'Admin',
-          changes: changes,
-          icon: icon
-        };
-      });
+      const auditActivities = (auditData || []).map(item => ({
+        id: `audit-${item.changed_at}`,
+        officer: item.new_data?.full_name || item.old_data?.full_name || 'Unknown',
+        timestamp: item.changed_at,
+        changes: ['📝 Updated data']
+      }));
 
       setActivities(auditActivities);
       
@@ -356,69 +322,15 @@ export default function DashboardContent() {
     }
   };
 
-  // ===========================================
-  // FORMAT CHANGES UNTUK OFFICERS - YANG LENGKAP
-  // ===========================================
-  const formatOfficerChanges = (oldData, newData) => {
-    if (!oldData || !newData) return ['📝 Updated data'];
-    
-    const changes = [];
-    
-    if (oldData.room !== newData.room) {
-      changes.push(`🏠 Room: ${oldData.room || 'empty'} → ${newData.room || 'empty'}`);
-    }
-    if (oldData.status !== newData.status) {
-      changes.push(`📊 Status: ${oldData.status || 'empty'} → ${newData.status || 'empty'}`);
-    }
-    if (oldData.department !== newData.department) {
-      changes.push(`🏢 Department: ${oldData.department || 'empty'} → ${newData.department || 'empty'}`);
-    }
-    if (oldData.join_date !== newData.join_date) {
-      const oldDate = oldData.join_date ? new Date(oldData.join_date).toLocaleDateString('id-ID') : 'empty';
-      const newDate = newData.join_date ? new Date(newData.join_date).toLocaleDateString('id-ID') : 'empty';
-      changes.push(`📅 Join date: ${oldDate} → ${newDate}`);
-    }
-    if (oldData.full_name !== newData.full_name) {
-      changes.push(`👤 Name: ${oldData.full_name || 'empty'} → ${newData.full_name || 'empty'}`);
-    }
-    if (oldData.panel_id !== newData.panel_id) {
-      changes.push(`🆔 Panel ID: ${oldData.panel_id || 'empty'} → ${newData.panel_id || 'empty'}`);
-    }
-    if (oldData.nationality !== newData.nationality) {
-      changes.push(`🌏 Nationality: ${oldData.nationality || 'empty'} → ${newData.nationality || 'empty'}`);
-    }
-    if (oldData.gender !== newData.gender) {
-      changes.push(`⚥ Gender: ${oldData.gender || 'empty'} → ${newData.gender || 'empty'}`);
-    }
-    if (oldData.bank_account !== newData.bank_account) {
-      changes.push(`💰 Bank account: updated`);
-    }
-    if (oldData.phone !== newData.phone) {
-      changes.push(`📱 Phone: ${oldData.phone || 'empty'} → ${newData.phone || 'empty'}`);
-    }
-    if (oldData.telegram_id !== newData.telegram_id) {
-      changes.push(`✈️ Telegram: ${oldData.telegram_id || 'empty'} → ${newData.telegram_id || 'empty'}`);
-    }
-    if (oldData.email !== newData.email) {
-      changes.push(`📧 Email: ${oldData.email || 'empty'} → ${newData.email || 'empty'}`);
-    }
-    
-    return changes.length > 0 ? changes : ['📝 Updated data'];
-  };
-
   const formatTimeAgo = (timestamp) => {
     const now = new Date();
     const past = new Date(timestamp);
-    const diffMs = now - past;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
+    const diffMins = Math.floor((now - past) / 60000);
+    
     if (diffMins < 1) return 'just now';
     if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    return past.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)} hours ago`;
+    return `${Math.floor(diffMins / 1440)} days ago`;
   };
 
   // Menu items
@@ -568,7 +480,7 @@ export default function DashboardContent() {
         </div>
       </header>
 
-      {/* ROYAL GOLD CARDS - DENGAN EFEK KACA/GLOSSY */}
+      {/* ROYAL GOLD CARDS - DENGAN EFEK KACA */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <DashboardCard
           title="Asset GROUP-X"
@@ -646,7 +558,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD - DENGAN LAMPU + SWITCH + TULISAN ON/OFF */}
+        {/* KOLOM 2: DEPOSIT METHOD - LAMPU + SWITCH + ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
           <div className="space-y-4">
@@ -679,7 +591,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN LAMPU + SWITCH + TULISAN ON/OFF */}
+        {/* KOLOM 3: WITHDRAWAL METHOD - LAMPU + SWITCH + ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender Bank)</h3>
           <div className="space-y-4">
@@ -716,7 +628,7 @@ export default function DashboardContent() {
       {/* ROW 2 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: CUSTOMER SUPPORT LINE - DENGAN LAMPU + SWITCH + TULISAN ON/OFF */}
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE - LAMPU + SWITCH + ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Service Support Line</h3>
           <div className="space-y-4">
