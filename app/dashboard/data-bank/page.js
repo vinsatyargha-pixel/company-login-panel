@@ -10,21 +10,33 @@ export default function DataBankPage() {
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState(null);
   const [syncResult, setSyncResult] = useState(null);
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'deposit', 'withdrawal'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'active', 'takedown'
 
   useEffect(() => {
     fetchBanks();
   }, []);
 
+  // Filter banks ketika activeTab atau statusFilter berubah
   useEffect(() => {
-    if (activeTab === 'all') {
-      setFilteredBanks(banks);
-    } else if (activeTab === 'deposit') {
-      setFilteredBanks(banks.filter(b => b.type === 'deposit' || b.type === 'both'));
+    let filtered = [...banks];
+    
+    // Filter by type (deposit/withdrawal)
+    if (activeTab === 'deposit') {
+      filtered = filtered.filter(b => b.type === 'deposit' || b.type === 'both');
     } else if (activeTab === 'withdrawal') {
-      setFilteredBanks(banks.filter(b => b.type === 'withdrawal' || b.type === 'both'));
+      filtered = filtered.filter(b => b.type === 'withdrawal' || b.type === 'both');
     }
-  }, [activeTab, banks]);
+    
+    // Filter by status (active/takedown)
+    if (statusFilter === 'active') {
+      filtered = filtered.filter(b => b.status === true);
+    } else if (statusFilter === 'takedown') {
+      filtered = filtered.filter(b => b.status === false);
+    }
+    
+    setFilteredBanks(filtered);
+  }, [activeTab, statusFilter, banks]);
 
   const fetchBanks = async () => {
     try {
@@ -98,6 +110,7 @@ export default function DataBankPage() {
   const stats = {
     total: banks.length,
     active: banks.filter(b => b.status === true).length,
+    takedown: banks.filter(b => b.status === false).length,
     deposit: banks.filter(b => b.type === 'deposit' || b.type === 'both').length,
     withdrawal: banks.filter(b => b.type === 'withdrawal' || b.type === 'both').length,
     depositActive: banks.filter(b => (b.type === 'deposit' || b.type === 'both') && b.status === true).length,
@@ -164,7 +177,7 @@ export default function DataBankPage() {
 
         {syncStatus === 'success' && (
           <div className="mt-2 text-sm text-green-400 flex items-center gap-2">
-            <span>✅</span> Sinkronisasi berhasil!
+            <span>✅</span> Sinkronisasi berhasil! {syncResult?.message}
           </div>
         )}
         {syncStatus === 'error' && (
@@ -179,26 +192,22 @@ export default function DataBankPage() {
             <h4 className="text-[#FFD700] font-medium mb-3 flex items-center gap-2">
               <span>📊</span> Sync Summary
             </h4>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div className="bg-[#1A2F4A] p-3 rounded">
-                <div className="text-[#A7D8FF] text-xs">Total Sheet</div>
-                <div className="text-white font-bold text-lg">{syncResult.summary.total_from_sheet}</div>
+                <div className="text-[#A7D8FF] text-xs">Total Bank</div>
+                <div className="text-white font-bold text-lg">{syncResult.message?.match(/\d+/)?.[0] || banks.length}</div>
               </div>
               <div className="bg-green-500/10 p-3 rounded border border-green-500/20">
-                <div className="text-green-400 text-xs">🆕 Bank Baru</div>
-                <div className="text-white font-bold text-lg">{syncResult.summary.new_banks}</div>
+                <div className="text-green-400 text-xs">✅ Active</div>
+                <div className="text-white font-bold text-lg">{syncResult.active || stats.active}</div>
+              </div>
+              <div className="bg-red-500/10 p-3 rounded border border-red-500/20">
+                <div className="text-red-400 text-xs">⛔ Takedown</div>
+                <div className="text-white font-bold text-lg">{syncResult.takedown || stats.takedown}</div>
               </div>
               <div className="bg-blue-500/10 p-3 rounded border border-blue-500/20">
-                <div className="text-blue-400 text-xs">🔄 Bank Update</div>
-                <div className="text-white font-bold text-lg">{syncResult.summary.updated_banks}</div>
-              </div>
-              <div className="bg-gray-500/10 p-3 rounded border border-gray-500/20">
-                <div className="text-gray-400 text-xs">⏺️ Tidak Berubah</div>
-                <div className="text-white font-bold text-lg">{syncResult.summary.unchanged_banks}</div>
-              </div>
-              <div className="bg-purple-500/10 p-3 rounded border border-purple-500/20">
-                <div className="text-purple-400 text-xs">✋ Manual Only</div>
-                <div className="text-white font-bold text-lg">{syncResult.summary.manual_banks}</div>
+                <div className="text-blue-400 text-xs">📊 Deposit/Withdrawal</div>
+                <div className="text-white font-bold text-lg">{syncResult.deposit || stats.deposit}/{syncResult.withdrawal || stats.withdrawal}</div>
               </div>
             </div>
           </div>
@@ -212,8 +221,12 @@ export default function DataBankPage() {
           <div className="text-2xl font-bold text-white">{stats.total}</div>
         </div>
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-          <div className="text-[#A7D8FF] text-sm">Bank Aktif</div>
+          <div className="text-[#A7D8FF] text-sm">Active</div>
           <div className="text-2xl font-bold text-green-400">{stats.active}</div>
+        </div>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+          <div className="text-[#A7D8FF] text-sm">Takedown</div>
+          <div className="text-2xl font-bold text-red-400">{stats.takedown}</div>
         </div>
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
           <div className="text-[#A7D8FF] text-sm">Deposit</div>
@@ -233,17 +246,10 @@ export default function DataBankPage() {
           <div className="text-[#A7D8FF] text-sm">Used YES</div>
           <div className="text-2xl font-bold text-orange-400">{stats.usedYes}</div>
         </div>
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-          <div className="text-[#A7D8FF] text-sm">Source</div>
-          <div className="text-sm font-bold">
-            <span className="text-purple-400">📊 {banks.filter(b => b.source === 'google_sheets').length}</span>
-            <span className="text-yellow-400 ml-2">✋ {banks.filter(b => b.source === 'manual').length}</span>
-          </div>
-        </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="mb-4 flex items-center gap-2 border-b border-[#FFD700]/20 pb-2">
+      {/* Filter Tabs - Type */}
+      <div className="mb-4 flex items-center gap-2 border-b border-[#FFD700]/20 pb-2 flex-wrap">
         <button
           onClick={() => setActiveTab('all')}
           className={`px-4 py-2 rounded-lg font-medium transition-all ${
@@ -276,6 +282,43 @@ export default function DataBankPage() {
         </button>
       </div>
 
+      {/* Filter Tabs - Status (Active/Takedown) */}
+      <div className="mb-4 flex items-center gap-2 pb-2 flex-wrap">
+        <span className="text-[#A7D8FF] text-sm mr-2">Status:</span>
+        <button
+          onClick={() => setStatusFilter('all')}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+            statusFilter === 'all' 
+              ? 'bg-[#FFD700] text-[#0B1A33]' 
+              : 'bg-[#1A2F4A] text-[#A7D8FF] hover:bg-[#2A3F5A]'
+          }`}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setStatusFilter('active')}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
+            statusFilter === 'active' 
+              ? 'bg-green-500 text-white' 
+              : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-green-500"></span>
+          Active ({banks.filter(b => b.status === true).length})
+        </button>
+        <button
+          onClick={() => setStatusFilter('takedown')}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
+            statusFilter === 'takedown' 
+              ? 'bg-red-500 text-white' 
+              : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-red-500"></span>
+          Takedown ({banks.filter(b => b.status === false).length})
+        </button>
+      </div>
+
       {/* Tabel Bank */}
       <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden">
         <div className="overflow-x-auto">
@@ -288,21 +331,22 @@ export default function DataBankPage() {
                 <th className="text-left py-3 px-4 text-[#FFD700]">Account Number</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Type</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Display/Used</th>
-                <th className="text-left py-3 px-4 text-[#FFD700]">Source</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Type Bank</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Masa Aktif</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-8 text-[#A7D8FF]">
+                  <td colSpan="9" className="text-center py-8 text-[#A7D8FF]">
                     <span className="animate-spin inline-block mr-2">⏳</span>
                     Loading data bank...
                   </td>
                 </tr>
               ) : filteredBanks.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center py-8 text-[#A7D8FF]">
+                  <td colSpan="9" className="text-center py-8 text-[#A7D8FF]">
                     {banks.length === 0 
                       ? 'Belum ada data bank. Klik Sync Now untuk mengambil dari spreadsheet.'
                       : 'Tidak ada bank dengan filter ini.'}
@@ -314,7 +358,7 @@ export default function DataBankPage() {
                     <td className="py-3 px-4">
                       <span className={`inline-flex items-center gap-1 ${bank.status ? 'text-green-400' : 'text-red-400'}`}>
                         <span className={`w-2 h-2 rounded-full ${bank.status ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                        {bank.status ? 'Active' : 'Inactive'}
+                        {bank.status ? 'Active' : 'Takedown'}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-white font-medium">{bank.bank}</td>
@@ -342,13 +386,12 @@ export default function DataBankPage() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        bank.source === 'google_sheets' 
-                          ? 'bg-purple-500/20 text-purple-400' 
-                          : 'bg-yellow-500/20 text-yellow-400'
-                      }`}>
-                        {bank.source === 'google_sheets' ? '📊 Sheets' : '✋ Manual'}
+                      <span className="px-2 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400">
+                        {bank.type_bank || '-'}
                       </span>
+                    </td>
+                    <td className="py-3 px-4 text-[#A7D8FF] text-sm">
+                      {bank.masa_aktif || '-'}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
@@ -360,7 +403,7 @@ export default function DataBankPage() {
                               : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                           }`}
                         >
-                          Toggle {bank.status ? 'OFF' : 'ON'}
+                          Toggle {bank.status ? '→ Takedown' : '→ Active'}
                         </button>
                         <button
                           onClick={() => handleDelete(bank.id)}
@@ -380,11 +423,12 @@ export default function DataBankPage() {
       </div>
 
       {/* Footer Info */}
-      <div className="mt-4 text-xs text-[#A7D8FF] flex items-center justify-end gap-4">
+      <div className="mt-4 text-xs text-[#A7D8FF] flex items-center justify-end gap-4 flex-wrap">
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Active</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Inactive</span>
-        <span className="flex items-center gap-1">📊 Google Sheets</span>
-        <span className="flex items-center gap-1">✋ Manual Input</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Takedown</span>
+        <span className="flex items-center gap-1">💰 Deposit</span>
+        <span className="flex items-center gap-1">💸 Withdrawal</span>
+        <span className="flex items-center gap-1">📊 From Google Sheets</span>
       </div>
     </div>
   );
