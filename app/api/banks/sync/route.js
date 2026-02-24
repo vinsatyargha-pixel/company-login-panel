@@ -15,34 +15,40 @@ export async function POST() {
     
     for (let i = 1; i < lines.length; i++) { // Skip header (baris 0)
       const columns = lines[i].split(',');
+      if (columns.length < 30) continue; // Pastikan ada kolom cukup
       
-      // Ambil kolom AD (index 29) - ini hasil TEXT JOIN
+      // Ambil kolom AD (index 29) - text join bank - nama - norek
       const rawData = columns[29]?.replace(/"/g, '').trim();
       if (!rawData) continue;
       
-      // Format selalu: "JENIS BANK - NAMA - NO REK"
-      // Contoh: "BCA - AHMAD GHOZALI - 7600565065"
+      // Ambil kolom W (index 22) - tipe (DEPOSIT / WITHDRAW)
+      const rawType = columns[22]?.replace(/"/g, '').trim().toUpperCase();
       
-      // Split berdasarkan " - " (spasi-strip-spasi)
+      // Format kolom AD: "JENIS BANK - NAMA - NO REK"
       const parts = rawData.split(' - ').map(p => p.trim());
       
       if (parts.length >= 2) {
-        const bank = parts[0]; // BCA, BNI, dll
+        const bank = parts[0];
         const accountName = parts[1] || '';
         const accountNumber = parts[2] || '';
         
-        // Tentukan tipe berdasarkan nama (bisa diatur manual nanti)
-        // Asumsi: Yang punya nomor rekening > 10 digit adalah deposit?
-        // Tapi lebih baik masukin semua dulu, nanti diatur di dashboard
+        if (!bank || !accountNumber) continue;
+        
+        // Tentukan tipe dari kolom W
+        const isWithdrawal = rawType === 'WITHDRAW' || rawType === 'WITHDRAWAL';
+        const isDeposit = rawType === 'DEPOSIT';
+        
+        // Kalau kolom W gak ada, default deposit
+        const type = isWithdrawal ? 'withdrawal' : 'deposit';
         
         banks.push({
           bank,
           account_name: accountName,
           account_number: accountNumber,
           status: true,
-          display: true,  // Default tampil di deposit
-          used: false,     // Default tidak di withdrawal
-          type: 'deposit', // Default deposit
+          display: !isWithdrawal, // Deposit = display true
+          used: isWithdrawal,      // Withdrawal = used true
+          type: type,
           source: 'google_sheets',
           last_sync_at: new Date(),
           first_seen_at: new Date(),
@@ -51,7 +57,7 @@ export async function POST() {
       }
     }
 
-    // 3. Hapus duplikat berdasarkan bank + norek (kalau ada)
+    // 3. Hapus duplikat (kalau ada)
     const uniqueBanks = [];
     const seen = new Set();
     
@@ -75,7 +81,7 @@ export async function POST() {
       .delete()
       .eq('source', 'google_sheets');
 
-    // 6. Insert data unik
+    // 6. Insert data baru
     const { error } = await supabase
       .from('bank_accounts')
       .insert(uniqueBanks);
@@ -84,8 +90,14 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: `Sync berhasil: ${uniqueBanks.length} bank dari kolom AD`,
-      banks: uniqueBanks.map(b => `${b.bank} - ${b.account_name} - ${b.account_number}`)
+      message: `Sync berhasil: ${uniqueBanks.length} bank`,
+      deposit: uniqueBanks.filter(b => b.type === 'deposit').length,
+      withdrawal: uniqueBanks.filter(b => b.type === 'withdrawal').length,
+      details: uniqueBanks.map(b => ({
+        bank: b.bank,
+        name: b.account_name,
+        type: b.type
+      }))
     });
 
   } catch (error) {
@@ -95,4 +107,8 @@ export async function POST() {
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ message: 'Gunakan POST method' });
 }
