@@ -45,25 +45,22 @@ export async function POST() {
       // Skip baris kosong
       if (!row[3] || row[3].trim() === '') continue;
 
-      // Cek dulu apakah ini data yang valid (kolom B = YES)
-      const isValid = row[1]?.trim() === 'YES';
+      // Bersihin semua newline dari setiap cell
+      const cleanRow = row.map(cell => cell?.replace(/\n/g, '').trim() || '');
+
+      // Cek apakah ini data yang valid (kolom B = YES)
+      const isValid = cleanRow[1] === 'YES';
       if (!isValid) continue;
 
-      // Cari posisi kolom STATUS - bisa di index 26, 27, atau 28
-      let status = false;
-      for (let idx = 25; idx <= 28; idx++) {
-        if (row[idx]?.trim() === 'AKTIF') {
-          status = true;
-          break;
-        }
-      }
+      // Cari status AKTIF (bisa di index 26, 27, atau 28)
+      const isActive = cleanRow[26] === 'AKTIF' || cleanRow[27] === 'AKTIF' || cleanRow[28] === 'AKTIF';
 
-      // Proses data
+      // Buat object bank
       const bankData = {
-        bank: row[3]?.trim() || '', // JENIS BANK
-        account_name: row[4]?.replace(/\n/g, '').trim() || '', // NAMA BANK (bersihin \n)
-        account_number: row[5]?.toString().trim() || '', // NO REK
-        status: status,
+        bank: cleanRow[3], // JENIS BANK
+        account_name: cleanRow[4], // NAMA BANK (udah bersih)
+        account_number: cleanRow[5], // NO REK
+        status: isActive,
         source: 'google_sheets',
         last_sync_at: new Date()
       };
