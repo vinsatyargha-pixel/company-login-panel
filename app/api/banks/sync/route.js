@@ -45,42 +45,52 @@ export async function POST() {
       // Skip baris kosong
       if (!row[3] || row[3].trim() === '') continue;
 
-      // Proses DEPOSIT (Display YES)
-      if (currentSection === 'deposit' && row[1]?.trim() === 'YES') {
-        banks.push({
-          bank: row[3]?.trim() || '',
-          account_name: row[4]?.replace(/\n/g, '').trim() || '',
-          account_number: row[5]?.toString().trim() || '',
-          status: row[27]?.trim() === 'AKTIF',
-          display: true,
-          used: false,
-          type: 'deposit',
-          source: 'google_sheets',
-          last_sync_at: new Date()
-        });
+      // Cek dulu apakah ini data yang valid (kolom B = YES)
+      const isValid = row[1]?.trim() === 'YES';
+      if (!isValid) continue;
+
+      // Cari posisi kolom STATUS - bisa di index 26, 27, atau 28
+      let status = false;
+      for (let idx = 25; idx <= 28; idx++) {
+        if (row[idx]?.trim() === 'AKTIF') {
+          status = true;
+          break;
+        }
       }
 
-      // Proses WITHDRAWAL (Used YES)
-      if (currentSection === 'withdrawal' && row[1]?.trim() === 'YES') {
+      // Proses data
+      const bankData = {
+        bank: row[3]?.trim() || '', // JENIS BANK
+        account_name: row[4]?.replace(/\n/g, '').trim() || '', // NAMA BANK (bersihin \n)
+        account_number: row[5]?.toString().trim() || '', // NO REK
+        status: status,
+        source: 'google_sheets',
+        last_sync_at: new Date()
+      };
+
+      // Tambahin type dan flag sesuai section
+      if (currentSection === 'deposit') {
         banks.push({
-          bank: row[3]?.trim() || '',
-          account_name: row[4]?.replace(/\n/g, '').trim() || '',
-          account_number: row[5]?.toString().trim() || '',
-          status: row[27]?.trim() === 'AKTIF',
+          ...bankData,
+          display: true,
+          used: false,
+          type: 'deposit'
+        });
+      } else if (currentSection === 'withdrawal') {
+        banks.push({
+          ...bankData,
           display: false,
           used: true,
-          type: 'withdrawal',
-          source: 'google_sheets',
-          last_sync_at: new Date()
+          type: 'withdrawal'
         });
       }
     }
 
     // 4. Koneksi ke Supabase
     const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY // ← pake yang udah ada
-);
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
     // 5. Ambil data existing
     const { data: existingBanks } = await supabase
@@ -144,7 +154,8 @@ export async function POST() {
         updated_banks: results.updated.length,
         unchanged_banks: results.unchanged.length,
         manual_banks: results.manual_only.length
-      }
+      },
+      banks: banks // buat debug
     });
 
   } catch (error) {
@@ -156,7 +167,6 @@ export async function POST() {
   }
 }
 
-// Untuk testing GET
 export async function GET() {
   return NextResponse.json({ message: 'Gunakan POST method untuk sync' });
 }
