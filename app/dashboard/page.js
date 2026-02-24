@@ -480,55 +480,60 @@ export default function DashboardContent() {
         </div>
       </header>
 
-      {/* ROYAL GOLD CARDS - DENGAN EFEK KACA */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <DashboardCard
-          title="Asset GROUP-X"
-          value={`${dashboardData.totalAssets} Assets`}
-          icon="💎"
-          color="gold"
-          href="/dashboard/assets"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        <DashboardCard
-          title="Data Officers GROUP-X"
-          value={`${dashboardData.activeOfficers} Officers`}
-          icon={<span className="text-2xl">👨‍💼</span>}
-          color="gold"
-          href="/dashboard/officers/active"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        <DashboardCard
-          title="Schedule Officers GROUP-X"
-          value="Calendar"
-          icon="📅"
-          color="gold"
-          href="/dashboard/schedule"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        <DashboardCard
-          title="Financial Summary GROUP-X"
-          value="Management"
-          icon="💰"
-          color="gold"
-          href="/dashboard/financial"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-      </div>
+      {/* ROYAL GOLD CARDS - DENGAN MENU ACCOUNT BANK MANAGEMENT */}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+  {/* Asset */}
+  <DashboardCard
+    title="Asset GROUP-X"
+    value={`${dashboardData.totalAssets} Assets`}
+    icon="💎"
+    color="gold"
+    href="/dashboard/assets"
+    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+  />
+  
+  {/* ACCOUNT BANK MANAGEMENT - MENU BARU */}
+  <DashboardCard
+    title="Account Bank Management"
+    value="Manage Banks"
+    icon="🏦"
+    color="gold"
+    href="/dashboard/data-bank"
+    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+  />
+  
+  {/* Data Officers */}
+  <DashboardCard
+    title="Data Officers GROUP-X"
+    value={`${dashboardData.activeOfficers} Officers`}
+    icon={<span className="text-2xl">👨‍💼</span>}
+    color="gold"
+    href="/dashboard/officers/active"
+    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+  />
+  
+  {/* Schedule Officers */}
+  <DashboardCard
+    title="Schedule Officers GROUP-X"
+    value="Calendar"
+    icon="📅"
+    color="gold"
+    href="/dashboard/schedule"
+    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+  />
+  
+  {/* Financial Summary */}
+  <DashboardCard
+    title="Financial Summary GROUP-X"
+    value="Management"
+    icon="💰"
+    color="gold"
+    href="/dashboard/financial"
+    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+  />
+</div>
 
-      {/* FILTERS */}
-      <div className="flex justify-end gap-2 mb-6">
-        <select value={chartFilter} onChange={(e) => setChartFilter(e.target.value)} className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white text-sm">
-          {filterOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-        </select>
-        <select value={chartYear} onChange={(e) => setChartYear(e.target.value)} className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white text-sm">
-          {yearOptions.map(year => <option key={year} value={year}>{year}</option>)}
-        </select>
-      </div>
-
+      
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
@@ -719,7 +724,7 @@ export default function DashboardContent() {
       {/* MENU SECTION */}
       <div className="mt-8 pt-6 border-t border-[#FFD700]/20">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">Performance & Settings Menu</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
           {menuItems.map((item, index) => {
             if (item.adminOnly && !isAdmin) return null;
             return (
