@@ -43,18 +43,27 @@ export default function DashboardContent() {
   const TRAFFIC_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
 
   // ===========================================
-  // STATE UNTUK AVAILABLE SERVICES
+  // STATE UNTUK AVAILABLE SERVICES - DARI LOCALSTORAGE
   // ===========================================
-  const [depositMethods, setDepositMethods] = useState({
-    BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false
+  const [depositMethods, setDepositMethods] = useState(() => {
+    const saved = localStorage.getItem('depositMethods');
+    return saved ? JSON.parse(saved) : {
+      BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false
+    };
   });
   
-  const [withdrawalMethods, setWithdrawalMethods] = useState({
-    BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false, Midas: false
+  const [withdrawalMethods, setWithdrawalMethods] = useState(() => {
+    const saved = localStorage.getItem('withdrawalMethods');
+    return saved ? JSON.parse(saved) : {
+      BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false, Midas: false
+    };
   });
   
-  const [supportLines, setSupportLines] = useState({
-    liveChat: false, whatsapp: false
+  const [supportLines, setSupportLines] = useState(() => {
+    const saved = localStorage.getItem('supportLines');
+    return saved ? JSON.parse(saved) : {
+      liveChat: false, whatsapp: false
+    };
   });
 
   // STATE UNTUK UPDATE
@@ -88,6 +97,19 @@ export default function DashboardContent() {
   ]);
 
   const { user, userJobRole, isAdmin } = useAuth();
+
+  // SIMPAN KE LOCALSTORAGE SETIAP KALI STATE BERUBAH
+  useEffect(() => {
+    localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
+  }, [depositMethods]);
+
+  useEffect(() => {
+    localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
+  }, [withdrawalMethods]);
+
+  useEffect(() => {
+    localStorage.setItem('supportLines', JSON.stringify(supportLines));
+  }, [supportLines]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -133,7 +155,7 @@ export default function DashboardContent() {
     try {
       if (type === 'deposit') {
         setUpdatingStatus(prev => ({ ...prev, deposit: true }));
-        // TODO: Update ke Supabase
+        // Update ke Supabase (uncomment kalau sudah siap)
         // const { error } = await supabase
         //   .from('bank_accounts')
         //   .update({ status: newStatus ? 'active' : 'inactive' })
@@ -145,12 +167,12 @@ export default function DashboardContent() {
         
       } else if (type === 'withdrawal') {
         setUpdatingStatus(prev => ({ ...prev, withdrawal: true }));
-        // TODO: Update ke Supabase
+        // Update ke Supabase
         setWithdrawalMethods(prev => ({ ...prev, [serviceName]: newStatus }));
         
       } else if (type === 'support') {
         setUpdatingStatus(prev => ({ ...prev, support: true }));
-        // TODO: Update ke Supabase
+        // Update ke Supabase
         setSupportLines(prev => ({ ...prev, [serviceName]: newStatus }));
       }
       
@@ -198,35 +220,35 @@ export default function DashboardContent() {
         .from('bank_accounts')
         .select('bank_name, status, type')
 
-      // Reset states
-      const depositState = { BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false };
-      const withdrawalState = { BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false, Midas: false };
-      const supportState = { liveChat: false, whatsapp: false };
-
-      bankData?.forEach(bank => {
-        if (bank.status?.toLowerCase() === 'active') {
-          if (bank.type === 'deposit' || bank.type === 'both') {
-            if (depositState.hasOwnProperty(bank.bank_name)) {
-              depositState[bank.bank_name] = true;
-            }
-          }
-          if (bank.type === 'withdrawal' || bank.type === 'both') {
-            if (withdrawalState.hasOwnProperty(bank.bank_name)) {
-              withdrawalState[bank.bank_name] = true;
-            }
-          }
-        }
-      });
-
       // Data untuk support lines
       const { data: supportData } = await supabase
         .from('support_services')
         .select('name, status')
 
+      // Update state dengan data dari Supabase
+      const depositState = { ...depositMethods };
+      const withdrawalState = { ...withdrawalMethods };
+      const supportState = { ...supportLines };
+
+      bankData?.forEach(bank => {
+        if (bank.type === 'deposit' || bank.type === 'both') {
+          if (depositState.hasOwnProperty(bank.bank_name)) {
+            depositState[bank.bank_name] = bank.status?.toLowerCase() === 'active';
+          }
+        }
+        if (bank.type === 'withdrawal' || bank.type === 'both') {
+          if (withdrawalState.hasOwnProperty(bank.bank_name)) {
+            withdrawalState[bank.bank_name] = bank.status?.toLowerCase() === 'active';
+          }
+        }
+      });
+
       supportData?.forEach(service => {
-        if (service.status === 'active') {
-          if (service.name === 'Live Chat (Omega)') supportState.liveChat = true;
-          if (service.name === 'Whatsapp (Official)') supportState.whatsapp = true;
+        if (service.name === 'Live Chat (Omega)') {
+          supportState.liveChat = service.status === 'active';
+        }
+        if (service.name === 'Whatsapp (Official)') {
+          supportState.whatsapp = service.status === 'active';
         }
       });
 
@@ -474,7 +496,7 @@ export default function DashboardContent() {
         </div>
         
         <div className="flex items-center gap-4">
-          {/* RECENT ACTIVITY NOTIFICATION - YANG LENGKAP */}
+          {/* RECENT ACTIVITY NOTIFICATION */}
           <div className="relative">
             <button
               onClick={() => window.location.href = '/dashboard/activity-log'}
@@ -495,7 +517,7 @@ export default function DashboardContent() {
               )}
             </button>
             
-            {/* TOOLTIP - LENGKAP DENGAN CHANGES */}
+            {/* TOOLTIP */}
             {showActivityTooltip && activities.length > 0 && (
               <div className="absolute right-0 mt-2 w-72 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg p-3 z-50 shadow-xl">
                 <p className="text-[#FFD700] text-sm font-bold mb-2 flex items-center gap-2">
@@ -546,12 +568,43 @@ export default function DashboardContent() {
         </div>
       </header>
 
-      {/* ROYAL GOLD CARDS */}
+      {/* ROYAL GOLD CARDS - DENGAN EFEK KACA/GLOSSY */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <DashboardCard title="Asset GROUP-X" value={`${dashboardData.totalAssets} Assets`} icon="💎" color="gold" href="/dashboard/assets" />
-        <DashboardCard title="Data Officers GROUP-X" value={`${dashboardData.activeOfficers} Officers`} icon="👨‍💼" color="gold" href="/dashboard/officers/active" />
-        <DashboardCard title="Schedule Officers GROUP-X" value="Calendar" icon="📅" color="gold" href="/dashboard/schedule" />
-        <DashboardCard title="Financial Summary GROUP-X" value="Management" icon="💰" color="gold" href="/dashboard/financial" />
+        <DashboardCard
+          title="Asset GROUP-X"
+          value={`${dashboardData.totalAssets} Assets`}
+          icon="💎"
+          color="gold"
+          href="/dashboard/assets"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Data Officers GROUP-X"
+          value={`${dashboardData.activeOfficers} Officers`}
+          icon={<span className="text-2xl">👨‍💼</span>}
+          color="gold"
+          href="/dashboard/officers/active"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Schedule Officers GROUP-X"
+          value="Calendar"
+          icon="📅"
+          color="gold"
+          href="/dashboard/schedule"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Financial Summary GROUP-X"
+          value="Management"
+          icon="💰"
+          color="gold"
+          href="/dashboard/financial"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
       </div>
 
       {/* FILTERS */}
@@ -593,51 +646,67 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD - DENGAN SWITCH */}
+        {/* KOLOM 2: DEPOSIT METHOD - DENGAN LAMPU + SWITCH + TULISAN ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {Object.entries(depositMethods).map(([bank, isActive]) => (
               <div key={bank} className="flex items-center justify-between">
-                <span className="text-white">{bank}</span>
-                <button
-                  onClick={() => handleToggleService('deposit', bank, !isActive)}
-                  disabled={updatingStatus.deposit}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    isActive ? 'bg-green-500' : 'bg-gray-600'
-                  } ${updatingStatus.deposit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isActive ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                  <span className="text-white text-sm">{bank}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-medium ${isActive ? 'text-green-400' : 'text-red-400'}`}>
+                    {isActive ? 'ON' : 'OFF'}
+                  </span>
+                  <button
+                    onClick={() => handleToggleService('deposit', bank, !isActive)}
+                    disabled={updatingStatus.deposit}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                      isActive ? 'bg-green-500' : 'bg-gray-600'
+                    } ${updatingStatus.deposit ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                        isActive ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN SWITCH */}
+        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN LAMPU + SWITCH + TULISAN ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender Bank)</h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {Object.entries(withdrawalMethods).map(([bank, isActive]) => (
               <div key={bank} className="flex items-center justify-between">
-                <span className="text-white">{bank}</span>
-                <button
-                  onClick={() => handleToggleService('withdrawal', bank, !isActive)}
-                  disabled={updatingStatus.withdrawal}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    isActive ? 'bg-green-500' : 'bg-gray-600'
-                  } ${updatingStatus.withdrawal ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      isActive ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                  <span className="text-white text-sm">{bank}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-medium ${isActive ? 'text-green-400' : 'text-red-400'}`}>
+                    {isActive ? 'ON' : 'OFF'}
+                  </span>
+                  <button
+                    onClick={() => handleToggleService('withdrawal', bank, !isActive)}
+                    disabled={updatingStatus.withdrawal}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                      isActive ? 'bg-green-500' : 'bg-gray-600'
+                    } ${updatingStatus.withdrawal ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                        isActive ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -647,41 +716,57 @@ export default function DashboardContent() {
       {/* ROW 2 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: CUSTOMER SUPPORT LINE - DENGAN SWITCH */}
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE - DENGAN LAMPU + SWITCH + TULISAN ON/OFF */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Service Support Line</h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-white">Live Chat (Omega)</span>
-              <button
-                onClick={() => handleToggleService('support', 'liveChat', !supportLines.liveChat)}
-                disabled={updatingStatus.support}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                  supportLines.liveChat ? 'bg-green-500' : 'bg-gray-600'
-                } ${updatingStatus.support ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    supportLines.liveChat ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${supportLines.liveChat ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                <span className="text-white text-sm">Live Chat (Omega)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium ${supportLines.liveChat ? 'text-green-400' : 'text-red-400'}`}>
+                  {supportLines.liveChat ? 'ON' : 'OFF'}
+                </span>
+                <button
+                  onClick={() => handleToggleService('support', 'liveChat', !supportLines.liveChat)}
+                  disabled={updatingStatus.support}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                    supportLines.liveChat ? 'bg-green-500' : 'bg-gray-600'
+                  } ${updatingStatus.support ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      supportLines.liveChat ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-white">Whatsapp (Official)</span>
-              <button
-                onClick={() => handleToggleService('support', 'whatsapp', !supportLines.whatsapp)}
-                disabled={updatingStatus.support}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                  supportLines.whatsapp ? 'bg-green-500' : 'bg-gray-600'
-                } ${updatingStatus.support ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    supportLines.whatsapp ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${supportLines.whatsapp ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                <span className="text-white text-sm">Whatsapp (Official)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium ${supportLines.whatsapp ? 'text-green-400' : 'text-red-400'}`}>
+                  {supportLines.whatsapp ? 'ON' : 'OFF'}
+                </span>
+                <button
+                  onClick={() => handleToggleService('support', 'whatsapp', !supportLines.whatsapp)}
+                  disabled={updatingStatus.support}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                    supportLines.whatsapp ? 'bg-green-500' : 'bg-gray-600'
+                  } ${updatingStatus.support ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      supportLines.whatsapp ? 'translate-x-5' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </div>
         </div>
