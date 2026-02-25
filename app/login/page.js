@@ -224,7 +224,7 @@ export default function LoginPage() {
         </form>
         
         <div style={{ marginTop: "30px", color: "#6699ff", fontSize: "12px" }}>
-          © 2025 Database Operational v3.0
+          © 2026 Alaya-Vijnana System v3.0
         </div>
       </div>
     </div>
