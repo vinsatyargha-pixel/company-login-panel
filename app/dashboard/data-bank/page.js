@@ -111,10 +111,32 @@ export default function DataBankPage() {
     }
   };
 
-  const handleAccountClick = (bank) => {
+  const handleAccountClick = async (bank) => {
+  try {
+    console.log('🔍 Fetching credentials for:', bank.account_number);
+    
+    const { data, error } = await supabase
+      .from('bank_credentials')
+      .select('*')
+      .eq('account_number', bank.account_number);
+    
+    if (error) throw error;
+    
+    console.log('✅ Credentials found:', data);
+    
+    // GABUNGIN DATA BANK + CREDENTIALS
+    setSelectedBank({
+      ...bank,
+      credentials: data?.[0] || null
+    });
+    setShowPopup(true);
+  } catch (error) {
+    console.error('❌ Error fetching credentials:', error);
+    // TETAP TAMPILKAN BANK TANPA CREDENTIALS
     setSelectedBank(bank);
     setShowPopup(true);
-  };
+  }
+};
 
   const stats = {
     total: banks.length,
@@ -374,29 +396,88 @@ export default function DataBankPage() {
       </div>
 
       {/* POPUP INFO LOGIN */}
-      {showPopup && selectedBank && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#1A2F4A] border-2 border-[#FFD700] rounded-xl p-6 max-w-2xl w-full mx-4 shadow-[0_0_50px_#FFD700] max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#1A2F4A] z-10 pb-2">
-              <h3 className="text-xl font-bold text-[#FFD700]">🔐 Info Login {selectedBank.bank}</h3>
-              <button onClick={() => setShowPopup(false)} className="text-[#A7D8FF] hover:text-white text-2xl">×</button>
-            </div>
-            
-            <div className="bg-[#0B1A33] p-4 rounded-lg mb-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><div className="text-[#A7D8FF] text-xs">Bank</div><div className="text-white font-bold">{selectedBank.bank}</div></div>
-                <div><div className="text-[#A7D8FF] text-xs">Account Name</div><div className="text-white font-bold">{selectedBank.account_name}</div></div>
-                <div><div className="text-[#A7D8FF] text-xs">Account Number</div><div className="text-white font-mono">{selectedBank.account_number}</div></div>
-                <div><div className="text-[#A7D8FF] text-xs">Role</div><div className={`px-2 py-1 inline-block rounded-full text-xs ${selectedBank.role?.toUpperCase() === 'DEPOSIT' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>{selectedBank.role?.toUpperCase() === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}</div></div>
+{showPopup && selectedBank && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-[#1A2F4A] border-2 border-[#FFD700] rounded-xl p-6 max-w-2xl w-full mx-4 shadow-[0_0_50px_#FFD700] max-h-[80vh] overflow-y-auto">
+      <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#1A2F4A] z-10 pb-2">
+        <h3 className="text-xl font-bold text-[#FFD700]">🔐 Info Login {selectedBank.bank}</h3>
+        <button onClick={() => setShowPopup(false)} className="text-[#A7D8FF] hover:text-white text-2xl">×</button>
+      </div>
+      
+      {/* Data Utama */}
+      <div className="bg-[#0B1A33] p-4 rounded-lg mb-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div><div className="text-[#A7D8FF] text-xs">Bank</div><div className="text-white font-bold">{selectedBank.bank}</div></div>
+          <div><div className="text-[#A7D8FF] text-xs">Account Name</div><div className="text-white font-bold">{selectedBank.account_name}</div></div>
+          <div><div className="text-[#A7D8FF] text-xs">Account Number</div><div className="text-white font-mono">{selectedBank.account_number}</div></div>
+          <div><div className="text-[#A7D8FF] text-xs">Role</div><div className={`px-2 py-1 inline-block rounded-full text-xs ${selectedBank.role?.toUpperCase() === 'DEPOSIT' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>{selectedBank.role?.toUpperCase() === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}</div></div>
+        </div>
+      </div>
+
+      {/* Login Info */}
+      {selectedBank.credentials && (
+        <div className="space-y-4">
+          {/* IBANK */}
+          {(selectedBank.credentials.user_id_1 || selectedBank.credentials.pin_1) && (
+            <div className="bg-[#0B1A33] p-4 rounded-lg">
+              <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🏦 IBANK</h4>
+              <div className="grid grid-cols-2 gap-3">
+                {selectedBank.credentials.user_id_1 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_1}</div></div>}
+                {selectedBank.credentials.pin_1 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_1}</div></div>}
               </div>
             </div>
-            
-            <button onClick={() => setShowPopup(false)} className="mt-6 w-full bg-[#FFD700] text-[#0B1A33] py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 transition-colors">
-              Tutup
-            </button>
-          </div>
+          )}
+
+          {/* MYBCA */}
+          {(selectedBank.credentials.user_id_2 || selectedBank.credentials.pass_1 || selectedBank.credentials.pin_2) && (
+            <div className="bg-[#0B1A33] p-4 rounded-lg">
+              <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">💳 MYBCA</h4>
+              <div className="grid grid-cols-2 gap-3">
+                {selectedBank.credentials.user_id_2 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_2}</div></div>}
+                {selectedBank.credentials.pass_1 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.credentials.pass_1}</div></div>}
+                {selectedBank.credentials.pin_2 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_2}</div></div>}
+              </div>
+            </div>
+          )}
+
+          {/* MBANK */}
+          {(selectedBank.credentials.user_id_3 || selectedBank.credentials.pass_2 || selectedBank.credentials.pin_3) && (
+            <div className="bg-[#0B1A33] p-4 rounded-lg">
+              <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">📱 MBANK</h4>
+              <div className="grid grid-cols-2 gap-3">
+                {selectedBank.credentials.user_id_3 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_3}</div></div>}
+                {selectedBank.credentials.pass_2 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.credentials.pass_2}</div></div>}
+                {selectedBank.credentials.pin_3 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_3}</div></div>}
+              </div>
+            </div>
+          )}
+
+          {/* Transaksi */}
+          {(selectedBank.credentials.pass_transaksi || selectedBank.credentials.agent || selectedBank.credentials.pin_token) && (
+            <div className="bg-[#0B1A33] p-4 rounded-lg">
+              <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔑 Transaksi</h4>
+              <div className="grid grid-cols-2 gap-3">
+                {selectedBank.credentials.pass_transaksi && <div><div className="text-[#A7D8FF] text-xs">Pass Transaksi</div><div className="text-white font-mono">{selectedBank.credentials.pass_transaksi}</div></div>}
+                {selectedBank.credentials.agent && <div><div className="text-[#A7D8FF] text-xs">Agent</div><div className="text-white font-mono">{selectedBank.credentials.agent}</div></div>}
+                {selectedBank.credentials.pin_token && <div><div className="text-[#A7D8FF] text-xs">PIN Token</div><div className="text-white font-mono">{selectedBank.credentials.pin_token}</div></div>}
+              </div>
+            </div>
+          )}
         </div>
       )}
+      
+      {!selectedBank.credentials && (
+        <div className="bg-[#0B1A33] p-4 rounded-lg text-center text-[#A7D8FF]">
+          Tidak ada data login untuk bank ini
+        </div>
+      )}
+      
+      <button onClick={() => setShowPopup(false)} className="mt-6 w-full bg-[#FFD700] text-[#0B1A33] py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 transition-colors">
+        Tutup
+      </button>
+    </div>
+  </div>
+)}
 
       {/* Footer */}
       <div className="mt-4 text-xs text-[#A7D8FF] flex items-center justify-end gap-4 flex-wrap">
