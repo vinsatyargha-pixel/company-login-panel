@@ -565,17 +565,17 @@ export default function DashboardContent() {
       bankAccounts
         .filter(bank => 
           bank.role?.toUpperCase() === 'DEPOSIT' && 
-          bank.status === 'AKTIF'
+          bank.display_used === 'YES'
         )
         .map((bank) => (
           <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
+                {/* LAMPU ON */}
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 
                 {/* GAMBAR BANK + NAMA BANK */}
                 <div className="flex items-center gap-2">
-                  {/* Gambar Bank */}
                   {bank.bank?.toLowerCase().includes('bca') && (
                     <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
                   )}
@@ -588,27 +588,25 @@ export default function DashboardContent() {
                   {bank.bank?.toLowerCase().includes('mandiri') && (
                     <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
                   )}
-                  
                   <span className="text-white text-sm font-medium">{bank.bank}</span>
                 </div>
               </div>
               
+              {/* NAMA PEMILIK + NO REKENING */}
               <span className="text-[#A7D8FF] text-xs ml-6">
                 {bank.account_name} {bank.account_number}
               </span>
             </div>
             
+            {/* TULISAN ON */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-green-400">ON</span>
-              <button
-                disabled
-                className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
-              >
-                <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
-              </button>
             </div>
           </div>
         ))
+    )}
+    {bankAccounts.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES').length === 0 && !loadingBanks && (
+      <div className="text-center text-[#A7D8FF] py-4">Tidak ada deposit method</div>
     )}
   </div>
 </div>
@@ -623,17 +621,17 @@ export default function DashboardContent() {
       bankAccounts
         .filter(bank => 
           bank.role?.toUpperCase() === 'WITHDRAW' && 
-          bank.status === 'AKTIF'
+          bank.display_used === 'YES'
         )
         .map((bank) => (
           <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
+                {/* LAMPU ON */}
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 
                 {/* GAMBAR BANK + NAMA BANK */}
                 <div className="flex items-center gap-2">
-                  {/* Gambar Bank */}
                   {bank.bank?.toLowerCase().includes('bca') && (
                     <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
                   )}
@@ -646,27 +644,25 @@ export default function DashboardContent() {
                   {bank.bank?.toLowerCase().includes('mandiri') && (
                     <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
                   )}
-                  
                   <span className="text-white text-sm font-medium">{bank.bank}</span>
                 </div>
               </div>
               
+              {/* NAMA PEMILIK + NO REKENING */}
               <span className="text-[#A7D8FF] text-xs ml-6">
                 {bank.account_name} {bank.account_number}
               </span>
             </div>
             
+            {/* TULISAN ON */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-green-400">ON</span>
-              <button
-                disabled
-                className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
-              >
-                <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
-              </button>
             </div>
           </div>
         ))
+    )}
+    {bankAccounts.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES').length === 0 && !loadingBanks && (
+      <div className="text-center text-[#A7D8FF] py-4">Tidak ada withdrawal method</div>
     )}
   </div>
 </div>
