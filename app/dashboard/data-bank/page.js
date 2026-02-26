@@ -319,23 +319,22 @@ export default function DataBankPage() {
                     </td>
                     
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        {/* Gambar Bank */}
-                        {bank.bank?.toLowerCase().includes('bca') && (
-                          <img src="/images/bca.png" alt="BCA" className="h-5 w-auto object-contain" />
-                        )}
-                        {bank.bank?.toLowerCase().includes('bni') && (
-                          <img src="/images/bni.png" alt="BNI" className="h-5 w-auto object-contain" />
-                        )}
-                        {bank.bank?.toLowerCase().includes('bri') && (
-                          <img src="/images/bri.png" alt="BRI" className="h-5 w-auto object-contain" />
-                        )}
-                        {bank.bank?.toLowerCase().includes('mandiri') && (
-                          <img src="/images/mandiri.png" alt="Mandiri" className="h-5 w-auto object-contain" />
-                        )}
-                        <span className="text-white font-medium">{bank.bank}</span>
-                      </div>
-                    </td>
+  <div className="flex items-center gap-2">
+    {bank.display_used === 'YES' && (
+      <>
+        <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">Display</span>
+        <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">Used</span>
+      </>
+    )}
+    {bank.display_used === 'NO' && (
+      <span className="px-2 py-0.5 bg-gray-500/20 text-gray-400 rounded-full text-xs">No</span>
+    )}
+    {bank.display_used === 'TAKEDOWN' && (
+      <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded-full text-xs">Takedown</span>
+    )}
+    {!bank.display_used && <span className="text-[#A7D8FF] text-xs">-</span>}
+  </div>
+</td>
                     
                     <td className="py-3 px-4 text-white">{bank.account_name || '-'}</td>
                     
