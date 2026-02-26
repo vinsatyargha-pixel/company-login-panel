@@ -46,13 +46,17 @@ export async function POST() {
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // TENTUKAN STATUS DARI KOLOM Z (index 25)
+      // ===========================================
+      // STATUS DARI KOLOM Z (index 25)
+      // ===========================================
       let status = true; // default active
       if (values[25]?.toUpperCase() === 'TAKEDOWN') {
         status = false;
       }
       
-      // TENTUKAN USED - HANYA YES KALAU STATUS ACTIVE
+      // ===========================================
+      // USED - HANYA YES KALAU STATUS ACTIVE
+      // ===========================================
       let used = false;
       if (status && values[9]?.toLowerCase() === 'yes') { // Kolom J: Used
         used = true;
