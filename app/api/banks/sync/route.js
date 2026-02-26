@@ -16,62 +16,51 @@ export async function POST() {
     
     // 3. PARSE CSV
     const lines = csvText.split('\n').filter(line => line.trim());
+    console.log(`Total baris: ${lines.length}`);
     
-    // 4. DAFTAR BANK YANG VALID
-    const VALID_BANKS = ['BCA', 'BNI', 'BRI', 'MANDIRI', 'DANA', 'OVO', 'GOPAY', 'LINKAJA', 'SHOPEEPAY'];
-    
+    // 4. SKIP HEADER (baris pertama)
     const banks = [];
     
-    // Mulai dari baris ke-2 (skip header)
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       
-      // CEK APAKAH INI DATA BANK VALID
-      const bankName = values[0]?.toUpperCase();
+      // CEK APAKAH INI DATA BANK VALID (minimal 4 kolom)
+      if (values.length < 4) continue;
       
-      // SKIP KALO BUKAN BANK YANG DIKENAL
-      if (!VALID_BANKS.includes(bankName)) {
-        console.log('⏭️ Skip:', bankName, '- bukan data bank');
-        continue;
-      }
+      const bankName = values[2]?.toUpperCase(); // Kolom C: Nama Bank
+      const accountNumber = values[3]?.replace(/\s/g, ''); // Kolom D: No Rekening
+      const accountName = values[4]; // Kolom E: Nama Pemilik
+      const role = values[5]?.toLowerCase(); // Kolom F: Role (Deposit/Withdrawal)
+      const typeBank = values[6]; // Kolom G: Type Bank
+      const masaAktif = values[10]; // Kolom K: Masa Aktif
       
-      // CEK APAKAH NOMOR REKENING VALID (ANGKA)
-      const accountNumber = values[2]?.replace(/\s/g, '');
-      if (!accountNumber || !/^\d+$/.test(accountNumber)) {
-        console.log('⏭️ Skip:', bankName, '- nomor rekening tidak valid');
-        continue;
-      }
+      // VALIDASI: harus ada bank, nomor rekening, dan nama
+      if (!bankName || !accountNumber || !accountName) continue;
       
-      // CEK APAKAH NAMA PEMILIK VALID (TIDAK KOSONG)
-      const accountName = values[1];
-      if (!accountName || accountName.length < 3) {
-        console.log('⏭️ Skip:', bankName, '- nama pemilik tidak valid');
-        continue;
-      }
+      // VALIDASI: nomor rekening harus angka
+      if (!/^\d+$/.test(accountNumber)) continue;
       
       // TENTUKAN TYPE
       let type = 'both';
-      if (values[3]?.toLowerCase().includes('deposit')) {
-        type = 'deposit';
-      } else if (values[3]?.toLowerCase().includes('withdrawal')) {
-        type = 'withdrawal';
-      }
+      if (role?.includes('deposit')) type = 'deposit';
+      else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // BUAT OBJECT BANK
-      const bank = {
-        bank: values[0] || '',
-        account_name: values[1] || '',
-        account_number: values[2] || '',
+      // CEK DISPLAY DAN USED (kolom I dan J)
+      const display = values[8]?.toLowerCase() === 'yes' ? true : false;
+      const used = values[9]?.toLowerCase() === 'yes' ? true : false;
+      
+      banks.push({
+        bank: bankName,
+        account_name: accountName,
+        account_number: accountNumber,
         type: type,
-        type_bank: values[4] || '',
-        display: values[5]?.toLowerCase() === 'display' ? true : false,
-        used: values[6]?.toLowerCase() === 'used' ? true : false,
-        masa_aktif: values[7] || null,
+        type_bank: typeBank || '',
+        display: display,
+        used: used,
+        masa_aktif: masaAktif || null,
         status: true,
         last_sync_at: new Date().toISOString()
-      };
-      
-      banks.push(bank);
+      });
     }
     
     console.log(`✅ Data valid: ${banks.length} bank`);
@@ -91,8 +80,7 @@ export async function POST() {
     return NextResponse.json({ 
       success: true, 
       message: `Sync berhasil! ${banks.length} bank diupdate`,
-      total: banks.length,
-      skipped: lines.length - 1 - banks.length
+      total: banks.length
     });
     
   } catch (error) {
