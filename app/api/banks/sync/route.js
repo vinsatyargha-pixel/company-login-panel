@@ -14,83 +14,50 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    const lines = csvText.split('\n').filter(line => line.trim());
+    // TAMPILKAN 3 BARIS PERTAMA CSV
+    const lines = csvText.split('\n');
+    console.log('📄 Preview CSV (3 baris pertama):');
+    for (let i = 0; i < 3; i++) {
+      if (lines[i]) console.log(`Baris ${i}:`, lines[i].substring(0, 100));
+    }
+    
     console.log(`📊 Total baris: ${lines.length}`);
     
-    const banks = [];
-    
-    for (let i = 1; i <= 8; i++) {
-      if (i >= lines.length) continue;
+    // CEK INDEX KOLOM DULU
+    if (lines.length > 0) {
+      const header = lines[0].split(',').map(h => h.trim());
+      console.log('📋 Header kolom:', header);
       
-      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-      if (values.length < 4) continue;
-      
-      const bankName = values[2]?.toUpperCase();
-      const accountNumber = values[3]?.replace(/\s/g, '');
-      const accountName = values[4];
-      const role = values[5]?.toLowerCase();
-      const typeBank = values[6];
-      const masaAktif = values[10];
-      const display = values[8]?.toLowerCase() === 'yes';
-      const used = values[9]?.toLowerCase() === 'yes';
-      const statusKolom = values[25]?.toUpperCase();
-      
-      console.log(`🔍 Baris ${i}: ${bankName} - ${accountName} - No: ${accountNumber}`);
-      
-      if (!accountNumber || !/^\d+$/.test(accountNumber)) {
-        console.log(`   ⛔ Skip: nomor rekening tidak valid`);
-        continue;
-      }
-      
-      let type = 'both';
-      if (role?.includes('deposit')) type = 'deposit';
-      else if (role?.includes('withdrawal')) type = 'withdrawal';
-      
-      const isActive = statusKolom !== 'TAKEDOWN';
-      
-      banks.push({
-        bank: bankName || '',
-        account_name: accountName || '',
-        account_number: accountNumber,
-        type: type,
-        type_bank: typeBank || '',
-        display: isActive ? display : false,
-        used: isActive ? used : false,
-        masa_aktif: masaAktif || null,
-        status: isActive,
-        last_sync_at: new Date().toISOString()
+      // CEK INDEX SETIAP KOLOM
+      header.forEach((h, idx) => {
+        if (h.toLowerCase().includes('bank')) console.log(`🧩 Kolom BANK mungkin index: ${idx}`);
+        if (h.toLowerCase().includes('no')) console.log(`🧩 Kolom NO REK mungkin index: ${idx}`);
+        if (h.toLowerCase().includes('nama')) console.log(`🧩 Kolom NAMA mungkin index: ${idx}`);
+        if (h.toLowerCase().includes('status')) console.log(`🧩 Kolom STATUS mungkin index: ${idx}`);
       });
     }
     
-    console.log(`✅ Data valid: ${banks.length} bank`);
-    console.log('📦 Sample bank:', banks[0]);
+    const banks = [];
     
-    // HAPUS DATA LAMA
-    console.log('🗑️ Menghapus data lama...');
-    await supabase.from('bank_accounts').delete().neq('id', 0);
-    
-    // INSERT DATA BARU
-    if (banks.length > 0) {
-      console.log('💾 Inserting banks...');
-      const { data, error } = await supabase.from('bank_accounts').insert(banks).select();
+    // PROSES SEMUA BARIS DULU UNTUK DEBUG
+    for (let i = 1; i < Math.min(10, lines.length); i++) {
+      if (!lines[i].trim()) continue;
       
-      if (error) {
-        console.error('❌ Insert error:', error);
-        throw error;
-      }
-      
-      console.log(`✅ Inserted: ${data?.length || 0} banks`);
-    } else {
-      console.log('⚠️ Tidak ada data valid untuk diinsert');
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Tidak ada data valid'
-      }, { status: 400 });
+      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      console.log(`\n🔍 Baris ${i}:`);
+      console.log(`   Jumlah kolom: ${values.length}`);
+      console.log(`   Kolom 0: "${values[0]}"`);
+      console.log(`   Kolom 1: "${values[1]}"`);
+      console.log(`   Kolom 2: "${values[2]}"`);
+      console.log(`   Kolom 3: "${values[3]}"`);
+      console.log(`   Kolom 4: "${values[4]}"`);
+      console.log(`   Kolom 25: "${values[25]}" (jika ada)`);
     }
     
     return NextResponse.json({ 
       success: true, 
-      message: `Sync berhasil! ${banks.length} bank diupdate`
+      message: 'Debug mode - lihat console log',
+      totalBaris: lines.length
     });
     
   } catch (error) {
