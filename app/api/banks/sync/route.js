@@ -14,46 +14,42 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    const lines = csvText.split('\n').filter(line => line.trim());
-    console.log(`📊 Total baris: ${lines.length}`);
+    // 3. PARSE CSV
+    const lines = csvText.split('\n').filter(line => line.trim() && !line.startsWith(',,,,'));
+    console.log(`📊 Total baris dengan data: ${lines.length}`);
     
+    // 4. SKIP HEADER (baris pertama) DAN PROSES 7 BARIS DATA
     const banks = [];
     
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       
-      if (values.length < 4) continue;
-      
-      const bankName = values[2]?.toUpperCase();
+      // CEK APAKAH INI DATA BANK VALID (harus ada nomor rekening)
       const accountNumber = values[3]?.replace(/\s/g, '');
-      const accountName = values[4];
-      const role = values[5]?.toLowerCase();
-      const typeBank = values[6];
-      const masaAktif = values[10];
-      const display = values[8]?.toLowerCase() === 'yes';
-      const used = values[9]?.toLowerCase() === 'yes';
-      const statusKolom = values[25]?.toUpperCase();
+      if (!accountNumber || accountNumber.length < 5) continue;
       
-      // LOG UNTUK DEBUG
-      console.log(`🔍 Baris ${i}:`);
-      console.log(`   Bank: ${bankName}`);
-      console.log(`   Kolom Z: "${values[25]}"`);
-      console.log(`   Status Kolom: "${statusKolom}"`);
+      const bankName = values[2]?.toUpperCase(); // Kolom C: Nama Bank
+      const accountName = values[4]; // Kolom E: Nama Pemilik
+      const role = values[5]?.toLowerCase(); // Kolom F: Role
+      const typeBank = values[6]; // Kolom G: Type Bank
+      const masaAktif = values[10]; // Kolom K: Masa Aktif
+      const display = values[8]?.toLowerCase() === 'yes'; // Kolom I
+      const used = values[9]?.toLowerCase() === 'yes'; // Kolom J
+      const statusKolom = values[25]?.toUpperCase(); // Kolom Z
       
-      if (!bankName || !accountNumber || !accountName) continue;
-      if (!/^\d+$/.test(accountNumber)) continue;
+      console.log(`🔍 Bank: ${bankName}, Status: ${statusKolom}`);
       
+      // TENTUKAN TYPE
       let type = 'both';
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
+      // TENTUKAN STATUS (AKTIF/TAKEDOWN)
       const isActive = statusKolom !== 'TAKEDOWN';
       
-      console.log(`   isActive: ${isActive}`);
-      
       banks.push({
-        bank: bankName,
-        account_name: accountName,
+        bank: bankName || '',
+        account_name: accountName || '',
         account_number: accountNumber,
         type: type,
         type_bank: typeBank || '',
@@ -67,14 +63,12 @@ export async function POST() {
     
     console.log(`✅ Data valid: ${banks.length} bank`);
     
+    // 5. HAPUS DATA LAMA & INSERT BARU
     await supabase.from('bank_accounts').delete().neq('id', 0);
     
     if (banks.length > 0) {
       const { error } = await supabase.from('bank_accounts').insert(banks);
-      if (error) {
-        console.error('❌ Insert error:', error);
-        throw error;
-      }
+      if (error) throw error;
     }
     
     return NextResponse.json({ 
