@@ -14,7 +14,7 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    // 3. PARSE CSV - JANGAN FILTER DULU
+    // 3. PARSE CSV
     const lines = csvText.split('\n');
     console.log(`Total baris: ${lines.length}`);
     
@@ -26,7 +26,6 @@ export async function POST() {
       
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       
-      // MAPPING YANG BENAR!
       const bankName = values[0]?.toUpperCase();      // Kolom A: BANK
       const accountName = values[1];                   // Kolom B: NAMA
       const accountNumber = values[2]?.replace(/\s/g, ''); // Kolom C: NO REK
@@ -38,10 +37,7 @@ export async function POST() {
       console.log(`Baris ${i}: ${bankName} - ${accountName} - ${accountNumber} - Status: ${statusKolom}`);
       
       // VALIDASI
-      if (!bankName || !accountNumber || !/^\d+$/.test(accountNumber)) {
-        console.log(`   ⛔ Skip: data tidak valid`);
-        continue;
-      }
+      if (!bankName || !accountNumber || !/^\d+$/.test(accountNumber)) continue;
       
       // TENTUKAN TYPE
       let type = 'both';
@@ -74,13 +70,13 @@ export async function POST() {
       }, { status: 400 });
     }
     
-    // 5. HAPUS DATA LAMA
-    await supabase.from('bank_accounts').delete().neq('id', 0);
-    
-    // 6. INSERT DATA BARU
+    // 5. UPSERT DATA BARU (GANTI INSERT)
     const { error } = await supabase
       .from('bank_accounts')
-      .insert(banks);
+      .upsert(banks, { 
+        onConflict: 'account_number',
+        ignoreDuplicates: false 
+      });
     
     if (error) throw error;
     
