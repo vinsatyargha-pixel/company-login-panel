@@ -14,73 +14,79 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    // 3. PARSE CSV
-    const lines = csvText.split('\n').filter(line => line.trim());
+    // 3. PARSE CSV - JANGAN FILTER DULU
+    const lines = csvText.split('\n');
     console.log(`Total baris: ${lines.length}`);
     
-    // 4. SKIP HEADER (baris pertama)
+    // 4. MULAI DARI BARIS 3 (index 2) SAMPAI 8
     const banks = [];
     
-    for (let i = 1; i < lines.length; i++) {
+    for (let i = 2; i <= 8; i++) {
+      if (!lines[i]?.trim()) continue;
+      
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       
-      // CEK APAKAH INI DATA BANK VALID (minimal 4 kolom)
-      if (values.length < 4) continue;
+      // MAPPING YANG BENAR!
+      const bankName = values[0]?.toUpperCase();      // Kolom A: BANK
+      const accountName = values[1];                   // Kolom B: NAMA
+      const accountNumber = values[2]?.replace(/\s/g, ''); // Kolom C: NO REK
+      const role = values[19]?.toLowerCase();          // Kolom T: DEPOSIT/WITHDRAW
+      const typeBank = values[23];                      // Kolom X: MOBILE/SOFTOKEN
+      const masaAktif = values[21];                     // Kolom V: MASA AKTIF
+      const statusKolom = values[24]?.toUpperCase();    // Kolom Y: STATUS BANK
       
-      const bankName = values[2]?.toUpperCase(); // Kolom C: Nama Bank
-      const accountNumber = values[3]?.replace(/\s/g, ''); // Kolom D: No Rekening
-      const accountName = values[4]; // Kolom E: Nama Pemilik
-      const role = values[5]?.toLowerCase(); // Kolom F: Role (Deposit/Withdrawal)
-      const typeBank = values[6]; // Kolom G: Type Bank
-      const masaAktif = values[10]; // Kolom K: Masa Aktif
+      console.log(`Baris ${i}: ${bankName} - ${accountName} - ${accountNumber} - Status: ${statusKolom}`);
       
-      // VALIDASI: harus ada bank, nomor rekening, dan nama
-      if (!bankName || !accountNumber || !accountName) continue;
-      
-      // VALIDASI: nomor rekening harus angka
-      if (!/^\d+$/.test(accountNumber)) continue;
+      // VALIDASI
+      if (!bankName || !accountNumber || !/^\d+$/.test(accountNumber)) {
+        console.log(`   ⛔ Skip: data tidak valid`);
+        continue;
+      }
       
       // TENTUKAN TYPE
       let type = 'both';
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // CEK DISPLAY DAN USED (kolom I dan J)
-      const display = values[8]?.toLowerCase() === 'yes' ? true : false;
-      const used = values[9]?.toLowerCase() === 'yes' ? true : false;
+      // TENTUKAN STATUS
+      const isActive = statusKolom !== 'TAKEDOWN';
       
       banks.push({
         bank: bankName,
-        account_name: accountName,
+        account_name: accountName || '',
         account_number: accountNumber,
         type: type,
         type_bank: typeBank || '',
-        display: display,
-        used: used,
+        display: false,
+        used: false,
         masa_aktif: masaAktif || null,
-        status: true,
+        status: isActive,
         last_sync_at: new Date().toISOString()
       });
     }
     
     console.log(`✅ Data valid: ${banks.length} bank`);
     
+    if (banks.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Tidak ada data valid'
+      }, { status: 400 });
+    }
+    
     // 5. HAPUS DATA LAMA
     await supabase.from('bank_accounts').delete().neq('id', 0);
     
     // 6. INSERT DATA BARU
-    if (banks.length > 0) {
-      const { error } = await supabase
-        .from('bank_accounts')
-        .insert(banks);
-      
-      if (error) throw error;
-    }
+    const { error } = await supabase
+      .from('bank_accounts')
+      .insert(banks);
+    
+    if (error) throw error;
     
     return NextResponse.json({ 
       success: true, 
-      message: `Sync berhasil! ${banks.length} bank diupdate`,
-      total: banks.length
+      message: `Sync berhasil! ${banks.length} bank diupdate`
     });
     
   } catch (error) {
