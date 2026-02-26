@@ -14,13 +14,12 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    // PARSE CSV
     const lines = csvText.split('\n').filter(line => line.trim());
     console.log(`📊 Total baris: ${lines.length}`);
     
     const banks = [];
     
-    // SKIP HEADER (baris 1), PROSES BARIS 2-8 AJA (DATA BANK)
+    // SKIP HEADER, PROSES BARIS 2-8 AJA
     for (let i = 1; i <= 8; i++) {
       if (i >= lines.length) continue;
       
@@ -37,18 +36,12 @@ export async function POST() {
       const used = values[9]?.toLowerCase() === 'yes'; // Kolom J
       const statusKolom = values[25]?.toUpperCase(); // Kolom Z
       
-      // VALIDASI: harus ada nomor rekening yang valid
-      if (!accountNumber || accountNumber.length < 5) continue;
-      if (!/^\d+$/.test(accountNumber)) continue;
+      if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
       
-      console.log(`🔍 ${bankName} - ${accountName} - Status: ${statusKolom}`);
-      
-      // TENTUKAN TYPE
       let type = 'both';
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // TENTUKAN STATUS (AKTIF = true, TAKEDOWN = false)
       const isActive = statusKolom !== 'TAKEDOWN';
       
       banks.push({
@@ -67,7 +60,6 @@ export async function POST() {
     
     console.log(`✅ Data valid: ${banks.length} bank`);
     
-    // HAPUS DATA LAMA & INSERT BARU
     await supabase.from('bank_accounts').delete().neq('id', 0);
     
     if (banks.length > 0) {
