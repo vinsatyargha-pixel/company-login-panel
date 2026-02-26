@@ -19,24 +19,28 @@ export async function POST() {
     
     const banks = [];
     
-    // SKIP HEADER, PROSES BARIS 2-8 AJA
     for (let i = 1; i <= 8; i++) {
       if (i >= lines.length) continue;
       
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       if (values.length < 4) continue;
       
-      const bankName = values[2]?.toUpperCase(); // Kolom C
-      const accountNumber = values[3]?.replace(/\s/g, ''); // Kolom D
-      const accountName = values[4]; // Kolom E
-      const role = values[5]?.toLowerCase(); // Kolom F
-      const typeBank = values[6]; // Kolom G
-      const masaAktif = values[10]; // Kolom K
-      const display = values[8]?.toLowerCase() === 'yes'; // Kolom I
-      const used = values[9]?.toLowerCase() === 'yes'; // Kolom J
-      const statusKolom = values[25]?.toUpperCase(); // Kolom Z
+      const bankName = values[2]?.toUpperCase();
+      const accountNumber = values[3]?.replace(/\s/g, '');
+      const accountName = values[4];
+      const role = values[5]?.toLowerCase();
+      const typeBank = values[6];
+      const masaAktif = values[10];
+      const display = values[8]?.toLowerCase() === 'yes';
+      const used = values[9]?.toLowerCase() === 'yes';
+      const statusKolom = values[25]?.toUpperCase();
       
-      if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+      console.log(`🔍 Baris ${i}: ${bankName} - ${accountName} - No: ${accountNumber}`);
+      
+      if (!accountNumber || !/^\d+$/.test(accountNumber)) {
+        console.log(`   ⛔ Skip: nomor rekening tidak valid`);
+        continue;
+      }
       
       let type = 'both';
       if (role?.includes('deposit')) type = 'deposit';
@@ -59,12 +63,29 @@ export async function POST() {
     }
     
     console.log(`✅ Data valid: ${banks.length} bank`);
+    console.log('📦 Sample bank:', banks[0]);
     
+    // HAPUS DATA LAMA
+    console.log('🗑️ Menghapus data lama...');
     await supabase.from('bank_accounts').delete().neq('id', 0);
     
+    // INSERT DATA BARU
     if (banks.length > 0) {
-      const { error } = await supabase.from('bank_accounts').insert(banks);
-      if (error) throw error;
+      console.log('💾 Inserting banks...');
+      const { data, error } = await supabase.from('bank_accounts').insert(banks).select();
+      
+      if (error) {
+        console.error('❌ Insert error:', error);
+        throw error;
+      }
+      
+      console.log(`✅ Inserted: ${data?.length || 0} banks`);
+    } else {
+      console.log('⚠️ Tidak ada data valid untuk diinsert');
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Tidak ada data valid'
+      }, { status: 400 });
     }
     
     return NextResponse.json({ 
