@@ -8,23 +8,84 @@ export async function POST() {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
     
-    // INSERT MANUAL 7 BANK
-    const banks = [
-      { bank: 'BNI', account_name: 'ILHAM AL GHIFARI', account_number: '1927737217', type: 'deposit', type_bank: 'MOBILE', masa_aktif: '26-Sep-2026', status: true },
-      { bank: 'BRI', account_name: 'NATHANAEL GEISBERT GERALD', account_number: '114301014315507', type: 'deposit', type_bank: 'MOBILE', masa_aktif: '09-Okt-2026', status: true },
-      { bank: 'BCA', account_name: 'NINING PRIATIN', account_number: '7840462239', type: 'withdrawal', type_bank: 'SOFTOKEN', masa_aktif: '23-Des-2026', status: true },
-      { bank: 'BNI', account_name: 'YUDA AMDANI', account_number: '1984380733', type: 'withdrawal', type_bank: 'MOBILE', masa_aktif: '24-Jan-2027', status: false },
-      { bank: 'BCA', account_name: 'AHMAD GHOZALI', account_number: '7600565065', type: 'deposit', type_bank: 'MOBILE', masa_aktif: '24-Jan-2027', status: true },
-      { bank: 'MANDIRI', account_name: 'RIYAN BASTIAN', account_number: '1630014471844', type: 'deposit', type_bank: 'MOBILE', masa_aktif: '29-Apr-2027', status: true },
-      { bank: 'BNI', account_name: 'HENDRI MAULANA SAPUTRA', account_number: '1909646467', type: 'withdrawal', type_bank: 'MOBILE', masa_aktif: null, status: true }
-    ];
+    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1689175827&single=true&output=csv';
     
-    const { error } = await supabase.from('bank_accounts').insert(banks);
-    if (error) throw error;
+    const response = await fetch(csvUrl);
+    const csvText = await response.text();
     
-    return NextResponse.json({ success: true, message: 'Manual insert berhasil' });
+    const lines = csvText.split('\n').filter(line => line.trim());
+    
+    const banks = [];
+    const credentials = [];
+    
+    // MULAI DARI BARIS 3 (index 2)
+    for (let i = 2; i < lines.length; i++) {
+      if (!lines[i]?.trim()) continue;
+      
+      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      if (values.length < 9) continue;
+      
+      const accountNumber = values[5]?.replace(/\s/g, '');
+      if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+      
+      // DATA BANK (TABLE 1)
+      banks.push({
+        asset: values[0],
+        status: values[1],
+        display_used: values[2],
+        bank: values[3],
+        account_name: values[4],
+        account_number: accountNumber,
+        role: values[6],
+        type_bank: values[7],
+        masa_aktif: values[8],
+        last_sync_at: new Date().toISOString()
+      });
+      
+      // CREDENTIALS (TABLE 2) - SESUAIKAN INDEX DENGAN SHEET LO
+      credentials.push({
+        account_number: accountNumber,
+        user_id_1: values[9] || null,    // USER ID (IBANK)
+        pin_1: values[10] || null,        // PIN (IBANK)
+        user_id_2: values[11] || null,    // USER ID (MYBCA)
+        pass_1: values[12] || null,       // PASS (MYBCA)
+        pin_2: values[13] || null,        // PIN (MYBCA)
+        user_id_3: values[14] || null,    // USER ID (MBANK)
+        pass_2: values[15] || null,       // PASS (MBANK)
+        pin_3: values[16] || null,        // PIN (MBANK)
+        pass_transaksi: values[17] || null, // PASS TRANSAKSI
+        agent: values[18] || null,        // AGENT
+        pin_token: values[19] || null,    // PIN TOKEN
+        hp: values[20] || null,           // HP
+        email: values[21] || null         // EMAIL
+      });
+    }
+    
+    // HAPUS DATA LAMA
+    await supabase.from('bank_accounts').delete().neq('id', 0);
+    await supabase.from('bank_credentials').delete().neq('id', 0);
+    
+    // INSERT DATA BARU
+    if (banks.length > 0) {
+      const { error: bankError } = await supabase.from('bank_accounts').insert(banks);
+      if (bankError) throw bankError;
+    }
+    
+    if (credentials.length > 0) {
+      const { error: credError } = await supabase.from('bank_credentials').insert(credentials);
+      if (credError) throw credError;
+    }
+    
+    return NextResponse.json({ 
+      success: true, 
+      message: `Sync ${banks.length} bank & ${credentials.length} credentials`
+    });
     
   } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('❌ Error:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error.message 
+    }, { status: 500 });
   }
 }
