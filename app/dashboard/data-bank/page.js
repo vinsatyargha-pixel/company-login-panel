@@ -1,37 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import Papa from 'papaparse';
 
 export default function DataBankPage() {
   const [banks, setBanks] = useState([]);
   const [filteredBanks, setFilteredBanks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [syncStatus, setSyncStatus] = useState(null);
-  const [syncResult, setSyncResult] = useState(null);
+  const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   
-  // State untuk popup info login
+  // State untuk popup info login (masih kepake)
   const [selectedBank, setSelectedBank] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
-    fetchBanks();
+    fetchGoogleSheet();
   }, []);
 
   useEffect(() => {
     let filtered = [...banks];
     
-    // Filter berdasarkan tab (all/deposit/withdrawal)
     if (activeTab === 'deposit') {
       filtered = filtered.filter(b => b.role?.toUpperCase() === 'DEPOSIT');
     } else if (activeTab === 'withdrawal') {
       filtered = filtered.filter(b => b.role?.toUpperCase() === 'WITHDRAW');
     }
     
-    // Filter berdasarkan status (all/active/takedown)
     if (statusFilter === 'active') {
       filtered = filtered.filter(b => b.status === 'AKTIF');
     } else if (statusFilter === 'takedown') {
@@ -41,99 +38,54 @@ export default function DataBankPage() {
     setFilteredBanks(filtered);
   }, [activeTab, statusFilter, banks]);
 
-  const fetchBanks = async () => {
+  const fetchGoogleSheet = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('bank_accounts')
-        .select('*')
-        .order('bank', { ascending: true });
-
-      if (error) throw error;
-      setBanks(data || []);
-    } catch (error) {
-      console.error('Error fetching banks:', error);
+      setError(null);
+      
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1689175827&single=true&output=csv';
+      
+      const response = await fetch(csvUrl);
+      const csvText = await response.text();
+      
+      // Parse CSV
+      const { data } = Papa.parse(csvText, { header: false });
+      
+      // Skip 2 baris header, ambil data dari baris 3
+      const bankData = [];
+      for (let i = 2; i < data.length; i++) {
+        const row = data[i];
+        if (!row || row.length < 5) continue;
+        
+        const accountNumber = row[5]?.replace(/\s/g, '');
+        if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+        
+        bankData.push({
+          id: i,
+          asset: row[0] || 'LUCK77',
+          status: row[1]?.toUpperCase() || 'AKTIF',
+          display_used: row[2]?.toUpperCase() || '',
+          bank: row[3] || '',
+          account_name: row[4] || '',
+          account_number: accountNumber,
+          role: row[6]?.toUpperCase() || 'BOTH',
+          type_bank: row[7] || '',
+          masa_aktif: row[8] || null
+        });
+      }
+      
+      setBanks(bankData);
+    } catch (err) {
+      console.error('Error fetching Google Sheet:', err);
+      setError('Gagal mengambil data dari spreadsheet');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSync = async () => {
-    try {
-      setSyncStatus('syncing');
-      setSyncResult(null);
-      
-      const response = await fetch('/api/banks/sync', { method: 'POST' });
-      const result = await response.json();
-      
-      if (result.success) {
-        setSyncStatus('success');
-        setSyncResult(result);
-        fetchBanks();
-        setTimeout(() => setSyncStatus(null), 3000);
-      } else {
-        setSyncStatus('error');
-      }
-    } catch (error) {
-      console.error('Sync error:', error);
-      setSyncStatus('error');
-    }
-  };
-
-  const handleStatusToggle = async (id, currentStatus) => {
-    try {
-      const newStatus = currentStatus === 'AKTIF' ? 'TAKEDOWN' : 'AKTIF';
-      const { error } = await supabase
-        .from('bank_accounts')
-        .update({ status: newStatus })
-        .eq('id', id);
-
-      if (error) throw error;
-      fetchBanks();
-    } catch (error) {
-      console.error('Error updating status:', error);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!confirm('Yakin ingin menghapus data bank ini?')) return;
-    
-    try {
-      const { error } = await supabase
-        .from('bank_accounts')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      fetchBanks();
-    } catch (error) {
-      console.error('Error deleting bank:', error);
-    }
-  };
-
-  const handleAccountClick = async (bank) => {
-    try {
-      console.log('🔍 Fetching credentials for:', bank.account_number);
-      
-      const { data, error } = await supabase
-        .from('bank_credentials')
-        .select('*')
-        .eq('account_number', bank.account_number);
-      
-      if (error) throw error;
-      
-      console.log('✅ Credentials found:', data);
-      
-      setSelectedBank({
-        ...bank,
-        credentials: data?.[0] || null
-      });
-      setShowPopup(true);
-    } catch (error) {
-      console.error('❌ Error fetching credentials:', error);
-      setSelectedBank(bank);
-      setShowPopup(true);
-    }
+  const handleAccountClick = (bank) => {
+    setSelectedBank(bank);
+    setShowPopup(true);
   };
 
   const stats = {
@@ -145,7 +97,7 @@ export default function DataBankPage() {
     depositActive: banks.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.status === 'AKTIF').length,
     withdrawalActive: banks.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.status === 'AKTIF').length,
     displayYes: banks.filter(b => b.display_used === 'YES').length,
-    usedYes: banks.filter(b => b.display_used === 'YES').length
+    usedYes: banks.filter(b => b.display_used === 'YES' && b.role === 'WITHDRAW').length
   };
 
   return (
@@ -156,36 +108,27 @@ export default function DataBankPage() {
           <h1 className="text-3xl font-bold text-[#FFD700] flex items-center gap-2">
             <span>🏦</span> Account Bank Management
           </h1>
-          <p className="text-[#A7D8FF] mt-1">Kelola data bank dari spreadsheet dan dashboard</p>
+          <p className="text-[#A7D8FF] mt-1">Data langsung dari Google Sheets (real-time)</p>
         </div>
-        <Link href="/dashboard" className="px-4 py-2 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg text-[#FFD700] hover:bg-[#2A3F5A] transition-all flex items-center gap-2">
-          <span>←</span> Back to Dashboard
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchGoogleSheet}
+            className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded-lg font-medium hover:bg-[#FFD700]/80 transition-all flex items-center gap-2"
+          >
+            <span>🔄</span> Refresh Data
+          </button>
+          <Link href="/dashboard" className="px-4 py-2 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg text-[#FFD700] hover:bg-[#2A3F5A] transition-all flex items-center gap-2">
+            <span>←</span> Back to Dashboard
+          </Link>
+        </div>
       </div>
 
-      {/* Sync Panel */}
-      <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4 mb-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-[#FFD700]">🔄</span>
-              <span className="text-white font-medium">Sinkronisasi Google Sheets</span>
-            </div>
-            <span className="text-xs bg-[#0B1A33] px-3 py-1 rounded-full text-[#A7D8FF]">
-              Terakhir sync: {banks[0]?.last_sync_at ? new Date(banks[0].last_sync_at).toLocaleString('id-ID') : 'Belum pernah'}
-            </span>
-          </div>
-          <button 
-            onClick={handleSync} 
-            disabled={syncStatus === 'syncing'} 
-            className={`px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-all ${syncStatus === 'syncing' ? 'bg-gray-500 cursor-not-allowed' : 'bg-[#FFD700] text-[#0B1A33] hover:bg-[#FFD700]/80'}`}
-          >
-            {syncStatus === 'syncing' ? <><span className="animate-spin">⏳</span> Menyinkronkan...</> : <><span>🔄</span> Sync Now</>}
-          </button>
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 mb-6 text-red-400">
+          {error}
         </div>
-        {syncStatus === 'success' && <div className="mt-2 text-sm text-green-400 flex items-center gap-2"><span>✅</span> Sinkronisasi berhasil! {syncResult?.message}</div>}
-        {syncStatus === 'error' && <div className="mt-2 text-sm text-red-400 flex items-center gap-2"><span>❌</span> Gagal sync. Coba lagi.</div>}
-      </div>
+      )}
 
       {/* Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
@@ -266,7 +209,7 @@ export default function DataBankPage() {
         </button>
       </div>
 
-      {/* Tabel Bank */}
+      {/* Tabel Bank - TANPA TOMBOL ACTION */}
       <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -280,14 +223,13 @@ export default function DataBankPage() {
                 <th className="text-left py-3 px-4 text-[#FFD700]">Role</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Type Bank</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Masa Aktif</th>
-                <th className="text-left py-3 px-4 text-[#FFD700]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="9" className="text-center py-8 text-[#A7D8FF]"><span className="animate-spin inline-block mr-2">⏳</span>Loading data bank...</td></tr>
+                <tr><td colSpan="8" className="text-center py-8 text-[#A7D8FF]"><span className="animate-spin inline-block mr-2">⏳</span>Loading data dari Google Sheets...</td></tr>
               ) : filteredBanks.length === 0 ? (
-                <tr><td colSpan="9" className="text-center py-8 text-[#A7D8FF]">{banks.length === 0 ? 'Belum ada data bank. Klik Sync Now untuk mengambil dari spreadsheet.' : 'Tidak ada bank dengan filter ini.'}</td></tr>
+                <tr><td colSpan="8" className="text-center py-8 text-[#A7D8FF]">Tidak ada data bank.</td></tr>
               ) : (
                 filteredBanks.map((bank) => (
                   <tr key={bank.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
@@ -299,13 +241,13 @@ export default function DataBankPage() {
                       </span>
                     </td>
                     
-                    {/* Display/Used - YANG BENAR */}
+                    {/* Display/Used */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
-                        {bank.role === 'DEPOSIT' && bank.display_used === 'YES' && (
+                        {bank.display_used === 'YES' && bank.role === 'DEPOSIT' && (
                           <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">Display</span>
                         )}
-                        {bank.role === 'WITHDRAW' && bank.display_used === 'YES' && (
+                        {bank.display_used === 'YES' && bank.role === 'WITHDRAW' && (
                           <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">Used</span>
                         )}
                         {bank.display_used === 'NO' && (
@@ -367,26 +309,6 @@ export default function DataBankPage() {
                     </td>
                     
                     <td className="py-3 px-4 text-[#A7D8FF] text-sm">{bank.masa_aktif || '-'}</td>
-                    
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => handleStatusToggle(bank.id, bank.status)} 
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            bank.status === 'AKTIF' ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                          }`}
-                        >
-                          {bank.status === 'AKTIF' ? '→ Takedown' : '→ Active'}
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(bank.id)} 
-                          className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30" 
-                          title="Hapus"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))
               )}
@@ -395,7 +317,7 @@ export default function DataBankPage() {
         </div>
       </div>
 
-      {/* POPUP INFO LOGIN */}
+      {/* POPUP INFO LOGIN - TANPA PERUBAHAN */}
       {showPopup && selectedBank && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] border-2 border-[#FFD700] rounded-xl p-6 max-w-2xl w-full mx-4 shadow-[0_0_50px_#FFD700] max-h-[80vh] overflow-y-auto">
@@ -404,7 +326,6 @@ export default function DataBankPage() {
               <button onClick={() => setShowPopup(false)} className="text-[#A7D8FF] hover:text-white text-2xl">×</button>
             </div>
             
-            {/* Data Utama */}
             <div className="bg-[#0B1A33] p-4 rounded-lg mb-4">
               <div className="grid grid-cols-2 gap-4">
                 <div><div className="text-[#A7D8FF] text-xs">Bank</div><div className="text-white font-bold">{selectedBank.bank}</div></div>
@@ -413,64 +334,6 @@ export default function DataBankPage() {
                 <div><div className="text-[#A7D8FF] text-xs">Role</div><div className={`px-2 py-1 inline-block rounded-full text-xs ${selectedBank.role?.toUpperCase() === 'DEPOSIT' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>{selectedBank.role?.toUpperCase() === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}</div></div>
               </div>
             </div>
-
-            {/* Login Info */}
-            {selectedBank.credentials && (
-              <div className="space-y-4">
-                {/* IBANK */}
-                {(selectedBank.credentials.user_id_1 || selectedBank.credentials.pin_1) && (
-                  <div className="bg-[#0B1A33] p-4 rounded-lg">
-                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🏦 IBANK</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.credentials.user_id_1 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_1}</div></div>}
-                      {selectedBank.credentials.pin_1 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_1}</div></div>}
-                    </div>
-                  </div>
-                )}
-
-                {/* MYBCA */}
-                {(selectedBank.credentials.user_id_2 || selectedBank.credentials.pass_1 || selectedBank.credentials.pin_2) && (
-                  <div className="bg-[#0B1A33] p-4 rounded-lg">
-                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">💳 MYBCA</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.credentials.user_id_2 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_2}</div></div>}
-                      {selectedBank.credentials.pass_1 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.credentials.pass_1}</div></div>}
-                      {selectedBank.credentials.pin_2 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_2}</div></div>}
-                    </div>
-                  </div>
-                )}
-
-                {/* MBANK */}
-                {(selectedBank.credentials.user_id_3 || selectedBank.credentials.pass_2 || selectedBank.credentials.pin_3) && (
-                  <div className="bg-[#0B1A33] p-4 rounded-lg">
-                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">📱 MBANK</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.credentials.user_id_3 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_3}</div></div>}
-                      {selectedBank.credentials.pass_2 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.credentials.pass_2}</div></div>}
-                      {selectedBank.credentials.pin_3 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_3}</div></div>}
-                    </div>
-                  </div>
-                )}
-
-                {/* Transaksi */}
-                {(selectedBank.credentials.pass_transaksi || selectedBank.credentials.agent || selectedBank.credentials.pin_token) && (
-                  <div className="bg-[#0B1A33] p-4 rounded-lg">
-                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔑 Transaksi</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {selectedBank.credentials.pass_transaksi && <div><div className="text-[#A7D8FF] text-xs">Pass Transaksi</div><div className="text-white font-mono">{selectedBank.credentials.pass_transaksi}</div></div>}
-                      {selectedBank.credentials.agent && <div><div className="text-[#A7D8FF] text-xs">Agent</div><div className="text-white font-mono">{selectedBank.credentials.agent}</div></div>}
-                      {selectedBank.credentials.pin_token && <div><div className="text-[#A7D8FF] text-xs">PIN Token</div><div className="text-white font-mono">{selectedBank.credentials.pin_token}</div></div>}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {!selectedBank.credentials && (
-              <div className="bg-[#0B1A33] p-4 rounded-lg text-center text-[#A7D8FF]">
-                Tidak ada data login untuk bank ini
-              </div>
-            )}
             
             <button onClick={() => setShowPopup(false)} className="mt-6 w-full bg-[#FFD700] text-[#0B1A33] py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 transition-colors">
               Tutup
