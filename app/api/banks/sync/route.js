@@ -46,16 +46,16 @@ export async function POST() {
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // TENTUKAN STATUS (ACTIVE/TAKEDOWN)
-      // KALAU ADA KOLOM STATUS, BISA DITAMBAHIN DI SINI
-      // Contoh: kolom L (index 11) misalnya berisi "ACTIVE" atau "TAKEDOWN"
-      let status = true; // DEFAULT ACTIVE
+      // TENTUKAN STATUS - SEMUA ACTIVE DULU (SAMPAI ADA KOLOM STATUS)
+      let status = true; // default active
+      // KALAU NANTI ADA KOLOM STATUS, BISA UNCOMMENT BARIS INI:
       // if (values[11]?.toUpperCase() === 'TAKEDOWN') status = false;
       
-      // TENTUKAN USED (APAKAH PERNAH DIPAKAI)
-      // KALAU MAU USED IKUT STATUS:
-      let used = values[9]?.toLowerCase() === 'yes' ? true : false; // Kolom J: Used
-      if (!status) used = false; // KALAU STATUS TAKEDOWN, USED JADI FALSE
+      // TENTUKAN USED - HANYA YES KALAU STATUS ACTIVE
+      let used = false;
+      if (status && values[9]?.toLowerCase() === 'yes') { // Kolom J: Used
+        used = true;
+      }
       
       banks.push({
         bank: bankName,
