@@ -14,38 +14,31 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    // SPLIT PER BARIS
     const lines = csvText.split('\n');
-    console.log('Total baris:', lines.length);
     
     const banks = [];
     
-    // MULAI DARI BARIS 2 (index 1) KARENA BARIS 1 HEADER
+    // MULAI DARI BARIS 2 (index 1)
     for (let i = 1; i < lines.length; i++) {
-      if (!lines[i].trim()) continue;
+      if (!lines[i]?.trim()) continue;
       
-      // SPLIT CSV
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       if (values.length < 5) continue;
       
-      // AMBIL DATA SESUAI KOLOM (A = index 0, B = index 1, dst)
-      const asset = values[0] || 'LUCK77';                 // Kolom A
-      const status = values[1]?.toUpperCase() || 'AKTIF';  // Kolom B
-      const displayUsed = values[2]?.toUpperCase() || '';  // Kolom C
-      const bank = values[3] || '';                         // Kolom D
-      const accountName = values[4] || '';                  // Kolom E
-      let accountNumber = values[5]?.replace(/\s/g, '');    // Kolom F
-      const role = values[6]?.toUpperCase() || 'BOTH';      // Kolom G
-      const typeBank = values[7] || '';                      // Kolom H
-      const masaAktif = values[8] || null;                   // Kolom I
+      const asset = values[0] || 'LUCK77';
+      const status = values[1]?.toUpperCase() || 'AKTIF';
+      const displayUsed = values[2]?.toUpperCase() || '';
+      const bank = values[3] || '';
+      const accountName = values[4] || '';
+      let accountNumber = values[5]?.replace(/\s/g, '');
+      const role = values[6]?.toUpperCase() || 'BOTH';
+      const typeBank = values[7] || '';
+      const masaAktif = values[8] || null;
       
-      // VALIDASI NOMOR REKENING
       if (!accountNumber || !/^\d+$/.test(accountNumber)) {
         console.log(`⛔ Skip baris ${i}: nomor rekening tidak valid - ${accountNumber}`);
         continue;
       }
-      
-      console.log(`✅ Baris ${i}: ${bank} - ${accountName} - ${accountNumber} - ${role}`);
       
       banks.push({
         asset,
@@ -70,10 +63,16 @@ export async function POST() {
       });
     }
     
-    // HAPUS DATA LAMA
+    // HAPUS DULU DATA DI bank_credentials (KARENA FOREIGN KEY)
+    console.log('🗑️ Menghapus data bank_credentials...');
+    await supabase.from('bank_credentials').delete().neq('id', 0);
+    
+    // BARU HAPUS bank_accounts
+    console.log('🗑️ Menghapus data bank_accounts...');
     await supabase.from('bank_accounts').delete().neq('id', 0);
     
     // INSERT DATA BARU
+    console.log('💾 Inserting banks...');
     const { error } = await supabase.from('bank_accounts').insert(banks);
     if (error) throw error;
     
