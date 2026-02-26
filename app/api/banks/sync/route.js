@@ -25,13 +25,17 @@ export async function POST() {
       
       if (values.length < 4) continue;
       
-      const bankName = values[2]?.toUpperCase();
-      const accountNumber = values[3]?.replace(/\s/g, '');
-      const accountName = values[4];
-      const role = values[5]?.toLowerCase();
-      const typeBank = values[6];
-      const masaAktif = values[10];
+      const bankName = values[2]?.toUpperCase(); // Kolom C
+      const accountNumber = values[3]?.replace(/\s/g, ''); // Kolom D
+      const accountName = values[4]; // Kolom E
+      const role = values[5]?.toLowerCase(); // Kolom F
+      const typeBank = values[6]; // Kolom G
+      const masaAktif = values[10]; // Kolom K
+      const display = values[8]?.toLowerCase() === 'yes' ? true : false; // Kolom I
+      const used = values[9]?.toLowerCase() === 'yes' ? true : false; // Kolom J
+      const statusKolom = values[25]?.toUpperCase(); // Kolom Z
       
+      // VALIDASI
       if (!bankName || !accountNumber || !accountName) continue;
       if (!/^\d+$/.test(accountNumber)) continue;
       
@@ -40,19 +44,8 @@ export async function POST() {
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // TENTUKAN STATUS DARI KOLOM Z
-      let status = true;
-      if (values[25]?.toUpperCase() === 'TAKEDOWN') status = false;
-      
-      // AMBIL DISPLAY & USED
-      let display = values[8]?.toLowerCase() === 'yes' ? true : false;
-      let used = values[9]?.toLowerCase() === 'yes' ? true : false;
-      
-      // KALAU TAKEDOWN, RESET DISPLAY & USED
-      if (!status) {
-        display = false;
-        used = false;
-      }
+      // TENTUKAN STATUS
+      const isActive = statusKolom !== 'TAKEDOWN';
       
       banks.push({
         bank: bankName,
@@ -60,10 +53,10 @@ export async function POST() {
         account_number: accountNumber,
         type: type,
         type_bank: typeBank || '',
-        display: display,
-        used: used,
+        display: isActive ? display : false,
+        used: isActive ? used : false,
         masa_aktif: masaAktif || null,
-        status: status,
+        status: isActive,
         last_sync_at: new Date().toISOString()
       });
     }
