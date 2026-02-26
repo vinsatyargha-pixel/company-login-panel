@@ -99,21 +99,22 @@ export default function DashboardContent() {
   // FETCH BANK ACCOUNTS DARI SUPABASE
   // ===========================================
   const fetchBankAccounts = async () => {
-    try {
-      setLoadingBanks(true);
-      const { data, error } = await supabase
-        .from('bank_accounts')
-        .select('*')
-        .eq('status', true); // HANYA AMBIL YANG ACTIVE!
+  try {
+    setLoadingBanks(true);
+    const { data, error } = await supabase
+      .from('bank_accounts')
+      .select('*');
 
-      if (error) throw error;
-      setBankAccounts(data || []);
-    } catch (error) {
-      console.error('Error fetching bank accounts:', error);
-    } finally {
-      setLoadingBanks(false);
-    }
-  };
+    if (error) throw error;
+    
+    console.log('📊 Data dari Supabase:', data); // <<< TAMBAHIN INI
+    setBankAccounts(data || []);
+  } catch (error) {
+    console.error('Error fetching bank accounts:', error);
+  } finally {
+    setLoadingBanks(false);
+  }
+};
 
   // LOAD DARI LOCALSTORAGE (HANYA DI BROWSER)
   useEffect(() => {
