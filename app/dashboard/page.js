@@ -555,115 +555,121 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD - DARI SUPABASE + FILTER ACTIVE + GAMBAR */}
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method (Receiver)</h3>
-          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-            {loadingBanks ? (
-              <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
-            ) : (
-              bankAccounts
-                .filter(bank => bank.type === 'deposit' || bank.type === 'both')
-                .map((bank) => (
-                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        
-                        {/* GAMBAR BANK + NAMA BANK */}
-                        <div className="flex items-center gap-2">
-                          {/* Gambar Bank */}
-                          {bank.bank?.toLowerCase().includes('bca') && (
-                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('bni') && (
-                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('bri') && (
-                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('mandiri') && (
-                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-                          )}
-                          
-                          <span className="text-white text-sm font-medium">{bank.bank}</span>
-                        </div>
-                      </div>
-                      
-                      <span className="text-[#A7D8FF] text-xs ml-6">
-                        {bank.account_name} {bank.account_number}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-green-400">ON</span>
-                      <button
-                        disabled
-                        className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
-                      >
-                        <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-            )}
+        {/* KOLOM 2: DEPOSIT METHOD */}
+<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+  <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method (Receiver)</h3>
+  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+    {loadingBanks ? (
+      <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
+    ) : (
+      bankAccounts
+        .filter(bank => 
+          bank.role?.toLowerCase().includes('deposit') && 
+          bank.status === 'AKTIF'
+        )
+        .map((bank) => (
+          <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                
+                {/* GAMBAR BANK + NAMA BANK */}
+                <div className="flex items-center gap-2">
+                  {/* Gambar Bank */}
+                  {bank.bank?.toLowerCase().includes('bca') && (
+                    <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+                  )}
+                  {bank.bank?.toLowerCase().includes('bni') && (
+                    <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+                  )}
+                  {bank.bank?.toLowerCase().includes('bri') && (
+                    <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+                  )}
+                  {bank.bank?.toLowerCase().includes('mandiri') && (
+                    <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+                  )}
+                  
+                  <span className="text-white text-sm font-medium">{bank.bank}</span>
+                </div>
+              </div>
+              
+              <span className="text-[#A7D8FF] text-xs ml-6">
+                {bank.account_name} {bank.account_number}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-green-400">ON</span>
+              <button
+                disabled
+                className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
+              >
+                <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
+              </button>
+            </div>
           </div>
-        </div>
+        ))
+    )}
+  </div>
+</div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD - DARI SUPABASE + FILTER ACTIVE + GAMBAR */}
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender)</h3>
-          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-            {loadingBanks ? (
-              <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
-            ) : (
-              bankAccounts
-                .filter(bank => bank.type === 'withdrawal' || bank.type === 'both')
-                .map((bank) => (
-                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        
-                        {/* GAMBAR BANK + NAMA BANK */}
-                        <div className="flex items-center gap-2">
-                          {/* Gambar Bank */}
-                          {bank.bank?.toLowerCase().includes('bca') && (
-                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('bni') && (
-                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('bri') && (
-                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('mandiri') && (
-                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-                          )}
-                          
-                          <span className="text-white text-sm font-medium">{bank.bank}</span>
-                        </div>
-                      </div>
-                      
-                      <span className="text-[#A7D8FF] text-xs ml-6">
-                        {bank.account_name} {bank.account_number}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-green-400">ON</span>
-                      <button
-                        disabled
-                        className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
-                      >
-                        <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-            )}
+        {/* KOLOM 3: WITHDRAWAL METHOD */}
+<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+  <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender)</h3>
+  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+    {loadingBanks ? (
+      <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
+    ) : (
+      bankAccounts
+        .filter(bank => 
+          bank.role?.toLowerCase().includes('withdraw') && 
+          bank.status === 'AKTIF'
+        )
+        .map((bank) => (
+          <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                
+                {/* GAMBAR BANK + NAMA BANK */}
+                <div className="flex items-center gap-2">
+                  {/* Gambar Bank */}
+                  {bank.bank?.toLowerCase().includes('bca') && (
+                    <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+                  )}
+                  {bank.bank?.toLowerCase().includes('bni') && (
+                    <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+                  )}
+                  {bank.bank?.toLowerCase().includes('bri') && (
+                    <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+                  )}
+                  {bank.bank?.toLowerCase().includes('mandiri') && (
+                    <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+                  )}
+                  
+                  <span className="text-white text-sm font-medium">{bank.bank}</span>
+                </div>
+              </div>
+              
+              <span className="text-[#A7D8FF] text-xs ml-6">
+                {bank.account_name} {bank.account_number}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-green-400">ON</span>
+              <button
+                disabled
+                className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
+              >
+                <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
+              </button>
+            </div>
           </div>
-        </div>
+        ))
+    )}
+  </div>
+</div>
       </div>
 
       {/* ROW 2 - GRID 3 KOLOM */}
