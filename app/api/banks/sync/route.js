@@ -3,21 +3,20 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST() {
   try {
-    // 1. KONEKSI SUPABASE
+    console.log('🚀 START SYNC');
+    
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // 2. FETCH CSV
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?output=csv';
     
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    // 3. PARSE CSV
     const lines = csvText.split('\n').filter(line => line.trim());
+    console.log(`📊 Total baris: ${lines.length}`);
     
-    // 4. SKIP HEADER
     const banks = [];
     
     for (let i = 1; i < lines.length; i++) {
@@ -25,27 +24,32 @@ export async function POST() {
       
       if (values.length < 4) continue;
       
-      const bankName = values[2]?.toUpperCase(); // Kolom C
-      const accountNumber = values[3]?.replace(/\s/g, ''); // Kolom D
-      const accountName = values[4]; // Kolom E
-      const role = values[5]?.toLowerCase(); // Kolom F
-      const typeBank = values[6]; // Kolom G
-      const masaAktif = values[10]; // Kolom K
-      const display = values[8]?.toLowerCase() === 'yes' ? true : false; // Kolom I
-      const used = values[9]?.toLowerCase() === 'yes' ? true : false; // Kolom J
-      const statusKolom = values[25]?.toUpperCase(); // Kolom Z
+      const bankName = values[2]?.toUpperCase();
+      const accountNumber = values[3]?.replace(/\s/g, '');
+      const accountName = values[4];
+      const role = values[5]?.toLowerCase();
+      const typeBank = values[6];
+      const masaAktif = values[10];
+      const display = values[8]?.toLowerCase() === 'yes';
+      const used = values[9]?.toLowerCase() === 'yes';
+      const statusKolom = values[25]?.toUpperCase();
       
-      // VALIDASI
+      // LOG UNTUK DEBUG
+      console.log(`🔍 Baris ${i}:`);
+      console.log(`   Bank: ${bankName}`);
+      console.log(`   Kolom Z: "${values[25]}"`);
+      console.log(`   Status Kolom: "${statusKolom}"`);
+      
       if (!bankName || !accountNumber || !accountName) continue;
       if (!/^\d+$/.test(accountNumber)) continue;
       
-      // TENTUKAN TYPE
       let type = 'both';
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // TENTUKAN STATUS
       const isActive = statusKolom !== 'TAKEDOWN';
+      
+      console.log(`   isActive: ${isActive}`);
       
       banks.push({
         bank: bankName,
@@ -61,12 +65,16 @@ export async function POST() {
       });
     }
     
-    // 5. HAPUS DATA LAMA & INSERT BARU
+    console.log(`✅ Data valid: ${banks.length} bank`);
+    
     await supabase.from('bank_accounts').delete().neq('id', 0);
     
     if (banks.length > 0) {
       const { error } = await supabase.from('bank_accounts').insert(banks);
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Insert error:', error);
+        throw error;
+      }
     }
     
     return NextResponse.json({ 
@@ -75,6 +83,7 @@ export async function POST() {
     });
     
   } catch (error) {
+    console.error('❌ Fatal error:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message 
