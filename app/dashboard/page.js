@@ -564,7 +564,7 @@ export default function DashboardContent() {
     ) : (
       bankAccounts
         .filter(bank => 
-          bank.role?.toLowerCase().includes('deposit') && 
+          bank.role?.toUpperCase() === 'DEPOSIT' && 
           bank.status === 'AKTIF'
         )
         .map((bank) => (
@@ -622,7 +622,7 @@ export default function DashboardContent() {
     ) : (
       bankAccounts
         .filter(bank => 
-          bank.role?.toLowerCase().includes('withdraw') && 
+          bank.role?.toUpperCase() === 'WITHDRAW' && 
           bank.status === 'AKTIF'
         )
         .map((bank) => (
