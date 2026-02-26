@@ -18,8 +18,8 @@ export async function POST() {
     const banks = [];
     const credentials = [];
     
-    // MULAI DARI BARIS 2 (index 1)
-    for (let i = 1; i < lines.length; i++) {
+    // MULAI DARI BARIS 3 (index 2) KARENA BARIS 1-2 HEADER
+    for (let i = 2; i < lines.length; i++) {
       if (!lines[i]?.trim()) continue;
       
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
@@ -57,24 +57,31 @@ export async function POST() {
       });
       
       // ===========================================
-      // DATA CREDENTIALS (Kolom L - X)
+      // DATA CREDENTIALS (Kolom L - X) - MULAI DARI INDEX 11
       // ===========================================
-      // Index: L=11, M=12, N=13, O=14, P=15, Q=16, R=17, S=18, T=19, U=20, V=21, W=22, X=23
       credentials.push({
         account_number: accountNumber,
-        user_id_1: values[11] || null,   // Kolom L
-        pin_1: values[12] || null,        // Kolom M
-        user_id_2: values[13] || null,    // Kolom N
-        pass_1: values[14] || null,       // Kolom O
-        pin_2: values[15] || null,        // Kolom P
-        user_id_3: values[16] || null,    // Kolom Q
-        pass_2: values[17] || null,       // Kolom R
-        pin_3: values[18] || null,        // Kolom S
-        pass_transaksi: values[19] || null, // Kolom T
-        agent: values[20] || null,        // Kolom U
-        pin_token: values[21] || null,    // Kolom V
-        hp: values[22] || null,           // Kolom W
-        email: values[23] || null,        // Kolom X
+        // IBANK
+        user_id_1: values[11] || null,   // USER ID (NININGPR0425)
+        pin_1: values[12] || null,        // PIN (000888)
+        
+        // MYBCA
+        user_id_2: values[13] || null,    // USER ID (niningpriatin80)
+        pass_1: values[14] || null,       // PASS (Naga080808)
+        pin_2: values[15] || null,        // PIN (000888)
+        
+        // MBANK
+        user_id_3: values[16] || null,    // USER ID (Naga08)
+        pass_2: values[17] || null,       // PASS 
+        pin_3: values[18] || null,        // PIN (000888)
+        
+        // BNI WONDER / Transaksi
+        pass_transaksi: values[19] || null,
+        agent: values[20] || null,
+        pin_token: values[21] || null,
+        hp: values[22] || null,
+        email: values[23] || null,
+        
         created_at: new Date().toISOString()
       });
     }
@@ -88,7 +95,7 @@ export async function POST() {
       });
     }
     
-    // HAPUS DATA LAMA (URUTAN PENTING!)
+    // HAPUS DATA LAMA
     console.log('🗑️ Menghapus data credentials...');
     await supabase.from('bank_credentials').delete().neq('id', 0);
     
