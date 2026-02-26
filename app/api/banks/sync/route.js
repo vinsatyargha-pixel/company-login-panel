@@ -3,97 +3,88 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST() {
   try {
-    console.log('🚀 START SYNC');
-    
+    // 1. KONEKSI SUPABASE
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // 2. FETCH CSV
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?output=csv';
     
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    const lines = csvText.split('\n');
-    console.log(`📊 Total baris: ${lines.length}`);
+    // 3. PARSE CSV
+    const lines = csvText.split('\n').filter(line => line.trim());
+    console.log(`Total baris: ${lines.length}`);
     
+    // 4. SKIP HEADER (baris pertama)
     const banks = [];
     
-    // MULAI DARI BARIS 2 SAMPAI 8 (data bank)
-    for (let i = 2; i <= 8; i++) {
-      if (!lines[i]?.trim()) continue;
-      
+    for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       
-      const bankName = values[0]?.toUpperCase();      // Kolom A: BANK
-      const accountName = values[1];                   // Kolom B: NAMA
-      const accountNumber = values[2]?.replace(/\s/g, ''); // Kolom C: NO REK
-      const divisi = values[19]?.toUpperCase();        // Kolom T: DEPOSIT/WITHDRAW
-      const masaAktif = values[21];                     // Kolom V: MASA AKTIF
-      const typeBank = values[23];                      // Kolom X: MOBILE/SOFTOKEN
-      const statusKolom = values[24]?.toUpperCase();    // Kolom Y: STATUS BANK
+      // CEK APAKAH INI DATA BANK VALID (minimal 4 kolom)
+      if (values.length < 4) continue;
       
-      console.log(`🔍 Baris ${i}: ${bankName} - ${accountName} - No: ${accountNumber} - Status: ${statusKolom}`);
+      const bankName = values[2]?.toUpperCase(); // Kolom C: Nama Bank
+      const accountNumber = values[3]?.replace(/\s/g, ''); // Kolom D: No Rekening
+      const accountName = values[4]; // Kolom E: Nama Pemilik
+      const role = values[5]?.toLowerCase(); // Kolom F: Role (Deposit/Withdrawal)
+      const typeBank = values[6]; // Kolom G: Type Bank
+      const masaAktif = values[10]; // Kolom K: Masa Aktif
       
-      // VALIDASI
-      if (!bankName || !accountNumber || !/^\d+$/.test(accountNumber)) {
-        console.log(`   ⛔ Skip: data tidak valid`);
-        continue;
-      }
+      // VALIDASI: harus ada bank, nomor rekening, dan nama
+      if (!bankName || !accountNumber || !accountName) continue;
+      
+      // VALIDASI: nomor rekening harus angka
+      if (!/^\d+$/.test(accountNumber)) continue;
       
       // TENTUKAN TYPE
       let type = 'both';
-      if (divisi?.includes('DEPOSIT')) type = 'deposit';
-      else if (divisi?.includes('WITHDRAW')) type = 'withdrawal';
+      if (role?.includes('deposit')) type = 'deposit';
+      else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // TENTUKAN STATUS (AKTIF = true, TAKEDOWN = false)
-      const isActive = statusKolom === 'AKTIF';
+      // CEK DISPLAY DAN USED (kolom I dan J)
+      const display = values[8]?.toLowerCase() === 'yes' ? true : false;
+      const used = values[9]?.toLowerCase() === 'yes' ? true : false;
       
       banks.push({
         bank: bankName,
-        account_name: accountName || '',
+        account_name: accountName,
         account_number: accountNumber,
         type: type,
         type_bank: typeBank || '',
-        display: false,
-        used: false,
+        display: display,
+        used: used,
         masa_aktif: masaAktif || null,
-        status: isActive,
+        status: true,
         last_sync_at: new Date().toISOString()
       });
     }
     
     console.log(`✅ Data valid: ${banks.length} bank`);
     
-    if (banks.length === 0) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Tidak ada data valid'
-      }, { status: 400 });
-    }
-    
-    // HAPUS DATA LAMA
-    console.log('🗑️ Menghapus data lama...');
+    // 5. HAPUS DATA LAMA
     await supabase.from('bank_accounts').delete().neq('id', 0);
     
-    // INSERT DATA BARU
-    console.log('💾 Inserting banks...');
-    const { error } = await supabase.from('bank_accounts').insert(banks);
-    
-    if (error) {
-      console.error('❌ Insert error:', error);
-      throw error;
+    // 6. INSERT DATA BARU
+    if (banks.length > 0) {
+      const { error } = await supabase
+        .from('bank_accounts')
+        .insert(banks);
+      
+      if (error) throw error;
     }
-    
-    console.log(`✅ Inserted: ${banks.length} banks`);
     
     return NextResponse.json({ 
       success: true, 
-      message: `Sync berhasil! ${banks.length} bank diupdate`
+      message: `Sync berhasil! ${banks.length} bank diupdate`,
+      total: banks.length
     });
     
   } catch (error) {
-    console.error('❌ Fatal error:', error);
+    console.error('❌ Sync error:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message 
