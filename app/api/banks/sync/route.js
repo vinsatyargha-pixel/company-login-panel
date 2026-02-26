@@ -14,50 +14,81 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    // TAMPILKAN 3 BARIS PERTAMA CSV
-    const lines = csvText.split('\n');
-    console.log('📄 Preview CSV (3 baris pertama):');
-    for (let i = 0; i < 3; i++) {
-      if (lines[i]) console.log(`Baris ${i}:`, lines[i].substring(0, 100));
-    }
-    
+    const lines = csvText.split('\n').filter(line => line.trim());
     console.log(`📊 Total baris: ${lines.length}`);
-    
-    // CEK INDEX KOLOM DULU
-    if (lines.length > 0) {
-      const header = lines[0].split(',').map(h => h.trim());
-      console.log('📋 Header kolom:', header);
-      
-      // CEK INDEX SETIAP KOLOM
-      header.forEach((h, idx) => {
-        if (h.toLowerCase().includes('bank')) console.log(`🧩 Kolom BANK mungkin index: ${idx}`);
-        if (h.toLowerCase().includes('no')) console.log(`🧩 Kolom NO REK mungkin index: ${idx}`);
-        if (h.toLowerCase().includes('nama')) console.log(`🧩 Kolom NAMA mungkin index: ${idx}`);
-        if (h.toLowerCase().includes('status')) console.log(`🧩 Kolom STATUS mungkin index: ${idx}`);
-      });
-    }
     
     const banks = [];
     
-    // PROSES SEMUA BARIS DULU UNTUK DEBUG
-    for (let i = 1; i < Math.min(10, lines.length); i++) {
-      if (!lines[i].trim()) continue;
+    // SKIP HEADER (baris 1), PROSES BARIS 2-8
+    for (let i = 1; i <= 8; i++) {
+      if (i >= lines.length) continue;
       
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-      console.log(`\n🔍 Baris ${i}:`);
-      console.log(`   Jumlah kolom: ${values.length}`);
-      console.log(`   Kolom 0: "${values[0]}"`);
-      console.log(`   Kolom 1: "${values[1]}"`);
-      console.log(`   Kolom 2: "${values[2]}"`);
-      console.log(`   Kolom 3: "${values[3]}"`);
-      console.log(`   Kolom 4: "${values[4]}"`);
-      console.log(`   Kolom 25: "${values[25]}" (jika ada)`);
+      if (values.length < 4) continue;
+      
+      // MAPPING ULANG BERDASARKAN STRUKTUR ASLI
+      const accountNumber = values[0]?.replace(/\s/g, ''); // Kolom A: NO REK
+      const bankName = values[1]?.toUpperCase(); // Kolom B: PIN/NAGA/BNI/dll
+      const accountName = values[2]; // Kolom C: USERID/NAMA
+      const role = values[3]?.toLowerCase(); // Kolom D: BOTH/DEPOSIT/WITHDRAWAL
+      const typeBank = values[4]; // Kolom E: MOBILE/SOFTOKEN
+      const masaAktif = values[5]; // Kolom F: MASA AKTIF
+      
+      console.log(`🔍 Baris ${i}: Rek: ${accountNumber}, Bank: ${bankName}, Nama: ${accountName}`);
+      
+      // VALIDASI: nomor rekening harus angka dan minimal 5 digit
+      if (!accountNumber || !/^\d+$/.test(accountNumber) || accountNumber.length < 5) {
+        console.log(`   ⛔ Skip: nomor rekening tidak valid`);
+        continue;
+      }
+      
+      // TENTUKAN TYPE
+      let type = 'both';
+      if (role?.includes('deposit')) type = 'deposit';
+      else if (role?.includes('withdrawal')) type = 'withdrawal';
+      
+      // STATUS (default true / ACTIVE)
+      // KALAU ADA KOLOM STATUS, TAMBAHKAN DI SINI
+      const isActive = true; // SEMUA ACTIVE DULU
+      
+      banks.push({
+        bank: bankName || '',
+        account_name: accountName || '',
+        account_number: accountNumber,
+        type: type,
+        type_bank: typeBank || '',
+        display: false, // DEFAULT
+        used: false,    // DEFAULT
+        masa_aktif: masaAktif || null,
+        status: isActive,
+        last_sync_at: new Date().toISOString()
+      });
     }
+    
+    console.log(`✅ Data valid: ${banks.length} bank`);
+    
+    if (banks.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Tidak ada data valid'
+      }, { status: 400 });
+    }
+    
+    // HAPUS DATA LAMA
+    console.log('🗑️ Menghapus data lama...');
+    await supabase.from('bank_accounts').delete().neq('id', 0);
+    
+    // INSERT DATA BARU
+    console.log('💾 Inserting banks...');
+    const { data, error } = await supabase.from('bank_accounts').insert(banks).select();
+    
+    if (error) throw error;
+    
+    console.log(`✅ Inserted: ${data?.length || 0} banks`);
     
     return NextResponse.json({ 
       success: true, 
-      message: 'Debug mode - lihat console log',
-      totalBaris: lines.length
+      message: `Sync berhasil! ${banks.length} bank diupdate`
     });
     
   } catch (error) {
