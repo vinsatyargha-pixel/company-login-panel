@@ -14,37 +14,41 @@ export async function POST() {
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    // 3. PARSE CSV
-    const lines = csvText.split('\n').filter(line => line.trim() && !line.startsWith(',,,,'));
-    console.log(`📊 Total baris dengan data: ${lines.length}`);
+    // PARSE CSV
+    const lines = csvText.split('\n').filter(line => line.trim());
+    console.log(`📊 Total baris: ${lines.length}`);
     
-    // 4. SKIP HEADER (baris pertama) DAN PROSES 7 BARIS DATA
     const banks = [];
     
-    for (let i = 1; i < lines.length; i++) {
+    // SKIP HEADER (baris 1), PROSES BARIS 2-8 AJA (DATA BANK)
+    for (let i = 1; i <= 8; i++) {
+      if (i >= lines.length) continue;
+      
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      if (values.length < 4) continue;
       
-      // CEK APAKAH INI DATA BANK VALID (harus ada nomor rekening)
-      const accountNumber = values[3]?.replace(/\s/g, '');
-      if (!accountNumber || accountNumber.length < 5) continue;
-      
-      const bankName = values[2]?.toUpperCase(); // Kolom C: Nama Bank
-      const accountName = values[4]; // Kolom E: Nama Pemilik
-      const role = values[5]?.toLowerCase(); // Kolom F: Role
-      const typeBank = values[6]; // Kolom G: Type Bank
-      const masaAktif = values[10]; // Kolom K: Masa Aktif
+      const bankName = values[2]?.toUpperCase(); // Kolom C
+      const accountNumber = values[3]?.replace(/\s/g, ''); // Kolom D
+      const accountName = values[4]; // Kolom E
+      const role = values[5]?.toLowerCase(); // Kolom F
+      const typeBank = values[6]; // Kolom G
+      const masaAktif = values[10]; // Kolom K
       const display = values[8]?.toLowerCase() === 'yes'; // Kolom I
       const used = values[9]?.toLowerCase() === 'yes'; // Kolom J
       const statusKolom = values[25]?.toUpperCase(); // Kolom Z
       
-      console.log(`🔍 Bank: ${bankName}, Status: ${statusKolom}`);
+      // VALIDASI: harus ada nomor rekening yang valid
+      if (!accountNumber || accountNumber.length < 5) continue;
+      if (!/^\d+$/.test(accountNumber)) continue;
+      
+      console.log(`🔍 ${bankName} - ${accountName} - Status: ${statusKolom}`);
       
       // TENTUKAN TYPE
       let type = 'both';
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // TENTUKAN STATUS (AKTIF/TAKEDOWN)
+      // TENTUKAN STATUS (AKTIF = true, TAKEDOWN = false)
       const isActive = statusKolom !== 'TAKEDOWN';
       
       banks.push({
@@ -63,7 +67,7 @@ export async function POST() {
     
     console.log(`✅ Data valid: ${banks.length} bank`);
     
-    // 5. HAPUS DATA LAMA & INSERT BARU
+    // HAPUS DATA LAMA & INSERT BARU
     await supabase.from('bank_accounts').delete().neq('id', 0);
     
     if (banks.length > 0) {
