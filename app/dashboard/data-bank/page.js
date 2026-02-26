@@ -221,18 +221,89 @@ export default function DataBankPage() {
                 <tr><td colSpan="9" className="text-center py-8 text-[#A7D8FF]">{banks.length === 0 ? 'Belum ada data bank. Klik Sync Now untuk mengambil dari spreadsheet.' : 'Tidak ada bank dengan filter ini.'}</td></tr>
               ) : (
                 filteredBanks.map((bank) => (
-                  <tr key={bank.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                    <td className="py-3 px-4"><span className={`inline-flex items-center gap-1 ${bank.status ? 'text-green-400' : 'text-red-400'}`}><span className={`w-2 h-2 rounded-full ${bank.status ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>{bank.status ? 'Active' : 'Takedown'}</span></td>
-                    <td className="py-3 px-4"><div className="flex items-center gap-2">{bank.display && <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">Display</span>}{bank.used && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">Used</span>}</div></td>
-                    <td className="py-3 px-4 text-white font-medium">{bank.bank}</td>
-                    <td className="py-3 px-4 text-white">{bank.account_name || '-'}</td>
-                    <td className="py-3 px-4"><button onClick={() => handleAccountClick(bank)} className="text-white font-mono hover:text-[#FFD700] transition-colors underline decoration-dotted underline-offset-2">{bank.account_number || '-'}</button></td>
-                    <td className="py-3 px-4"><span className={`px-2 py-1 rounded-full text-xs ${bank.type === 'deposit' ? 'bg-blue-500/20 text-blue-400' : bank.type === 'withdrawal' ? 'bg-purple-500/20 text-purple-400' : 'bg-green-500/20 text-green-400'}`}>{bank.type === 'deposit' ? 'Deposit' : bank.type === 'withdrawal' ? 'Withdrawal' : 'Both'}</span></td>
-                    <td className="py-3 px-4"><span className="px-2 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400">{bank.type_bank || '-'}</span></td>
-                    <td className="py-3 px-4 text-[#A7D8FF] text-sm">{bank.masa_aktif || '-'}</td>
-                    <td className="py-3 px-4"><div className="flex items-center gap-2"><button onClick={() => handleStatusToggle(bank.id, bank.status)} className={`px-3 py-1 rounded-full text-xs font-medium ${bank.status ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}>{bank.status ? '→ Takedown' : '→ Active'}</button><button onClick={() => handleDelete(bank.id)} className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30" title="Hapus">🗑️</button></div></td>
-                  </tr>
-                ))
+  <tr key={bank.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+    <td className="py-3 px-4">
+      <span className={`inline-flex items-center gap-1 ${bank.status ? 'text-green-400' : 'text-red-400'}`}>
+        <span className={`w-2 h-2 rounded-full ${bank.status ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+        {bank.status ? 'Active' : 'Takedown'}
+      </span>
+    </td>
+    
+    <td className="py-3 px-4">
+      <div className="flex items-center gap-2">
+        {bank.display && <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">Display</span>}
+        {bank.used && <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">Used</span>}
+      </div>
+    </td>
+    
+    {/* KOLOM BANK - DITAMBAH GAMBAR */}
+    <td className="py-3 px-4">
+      <div className="flex items-center gap-2">
+        {/* Gambar Bank */}
+        {bank.bank?.toLowerCase().includes('bca') && (
+          <img src="/images/bca.png" alt="BCA" className="h-5 w-auto object-contain" />
+        )}
+        {bank.bank?.toLowerCase().includes('bni') && (
+          <img src="/images/bni.png" alt="BNI" className="h-5 w-auto object-contain" />
+        )}
+        {bank.bank?.toLowerCase().includes('bri') && (
+          <img src="/images/bri.png" alt="BRI" className="h-5 w-auto object-contain" />
+        )}
+        {bank.bank?.toLowerCase().includes('mandiri') && (
+          <img src="/images/mandiri.png" alt="Mandiri" className="h-5 w-auto object-contain" />
+        )}
+        {/* Nama Bank */}
+        <span className="text-white font-medium">{bank.bank}</span>
+      </div>
+    </td>
+    
+    <td className="py-3 px-4 text-white">{bank.account_name || '-'}</td>
+    
+    <td className="py-3 px-4">
+      <button onClick={() => handleAccountClick(bank)} className="text-white font-mono hover:text-[#FFD700] transition-colors underline decoration-dotted underline-offset-2">
+        {bank.account_number || '-'}
+      </button>
+    </td>
+    
+    <td className="py-3 px-4">
+      <span className={`px-2 py-1 rounded-full text-xs ${
+        bank.type === 'deposit' ? 'bg-blue-500/20 text-blue-400' : 
+        bank.type === 'withdrawal' ? 'bg-purple-500/20 text-purple-400' : 
+        'bg-green-500/20 text-green-400'
+      }`}>
+        {bank.type === 'deposit' ? 'Deposit' : bank.type === 'withdrawal' ? 'Withdrawal' : 'Both'}
+      </span>
+    </td>
+    
+    <td className="py-3 px-4">
+      <span className="px-2 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400">
+        {bank.type_bank || '-'}
+      </span>
+    </td>
+    
+    <td className="py-3 px-4 text-[#A7D8FF] text-sm">{bank.masa_aktif || '-'}</td>
+    
+    <td className="py-3 px-4">
+      <div className="flex items-center gap-2">
+        <button 
+          onClick={() => handleStatusToggle(bank.id, bank.status)} 
+          className={`px-3 py-1 rounded-full text-xs font-medium ${
+            bank.status ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+          }`}
+        >
+          {bank.status ? '→ Takedown' : '→ Active'}
+        </button>
+        <button 
+          onClick={() => handleDelete(bank.id)} 
+          className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30" 
+          title="Hapus"
+        >
+          🗑️
+        </button>
+      </div>
+    </td>
+  </tr>
+))
               )}
             </tbody>
           </table>
