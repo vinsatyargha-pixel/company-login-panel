@@ -16,29 +16,23 @@ export async function POST() {
     
     // 3. PARSE CSV
     const lines = csvText.split('\n').filter(line => line.trim());
-    console.log(`Total baris: ${lines.length}`);
     
-    // 4. SKIP HEADER (baris pertama)
+    // 4. SKIP HEADER
     const banks = [];
     
     for (let i = 1; i < lines.length; i++) {
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       
-      // CEK APAKAH INI DATA BANK VALID (minimal 4 kolom)
       if (values.length < 4) continue;
       
-      const bankName = values[2]?.toUpperCase(); // Kolom C: Nama Bank
-      const accountNumber = values[3]?.replace(/\s/g, ''); // Kolom D: No Rekening
-      const accountName = values[4]; // Kolom E: Nama Pemilik
-      const role = values[5]?.toLowerCase(); // Kolom F: Role (Deposit/Withdrawal)
-      const typeBank = values[6]; // Kolom G: Type Bank
-      const masaAktif = values[10]; // Kolom K: Masa Aktif
-      const display = values[8]?.toLowerCase() === 'yes' ? true : false; // Kolom I: Display
+      const bankName = values[2]?.toUpperCase();
+      const accountNumber = values[3]?.replace(/\s/g, '');
+      const accountName = values[4];
+      const role = values[5]?.toLowerCase();
+      const typeBank = values[6];
+      const masaAktif = values[10];
       
-      // VALIDASI: harus ada bank, nomor rekening, dan nama
       if (!bankName || !accountNumber || !accountName) continue;
-      
-      // VALIDASI: nomor rekening harus angka
       if (!/^\d+$/.test(accountNumber)) continue;
       
       // TENTUKAN TYPE
@@ -46,20 +40,18 @@ export async function POST() {
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // ===========================================
-      // STATUS DARI KOLOM Z (index 25)
-      // ===========================================
-      let status = true; // default active
-      if (values[25]?.toUpperCase() === 'TAKEDOWN') {
-        status = false;
-      }
+      // TENTUKAN STATUS DARI KOLOM Z
+      let status = true;
+      if (values[25]?.toUpperCase() === 'TAKEDOWN') status = false;
       
-      // ===========================================
-      // USED - HANYA YES KALAU STATUS ACTIVE
-      // ===========================================
-      let used = false;
-      if (status && values[9]?.toLowerCase() === 'yes') { // Kolom J: Used
-        used = true;
+      // AMBIL DISPLAY & USED
+      let display = values[8]?.toLowerCase() === 'yes' ? true : false;
+      let used = values[9]?.toLowerCase() === 'yes' ? true : false;
+      
+      // KALAU TAKEDOWN, RESET DISPLAY & USED
+      if (!status) {
+        display = false;
+        used = false;
       }
       
       banks.push({
@@ -76,28 +68,20 @@ export async function POST() {
       });
     }
     
-    console.log(`✅ Data valid: ${banks.length} bank`);
-    
-    // 5. HAPUS DATA LAMA
+    // 5. HAPUS DATA LAMA & INSERT BARU
     await supabase.from('bank_accounts').delete().neq('id', 0);
     
-    // 6. INSERT DATA BARU
     if (banks.length > 0) {
-      const { error } = await supabase
-        .from('bank_accounts')
-        .insert(banks);
-      
+      const { error } = await supabase.from('bank_accounts').insert(banks);
       if (error) throw error;
     }
     
     return NextResponse.json({ 
       success: true, 
-      message: `Sync berhasil! ${banks.length} bank diupdate`,
-      total: banks.length
+      message: `Sync berhasil! ${banks.length} bank diupdate`
     });
     
   } catch (error) {
-    console.error('❌ Sync error:', error);
     return NextResponse.json({ 
       success: false, 
       error: error.message 
