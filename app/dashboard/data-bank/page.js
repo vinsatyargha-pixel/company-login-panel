@@ -12,7 +12,7 @@ export default function DataBankPage() {
   const [activeTab, setActiveTab] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   
-  // State untuk popup info login (masih kepake)
+  // State untuk popup info login
   const [selectedBank, setSelectedBank] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
 
@@ -39,73 +39,73 @@ export default function DataBankPage() {
   }, [activeTab, statusFilter, banks]);
 
   const fetchGoogleSheet = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-    
-    const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1689175827&single=true&output=csv';
-    
-    const response = await fetch(csvUrl);
-    const csvText = await response.text();
-    
-    // Parse CSV
-    const { data } = Papa.parse(csvText, { header: false });
-    
-    const bankData = [];
-    
-    // Skip 2 baris header, ambil data dari baris 3
-    for (let i = 2; i < data.length; i++) {
-      const row = data[i];
-      if (!row || row.length < 10) continue;
+    try {
+      setLoading(true);
+      setError(null);
       
-      const accountNumber = row[5]?.replace(/\s/g, '');
-      if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1689175827&single=true&output=csv';
       
-      bankData.push({
-        id: i,
-        // Data Bank (Kolom A - I)
-        asset: row[0] || 'LUCK77',
-        status: row[1]?.toUpperCase() || 'AKTIF',
-        display_used: row[2]?.toUpperCase() || '',
-        bank: row[3] || '',
-        account_name: row[4] || '',
-        account_number: accountNumber,
-        role: row[6]?.toUpperCase() || 'BOTH',
-        type_bank: row[7] || '',
-        masa_aktif: row[8] || null,
+      const response = await fetch(csvUrl);
+      const csvText = await response.text();
+      
+      // Parse CSV
+      const { data } = Papa.parse(csvText, { header: false });
+      
+      const bankData = [];
+      
+      // Skip 2 baris header, ambil data dari baris 3
+      for (let i = 2; i < data.length; i++) {
+        const row = data[i];
+        if (!row || row.length < 10) continue;
         
-        // Data Credentials (Kolom L - X)
-        credentials: {
-          user_id_1: row[11] || null,
-          pin_1: row[12] || null,
-          user_id_2: row[13] || null,
-          pass_1: row[14] || null,
-          pin_2: row[15] || null,
-          user_id_3: row[16] || null,
-          pass_2: row[17] || null,
-          pin_3: row[18] || null,
-          pass_transaksi: row[19] || null,
-          agent: row[20] || null,
-          pin_token: row[21] || null,
-          hp: row[22] || null,
-          email: row[23] || null
-        }
-      });
+        const accountNumber = row[5]?.replace(/\s/g, '');
+        if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+        
+        bankData.push({
+          id: i,
+          // Data Bank (Kolom A - I)
+          asset: row[0] || 'LUCK77',
+          status: row[1]?.toUpperCase() || 'AKTIF',
+          display_used: row[2]?.toUpperCase() || '',
+          bank: row[3] || '',
+          account_name: row[4] || '',
+          account_number: accountNumber,
+          role: row[6]?.toUpperCase() || 'BOTH',
+          type_bank: row[7] || '',
+          masa_aktif: row[8] || null,
+          
+          // Data Credentials (Kolom L - X)
+          credentials: {
+            user_id_1: row[11] || null,
+            pin_1: row[12] || null,
+            user_id_2: row[13] || null,
+            pass_1: row[14] || null,
+            pin_2: row[15] || null,
+            user_id_3: row[16] || null,
+            pass_2: row[17] || null,
+            pin_3: row[18] || null,
+            pass_transaksi: row[19] || null,
+            agent: row[20] || null,
+            pin_token: row[21] || null,
+            hp: row[22] || null,
+            email: row[23] || null
+          }
+        });
+      }
+      
+      setBanks(bankData);
+    } catch (err) {
+      console.error('Error fetching Google Sheet:', err);
+      setError('Gagal mengambil data dari spreadsheet');
+    } finally {
+      setLoading(false);
     }
-    
-    setBanks(bankData);
-  } catch (err) {
-    console.error('Error fetching Google Sheet:', err);
-    setError('Gagal mengambil data dari spreadsheet');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleAccountClick = (bank) => {
-  setSelectedBank(bank);
-  setShowPopup(true);
-};
+    setSelectedBank(bank);
+    setShowPopup(true);
+  };
 
   const stats = {
     total: banks.length,
@@ -180,6 +180,140 @@ export default function DataBankPage() {
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
           <div className="text-[#A7D8FF] text-sm">Used YES</div>
           <div className="text-2xl font-bold text-orange-400">{stats.usedYes}</div>
+        </div>
+      </div>
+
+      {/* MAIN DASHBOARD GRID - 3 KOLOM */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        
+        {/* KOLOM 1: TRAFFIC VOLUME */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Traffic Volume</h3>
+          <div className="h-64 flex items-center justify-center text-[#A7D8FF]">
+            Data traffic akan ditampilkan di sini
+          </div>
+        </div>
+
+        {/* KOLOM 2: DEPOSIT METHOD */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method (Receiver)</h3>
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+            {loading ? (
+              <div className="text-center text-[#A7D8FF] py-4">Loading...</div>
+            ) : (
+              banks
+                .filter(bank => 
+                  bank.role?.toUpperCase() === 'DEPOSIT' && 
+                  bank.display_used === 'YES' && 
+                  bank.status === 'AKTIF'
+                )
+                .map((bank) => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        
+                        <div className="flex items-center gap-2">
+                          {bank.bank?.toLowerCase().includes('bca') && (
+                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bni') && (
+                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bri') && (
+                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('mandiri') && (
+                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+                          )}
+                          <span className="text-white text-sm font-medium">{bank.bank}</span>
+                        </div>
+                        
+                        <span className="text-[10px] text-green-400 ml-2">Display</span>
+                      </div>
+                      
+                      <span className="text-[#A7D8FF] text-xs ml-6">
+                        {bank.account_name} {bank.account_number}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                      <button
+                        disabled
+                        className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
+                      >
+                        <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+            )}
+            {banks.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES' && b.status === 'AKTIF').length === 0 && !loading && (
+              <div className="text-center text-[#A7D8FF] py-4">Tidak ada deposit method aktif</div>
+            )}
+          </div>
+        </div>
+
+        {/* KOLOM 3: WITHDRAWAL METHOD */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender)</h3>
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+            {loading ? (
+              <div className="text-center text-[#A7D8FF] py-4">Loading...</div>
+            ) : (
+              banks
+                .filter(bank => 
+                  bank.role?.toUpperCase() === 'WITHDRAW' && 
+                  bank.display_used === 'YES' && 
+                  bank.status === 'AKTIF'
+                )
+                .map((bank) => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        
+                        <div className="flex items-center gap-2">
+                          {bank.bank?.toLowerCase().includes('bca') && (
+                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bni') && (
+                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bri') && (
+                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('mandiri') && (
+                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+                          )}
+                          <span className="text-white text-sm font-medium">{bank.bank}</span>
+                        </div>
+                        
+                        <span className="text-[10px] text-blue-400 ml-2">Used</span>
+                      </div>
+                      
+                      <span className="text-[#A7D8FF] text-xs ml-6">
+                        {bank.account_name} {bank.account_number}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                      <button
+                        disabled
+                        className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
+                      >
+                        <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+            )}
+            {banks.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES' && b.status === 'AKTIF').length === 0 && !loading && (
+              <div className="text-center text-[#A7D8FF] py-4">Tidak ada withdrawal method aktif</div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -336,68 +470,83 @@ export default function DataBankPage() {
         </div>
       </div>
 
-      {/* Login Info */}
-{selectedBank.credentials && (
-  <div className="space-y-4 mt-4">
-    {/* IBANK */}
-    {(selectedBank.credentials.user_id_1 || selectedBank.credentials.pin_1) && (
-      <div className="bg-[#0B1A33] p-4 rounded-lg">
-        <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🏦 IBANK</h4>
-        <div className="grid grid-cols-2 gap-3">
-          {selectedBank.credentials.user_id_1 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_1}</div></div>}
-          {selectedBank.credentials.pin_1 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_1}</div></div>}
-        </div>
-      </div>
-    )}
+      {/* POPUP INFO LOGIN */}
+      {showPopup && selectedBank && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#1A2F4A] border-2 border-[#FFD700] rounded-xl p-6 max-w-2xl w-full mx-4 shadow-[0_0_50px_#FFD700] max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#1A2F4A] z-10 pb-2">
+              <h3 className="text-xl font-bold text-[#FFD700]">🔐 Info Login {selectedBank.bank}</h3>
+              <button onClick={() => setShowPopup(false)} className="text-[#A7D8FF] hover:text-white text-2xl">×</button>
+            </div>
+            
+            {/* Data Utama */}
+            <div className="bg-[#0B1A33] p-4 rounded-lg mb-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div><div className="text-[#A7D8FF] text-xs">Bank</div><div className="text-white font-bold">{selectedBank.bank}</div></div>
+                <div><div className="text-[#A7D8FF] text-xs">Account Name</div><div className="text-white font-bold">{selectedBank.account_name}</div></div>
+                <div><div className="text-[#A7D8FF] text-xs">Account Number</div><div className="text-white font-mono">{selectedBank.account_number}</div></div>
+                <div><div className="text-[#A7D8FF] text-xs">Role</div><div className={`px-2 py-1 inline-block rounded-full text-xs ${selectedBank.role?.toUpperCase() === 'DEPOSIT' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>{selectedBank.role?.toUpperCase() === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}</div></div>
+              </div>
+            </div>
 
-    {/* MYBCA */}
-    {(selectedBank.credentials.user_id_2 || selectedBank.credentials.pass_1 || selectedBank.credentials.pin_2) && (
-      <div className="bg-[#0B1A33] p-4 rounded-lg">
-        <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">💳 MYBCA</h4>
-        <div className="grid grid-cols-2 gap-3">
-          {selectedBank.credentials.user_id_2 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_2}</div></div>}
-          {selectedBank.credentials.pass_1 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.credentials.pass_1}</div></div>}
-          {selectedBank.credentials.pin_2 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_2}</div></div>}
-        </div>
-      </div>
-    )}
+            {/* Login Info */}
+            {selectedBank.credentials && (
+              <div className="space-y-4">
+                {/* IBANK */}
+                {(selectedBank.credentials.user_id_1 || selectedBank.credentials.pin_1) && (
+                  <div className="bg-[#0B1A33] p-4 rounded-lg">
+                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🏦 IBANK</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedBank.credentials.user_id_1 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_1}</div></div>}
+                      {selectedBank.credentials.pin_1 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_1}</div></div>}
+                    </div>
+                  </div>
+                )}
 
-    {/* MBANK */}
-    {(selectedBank.credentials.user_id_3 || selectedBank.credentials.pass_2 || selectedBank.credentials.pin_3) && (
-      <div className="bg-[#0B1A33] p-4 rounded-lg">
-        <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">📱 MBANK</h4>
-        <div className="grid grid-cols-2 gap-3">
-          {selectedBank.credentials.user_id_3 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_3}</div></div>}
-          {selectedBank.credentials.pass_2 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.credentials.pass_2}</div></div>}
-          {selectedBank.credentials.pin_3 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_3}</div></div>}
-        </div>
-      </div>
-    )}
+                {/* MYBCA */}
+                {(selectedBank.credentials.user_id_2 || selectedBank.credentials.pass_1 || selectedBank.credentials.pin_2) && (
+                  <div className="bg-[#0B1A33] p-4 rounded-lg">
+                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">💳 MYBCA</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedBank.credentials.user_id_2 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_2}</div></div>}
+                      {selectedBank.credentials.pass_1 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.credentials.pass_1}</div></div>}
+                      {selectedBank.credentials.pin_2 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_2}</div></div>}
+                    </div>
+                  </div>
+                )}
 
-    {/* Transaksi */}
-    {(selectedBank.credentials.pass_transaksi || selectedBank.credentials.agent || selectedBank.credentials.pin_token) && (
-      <div className="bg-[#0B1A33] p-4 rounded-lg">
-        <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔑 Transaksi</h4>
-        <div className="grid grid-cols-2 gap-3">
-          {selectedBank.credentials.pass_transaksi && <div><div className="text-[#A7D8FF] text-xs">Pass Transaksi</div><div className="text-white font-mono">{selectedBank.credentials.pass_transaksi}</div></div>}
-          {selectedBank.credentials.agent && <div><div className="text-[#A7D8FF] text-xs">Agent</div><div className="text-white font-mono">{selectedBank.credentials.agent}</div></div>}
-          {selectedBank.credentials.pin_token && <div><div className="text-[#A7D8FF] text-xs">PIN Token</div><div className="text-white font-mono">{selectedBank.credentials.pin_token}</div></div>}
-        </div>
-      </div>
-    )}
+                {/* MBANK */}
+                {(selectedBank.credentials.user_id_3 || selectedBank.credentials.pass_2 || selectedBank.credentials.pin_3) && (
+                  <div className="bg-[#0B1A33] p-4 rounded-lg">
+                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">📱 MBANK</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedBank.credentials.user_id_3 && <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">{selectedBank.credentials.user_id_3}</div></div>}
+                      {selectedBank.credentials.pass_2 && <div><div className="text-[#A7D8FF] text-xs">Password</div><div className="text-white font-mono">{selectedBank.credentials.pass_2}</div></div>}
+                      {selectedBank.credentials.pin_3 && <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">{selectedBank.credentials.pin_3}</div></div>}
+                    </div>
+                  </div>
+                )}
 
-    {/* Kontak */}
-    {(selectedBank.credentials.hp || selectedBank.credentials.email) && (
-      <div className="bg-[#0B1A33] p-4 rounded-lg">
-        <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">📞 Kontak</h4>
-        <div className="grid grid-cols-2 gap-3">
-          {selectedBank.credentials.hp && <div><div className="text-[#A7D8FF] text-xs">HP</div><div className="text-white font-mono">{selectedBank.credentials.hp}</div></div>}
-          {selectedBank.credentials.email && <div><div className="text-[#A7D8FF] text-xs">Email</div><div className="text-white font-mono">{selectedBank.credentials.email}</div></div>}
+                {/* Transaksi */}
+                {(selectedBank.credentials.pass_transaksi || selectedBank.credentials.agent || selectedBank.credentials.pin_token) && (
+                  <div className="bg-[#0B1A33] p-4 rounded-lg">
+                    <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔑 Transaksi</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {selectedBank.credentials.pass_transaksi && <div><div className="text-[#A7D8FF] text-xs">Pass Transaksi</div><div className="text-white font-mono">{selectedBank.credentials.pass_transaksi}</div></div>}
+                      {selectedBank.credentials.agent && <div><div className="text-[#A7D8FF] text-xs">Agent</div><div className="text-white font-mono">{selectedBank.credentials.agent}</div></div>}
+                      {selectedBank.credentials.pin_token && <div><div className="text-[#A7D8FF] text-xs">PIN Token</div><div className="text-white font-mono">{selectedBank.credentials.pin_token}</div></div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <button onClick={() => setShowPopup(false)} className="mt-6 w-full bg-[#FFD700] text-[#0B1A33] py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 transition-colors">
+              Tutup
+            </button>
+          </div>
         </div>
-      </div>
-    )}
-  </div>
-)}
+      )}
 
       {/* Footer */}
       <div className="mt-4 text-xs text-[#A7D8FF] flex items-center justify-end gap-4 flex-wrap">
