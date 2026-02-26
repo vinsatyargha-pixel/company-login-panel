@@ -46,10 +46,11 @@ export async function POST() {
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // TENTUKAN STATUS - SEMUA ACTIVE DULU (SAMPAI ADA KOLOM STATUS)
+      // TENTUKAN STATUS DARI KOLOM Z (index 25)
       let status = true; // default active
-      // KALAU NANTI ADA KOLOM STATUS, BISA UNCOMMENT BARIS INI:
-      // if (values[11]?.toUpperCase() === 'TAKEDOWN') status = false;
+      if (values[25]?.toUpperCase() === 'TAKEDOWN') {
+        status = false;
+      }
       
       // TENTUKAN USED - HANYA YES KALAU STATUS ACTIVE
       let used = false;
