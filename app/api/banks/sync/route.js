@@ -33,6 +33,7 @@ export async function POST() {
       const role = values[5]?.toLowerCase(); // Kolom F: Role (Deposit/Withdrawal)
       const typeBank = values[6]; // Kolom G: Type Bank
       const masaAktif = values[10]; // Kolom K: Masa Aktif
+      const display = values[8]?.toLowerCase() === 'yes' ? true : false; // Kolom I: Display
       
       // VALIDASI: harus ada bank, nomor rekening, dan nama
       if (!bankName || !accountNumber || !accountName) continue;
@@ -45,9 +46,16 @@ export async function POST() {
       if (role?.includes('deposit')) type = 'deposit';
       else if (role?.includes('withdrawal')) type = 'withdrawal';
       
-      // CEK DISPLAY DAN USED (kolom I dan J)
-      const display = values[8]?.toLowerCase() === 'yes' ? true : false;
-      const used = values[9]?.toLowerCase() === 'yes' ? true : false;
+      // TENTUKAN STATUS (ACTIVE/TAKEDOWN)
+      // KALAU ADA KOLOM STATUS, BISA DITAMBAHIN DI SINI
+      // Contoh: kolom L (index 11) misalnya berisi "ACTIVE" atau "TAKEDOWN"
+      let status = true; // DEFAULT ACTIVE
+      // if (values[11]?.toUpperCase() === 'TAKEDOWN') status = false;
+      
+      // TENTUKAN USED (APAKAH PERNAH DIPAKAI)
+      // KALAU MAU USED IKUT STATUS:
+      let used = values[9]?.toLowerCase() === 'yes' ? true : false; // Kolom J: Used
+      if (!status) used = false; // KALAU STATUS TAKEDOWN, USED JADI FALSE
       
       banks.push({
         bank: bankName,
@@ -58,7 +66,7 @@ export async function POST() {
         display: display,
         used: used,
         masa_aktif: masaAktif || null,
-        status: true,
+        status: status,
         last_sync_at: new Date().toISOString()
       });
     }
