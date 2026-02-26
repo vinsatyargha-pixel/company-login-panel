@@ -46,7 +46,10 @@ export default function DashboardContent() {
   // STATE UNTUK BANK ACCOUNTS (DARI SUPABASE)
   // ===========================================
   const [bankAccounts, setBankAccounts] = useState([]);
+  const [filteredBanks, setFilteredBanks] = useState([]);
   const [loadingBanks, setLoadingBanks] = useState(true);
+  const [activeTab, setActiveTab] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // ===========================================
   // STATE UNTUK AVAILABLE SERVICES (MANUAL TOGGLE)
@@ -62,6 +65,10 @@ export default function DashboardContent() {
   const [supportLines, setSupportLines] = useState({
     liveChat: false, whatsapp: false
   });
+
+  // STATE UNTUK POPUP INFO LOGIN
+  const [selectedBank, setSelectedBank] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
 
   // STATE UNTUK UPDATE
   const [updatingStatus, setUpdatingStatus] = useState({
@@ -96,6 +103,29 @@ export default function DashboardContent() {
   const { user, userJobRole, isAdmin } = useAuth();
 
   // ===========================================
+  // FILTER BANK ACCOUNTS
+  // ===========================================
+  useEffect(() => {
+    let filtered = [...bankAccounts];
+    
+    // Filter berdasarkan tab (all/deposit/withdrawal)
+    if (activeTab === 'deposit') {
+      filtered = filtered.filter(b => b.role?.toUpperCase().includes('DEPOSIT'));
+    } else if (activeTab === 'withdrawal') {
+      filtered = filtered.filter(b => b.role?.toUpperCase().includes('WITHDRAW'));
+    }
+    
+    // Filter berdasarkan status (all/active/takedown)
+    if (statusFilter === 'active') {
+      filtered = filtered.filter(b => b.status === 'AKTIF');
+    } else if (statusFilter === 'takedown') {
+      filtered = filtered.filter(b => b.status === 'TAKEDOWN');
+    }
+    
+    setFilteredBanks(filtered);
+  }, [activeTab, statusFilter, bankAccounts]);
+
+  // ===========================================
   // FETCH BANK ACCOUNTS DARI SUPABASE
   // ===========================================
   const fetchBankAccounts = async () => {
@@ -104,7 +134,7 @@ export default function DashboardContent() {
       const { data, error } = await supabase
         .from('bank_accounts')
         .select('*')
-        .eq('status', true); // HANYA AMBIL YANG ACTIVE!
+        .order('bank', { ascending: true });
 
       if (error) throw error;
       setBankAccounts(data || []);
@@ -213,6 +243,51 @@ export default function DashboardContent() {
     } finally {
       setUpdatingStatus({ deposit: false, withdrawal: false, support: false });
     }
+  };
+
+  // ===========================================
+  // FUNGSI STATUS TOGGLE
+  // ===========================================
+  const handleStatusToggle = async (id, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'AKTIF' ? 'TAKEDOWN' : 'AKTIF';
+      const { error } = await supabase
+        .from('bank_accounts')
+        .update({ status: newStatus })
+        .eq('id', id);
+
+      if (error) throw error;
+      fetchBankAccounts();
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  };
+
+  // ===========================================
+  // FUNGSI DELETE
+  // ===========================================
+  const handleDelete = async (id) => {
+    if (!confirm('Yakin ingin menghapus data bank ini?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('bank_accounts')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      fetchBankAccounts();
+    } catch (error) {
+      console.error('Error deleting bank:', error);
+    }
+  };
+
+  // ===========================================
+  // FUNGSI CLICK ACCOUNT
+  // ===========================================
+  const handleAccountClick = (bank) => {
+    setSelectedBank(bank);
+    setShowPopup(true);
   };
 
   // ===========================================
@@ -326,6 +401,17 @@ export default function DashboardContent() {
     return `${Math.floor(diffMins / 1440)} days ago`;
   };
 
+  // STATISTIK
+  const stats = {
+    total: bankAccounts.length,
+    active: bankAccounts.filter(b => b.status === 'AKTIF').length,
+    takedown: bankAccounts.filter(b => b.status === 'TAKEDOWN').length,
+    deposit: bankAccounts.filter(b => b.role?.toUpperCase().includes('DEPOSIT')).length,
+    withdrawal: bankAccounts.filter(b => b.role?.toUpperCase().includes('WITHDRAW')).length,
+    displayYes: bankAccounts.filter(b => b.display_used === 'YES').length,
+    usedYes: bankAccounts.filter(b => b.display_used === 'YES').length
+  };
+
   // Menu items
   const menuItems = [
     {
@@ -365,15 +451,6 @@ export default function DashboardContent() {
       adminOnly: true
     }
   ];
-
-  const filterOptions = [
-    { value: 'daily', label: 'Daily' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
-    { value: 'yearly', label: 'Yearly' }
-  ];
-
-  const yearOptions = ['2024', '2025', '2026', '2027', '2028'];
 
   if (loading) return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
@@ -473,57 +550,81 @@ export default function DashboardContent() {
         </div>
       </header>
 
-      {/* ROYAL GOLD CARDS - DENGAN MENU ACCOUNT BANK MANAGEMENT */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        {/* Asset */}
-        <DashboardCard
-          title="Asset GROUP-X"
-          value={`${dashboardData.totalAssets} Assets`}
-          icon="💎"
-          color="gold"
-          href="/dashboard/assets"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        {/* ACCOUNT BANK MANAGEMENT */}
-        <DashboardCard
-          title="Account Bank Management"
-          value="Manage Banks"
-          icon="🏦"
-          color="gold"
-          href="/dashboard/data-bank"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        {/* Data Officers */}
-        <DashboardCard
-          title="Data Officers GROUP-X"
-          value={`${dashboardData.activeOfficers} Officers`}
-          icon={<span className="text-2xl">👨‍💼</span>}
-          color="gold"
-          href="/dashboard/officers/active"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        {/* Schedule Officers */}
-        <DashboardCard
-          title="Schedule Officers GROUP-X"
-          value="Calendar"
-          icon="📅"
-          color="gold"
-          href="/dashboard/schedule"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
-        
-        {/* Financial Summary */}
-        <DashboardCard
-          title="Financial Summary GROUP-X"
-          value="Management"
-          icon="💰"
-          color="gold"
-          href="/dashboard/financial"
-          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-        />
+      {/* OVERVIEW CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-4 mb-6">
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+          <div className="text-[#A7D8FF] text-sm">Total Bank</div>
+          <div className="text-2xl font-bold text-white">{stats.total}</div>
+        </div>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+          <div className="text-[#A7D8FF] text-sm">Active</div>
+          <div className="text-2xl font-bold text-green-400">{stats.active}</div>
+        </div>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+          <div className="text-[#A7D8FF] text-sm">Takedown</div>
+          <div className="text-2xl font-bold text-red-400">{stats.takedown}</div>
+        </div>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+          <div className="text-[#A7D8FF] text-sm">Deposit</div>
+          <div className="text-2xl font-bold text-blue-400">{stats.deposit}</div>
+        </div>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+          <div className="text-[#A7D8FF] text-sm">Withdrawal</div>
+          <div className="text-2xl font-bold text-purple-400">{stats.withdrawal}</div>
+        </div>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+          <div className="text-[#A7D8FF] text-sm">Display YES</div>
+          <div className="text-2xl font-bold text-yellow-400">{stats.displayYes}</div>
+        </div>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+          <div className="text-[#A7D8FF] text-sm">Used YES</div>
+          <div className="text-2xl font-bold text-orange-400">{stats.usedYes}</div>
+        </div>
+      </div>
+
+      {/* FILTER TABS */}
+      <div className="mb-4 flex items-center gap-2 border-b border-[#FFD700]/20 pb-2 flex-wrap">
+        <button 
+          onClick={() => setActiveTab('all')} 
+          className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'all' ? 'bg-[#FFD700] text-[#0B1A33]' : 'text-[#A7D8FF] hover:text-white'}`}
+        >
+          All Banks ({stats.total})
+        </button>
+        <button 
+          onClick={() => setActiveTab('deposit')} 
+          className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'deposit' ? 'bg-[#FFD700] text-[#0B1A33]' : 'text-[#A7D8FF] hover:text-white'}`}
+        >
+          💰 Deposit ({stats.deposit})
+        </button>
+        <button 
+          onClick={() => setActiveTab('withdrawal')} 
+          className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'withdrawal' ? 'bg-[#FFD700] text-[#0B1A33]' : 'text-[#A7D8FF] hover:text-white'}`}
+        >
+          💸 Withdrawal ({stats.withdrawal})
+        </button>
+      </div>
+
+      {/* STATUS FILTER */}
+      <div className="mb-4 flex items-center gap-2 pb-2 flex-wrap">
+        <span className="text-[#A7D8FF] text-sm mr-2">Status:</span>
+        <button 
+          onClick={() => setStatusFilter('all')} 
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${statusFilter === 'all' ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#1A2F4A] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}
+        >
+          All
+        </button>
+        <button 
+          onClick={() => setStatusFilter('active')} 
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${statusFilter === 'active' ? 'bg-green-500 text-white' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'}`}
+        >
+          <span className="w-2 h-2 rounded-full bg-green-500"></span> Active ({stats.active})
+        </button>
+        <button 
+          onClick={() => setStatusFilter('takedown')} 
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${statusFilter === 'takedown' ? 'bg-red-500 text-white' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}
+        >
+          <span className="w-2 h-2 rounded-full bg-red-500"></span> Takedown ({stats.takedown})
+        </button>
       </div>
 
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
@@ -556,126 +657,126 @@ export default function DashboardContent() {
         </div>
 
         {/* KOLOM 2: DEPOSIT METHOD */}
-<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-  <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method (Receiver)</h3>
-  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-    {loadingBanks ? (
-      <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
-    ) : (
-      bankAccounts
-        .filter(bank => 
-          bank.role?.toLowerCase().includes('deposit') && 
-          bank.status === 'AKTIF'
-        )
-        .map((bank) => (
-          <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                
-                {/* GAMBAR BANK + NAMA BANK */}
-                <div className="flex items-center gap-2">
-                  {/* Gambar Bank */}
-                  {bank.bank?.toLowerCase().includes('bca') && (
-                    <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-                  )}
-                  {bank.bank?.toLowerCase().includes('bni') && (
-                    <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-                  )}
-                  {bank.bank?.toLowerCase().includes('bri') && (
-                    <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-                  )}
-                  {bank.bank?.toLowerCase().includes('mandiri') && (
-                    <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-                  )}
-                  
-                  <span className="text-white text-sm font-medium">{bank.bank}</span>
-                </div>
-              </div>
-              
-              <span className="text-[#A7D8FF] text-xs ml-6">
-                {bank.account_name} {bank.account_number}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-green-400">ON</span>
-              <button
-                disabled
-                className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
-              >
-                <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
-              </button>
-            </div>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method (Receiver)</h3>
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+            {loadingBanks ? (
+              <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
+            ) : (
+              bankAccounts
+                .filter(bank => 
+                  bank.role?.toUpperCase().includes('DEPOSIT') && 
+                  bank.status === 'AKTIF'
+                )
+                .map((bank) => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        
+                        {/* GAMBAR BANK + NAMA BANK */}
+                        <div className="flex items-center gap-2">
+                          {/* Gambar Bank */}
+                          {bank.bank?.toLowerCase().includes('bca') && (
+                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bni') && (
+                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bri') && (
+                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('mandiri') && (
+                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+                          )}
+                          
+                          <span className="text-white text-sm font-medium">{bank.bank}</span>
+                        </div>
+                      </div>
+                      
+                      <span className="text-[#A7D8FF] text-xs ml-6">
+                        {bank.account_name} {bank.account_number}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                      <button
+                        disabled
+                        className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
+                      >
+                        <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+            )}
           </div>
-        ))
-    )}
-  </div>
-</div>
+        </div>
 
         {/* KOLOM 3: WITHDRAWAL METHOD */}
-<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-  <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender)</h3>
-  <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-    {loadingBanks ? (
-      <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
-    ) : (
-      bankAccounts
-        .filter(bank => 
-          bank.role?.toLowerCase().includes('withdraw') && 
-          bank.status === 'AKTIF'
-        )
-        .map((bank) => (
-          <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                
-                {/* GAMBAR BANK + NAMA BANK */}
-                <div className="flex items-center gap-2">
-                  {/* Gambar Bank */}
-                  {bank.bank?.toLowerCase().includes('bca') && (
-                    <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-                  )}
-                  {bank.bank?.toLowerCase().includes('bni') && (
-                    <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-                  )}
-                  {bank.bank?.toLowerCase().includes('bri') && (
-                    <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-                  )}
-                  {bank.bank?.toLowerCase().includes('mandiri') && (
-                    <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-                  )}
-                  
-                  <span className="text-white text-sm font-medium">{bank.bank}</span>
-                </div>
-              </div>
-              
-              <span className="text-[#A7D8FF] text-xs ml-6">
-                {bank.account_name} {bank.account_number}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-green-400">ON</span>
-              <button
-                disabled
-                className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
-              >
-                <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
-              </button>
-            </div>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender)</h3>
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+            {loadingBanks ? (
+              <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
+            ) : (
+              bankAccounts
+                .filter(bank => 
+                  bank.role?.toUpperCase().includes('WITHDRAW') && 
+                  bank.status === 'AKTIF'
+                )
+                .map((bank) => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        
+                        {/* GAMBAR BANK + NAMA BANK */}
+                        <div className="flex items-center gap-2">
+                          {/* Gambar Bank */}
+                          {bank.bank?.toLowerCase().includes('bca') && (
+                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bni') && (
+                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bri') && (
+                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('mandiri') && (
+                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+                          )}
+                          
+                          <span className="text-white text-sm font-medium">{bank.bank}</span>
+                        </div>
+                      </div>
+                      
+                      <span className="text-[#A7D8FF] text-xs ml-6">
+                        {bank.account_name} {bank.account_number}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                      <button
+                        disabled
+                        className="relative inline-flex h-5 w-9 items-center rounded-full bg-green-500 opacity-50 cursor-not-allowed"
+                      >
+                        <span className="inline-block h-3 w-3 transform rounded-full bg-white translate-x-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+            )}
           </div>
-        ))
-    )}
-  </div>
-</div>
+        </div>
       </div>
 
       {/* ROW 2 - GRID 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: CUSTOMER SUPPORT LINE - LAMPU + SWITCH + ON/OFF */}
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Service Support Line</h3>
           <div className="space-y-4">
@@ -763,6 +864,173 @@ export default function DashboardContent() {
         </div>
       </div>
 
+      {/* TABEL BANK */}
+      <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden mt-6">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
+              <tr>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Status</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Display/Used</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Bank</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Account Name</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Account Number</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Role</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Type Bank</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Masa Aktif</th>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingBanks ? (
+                <tr><td colSpan="9" className="text-center py-8 text-[#A7D8FF]"><span className="animate-spin inline-block mr-2">⏳</span>Loading data bank...</td></tr>
+              ) : filteredBanks.length === 0 ? (
+                <tr><td colSpan="9" className="text-center py-8 text-[#A7D8FF]">Tidak ada bank dengan filter ini.</td></tr>
+              ) : (
+                filteredBanks.map((bank) => (
+                  <tr key={bank.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center gap-1 ${bank.status === 'AKTIF' ? 'text-green-400' : 'text-red-400'}`}>
+                        <span className={`w-2 h-2 rounded-full ${bank.status === 'AKTIF' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                        {bank.status || 'AKTIF'}
+                      </span>
+                    </td>
+                    
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        {bank.display_used === 'YES' && (
+                          <>
+                            <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs">Display</span>
+                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs">Used</span>
+                          </>
+                        )}
+                        {bank.display_used === 'NO' && (
+                          <span className="px-2 py-0.5 bg-gray-500/20 text-gray-400 rounded-full text-xs">No</span>
+                        )}
+                        {bank.display_used === 'TAKEDOWN' && (
+                          <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded-full text-xs">Takedown</span>
+                        )}
+                        {!bank.display_used && <span className="text-[#A7D8FF] text-xs">-</span>}
+                      </div>
+                    </td>
+                    
+                    {/* KOLOM BANK - DENGAN GAMBAR */}
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        {/* Gambar Bank */}
+                        {bank.bank?.toLowerCase().includes('bca') && (
+                          <img src="/images/bca.png" alt="BCA" className="h-5 w-auto object-contain" />
+                        )}
+                        {bank.bank?.toLowerCase().includes('bni') && (
+                          <img src="/images/bni.png" alt="BNI" className="h-5 w-auto object-contain" />
+                        )}
+                        {bank.bank?.toLowerCase().includes('bri') && (
+                          <img src="/images/bri.png" alt="BRI" className="h-5 w-auto object-contain" />
+                        )}
+                        {bank.bank?.toLowerCase().includes('mandiri') && (
+                          <img src="/images/mandiri.png" alt="Mandiri" className="h-5 w-auto object-contain" />
+                        )}
+                        {/* Nama Bank */}
+                        <span className="text-white font-medium">{bank.bank}</span>
+                      </div>
+                    </td>
+                    
+                    <td className="py-3 px-4 text-white">{bank.account_name || '-'}</td>
+                    
+                    <td className="py-3 px-4">
+                      <button 
+                        onClick={() => handleAccountClick(bank)} 
+                        className="text-white font-mono hover:text-[#FFD700] transition-colors underline decoration-dotted underline-offset-2"
+                      >
+                        {bank.account_number || '-'}
+                      </button>
+                    </td>
+                    
+                    <td className="py-3 px-4">
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        bank.role === 'DEPOSIT' ? 'bg-blue-500/20 text-blue-400' : 
+                        bank.role === 'WITHDRAW' ? 'bg-purple-500/20 text-purple-400' : 
+                        'bg-green-500/20 text-green-400'
+                      }`}>
+                        {bank.role === 'DEPOSIT' ? 'Deposit' : 
+                         bank.role === 'WITHDRAW' ? 'Withdrawal' : 
+                         bank.role || 'Both'}
+                      </span>
+                    </td>
+                    
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400">
+                        {bank.type_bank || '-'}
+                      </span>
+                    </td>
+                    
+                    <td className="py-3 px-4 text-[#A7D8FF] text-sm">{bank.masa_aktif || '-'}</td>
+                    
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleStatusToggle(bank.id, bank.status)} 
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            bank.status === 'AKTIF' ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                          }`}
+                        >
+                          {bank.status === 'AKTIF' ? '→ Takedown' : '→ Active'}
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(bank.id)} 
+                          className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30" 
+                          title="Hapus"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* POPUP INFO LOGIN */}
+      {showPopup && selectedBank && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#1A2F4A] border-2 border-[#FFD700] rounded-xl p-6 max-w-2xl w-full mx-4 shadow-[0_0_50px_#FFD700] max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4 sticky top-0 bg-[#1A2F4A] z-10 pb-2">
+              <h3 className="text-xl font-bold text-[#FFD700]">🔐 Info Login {selectedBank.bank}</h3>
+              <button onClick={() => setShowPopup(false)} className="text-[#A7D8FF] hover:text-white text-2xl">×</button>
+            </div>
+            
+            {/* Data Utama */}
+            <div className="bg-[#0B1A33] p-4 rounded-lg mb-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div><div className="text-[#A7D8FF] text-xs">Bank</div><div className="text-white font-bold">{selectedBank.bank}</div></div>
+                <div><div className="text-[#A7D8FF] text-xs">Account Name</div><div className="text-white font-bold">{selectedBank.account_name}</div></div>
+                <div><div className="text-[#A7D8FF] text-xs">Account Number</div><div className="text-white font-mono">{selectedBank.account_number}</div></div>
+                <div><div className="text-[#A7D8FF] text-xs">Role</div><div className={`px-2 py-1 inline-block rounded-full text-xs ${selectedBank.role === 'DEPOSIT' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>{selectedBank.role === 'DEPOSIT' ? 'Deposit' : 'Withdrawal'}</div></div>
+              </div>
+            </div>
+
+            {/* Login Info */}
+            <div className="space-y-4">
+              {/* Login Utama */}
+              <div className="bg-[#0B1A33] p-4 rounded-lg">
+                <h4 className="text-[#FFD700] font-semibold mb-3 border-b border-[#FFD700]/20 pb-1">🔑 Login Info</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><div className="text-[#A7D8FF] text-xs">User ID</div><div className="text-white font-mono">-</div></div>
+                  <div><div className="text-[#A7D8FF] text-xs">PIN</div><div className="text-white font-mono">-</div></div>
+                </div>
+              </div>
+            </div>
+            
+            <button onClick={() => setShowPopup(false)} className="mt-6 w-full bg-[#FFD700] text-[#0B1A33] py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 transition-colors">
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* MENU SECTION */}
       <div className="mt-8 pt-6 border-t border-[#FFD700]/20">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">Performance & Settings Menu</h2>
@@ -782,6 +1050,16 @@ export default function DashboardContent() {
             );
           })}
         </div>
+      </div>
+
+      {/* FOOTER */}
+      <div className="mt-4 text-xs text-[#A7D8FF] flex items-center justify-end gap-4 flex-wrap">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Active</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Takedown</span>
+        <span className="flex items-center gap-1">💰 Deposit</span>
+        <span className="flex items-center gap-1">💸 Withdrawal</span>
+        <span className="flex items-center gap-1">📊 From Google Sheets</span>
+        <span className="flex items-center gap-1">🔍 Klik No. Rekening</span>
       </div>
 
       {showResetModal && (

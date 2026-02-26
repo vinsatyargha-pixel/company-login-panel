@@ -15,9 +15,12 @@ export async function POST() {
     
     const lines = csvText.split('\n').filter(line => line.trim());
     
+    // HAPUS SEMUA DATA LAMA
+    await supabase.from('bank_accounts').delete().neq('id', 0);
+    
     const banks = [];
     
-    // MULAI DARI BARIS 3 (index 2) - 7 BANK
+    // MULAI DARI BARIS 3 (INDEX 2) - 7 BANK
     for (let i = 2; i < 9; i++) {
       if (!lines[i]?.trim()) continue;
       
@@ -26,35 +29,40 @@ export async function POST() {
       const accountNumber = values[5]?.replace(/\s/g, '');
       if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
       
-      // AMBIL DISPLAY_USED (YES/NO/TAKEDOWN)
-      let displayUsed = values[2]?.toUpperCase() || '';
+      // AMBIL DATA MENTAH DARI SHEET
+      const statusSheet = values[1]?.toUpperCase() || 'AKTIF';        // Kolom B
+      const displayUsedSheet = values[2]?.toUpperCase() || '';       // Kolom C
+      const bankName = values[3] || '';                               // Kolom D
+      const accountName = values[4] || '';                            // Kolom E
+      const roleSheet = values[6]?.toUpperCase() || 'BOTH';          // Kolom F
+      const typeBankSheet = values[7] || '';                          // Kolom G
+      const masaAktifSheet = values[8] || null;                       // Kolom H
       
-      // KALAU STATUS BANK TAKEDOWN, DISPLAY_USED IKUT TAKEDOWN
-      const statusBank = values[1]?.toUpperCase();
-      if (statusBank === 'TAKEDOWN') {
-        displayUsed = 'TAKEDOWN';
-      }
+      console.log(`🔍 Baris ${i}:`, {
+        bank: bankName,
+        nama: accountName,
+        noRek: accountNumber,
+        status: statusSheet,
+        displayUsed: displayUsedSheet,
+        role: roleSheet
+      });
       
       banks.push({
-        asset: values[0] || 'LUCK77',
-        status: statusBank || 'AKTIF',
-        display_used: displayUsed,  // YES / NO / TAKEDOWN
-        bank: values[3] || '',
-        account_name: values[4] || '',
+        asset: 'LUCK77',
+        status: statusSheet,                    // AKTIF / TAKEDOWN
+        display_used: displayUsedSheet,         // YES / NO / TAKEDOWN
+        bank: bankName,
+        account_name: accountName,
         account_number: accountNumber,
-        role: values[6]?.toLowerCase() || 'both',
-        type_bank: values[7] || '',
-        masa_aktif: values[8] || null,
+        role: roleSheet,                         // DEPOSIT / WITHDRAW / BOTH
+        type_bank: typeBankSheet,
+        masa_aktif: masaAktifSheet,
         last_sync_at: new Date().toISOString()
       });
     }
     
     console.log(`✅ Data valid: ${banks.length} bank`);
     
-    // HAPUS DATA LAMA
-    await supabase.from('bank_accounts').delete().neq('id', 0);
-    
-    // INSERT DATA BARU
     if (banks.length > 0) {
       const { error } = await supabase.from('bank_accounts').insert(banks);
       if (error) throw error;
