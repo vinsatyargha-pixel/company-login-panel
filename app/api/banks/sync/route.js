@@ -8,15 +8,13 @@ export async function POST() {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
     
+    // AMBIL CSV DARI SHEET "DATABASE TO VERCEL"
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1689175827&single=true&output=csv';
     
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
     const lines = csvText.split('\n').filter(line => line.trim());
-    
-    // HAPUS SEMUA DATA LAMA
-    await supabase.from('bank_accounts').delete().neq('id', 0);
     
     const banks = [];
     
@@ -29,40 +27,34 @@ export async function POST() {
       const accountNumber = values[5]?.replace(/\s/g, '');
       if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
       
-      // AMBIL DATA MENTAH DARI SHEET
-      const statusSheet = values[1]?.toUpperCase() || 'AKTIF';        // Kolom B
-      const displayUsedSheet = values[2]?.toUpperCase() || '';       // Kolom C
-      const bankName = values[3] || '';                               // Kolom D
-      const accountName = values[4] || '';                            // Kolom E
-      const roleSheet = values[6]?.toUpperCase() || 'BOTH';          // Kolom F
-      const typeBankSheet = values[7] || '';                          // Kolom G
-      const masaAktifSheet = values[8] || null;                       // Kolom H
+      // KOLOM C (index 2) = Display/Used (YES/NO/TAKEDOWN)
+      const displayUsed = values[2]?.toUpperCase() || '';
       
-      console.log(`🔍 Baris ${i}:`, {
-        bank: bankName,
-        nama: accountName,
-        noRek: accountNumber,
-        status: statusSheet,
-        displayUsed: displayUsedSheet,
-        role: roleSheet
-      });
+      // KOLOM F (index 6) = Role (DEPOSIT/WITHDRAW)
+      const role = values[6]?.toUpperCase() || 'BOTH';
+      
+      console.log(`🔍 ${values[3]} - ${values[4]} - Display/Used: ${displayUsed} - Role: ${role}`);
       
       banks.push({
-        asset: 'LUCK77',
-        status: statusSheet,                    // AKTIF / TAKEDOWN
-        display_used: displayUsedSheet,         // YES / NO / TAKEDOWN
-        bank: bankName,
-        account_name: accountName,
+        asset: values[0] || 'LUCK77',
+        status: values[1]?.toUpperCase() || 'AKTIF',
+        display_used: displayUsed,  // LANGSUNG DARI KOLOM C
+        bank: values[3] || '',
+        account_name: values[4] || '',
         account_number: accountNumber,
-        role: roleSheet,                         // DEPOSIT / WITHDRAW / BOTH
-        type_bank: typeBankSheet,
-        masa_aktif: masaAktifSheet,
+        role: role,
+        type_bank: values[7] || '',
+        masa_aktif: values[8] || null,
         last_sync_at: new Date().toISOString()
       });
     }
     
     console.log(`✅ Data valid: ${banks.length} bank`);
     
+    // HAPUS DATA LAMA
+    await supabase.from('bank_accounts').delete().neq('id', 0);
+    
+    // INSERT DATA BARU
     if (banks.length > 0) {
       const { error } = await supabase.from('bank_accounts').insert(banks);
       if (error) throw error;
