@@ -16,69 +16,53 @@ export async function POST() {
     const lines = csvText.split('\n').filter(line => line.trim());
     
     const banks = [];
-    const credentials = [];
     
-    // MULAI DARI BARIS 3 (index 2)
-    for (let i = 2; i < lines.length; i++) {
+    // MULAI DARI BARIS 3 (index 2) - 7 BANK
+    for (let i = 2; i < 9; i++) {
       if (!lines[i]?.trim()) continue;
       
       const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-      if (values.length < 9) continue;
       
       const accountNumber = values[5]?.replace(/\s/g, '');
       if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
       
-      // DATA BANK (TABLE 1)
+      // AMBIL DISPLAY_USED (YES/NO/TAKEDOWN)
+      let displayUsed = values[2]?.toUpperCase() || '';
+      
+      // KALAU STATUS BANK TAKEDOWN, DISPLAY_USED IKUT TAKEDOWN
+      const statusBank = values[1]?.toUpperCase();
+      if (statusBank === 'TAKEDOWN') {
+        displayUsed = 'TAKEDOWN';
+      }
+      
       banks.push({
-        asset: values[0],
-        status: values[1],
-        display_used: values[2],
-        bank: values[3],
-        account_name: values[4],
+        asset: values[0] || 'LUCK77',
+        status: statusBank || 'AKTIF',
+        display_used: displayUsed,  // YES / NO / TAKEDOWN
+        bank: values[3] || '',
+        account_name: values[4] || '',
         account_number: accountNumber,
-        role: values[6],
-        type_bank: values[7],
-        masa_aktif: values[8],
+        role: values[6]?.toLowerCase() || 'both',
+        type_bank: values[7] || '',
+        masa_aktif: values[8] || null,
         last_sync_at: new Date().toISOString()
       });
-      
-      // CREDENTIALS (TABLE 2) - SESUAIKAN INDEX DENGAN SHEET LO
-      credentials.push({
-        account_number: accountNumber,
-        user_id_1: values[9] || null,    // USER ID (IBANK)
-        pin_1: values[10] || null,        // PIN (IBANK)
-        user_id_2: values[11] || null,    // USER ID (MYBCA)
-        pass_1: values[12] || null,       // PASS (MYBCA)
-        pin_2: values[13] || null,        // PIN (MYBCA)
-        user_id_3: values[14] || null,    // USER ID (MBANK)
-        pass_2: values[15] || null,       // PASS (MBANK)
-        pin_3: values[16] || null,        // PIN (MBANK)
-        pass_transaksi: values[17] || null, // PASS TRANSAKSI
-        agent: values[18] || null,        // AGENT
-        pin_token: values[19] || null,    // PIN TOKEN
-        hp: values[20] || null,           // HP
-        email: values[21] || null         // EMAIL
-      });
     }
+    
+    console.log(`✅ Data valid: ${banks.length} bank`);
     
     // HAPUS DATA LAMA
     await supabase.from('bank_accounts').delete().neq('id', 0);
-    await supabase.from('bank_credentials').delete().neq('id', 0);
     
     // INSERT DATA BARU
     if (banks.length > 0) {
-      const { error: bankError } = await supabase.from('bank_accounts').insert(banks);
-      if (bankError) throw bankError;
-    }
-    
-    if (credentials.length > 0) {
-      const { error: credError } = await supabase.from('bank_credentials').insert(credentials);
-      if (credError) throw credError;
+      const { error } = await supabase.from('bank_accounts').insert(banks);
+      if (error) throw error;
     }
     
     return NextResponse.json({ 
       success: true, 
-      message: `Sync ${banks.length} bank & ${credentials.length} credentials`
+      message: `Sync ${banks.length} bank`
     });
     
   } catch (error) {
