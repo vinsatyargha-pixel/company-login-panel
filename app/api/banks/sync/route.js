@@ -1,38 +1,83 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST() {
   try {
-    console.log('🚀 START SYNC - DEBUG MODE');
+    console.log('🚀 START SYNC');
+    
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabase = createClient(supabaseUrl, supabaseKey);
     
     const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?output=csv';
     
     const response = await fetch(csvUrl);
     const csvText = await response.text();
     
-    // TAMPILKAN RAW CSV
-    console.log('📄 RAW CSV (500 chars pertama):');
-    console.log(csvText.substring(0, 500));
-    
     const lines = csvText.split('\n').filter(line => line.trim());
     console.log(`📊 Total baris: ${lines.length}`);
     
-    // TAMPILKAN 5 BARIS PERTAMA DENGAN DETAIL KOLOM
-    for (let i = 0; i < Math.min(5, lines.length); i++) {
-      console.log(`\n=== BARIS ${i} ===`);
-      console.log(`RAW: "${lines[i]}"`);
+    const banks = [];
+    
+    // MULAI DARI BARIS 3 (index 2) karena baris 1-2 header
+    for (let i = 2; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
       
-      const values = lines[i].split(',').map(v => v.trim());
-      console.log(`Jumlah kolom: ${values.length}`);
+      // CEK APAKAH ADA DATA BANK (minimal ada bank dan no rek)
+      const bankName = values[0]?.toUpperCase(); // Kolom A: BANK
+      const accountName = values[1]; // Kolom B: NAMA
+      const accountNumber = values[2]?.replace(/\s/g, ''); // Kolom C: NO REK
+      const role = values[19]?.toLowerCase(); // Kolom T: DEPOSIT/WITHDRAW
+      const typeBank = values[23]; // Kolom X: MOBILE/SOFTOKEN
+      const masaAktif = values[21]; // Kolom V: MASA AKTIF
+      const statusKolom = values[24]?.toUpperCase(); // Kolom Y: STATUS BANK
       
-      values.forEach((val, idx) => {
-        console.log(`  [${idx}] = "${val}"`);
+      // VALIDASI: harus ada bank dan nomor rekening valid
+      if (!bankName || !accountNumber || !/^\d+$/.test(accountNumber)) continue;
+      
+      console.log(`🔍 ${bankName} - ${accountName} - Status: ${statusKolom}`);
+      
+      // TENTUKAN TYPE
+      let type = 'both';
+      if (role?.includes('DEPOSIT')) type = 'deposit';
+      else if (role?.includes('WITHDRAW')) type = 'withdrawal';
+      
+      // TENTUKAN STATUS
+      const isActive = statusKolom === 'AKTIF';
+      
+      banks.push({
+        bank: bankName,
+        account_name: accountName || '',
+        account_number: accountNumber,
+        type: type,
+        type_bank: typeBank || '',
+        display: false,
+        used: false,
+        masa_aktif: masaAktif || null,
+        status: isActive,
+        last_sync_at: new Date().toISOString()
       });
     }
     
+    console.log(`✅ Data valid: ${banks.length} bank`);
+    
+    if (banks.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'Tidak ada data valid'
+      }, { status: 400 });
+    }
+    
+    // HAPUS DATA LAMA
+    await supabase.from('bank_accounts').delete().neq('id', 0);
+    
+    // INSERT DATA BARU
+    const { error } = await supabase.from('bank_accounts').insert(banks);
+    if (error) throw error;
+    
     return NextResponse.json({ 
       success: true, 
-      message: 'CEK LOG VERCELL',
-      totalBaris: lines.length
+      message: `Sync berhasil! ${banks.length} bank diupdate`
     });
     
   } catch (error) {
