@@ -117,7 +117,7 @@ export default function DataBankPage() {
     withdrawal: banks.filter(b => b.role?.toUpperCase() === 'WITHDRAW').length,
     depositActive: banks.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.status === 'AKTIF').length,
     withdrawalActive: banks.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.status === 'AKTIF').length,
-    displayYes: banks.filter(b => b.display_used === 'YES').length,
+    displayYes: banks.filter(b => b.display_used === 'YES' && b.role === 'DEPOSIT').length,
     usedYes: banks.filter(b => b.display_used === 'YES' && b.role === 'WITHDRAW').length
   };
 
