@@ -21,20 +21,11 @@ export default function DataBankPage() {
   const [showPopup, setShowPopup] = useState(false);
 
   // ===========================================
-  // AUTO REFRESH EVERY 30 SECONDS
+  // FETCH DATA ON MOUNT (NO AUTO REFRESH)
   // ===========================================
   useEffect(() => {
     fetchGoogleSheet();
-    
-    // AUTO REFRESH SETIAP 30 DETIK
-    const interval = setInterval(() => {
-      console.log('🔄 Auto refresh data dari Google Sheets...');
-      fetchGoogleSheet();
-    }, 30000); // 30 detik
-    
-    // BERSIHKAN INTERVAL KALO KOMPONEN DI-UNMOUNT
-    return () => clearInterval(interval);
-  }, []);
+  }, []); // <-- TANPA INTERVAL!
 
   useEffect(() => {
     let filtered = [...banks];
@@ -260,7 +251,7 @@ export default function DataBankPage() {
           <h1 className="text-3xl font-bold text-[#FFD700] flex items-center gap-2">
             <span>🏦</span> Account Bank Management
           </h1>
-          <p className="text-[#A7D8FF] mt-1">Data langsung dari Google Sheets (real-time)</p>
+          <p className="text-[#A7D8FF] mt-1">Data langsung dari Google Sheets</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -270,7 +261,6 @@ export default function DataBankPage() {
             <span>🔄</span> Refresh Data
           </button>
           
-               
           <Link href="/dashboard" className="px-4 py-2 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg text-[#FFD700] hover:bg-[#2A3F5A] transition-all flex items-center gap-2">
             <span>←</span> Back to Dashboard
           </Link>
