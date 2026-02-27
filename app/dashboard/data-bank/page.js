@@ -340,18 +340,20 @@ export default function DataBankPage() {
                     </td>
                     
                     {/* Bank dengan Gambar */}
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        {bank.bank?.toLowerCase().includes('bca') && <img src="/images/bca.png" alt="BCA" className="h-5 w-auto object-contain" />}
-                        {bank.bank?.toLowerCase().includes('bni') && <img src="/images/bni.png" alt="BNI" className="h-5 w-auto object-contain" />}
-                        {bank.bank?.toLowerCase().includes('bri') && <img src="/images/bri.png" alt="BRI" className="h-5 w-auto object-contain" />}
-                        {bank.bank?.toLowerCase().includes('mandiri') && <img src="/images/mandiri.png" alt="Mandiri" className="h-5 w-auto object-contain" />}
-                        {bank.bank?.toLowerCase().includes('nexus') && (
-                          <span className="text-[#FFD700] font-bold mr-1">NEXUS</span>
-                        )}
-                        <span className="text-white font-medium">{bank.bank}</span>
-                      </div>
-                    </td>
+<td className="py-3 px-4">
+  <div className="flex items-center gap-2">
+    {bank.bank?.toLowerCase().includes('bca') && <img src="/images/bca.png" alt="BCA" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('bni') && <img src="/images/bni.png" alt="BNI" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('bri') && <img src="/images/bri.png" alt="BRI" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('mandiri') && <img src="/images/mandiri.png" alt="Mandiri" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('nexus') && <img src="/images/nexus.png" alt="NEXUS" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('dana') && <img src="/images/dana.png" alt="DANA" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('qris') && <img src="/images/qris.png" alt="QRIS" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('cimb') && <img src="/images/cimb.png" alt="CIMB" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('permata') && <img src="/images/permata.png" alt="Permata" className="h-5 w-auto object-contain" />}
+    <span className="text-white font-medium">{bank.bank}</span>
+  </div>
+</td>
                     
                     <td className="py-3 px-4 text-white">{bank.account_name || '-'}</td>
                     
