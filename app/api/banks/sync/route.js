@@ -69,7 +69,7 @@ export async function POST() {
         display_used: values[2]?.toUpperCase() || '',
         bank: values[3] || '',
         account_name: values[4] || '',
-        account_number: isNexusPay ? '-' : accountNumber,
+        account_number: isNexusPay ? '-' : accountNumber, // NEXUSPAY PAKE '-'
         role: values[6]?.toUpperCase() || 'BOTH',
         type_bank: values[7] || '',
         masa_aktif: values[8] || null,
@@ -104,27 +104,12 @@ export async function POST() {
       }, { status: 400 });
     }
     
-    // HAPUS DATA LAMA
-    console.log('🗑️ Menghapus data lama...');
-    const { error: deleteCredError } = await supabase
-      .from('bank_credentials')
-      .delete()
-      .neq('id', 0);
-      
-    if (deleteCredError) {
-      console.error('❌ Gagal hapus credentials:', deleteCredError);
-      // LANJUTKAN, JANGAN BERHENTI
-    }
+    // HAPUS DATA LAMA (URUTAN PENTING!)
+    console.log('🗑️ Menghapus data credentials...');
+    await supabase.from('bank_credentials').delete().neq('id', 0);
     
-    const { error: deleteBankError } = await supabase
-      .from('bank_accounts')
-      .delete()
-      .neq('id', 0);
-      
-    if (deleteBankError) {
-      console.error('❌ Gagal hapus bank accounts:', deleteBankError);
-      throw deleteBankError;
-    }
+    console.log('🗑️ Menghapus data bank_accounts...');
+    await supabase.from('bank_accounts').delete().neq('id', 0);
     
     // INSERT DATA BARU
     console.log(`💾 Inserting ${banks.length} banks...`);
