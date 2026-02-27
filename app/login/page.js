@@ -186,7 +186,11 @@ export default function LoginPage() {
         <div className="magni-text">MAGNI</div>
         <div className="group-text">GROUP</div>
         <div className="panel-text">SECURE TECHNOLOGY PANEL</div>
-        
+        <div className="flex justify-center items-center gap-4 mt-6">
+  <img src="/images/nexus.png" alt="NEXUS" className="h-8 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity" />
+  <img src="/images/logo-xen.png" alt="XEN" className="h-8 w-auto object-contain opacity-70 hover:opacity-100 transition-opacity" />
+</div>
+
         <form onSubmit={handleLogin} style={{ marginTop: "40px" }}>
           <div style={{ textAlign: "left", marginBottom: "20px" }}>
             <label style={{ color: "#88ccff" }}>E-mail</label>
