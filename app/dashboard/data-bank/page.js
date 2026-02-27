@@ -346,7 +346,7 @@ export default function DataBankPage() {
     {bank.bank?.toLowerCase().includes('bni') && <img src="/images/bni.png" alt="BNI" className="h-5 w-auto object-contain" />}
     {bank.bank?.toLowerCase().includes('bri') && <img src="/images/bri.png" alt="BRI" className="h-5 w-auto object-contain" />}
     {bank.bank?.toLowerCase().includes('mandiri') && <img src="/images/mandiri.png" alt="Mandiri" className="h-5 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('nexuspay') && <img src="/images/nexus.png" alt="NEXUSPAY" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('nexuspay') && <img src="/images/nexus.png" alt="NEXUS" className="h-6 w-auto object-contain" />}
     {bank.bank?.toLowerCase().includes('dana') && <img src="/images/dana.png" alt="DANA" className="h-5 w-auto object-contain" />}
     {bank.bank?.toLowerCase().includes('qris') && <img src="/images/qris.png" alt="QRIS" className="h-5 w-auto object-contain" />}
     {bank.bank?.toLowerCase().includes('cimb') && <img src="/images/cimb.png" alt="CIMB" className="h-5 w-auto object-contain" />}
