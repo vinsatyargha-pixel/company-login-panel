@@ -20,8 +20,20 @@ export default function DataBankPage() {
   const [selectedBank, setSelectedBank] = useState(null);
   const [showPopup, setShowPopup] = useState(false);
 
+  // ===========================================
+  // AUTO REFRESH EVERY 30 SECONDS
+  // ===========================================
   useEffect(() => {
     fetchGoogleSheet();
+    
+    // AUTO REFRESH SETIAP 30 DETIK
+    const interval = setInterval(() => {
+      console.log('🔄 Auto refresh data dari Google Sheets...');
+      fetchGoogleSheet();
+    }, 30000); // 30 detik
+    
+    // BERSIHKAN INTERVAL KALO KOMPONEN DI-UNMOUNT
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -258,27 +270,7 @@ export default function DataBankPage() {
             <span>🔄</span> Refresh Data
           </button>
           
-          {/* TOMBOL SYNC KE SUPABASE */}
-          <button
-            onClick={syncToSupabase}
-            disabled={syncStatus === 'syncing'}
-            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-              syncStatus === 'syncing' 
-                ? 'bg-gray-500 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {syncStatus === 'syncing' ? (
-              <>
-                <span className="animate-spin">⏳</span> Syncing...
-              </>
-            ) : (
-              <>
-                <span>📤</span> Sync ke Supabase
-              </>
-            )}
-          </button>
-          
+               
           <Link href="/dashboard" className="px-4 py-2 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg text-[#FFD700] hover:bg-[#2A3F5A] transition-all flex items-center gap-2">
             <span>←</span> Back to Dashboard
           </Link>
@@ -465,6 +457,8 @@ export default function DataBankPage() {
                         {bank.bank?.toLowerCase().includes('cimb') && <img src="/images/cimb.png" alt="CIMB" className="h-5 w-auto object-contain" />}
                         {bank.bank?.toLowerCase().includes('permata') && <img src="/images/permata.png" alt="Permata" className="h-5 w-auto object-contain" />}
                         {bank.bank?.toLowerCase().includes('midas') && <img src="/images/midas.png" alt="MIDAS" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('seabank') && <img src="/images/seabank.png" alt="SEABANK" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('jago') && <img src="/images/jago.png" alt="JAGO" className="h-5 w-auto object-contain" />}
                         <span className="text-white font-medium">{bank.bank}</span>
                       </div>
                     </td>
