@@ -351,6 +351,7 @@ export default function DataBankPage() {
     {bank.bank?.toLowerCase().includes('qris') && <img src="/images/qris.png" alt="QRIS" className="h-5 w-auto object-contain" />}
     {bank.bank?.toLowerCase().includes('cimb') && <img src="/images/cimb.png" alt="CIMB" className="h-5 w-auto object-contain" />}
     {bank.bank?.toLowerCase().includes('permata') && <img src="/images/permata.png" alt="Permata" className="h-5 w-auto object-contain" />}
+    {bank.bank?.toLowerCase().includes('midas') && <img src="/images/midas.png" alt="MIDAS" className="h-5 w-auto object-contain" />}
     <span className="text-white font-medium">{bank.bank}</span>
   </div>
 </td>
