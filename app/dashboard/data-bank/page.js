@@ -35,6 +35,10 @@ export default function DataBankPage() {
     // Filter berdasarkan status
     if (statusFilter === 'active') {
       filtered = filtered.filter(b => b.status === 'AKTIF');
+    } else if (statusFilter === 'display') {
+      filtered = filtered.filter(b => b.display_used === 'YES' && b.role === 'DEPOSIT');
+    } else if (statusFilter === 'used') {
+      filtered = filtered.filter(b => b.display_used === 'YES' && b.role === 'WITHDRAW');
     } else if (statusFilter === 'takedown') {
       filtered = filtered.filter(b => b.status === 'TAKEDOWN');
     }
@@ -144,8 +148,8 @@ export default function DataBankPage() {
     withdrawal: banks.filter(b => b.role?.toUpperCase() === 'WITHDRAW').length,
     depositActive: banks.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.status === 'AKTIF').length,
     withdrawalActive: banks.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.status === 'AKTIF').length,
-    displayYes: banks.filter(b => b.display_used === 'YES' && b.role === 'DEPOSIT').length,
-    usedYes: banks.filter(b => b.display_used === 'YES' && b.role === 'WITHDRAW').length
+    display: banks.filter(b => b.display_used === 'YES' && b.role === 'DEPOSIT').length,
+    used: banks.filter(b => b.display_used === 'YES' && b.role === 'WITHDRAW').length
   };
 
   return (
@@ -202,12 +206,12 @@ export default function DataBankPage() {
           <div className="text-xs text-green-400">{stats.withdrawalActive} Aktif</div>
         </div>
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-          <div className="text-[#A7D8FF] text-sm">Display YES</div>
-          <div className="text-2xl font-bold text-yellow-400">{stats.displayYes}</div>
+          <div className="text-[#A7D8FF] text-sm">Display</div>
+          <div className="text-2xl font-bold text-yellow-400">{stats.display}</div>
         </div>
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-          <div className="text-[#A7D8FF] text-sm">Used YES</div>
-          <div className="text-2xl font-bold text-orange-400">{stats.usedYes}</div>
+          <div className="text-[#A7D8FF] text-sm">Used</div>
+          <div className="text-2xl font-bold text-orange-400">{stats.used}</div>
         </div>
       </div>
 
@@ -218,12 +222,24 @@ export default function DataBankPage() {
         <button onClick={() => setActiveTab('withdrawal')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'withdrawal' ? 'bg-[#FFD700] text-[#0B1A33]' : 'text-[#A7D8FF] hover:text-white'}`}>💸 Withdrawal ({banks.filter(b => b.role?.toUpperCase() === 'WITHDRAW').length})</button>
       </div>
 
-      {/* Status Filter */}
+      {/* Status Filter - UPDATED with Display & Used */}
       <div className="mb-4 flex items-center gap-2 pb-2 flex-wrap">
         <span className="text-[#A7D8FF] text-sm mr-2">Status:</span>
-        <button onClick={() => setStatusFilter('all')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${statusFilter === 'all' ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#1A2F4A] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}>All</button>
-        <button onClick={() => setStatusFilter('active')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${statusFilter === 'active' ? 'bg-green-500 text-white' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'}`}><span className="w-2 h-2 rounded-full bg-green-500"></span> Active ({banks.filter(b => b.status === 'AKTIF').length})</button>
-        <button onClick={() => setStatusFilter('takedown')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${statusFilter === 'takedown' ? 'bg-red-500 text-white' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}><span className="w-2 h-2 rounded-full bg-red-500"></span> Takedown ({banks.filter(b => b.status === 'TAKEDOWN').length})</button>
+        <button onClick={() => setStatusFilter('all')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${statusFilter === 'all' ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#1A2F4A] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}>
+          All ({banks.length})
+        </button>
+        <button onClick={() => setStatusFilter('active')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${statusFilter === 'active' ? 'bg-green-500 text-white' : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'}`}>
+          <span className="w-2 h-2 rounded-full bg-green-500"></span> Active ({stats.active})
+        </button>
+        <button onClick={() => setStatusFilter('display')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${statusFilter === 'display' ? 'bg-yellow-500 text-white' : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'}`}>
+          <span className="w-2 h-2 rounded-full bg-yellow-500"></span> Display ({stats.display})
+        </button>
+        <button onClick={() => setStatusFilter('used')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${statusFilter === 'used' ? 'bg-blue-500 text-white' : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'}`}>
+          <span className="w-2 h-2 rounded-full bg-blue-500"></span> Used ({stats.used})
+        </button>
+        <button onClick={() => setStatusFilter('takedown')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${statusFilter === 'takedown' ? 'bg-red-500 text-white' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}>
+          <span className="w-2 h-2 rounded-full bg-red-500"></span> Takedown ({stats.takedown})
+        </button>
       </div>
 
       {/* Search Bar */}
@@ -435,7 +451,7 @@ export default function DataBankPage() {
 
       {/* Footer */}
       <div className="mt-4 text-xs text-[#A7D8FF] flex items-center justify-end gap-4 flex-wrap">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Display/used</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Active</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Takedown</span>
         <span className="flex items-center gap-1">💰 Deposit</span>
         <span className="flex items-center gap-1">💸 Withdrawal</span>
