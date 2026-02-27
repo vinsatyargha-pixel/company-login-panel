@@ -17,8 +17,17 @@ export default function DataBankPage() {
   const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
+  fetchGoogleSheet();
+  
+  // AUTO REFRESH SETIAP 30 DETIK (30.000 ms)
+  const interval = setInterval(() => {
+    console.log('🔄 Auto refresh data...');
     fetchGoogleSheet();
-  }, []);
+  }, 30000); // 30 detik
+  
+  // BERSIHKAN INTERVAL KALO KOMPONEN DI-UNMOUNT
+  return () => clearInterval(interval);
+}, []);
 
   useEffect(() => {
     let filtered = [...banks];
