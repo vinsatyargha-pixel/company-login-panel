@@ -49,6 +49,12 @@ export default function DashboardContent() {
   const [loadingBanks, setLoadingBanks] = useState(true);
 
   // ===========================================
+  // STATE UNTUK FILTER ASSET
+  // ===========================================
+  const [selectedAsset, setSelectedAsset] = useState('all');
+  const [assetList, setAssetList] = useState([]);
+
+  // ===========================================
   // STATE UNTUK AVAILABLE SERVICES (MANUAL TOGGLE)
   // ===========================================
   const [depositMethods, setDepositMethods] = useState({
@@ -99,22 +105,32 @@ export default function DashboardContent() {
   // FETCH BANK ACCOUNTS DARI SUPABASE
   // ===========================================
   const fetchBankAccounts = async () => {
-  try {
-    setLoadingBanks(true);
-    const { data, error } = await supabase
-      .from('bank_accounts')
-      .select('*');
+    try {
+      setLoadingBanks(true);
+      const { data, error } = await supabase
+        .from('bank_accounts')
+        .select('*');
 
-    if (error) throw error;
-    
-    console.log('📊 Data dari Supabase:', data); // <<< TAMBAHIN INI
-    setBankAccounts(data || []);
-  } catch (error) {
-    console.error('Error fetching bank accounts:', error);
-  } finally {
-    setLoadingBanks(false);
-  }
-};
+      if (error) throw error;
+      
+      console.log('📊 Data dari Supabase:', data);
+      setBankAccounts(data || []);
+      
+      // AMBIL DAFTAR ASSET UNIK (hanya dari bank yang aktif & display YES)
+      const activeBanks = data?.filter(b => 
+        (b.role?.toUpperCase() === 'DEPOSIT' || b.role?.toUpperCase() === 'WITHDRAW') && 
+        b.display_used === 'YES'
+      ) || [];
+      
+      const uniqueAssets = [...new Set(activeBanks.map(item => item.asset).filter(Boolean))];
+      setAssetList(uniqueAssets);
+      
+    } catch (error) {
+      console.error('Error fetching bank accounts:', error);
+    } finally {
+      setLoadingBanks(false);
+    }
+  };
 
   // LOAD DARI LOCALSTORAGE (HANYA DI BROWSER)
   useEffect(() => {
@@ -527,153 +543,177 @@ export default function DashboardContent() {
         />
       </div>
 
-      {/* MAIN DASHBOARD GRID - 3 KOLOM */}
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-  
-  {/* KOLOM 1: TRAFFIC VOLUME */}
-  <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-    <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Traffic Volume</h3>
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={trafficData}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={80}
-            paddingAngle={5}
-            dataKey="value"
+      {/* FILTER ASSET - KHUSUS DEPOSIT & WITHDRAWAL */}
+      <div className="mb-4 flex items-center gap-2 pb-2 flex-wrap">
+        <span className="text-[#A7D8FF] text-sm mr-2">Filter Asset:</span>
+        <select
+          value={selectedAsset}
+          onChange={(e) => setSelectedAsset(e.target.value)}
+          className="bg-[#1A2F4A] text-white px-4 py-2 rounded-lg border border-[#FFD700]/30 text-sm outline-none hover:border-[#FFD700] transition-colors"
+        >
+          <option value="all">Semua Asset</option>
+          {assetList.map((asset) => (
+            <option key={asset} value={asset}>{asset}</option>
+          ))}
+        </select>
+        {selectedAsset !== 'all' && (
+          <button
+            onClick={() => setSelectedAsset('all')}
+            className="text-xs text-[#A7D8FF] hover:text-white px-2"
           >
-            {trafficData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={TRAFFIC_COLORS[index % TRAFFIC_COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
+            ✕ Reset
+          </button>
+        )}
+      </div>
 
-  {/* KOLOM 2: DEPOSIT METHOD */}
-  <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-    <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method (Receiver)</h3>
-    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-      {loadingBanks ? (
-        <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
-      ) : (
-        bankAccounts
-          .filter(bank => 
-            bank.role?.toUpperCase() === 'DEPOSIT' && 
-            bank.display_used === 'YES'
-          )
-          .map((bank) => (
-            <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  {/* LAMPU ON */}
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                  
-                  {/* GAMBAR BANK + NAMA BANK */}
-                  <div className="flex items-center gap-2">
-                    {bank.bank?.toLowerCase().includes('bca') && (
-                      <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-                    )}
-                    {bank.bank?.toLowerCase().includes('bni') && (
-                      <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-                    )}
-                    {bank.bank?.toLowerCase().includes('bri') && (
-                      <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-                    )}
-                    {bank.bank?.toLowerCase().includes('mandiri') && (
-                      <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-                    )}
-                    <span className="text-white text-sm font-medium">{bank.bank}</span>
+      {/* MAIN DASHBOARD GRID - 3 KOLOM */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        
+        {/* KOLOM 1: TRAFFIC VOLUME */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Traffic Volume</h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={trafficData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {trafficData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={TRAFFIC_COLORS[index % TRAFFIC_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* KOLOM 2: DEPOSIT METHOD */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method (Receiver)</h3>
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+            {loadingBanks ? (
+              <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
+            ) : (
+              bankAccounts
+                .filter(bank => 
+                  bank.role?.toUpperCase() === 'DEPOSIT' && 
+                  bank.display_used === 'YES' &&
+                  (selectedAsset === 'all' || bank.asset === selectedAsset)
+                )
+                .map((bank) => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        {/* LAMPU ON */}
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        
+                        {/* GAMBAR BANK + NAMA BANK */}
+                        <div className="flex items-center gap-2">
+                          {bank.bank?.toLowerCase().includes('bca') && (
+                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bni') && (
+                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bri') && (
+                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('mandiri') && (
+                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+                          )}
+                          <span className="text-white text-sm font-medium">{bank.bank}</span>
+                        </div>
+                        
+                        {/* BADGE DISPLAY */}
+                        <span className="text-[10px] text-green-400 ml-2">Display</span>
+                      </div>
+                      
+                      {/* NAMA PEMILIK + NO REK */}
+                      <span className="text-[#A7D8FF] text-xs ml-6">
+                        {bank.account_name} {bank.account_number}
+                      </span>
+                    </div>
+                    
+                    {/* TULISAN ON */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                    </div>
                   </div>
-                  
-                  {/* BADGE DISPLAY */}
-                  <span className="text-[10px] text-green-400 ml-2">Display</span>
-                </div>
-                
-                {/* NAMA PEMILIK + NO REK */}
-                <span className="text-[#A7D8FF] text-xs ml-6">
-                  {bank.account_name} {bank.account_number}
-                </span>
-              </div>
-              
-              {/* TULISAN ON */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-green-400">ON</span>
-              </div>
-            </div>
-          ))
-      )}
-      {bankAccounts.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES').length === 0 && !loadingBanks && (
-        <div className="text-center text-[#A7D8FF] py-4">Tidak ada deposit method</div>
-      )}
-    </div>
-  </div>
+                ))
+            )}
+            {bankAccounts.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset)).length === 0 && !loadingBanks && (
+              <div className="text-center text-[#A7D8FF] py-4">Tidak ada deposit method</div>
+            )}
+          </div>
+        </div>
 
-  {/* KOLOM 3: WITHDRAWAL METHOD */}
-  <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-    <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender)</h3>
-    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-      {loadingBanks ? (
-        <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
-      ) : (
-        bankAccounts
-          .filter(bank => 
-            bank.role?.toUpperCase() === 'WITHDRAW' && 
-            bank.display_used === 'YES'
-          )
-          .map((bank) => (
-            <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-              <div className="flex flex-col">
-                <div className="flex items-center gap-2">
-                  {/* LAMPU ON */}
-                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                  
-                  {/* GAMBAR BANK + NAMA BANK */}
-                  <div className="flex items-center gap-2">
-                    {bank.bank?.toLowerCase().includes('bca') && (
-                      <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-                    )}
-                    {bank.bank?.toLowerCase().includes('bni') && (
-                      <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-                    )}
-                    {bank.bank?.toLowerCase().includes('bri') && (
-                      <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-                    )}
-                    {bank.bank?.toLowerCase().includes('mandiri') && (
-                      <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-                    )}
-                    <span className="text-white text-sm font-medium">{bank.bank}</span>
+        {/* KOLOM 3: WITHDRAWAL METHOD */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method (Sender)</h3>
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+            {loadingBanks ? (
+              <div className="text-center text-[#A7D8FF] py-4">Loading banks...</div>
+            ) : (
+              bankAccounts
+                .filter(bank => 
+                  bank.role?.toUpperCase() === 'WITHDRAW' && 
+                  bank.display_used === 'YES' &&
+                  (selectedAsset === 'all' || bank.asset === selectedAsset)
+                )
+                .map((bank) => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        {/* LAMPU ON */}
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        
+                        {/* GAMBAR BANK + NAMA BANK */}
+                        <div className="flex items-center gap-2">
+                          {bank.bank?.toLowerCase().includes('bca') && (
+                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bni') && (
+                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('bri') && (
+                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+                          )}
+                          {bank.bank?.toLowerCase().includes('mandiri') && (
+                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+                          )}
+                          <span className="text-white text-sm font-medium">{bank.bank}</span>
+                        </div>
+                        
+                        {/* BADGE USED */}
+                        <span className="text-[10px] text-blue-400 ml-2">Used</span>
+                      </div>
+                      
+                      {/* NAMA PEMILIK + NO REK */}
+                      <span className="text-[#A7D8FF] text-xs ml-6">
+                        {bank.account_name} {bank.account_number}
+                      </span>
+                    </div>
+                    
+                    {/* TULISAN ON */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                    </div>
                   </div>
-                  
-                  {/* BADGE USED */}
-                  <span className="text-[10px] text-blue-400 ml-2">Used</span>
-                </div>
-                
-                {/* NAMA PEMILIK + NO REK */}
-                <span className="text-[#A7D8FF] text-xs ml-6">
-                  {bank.account_name} {bank.account_number}
-                </span>
-              </div>
-              
-              {/* TULISAN ON */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-green-400">ON</span>
-              </div>
-            </div>
-          ))
-      )}
-      {bankAccounts.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES').length === 0 && !loadingBanks && (
-        <div className="text-center text-[#A7D8FF] py-4">Tidak ada withdrawal method</div>
-      )}
-    </div>
-  </div>
-
+                ))
+            )}
+            {bankAccounts.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset)).length === 0 && !loadingBanks && (
+              <div className="text-center text-[#A7D8FF] py-4">Tidak ada withdrawal method</div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ROW 2 - GRID 3 KOLOM */}
