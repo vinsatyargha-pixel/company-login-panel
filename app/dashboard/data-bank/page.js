@@ -45,7 +45,13 @@ export default function DataBankPage() {
       
       const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1689175827&single=true&output=csv';
       
-      const response = await fetch(csvUrl);
+      const response = await fetch(csvUrl, {
+  cache: 'no-store', // <-- INI DOANG YANG DITAMBAH
+  headers: {
+    'Pragma': 'no-cache',
+    'Cache-Control': 'no-cache'
+  }
+});
       const csvText = await response.text();
       
       const { data } = Papa.parse(csvText, { header: false });
