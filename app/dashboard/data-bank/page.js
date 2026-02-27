@@ -11,6 +11,8 @@ export default function DataBankPage() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchField, setSearchField] = useState('all');
   
   // State untuk popup info login
   const [selectedBank, setSelectedBank] = useState(null);
@@ -23,20 +25,42 @@ export default function DataBankPage() {
   useEffect(() => {
     let filtered = [...banks];
     
+    // Filter berdasarkan tab
     if (activeTab === 'deposit') {
       filtered = filtered.filter(b => b.role?.toUpperCase() === 'DEPOSIT');
     } else if (activeTab === 'withdrawal') {
       filtered = filtered.filter(b => b.role?.toUpperCase() === 'WITHDRAW');
     }
     
+    // Filter berdasarkan status
     if (statusFilter === 'active') {
       filtered = filtered.filter(b => b.status === 'AKTIF');
     } else if (statusFilter === 'takedown') {
       filtered = filtered.filter(b => b.status === 'TAKEDOWN');
     }
     
+    // Filter berdasarkan search
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(b => {
+        if (searchField === 'bank') {
+          return b.bank?.toLowerCase().includes(term);
+        } else if (searchField === 'accountName') {
+          return b.account_name?.toLowerCase().includes(term);
+        } else if (searchField === 'accountNumber') {
+          return b.account_number?.includes(term);
+        } else { // all fields
+          return (
+            b.bank?.toLowerCase().includes(term) ||
+            b.account_name?.toLowerCase().includes(term) ||
+            b.account_number?.includes(term)
+          );
+        }
+      });
+    }
+    
     setFilteredBanks(filtered);
-  }, [activeTab, statusFilter, banks]);
+  }, [activeTab, statusFilter, banks, searchTerm, searchField]);
 
   const fetchGoogleSheet = async () => {
     try {
@@ -46,14 +70,14 @@ export default function DataBankPage() {
       const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1689175827&single=true&output=csv';
       
       const response = await fetch(csvUrl, {
-  cache: 'no-store', // <-- INI DOANG YANG DITAMBAH
-  headers: {
-    'Pragma': 'no-cache',
-    'Cache-Control': 'no-cache'
-  }
-});
-      const csvText = await response.text();
+        cache: 'no-store',
+        headers: {
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache'
+        }
+      });
       
+      const csvText = await response.text();
       const { data } = Papa.parse(csvText, { header: false });
       
       const bankData = [];
@@ -199,12 +223,46 @@ export default function DataBankPage() {
         <button onClick={() => setStatusFilter('takedown')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${statusFilter === 'takedown' ? 'bg-red-500 text-white' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'}`}><span className="w-2 h-2 rounded-full bg-red-500"></span> Takedown ({banks.filter(b => b.status === 'TAKEDOWN').length})</button>
       </div>
 
+      {/* Search Bar */}
+      <div className="mb-4 flex flex-col md:flex-row gap-3 items-start md:items-center">
+        <div className="flex items-center gap-2 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-1">
+          <select
+            value={searchField}
+            onChange={(e) => setSearchField(e.target.value)}
+            className="bg-transparent text-[#A7D8FF] text-sm px-2 py-1 outline-none"
+          >
+            <option value="all">Semua Field</option>
+            <option value="bank">Bank</option>
+            <option value="accountName">Account Name</option>
+            <option value="accountNumber">Account Number</option>
+          </select>
+          
+          <input
+            type="text"
+            placeholder="Cari..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-transparent text-white px-3 py-1 outline-none w-full md:w-64"
+          />
+          
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="text-[#A7D8FF] hover:text-white px-2"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Tabel Bank */}
       <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
               <tr>
+                <th className="text-left py-3 px-4 text-[#FFD700]">Asset</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Status</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Display/Used</th>
                 <th className="text-left py-3 px-4 text-[#FFD700]">Bank</th>
@@ -217,12 +275,16 @@ export default function DataBankPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan="8" className="text-center py-8 text-[#A7D8FF]"><span className="animate-spin inline-block mr-2">⏳</span>Loading data dari Google Sheets...</td></tr>
+                <tr><td colSpan="9" className="text-center py-8 text-[#A7D8FF]"><span className="animate-spin inline-block mr-2">⏳</span>Loading data dari Google Sheets...</td></tr>
               ) : filteredBanks.length === 0 ? (
-                <tr><td colSpan="8" className="text-center py-8 text-[#A7D8FF]">Tidak ada data bank.</td></tr>
+                <tr><td colSpan="9" className="text-center py-8 text-[#A7D8FF]">Tidak ada data bank.</td></tr>
               ) : (
                 filteredBanks.map((bank) => (
                   <tr key={bank.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                    {/* Asset */}
+                    <td className="py-3 px-4 text-white font-medium">{bank.asset || 'LUCK77'}</td>
+                    
+                    {/* Status */}
                     <td className="py-3 px-4">
                       <span className={`inline-flex items-center gap-1 ${bank.status === 'AKTIF' ? 'text-green-400' : 'text-red-400'}`}>
                         <span className={`w-2 h-2 rounded-full ${bank.status === 'AKTIF' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
@@ -230,6 +292,7 @@ export default function DataBankPage() {
                       </span>
                     </td>
                     
+                    {/* Display/Used */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         {bank.display_used === 'YES' && bank.role === 'DEPOSIT' && (
@@ -248,6 +311,7 @@ export default function DataBankPage() {
                       </div>
                     </td>
                     
+                    {/* Bank dengan Gambar */}
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         {bank.bank?.toLowerCase().includes('bca') && <img src="/images/bca.png" alt="BCA" className="h-5 w-auto object-contain" />}
@@ -287,7 +351,7 @@ export default function DataBankPage() {
         </div>
       </div>
 
-      {/* POPUP INFO LOGIN - HANYA SATU! */}
+      {/* POPUP INFO LOGIN */}
       {showPopup && selectedBank && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] border-2 border-[#FFD700] rounded-xl p-6 max-w-2xl w-full mx-4 shadow-[0_0_50px_#FFD700] max-h-[80vh] overflow-y-auto">
