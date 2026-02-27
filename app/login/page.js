@@ -228,7 +228,7 @@ export default function LoginPage() {
         </div>
         <div className="flex justify-center items-center gap-4 mt-4">
   <img src="/images/nexus.png" alt="NEXUS" className="h-5 w-auto object-contain opacity-50 hover:opacity-100 transition-opacity" />
-  <img src="/images/vercel.png" alt="VERCEL" className="h-5 w-auto object-contain opacity-50 hover:opacity-100 transition-opacity" />
+  <img src="/images/logo-xen.png" alt="XEN" className="h-5 w-auto object-contain opacity-50 hover:opacity-100 transition-opacity" />
 </div>
       </div>
     </div>
