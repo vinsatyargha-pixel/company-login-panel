@@ -603,7 +603,7 @@ export default function DashboardContent() {
               </>
             ) : (
               <>
-                <span>📤</span> Sync Bank ke Database
+                <span>📤</span> Sync Bank Method LIVE! 
               </>
             )}
           </button>
