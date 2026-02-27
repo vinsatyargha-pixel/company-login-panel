@@ -616,21 +616,42 @@ export default function DashboardContent() {
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                         
                         {/* GAMBAR BANK + NAMA BANK */}
-                        <div className="flex items-center gap-2">
-                          {bank.bank?.toLowerCase().includes('bca') && (
-                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('bni') && (
-                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('bri') && (
-                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('mandiri') && (
-                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-                          )}
-                          <span className="text-white text-sm font-medium">{bank.bank}</span>
-                        </div>
+<div className="flex items-center gap-2">
+  {bank.bank?.toLowerCase().includes('bca') && (
+    <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('bni') && (
+    <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('bri') && (
+    <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('mandiri') && (
+    <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('nexus') && (
+    <img src="/images/nexus.png" alt="NEXUS" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('midas') && (
+    <img src="/images/midas.png" alt="MIDAS" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('qris') && (
+    <img src="/images/qris.png" alt="QRIS" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('dana') && (
+    <img src="/images/dana.png" alt="DANA" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('jago') && (
+    <img src="/images/jago.png" alt="JAGO" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('cimb') && (
+    <img src="/images/cimb.png" alt="CIMB" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('seabank') && (
+    <img src="/images/seabank.png" alt="SEABANK" className="h-4 w-auto object-contain" />
+  )}
+  <span className="text-white text-sm font-medium">{bank.bank}</span>
+</div>
                         
                         {/* BADGE DISPLAY */}
                         <span className="text-[10px] text-green-400 ml-2">Display</span>
@@ -676,21 +697,42 @@ export default function DashboardContent() {
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                         
                         {/* GAMBAR BANK + NAMA BANK */}
-                        <div className="flex items-center gap-2">
-                          {bank.bank?.toLowerCase().includes('bca') && (
-                            <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('bni') && (
-                            <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('bri') && (
-                            <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-                          )}
-                          {bank.bank?.toLowerCase().includes('mandiri') && (
-                            <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-                          )}
-                          <span className="text-white text-sm font-medium">{bank.bank}</span>
-                        </div>
+<div className="flex items-center gap-2">
+  {bank.bank?.toLowerCase().includes('bca') && (
+    <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('bni') && (
+    <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('bri') && (
+    <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('mandiri') && (
+    <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('nexus') && (
+    <img src="/images/nexus.png" alt="NEXUS" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('midas') && (
+    <img src="/images/midas.png" alt="MIDAS" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('qris') && (
+    <img src="/images/qris.png" alt="QRIS" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('dana') && (
+    <img src="/images/dana.png" alt="DANA" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('jago') && (
+    <img src="/images/jago.png" alt="JAGO" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('cimb') && (
+    <img src="/images/cimb.png" alt="CIMB" className="h-4 w-auto object-contain" />
+  )}
+  {bank.bank?.toLowerCase().includes('seabank') && (
+    <img src="/images/seabank.png" alt="SEABANK" className="h-4 w-auto object-contain" />
+  )}
+  <span className="text-white text-sm font-medium">{bank.bank}</span>
+</div>
                         
                         {/* BADGE USED */}
                         <span className="text-[10px] text-blue-400 ml-2">Used</span>
