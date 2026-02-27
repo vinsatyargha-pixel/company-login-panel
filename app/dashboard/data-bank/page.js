@@ -94,7 +94,15 @@ export default function DataBankPage() {
         if (!row || row.length < 10) continue;
         
         const accountNumber = row[5]?.replace(/\s/g, '');
-        if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+        const bankName = row[3]?.toUpperCase();
+        
+        // CEK APAKAH BANK NEXUSPAY
+        const isNexusPay = bankName?.includes('NEXUS') || bankName?.includes('NEXUSPAY');
+        
+        // VALIDASI: KALO BUKAN NEXUSPAY, HARUS ADA NOMOR REKENING VALID
+        if (!isNexusPay) {
+          if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+        }
         
         bankData.push({
           id: i,
@@ -103,7 +111,7 @@ export default function DataBankPage() {
           display_used: row[2]?.toUpperCase() || '',
           bank: row[3] || '',
           account_name: row[4] || '',
-          account_number: accountNumber,
+          account_number: isNexusPay ? '-' : accountNumber,
           role: row[6]?.toUpperCase() || 'BOTH',
           type_bank: row[7] || '',
           masa_aktif: row[8] || null,
@@ -222,7 +230,7 @@ export default function DataBankPage() {
         <button onClick={() => setActiveTab('withdrawal')} className={`px-4 py-2 rounded-lg font-medium transition-all ${activeTab === 'withdrawal' ? 'bg-[#FFD700] text-[#0B1A33]' : 'text-[#A7D8FF] hover:text-white'}`}>💸 Withdrawal ({banks.filter(b => b.role?.toUpperCase() === 'WITHDRAW').length})</button>
       </div>
 
-      {/* Status Filter - UPDATED with Display & Used */}
+      {/* Status Filter */}
       <div className="mb-4 flex items-center gap-2 pb-2 flex-wrap">
         <span className="text-[#A7D8FF] text-sm mr-2">Status:</span>
         <button onClick={() => setStatusFilter('all')} className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${statusFilter === 'all' ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#1A2F4A] text-[#A7D8FF] hover:bg-[#2A3F5A]'}`}>
@@ -338,6 +346,9 @@ export default function DataBankPage() {
                         {bank.bank?.toLowerCase().includes('bni') && <img src="/images/bni.png" alt="BNI" className="h-5 w-auto object-contain" />}
                         {bank.bank?.toLowerCase().includes('bri') && <img src="/images/bri.png" alt="BRI" className="h-5 w-auto object-contain" />}
                         {bank.bank?.toLowerCase().includes('mandiri') && <img src="/images/mandiri.png" alt="Mandiri" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('nexus') && (
+                          <span className="text-[#FFD700] font-bold mr-1">NEXUS</span>
+                        )}
                         <span className="text-white font-medium">{bank.bank}</span>
                       </div>
                     </td>
@@ -345,7 +356,11 @@ export default function DataBankPage() {
                     <td className="py-3 px-4 text-white">{bank.account_name || '-'}</td>
                     
                     <td className="py-3 px-4">
-                      <button onClick={() => handleAccountClick(bank)} className="text-white font-mono hover:text-[#FFD700] transition-colors underline decoration-dotted underline-offset-2">
+                      <button 
+                        onClick={() => handleAccountClick(bank)} 
+                        className="text-white font-mono hover:text-[#FFD700] transition-colors underline decoration-dotted underline-offset-2"
+                        disabled={bank.account_number === '-'}
+                      >
                         {bank.account_number || '-'}
                       </button>
                     </td>
