@@ -39,70 +39,64 @@ export default function DataBankPage() {
   }, [activeTab, statusFilter, banks]);
 
   const fetchGoogleSheet = async () => {
-  try {
-    setLoading(true);
-    setError(null);
-    
-    const csvUrl = '...';
-    
-    const response = await fetch(csvUrl, {
-      cache: 'no-store',
-      headers: {
-        'Pragma': 'no-cache',
-        'Cache-Control': 'no-cache'
-      }
-    });
-    
-    const csvText = await response.text();
-    const { data } = Papa.parse(csvText, { header: false });
-    
-    const bankData = [];
-    
-    for (let i = 2; i < data.length; i++) {
-      const row = data[i];
-      if (!row || row.length < 10) continue;
+    try {
+      setLoading(true);
+      setError(null);
       
-      const accountNumber = row[5]?.replace(/\s/g, '');
-      if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+      const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1689175827&single=true&output=csv';
       
-      bankData.push({
-        id: i,
-        asset: row[0] || 'LUCK77',
-        status: row[1]?.toUpperCase() || 'AKTIF',
-        display_used: row[2]?.toUpperCase() || '',
-        bank: row[3] || '',
-        account_name: row[4] || '',
-        account_number: accountNumber,
-        role: row[6]?.toUpperCase() || 'BOTH',
-        type_bank: row[7] || '',
-        masa_aktif: row[8] || null,
+      const response = await fetch(csvUrl);
+      const csvText = await response.text();
+      
+      const { data } = Papa.parse(csvText, { header: false });
+      
+      const bankData = [];
+      
+      for (let i = 2; i < data.length; i++) {
+        const row = data[i];
+        if (!row || row.length < 10) continue;
         
-        credentials: {
-          user_id_1: row[11] || null,
-          pin_1: row[12] || null,
-          user_id_2: row[13] || null,
-          pass_1: row[14] || null,
-          pin_2: row[15] || null,
-          user_id_3: row[16] || null,
-          pass_2: row[17] || null,
-          pin_3: row[18] || null,
-          pass_transaksi: row[19] || null,
-          agent: row[20] || null,
-          pin_token: row[21] || null,
-          hp: row[22] || null,
-          email: row[23] || null
-        }
-      });
+        const accountNumber = row[5]?.replace(/\s/g, '');
+        if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+        
+        bankData.push({
+          id: i,
+          asset: row[0] || 'LUCK77',
+          status: row[1]?.toUpperCase() || 'AKTIF',
+          display_used: row[2]?.toUpperCase() || '',
+          bank: row[3] || '',
+          account_name: row[4] || '',
+          account_number: accountNumber,
+          role: row[6]?.toUpperCase() || 'BOTH',
+          type_bank: row[7] || '',
+          masa_aktif: row[8] || null,
+          
+          credentials: {
+            user_id_1: row[11] || null,
+            pin_1: row[12] || null,
+            user_id_2: row[13] || null,
+            pass_1: row[14] || null,
+            pin_2: row[15] || null,
+            user_id_3: row[16] || null,
+            pass_2: row[17] || null,
+            pin_3: row[18] || null,
+            pass_transaksi: row[19] || null,
+            agent: row[20] || null,
+            pin_token: row[21] || null,
+            hp: row[22] || null,
+            email: row[23] || null
+          }
+        });
+      }
+      
+      setBanks(bankData);
+    } catch (err) {
+      console.error('Error fetching Google Sheet:', err);
+      setError('Gagal mengambil data dari spreadsheet');
+    } finally {
+      setLoading(false);
     }
-    
-    setBanks(bankData);
-  } catch (err) {
-    console.error('Error fetching Google Sheet:', err);
-    setError('Gagal mengambil data dari spreadsheet');
-  } finally {
-    setLoading(false);
-  }
-}; // <-- INI HARUSNYA CUMA 1 KURUNG TUTUP
+  };
 
   const handleAccountClick = (bank) => {
     setSelectedBank(bank);
