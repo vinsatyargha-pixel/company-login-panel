@@ -55,6 +55,12 @@ export default function DashboardContent() {
   const [assetList, setAssetList] = useState([]);
 
   // ===========================================
+  // STATE UNTUK SYNC KE SUPABASE
+  // ===========================================
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [syncMessage, setSyncMessage] = useState('');
+
+  // ===========================================
   // STATE UNTUK AVAILABLE SERVICES (MANUAL TOGGLE)
   // ===========================================
   const [depositMethods, setDepositMethods] = useState({
@@ -129,6 +135,47 @@ export default function DashboardContent() {
       console.error('Error fetching bank accounts:', error);
     } finally {
       setLoadingBanks(false);
+    }
+  };
+
+  // ===========================================
+  // SYNC KE SUPABASE
+  // ===========================================
+  const syncToSupabase = async () => {
+    console.log('📤 START: Syncing to Supabase...');
+    setSyncStatus('syncing');
+    setSyncMessage('Menyinkronkan ke database...');
+    
+    try {
+      const response = await fetch('/api/banks/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const result = await response.json();
+      console.log('📥 Sync response:', result);
+      
+      if (result.success) {
+        setSyncStatus('success');
+        setSyncMessage(`✅ ${result.message}`);
+        
+        // Refresh data setelah sync
+        fetchBankAccounts();
+        
+        setTimeout(() => {
+          setSyncStatus(null);
+          setSyncMessage('');
+        }, 3000);
+      } else {
+        setSyncStatus('error');
+        setSyncMessage(`❌ Gagal: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('❌ Sync error:', err);
+      setSyncStatus('error');
+      setSyncMessage('❌ Gagal koneksi ke server');
     }
   };
 
@@ -490,9 +537,8 @@ export default function DashboardContent() {
         </div>
       </header>
 
-      {/* ROYAL GOLD CARDS - DENGAN MENU ACCOUNT BANK MANAGEMENT */}
+      {/* ROYAL GOLD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        {/* Asset */}
         <DashboardCard
           title="Asset GROUP-X"
           value={`${dashboardData.totalAssets} Assets`}
@@ -502,7 +548,6 @@ export default function DashboardContent() {
           className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
         />
         
-        {/* ACCOUNT BANK MANAGEMENT */}
         <DashboardCard
           title="Account Bank Management"
           value="Manage Banks"
@@ -512,7 +557,6 @@ export default function DashboardContent() {
           className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
         />
         
-        {/* Data Officers */}
         <DashboardCard
           title="Data Officers GROUP-X"
           value={`${dashboardData.activeOfficers} Officers`}
@@ -522,7 +566,6 @@ export default function DashboardContent() {
           className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
         />
         
-        {/* Schedule Officers */}
         <DashboardCard
           title="Schedule Officers GROUP-X"
           value="Calendar"
@@ -532,7 +575,6 @@ export default function DashboardContent() {
           className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
         />
         
-        {/* Financial Summary */}
         <DashboardCard
           title="Financial Summary GROUP-X"
           value="Management"
@@ -543,7 +585,42 @@ export default function DashboardContent() {
         />
       </div>
 
-      {/* FILTER ASSET - KHUSUS DEPOSIT & WITHDRAWAL */}
+      {/* SYNC BUTTON & STATUS - DILETAKKAN DI ATAS FILTER */}
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={syncToSupabase}
+            disabled={syncStatus === 'syncing'}
+            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+              syncStatus === 'syncing' 
+                ? 'bg-gray-500 cursor-not-allowed' 
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {syncStatus === 'syncing' ? (
+              <>
+                <span className="animate-spin">⏳</span> Syncing...
+              </>
+            ) : (
+              <>
+                <span>📤</span> Sync Bank ke Database
+              </>
+            )}
+          </button>
+          
+          {syncMessage && (
+            <div className={`px-4 py-2 rounded-lg ${
+              syncStatus === 'success' ? 'bg-green-500/20 text-green-400' :
+              syncStatus === 'error' ? 'bg-red-500/20 text-red-400' :
+              'bg-blue-500/20 text-blue-400'
+            }`}>
+              {syncMessage}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* FILTER ASSET */}
       <div className="mb-4 flex items-center gap-2 pb-2 flex-wrap">
         <span className="text-[#A7D8FF] text-sm mr-2">Filter Asset:</span>
         <select
@@ -612,58 +689,31 @@ export default function DashboardContent() {
                   <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        {/* LAMPU ON */}
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                         
-                        {/* GAMBAR BANK + NAMA BANK */}
-<div className="flex items-center gap-2">
-  {bank.bank?.toLowerCase().includes('bca') && (
-    <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('bni') && (
-    <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('bri') && (
-    <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('mandiri') && (
-    <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('nexus') && (
-    <img src="/images/nexus.png" alt="NEXUS" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('midas') && (
-    <img src="/images/midas.png" alt="MIDAS" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('qris') && (
-    <img src="/images/qris.png" alt="QRIS" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('dana') && (
-    <img src="/images/dana.png" alt="DANA" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('jago') && (
-    <img src="/images/jago.png" alt="JAGO" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('cimb') && (
-    <img src="/images/cimb.png" alt="CIMB" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('seabank') && (
-    <img src="/images/seabank.png" alt="SEABANK" className="h-4 w-auto object-contain" />
-  )}
-  <span className="text-white text-sm font-medium">{bank.bank}</span>
-</div>
+                        <div className="flex items-center gap-2">
+                          {bank.bank?.toLowerCase().includes('bca') && <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('bni') && <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('bri') && <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('mandiri') && <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('nexus') && <img src="/images/nexus.png" alt="NEXUS" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('midas') && <img src="/images/midas.png" alt="MIDAS" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('qris') && <img src="/images/qris.png" alt="QRIS" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('dana') && <img src="/images/dana.png" alt="DANA" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('jago') && <img src="/images/jago.png" alt="JAGO" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('cimb') && <img src="/images/cimb.png" alt="CIMB" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('seabank') && <img src="/images/seabank.png" alt="SEABANK" className="h-4 w-auto object-contain" />}
+                          <span className="text-white text-sm font-medium">{bank.bank}</span>
+                        </div>
                         
-                        {/* BADGE DISPLAY */}
                         <span className="text-[10px] text-green-400 ml-2">Display</span>
                       </div>
                       
-                      {/* NAMA PEMILIK + NO REK */}
                       <span className="text-[#A7D8FF] text-xs ml-6">
                         {bank.account_name} {bank.account_number}
                       </span>
                     </div>
                     
-                    {/* TULISAN ON */}
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-green-400">ON</span>
                     </div>
@@ -693,58 +743,31 @@ export default function DashboardContent() {
                   <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        {/* LAMPU ON */}
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                         
-                        {/* GAMBAR BANK + NAMA BANK */}
-<div className="flex items-center gap-2">
-  {bank.bank?.toLowerCase().includes('bca') && (
-    <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('bni') && (
-    <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('bri') && (
-    <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('mandiri') && (
-    <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('nexus') && (
-    <img src="/images/nexus.png" alt="NEXUS" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('midas') && (
-    <img src="/images/midas.png" alt="MIDAS" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('qris') && (
-    <img src="/images/qris.png" alt="QRIS" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('dana') && (
-    <img src="/images/dana.png" alt="DANA" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('jago') && (
-    <img src="/images/jago.png" alt="JAGO" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('cimb') && (
-    <img src="/images/cimb.png" alt="CIMB" className="h-4 w-auto object-contain" />
-  )}
-  {bank.bank?.toLowerCase().includes('seabank') && (
-    <img src="/images/seabank.png" alt="SEABANK" className="h-4 w-auto object-contain" />
-  )}
-  <span className="text-white text-sm font-medium">{bank.bank}</span>
-</div>
+                        <div className="flex items-center gap-2">
+                          {bank.bank?.toLowerCase().includes('bca') && <img src="/images/bca.png" alt="BCA" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('bni') && <img src="/images/bni.png" alt="BNI" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('bri') && <img src="/images/bri.png" alt="BRI" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('mandiri') && <img src="/images/mandiri.png" alt="Mandiri" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('nexus') && <img src="/images/nexus.png" alt="NEXUS" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('midas') && <img src="/images/midas.png" alt="MIDAS" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('qris') && <img src="/images/qris.png" alt="QRIS" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('dana') && <img src="/images/dana.png" alt="DANA" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('jago') && <img src="/images/jago.png" alt="JAGO" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('cimb') && <img src="/images/cimb.png" alt="CIMB" className="h-4 w-auto object-contain" />}
+                          {bank.bank?.toLowerCase().includes('seabank') && <img src="/images/seabank.png" alt="SEABANK" className="h-4 w-auto object-contain" />}
+                          <span className="text-white text-sm font-medium">{bank.bank}</span>
+                        </div>
                         
-                        {/* BADGE USED */}
                         <span className="text-[10px] text-blue-400 ml-2">Used</span>
                       </div>
                       
-                      {/* NAMA PEMILIK + NO REK */}
                       <span className="text-[#A7D8FF] text-xs ml-6">
                         {bank.account_name} {bank.account_number}
                       </span>
                     </div>
                     
-                    {/* TULISAN ON */}
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-green-400">ON</span>
                     </div>
@@ -761,7 +784,7 @@ export default function DashboardContent() {
       {/* ROW 2 - GRID 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: CUSTOMER SUPPORT LINE - LAMPU + SWITCH + ON/OFF */}
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Service Support Line</h3>
           <div className="space-y-4">
@@ -777,15 +800,13 @@ export default function DashboardContent() {
                 <button
                   onClick={() => handleToggleService('support', 'liveChat', !supportLines.liveChat)}
                   disabled={updatingStatus.support}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                     supportLines.liveChat ? 'bg-green-500' : 'bg-gray-600'
                   } ${updatingStatus.support ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
-                  <span
-                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                      supportLines.liveChat ? 'translate-x-5' : 'translate-x-1'
-                    }`}
-                  />
+                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                    supportLines.liveChat ? 'translate-x-5' : 'translate-x-1'
+                  }`} />
                 </button>
               </div>
             </div>
@@ -801,15 +822,13 @@ export default function DashboardContent() {
                 <button
                   onClick={() => handleToggleService('support', 'whatsapp', !supportLines.whatsapp)}
                   disabled={updatingStatus.support}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
                     supportLines.whatsapp ? 'bg-green-500' : 'bg-gray-600'
                   } ${updatingStatus.support ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 >
-                  <span
-                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                      supportLines.whatsapp ? 'translate-x-5' : 'translate-x-1'
-                    }`}
-                  />
+                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                    supportLines.whatsapp ? 'translate-x-5' : 'translate-x-1'
+                  }`} />
                 </button>
               </div>
             </div>
