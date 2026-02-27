@@ -43,7 +43,9 @@ export default function DataBankPage() {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(b => {
-        if (searchField === 'bank') {
+        if (searchField === 'asset') {
+          return b.asset?.toLowerCase().includes(term);
+        } else if (searchField === 'bank') {
           return b.bank?.toLowerCase().includes(term);
         } else if (searchField === 'accountName') {
           return b.account_name?.toLowerCase().includes(term);
@@ -51,6 +53,7 @@ export default function DataBankPage() {
           return b.account_number?.includes(term);
         } else { // all fields
           return (
+            b.asset?.toLowerCase().includes(term) ||
             b.bank?.toLowerCase().includes(term) ||
             b.account_name?.toLowerCase().includes(term) ||
             b.account_number?.includes(term)
@@ -232,6 +235,7 @@ export default function DataBankPage() {
             className="bg-transparent text-[#A7D8FF] text-sm px-2 py-1 outline-none"
           >
             <option value="all">Semua Field</option>
+            <option value="asset">Asset</option>
             <option value="bank">Bank</option>
             <option value="accountName">Account Name</option>
             <option value="accountNumber">Account Number</option>
@@ -431,7 +435,7 @@ export default function DataBankPage() {
 
       {/* Footer */}
       <div className="mt-4 text-xs text-[#A7D8FF] flex items-center justify-end gap-4 flex-wrap">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Active</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Display/used</span>
         <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Takedown</span>
         <span className="flex items-center gap-1">💰 Deposit</span>
         <span className="flex items-center gap-1">💸 Withdrawal</span>
