@@ -13,6 +13,8 @@ export default function DataBankPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchField, setSearchField] = useState('all');
+  const [syncStatus, setSyncStatus] = useState(null);
+  const [syncMessage, setSyncMessage] = useState('');
   
   // State untuk popup info login
   const [selectedBank, setSelectedBank] = useState(null);
@@ -67,15 +69,18 @@ export default function DataBankPage() {
     }
     
     setFilteredBanks(filtered);
+    console.log(`🔍 Filter applied: tab=${activeTab}, status=${statusFilter}, search=${searchTerm}, results=${filtered.length}`);
   }, [activeTab, statusFilter, banks, searchTerm, searchField]);
 
   const fetchGoogleSheet = async () => {
+    console.log('🔄 START: Fetching Google Sheet...');
     try {
       setLoading(true);
       setError(null);
       
       const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTRtDCwpVJmPZVjpHmpmcW6QTjYfw8Zrout-IHEYqlXP_xyuY-pVbJSWW9PGDMNWJwOAUMzh3oK_Jaw/pub?gid=1689175827&single=true&output=csv';
       
+      console.log('📡 Fetching CSV from:', csvUrl);
       const response = await fetch(csvUrl, {
         cache: 'no-store',
         headers: {
@@ -84,14 +89,24 @@ export default function DataBankPage() {
         }
       });
       
+      console.log('📡 Response status:', response.status);
       const csvText = await response.text();
+      console.log('📄 CSV length:', csvText.length, 'characters');
+      
       const { data } = Papa.parse(csvText, { header: false });
+      console.log('📊 Total baris CSV:', data.length);
       
       const bankData = [];
+      let nexusCount = 0;
+      let normalCount = 0;
+      let skippedCount = 0;
       
       for (let i = 2; i < data.length; i++) {
         const row = data[i];
-        if (!row || row.length < 10) continue;
+        if (!row || row.length < 10) {
+          skippedCount++;
+          continue;
+        }
         
         const accountNumber = row[5]?.replace(/\s/g, '');
         const bankName = row[3]?.toUpperCase();
@@ -101,10 +116,16 @@ export default function DataBankPage() {
         
         // VALIDASI: KALO BUKAN NEXUSPAY, HARUS ADA NOMOR REKENING VALID
         if (!isNexusPay) {
-          if (!accountNumber || !/^\d+$/.test(accountNumber)) continue;
+          if (!accountNumber || !/^\d+$/.test(accountNumber)) {
+            skippedCount++;
+            continue;
+          }
+          normalCount++;
+        } else {
+          nexusCount++;
         }
         
-        bankData.push({
+        const bank = {
           id: i,
           asset: row[0] || 'LUCK77',
           status: row[1]?.toUpperCase() || 'AKTIF',
@@ -131,19 +152,76 @@ export default function DataBankPage() {
             hp: row[22] || null,
             email: row[23] || null
           }
-        });
+        };
+        
+        bankData.push(bank);
+        
+        if (bankData.length <= 3) {
+          console.log(`📝 Sample baris ${i}:`, {
+            asset: bank.asset,
+            bank: bank.bank,
+            account: bank.account_name,
+            number: bank.account_number,
+            role: bank.role,
+            nexus: isNexusPay
+          });
+        }
       }
       
+      console.log('✅ Statistik parsing:', {
+        total: bankData.length,
+        normal: normalCount,
+        nexus: nexusCount,
+        skipped: skippedCount
+      });
+      
       setBanks(bankData);
+      console.log('🎉 Data bank siap:', bankData.length, 'records');
+      
     } catch (err) {
-      console.error('Error fetching Google Sheet:', err);
-      setError('Gagal mengambil data dari spreadsheet');
+      console.error('❌ Error fetching Google Sheet:', err);
+      setError('Gagal mengambil data dari spreadsheet: ' + err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const syncToSupabase = async () => {
+    console.log('📤 START: Syncing to Supabase...');
+    setSyncStatus('syncing');
+    setSyncMessage('Menyinkronkan ke database...');
+    
+    try {
+      const response = await fetch('/api/banks/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const result = await response.json();
+      console.log('📥 Sync response:', result);
+      
+      if (result.success) {
+        setSyncStatus('success');
+        setSyncMessage(`✅ ${result.message}`);
+        setTimeout(() => {
+          setSyncStatus(null);
+          setSyncMessage('');
+        }, 3000);
+      } else {
+        setSyncStatus('error');
+        setSyncMessage(`❌ Gagal: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('❌ Sync error:', err);
+      setSyncStatus('error');
+      setSyncMessage('❌ Gagal koneksi ke server');
+    }
+  };
+
   const handleAccountClick = (bank) => {
+    console.log('🔍 Opening credentials for:', bank.account_number);
     setSelectedBank(bank);
     setShowPopup(true);
   };
@@ -159,6 +237,8 @@ export default function DataBankPage() {
     display: banks.filter(b => b.display_used === 'YES' && b.role === 'DEPOSIT').length,
     used: banks.filter(b => b.display_used === 'YES' && b.role === 'WITHDRAW').length
   };
+
+  console.log('📊 Current stats:', stats);
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
@@ -177,11 +257,44 @@ export default function DataBankPage() {
           >
             <span>🔄</span> Refresh Data
           </button>
+          
+          {/* TOMBOL SYNC KE SUPABASE */}
+          <button
+            onClick={syncToSupabase}
+            disabled={syncStatus === 'syncing'}
+            className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+              syncStatus === 'syncing' 
+                ? 'bg-gray-500 cursor-not-allowed' 
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {syncStatus === 'syncing' ? (
+              <>
+                <span className="animate-spin">⏳</span> Syncing...
+              </>
+            ) : (
+              <>
+                <span>📤</span> Sync ke Supabase
+              </>
+            )}
+          </button>
+          
           <Link href="/dashboard" className="px-4 py-2 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg text-[#FFD700] hover:bg-[#2A3F5A] transition-all flex items-center gap-2">
             <span>←</span> Back to Dashboard
           </Link>
         </div>
       </div>
+
+      {/* Sync Status Message */}
+      {syncMessage && (
+        <div className={`mb-4 p-3 rounded-lg ${
+          syncStatus === 'success' ? 'bg-green-500/20 text-green-400' :
+          syncStatus === 'error' ? 'bg-red-500/20 text-red-400' :
+          'bg-blue-500/20 text-blue-400'
+        }`}>
+          {syncMessage}
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-500/20 border border-red-500/50 rounded-xl p-4 mb-6 text-red-400">
@@ -340,21 +453,21 @@ export default function DataBankPage() {
                     </td>
                     
                     {/* Bank dengan Gambar */}
-<td className="py-3 px-4">
-  <div className="flex items-center gap-2">
-    {bank.bank?.toLowerCase().includes('bca') && <img src="/images/bca.png" alt="BCA" className="h-5 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('bni') && <img src="/images/bni.png" alt="BNI" className="h-5 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('bri') && <img src="/images/bri.png" alt="BRI" className="h-5 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('mandiri') && <img src="/images/mandiri.png" alt="Mandiri" className="h-5 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('nexuspay') && <img src="/images/nexus.png" alt="NEXUS" className="h-6 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('dana') && <img src="/images/dana.png" alt="DANA" className="h-5 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('qris') && <img src="/images/qris.png" alt="QRIS" className="h-5 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('cimb') && <img src="/images/cimb.png" alt="CIMB" className="h-5 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('permata') && <img src="/images/permata.png" alt="Permata" className="h-5 w-auto object-contain" />}
-    {bank.bank?.toLowerCase().includes('midas') && <img src="/images/midas.png" alt="MIDAS" className="h-5 w-auto object-contain" />}
-    <span className="text-white font-medium">{bank.bank}</span>
-  </div>
-</td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        {bank.bank?.toLowerCase().includes('bca') && <img src="/images/bca.png" alt="BCA" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('bni') && <img src="/images/bni.png" alt="BNI" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('bri') && <img src="/images/bri.png" alt="BRI" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('mandiri') && <img src="/images/mandiri.png" alt="Mandiri" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('nexuspay') && <img src="/images/nexus.png" alt="NEXUS" className="h-6 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('dana') && <img src="/images/dana.png" alt="DANA" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('qris') && <img src="/images/qris.png" alt="QRIS" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('cimb') && <img src="/images/cimb.png" alt="CIMB" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('permata') && <img src="/images/permata.png" alt="Permata" className="h-5 w-auto object-contain" />}
+                        {bank.bank?.toLowerCase().includes('midas') && <img src="/images/midas.png" alt="MIDAS" className="h-5 w-auto object-contain" />}
+                        <span className="text-white font-medium">{bank.bank}</span>
+                      </div>
+                    </td>
                     
                     <td className="py-3 px-4 text-white">{bank.account_name || '-'}</td>
                     
