@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
 export default function MealAllowancePage() {
-  const { user, userJobRole, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [officers, setOfficers] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('February');
@@ -23,7 +23,6 @@ export default function MealAllowancePage() {
     etc: 0,
     etc_note: ''
   });
-  const [updatingPayment, setUpdatingPayment] = useState(null);
 
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -56,7 +55,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // HELPER FUNCTIONS
+  // HELPER FUNCTIONS (SAMA SEPERTI SEBELUMNYA)
   // ===========================================
   
   const formatBankAndRek = (bankAccount) => {
@@ -107,15 +106,6 @@ export default function MealAllowancePage() {
     return null;
   };
 
-  const getPreviousMonth = (month, year) => {
-    const monthIndex = months.indexOf(month);
-    if (monthIndex === 0) {
-      return `December ${parseInt(year) - 1}`;
-    } else {
-      return `${months[monthIndex - 1]} ${year}`;
-    }
-  };
-
   const getPreviousMonthData = (month, year) => {
     const monthIndex = months.indexOf(month);
     if (monthIndex === 0) {
@@ -162,73 +152,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // TOGGLE PAYMENT STATUS
-  // ===========================================
-  const togglePaymentStatus = async (officerId) => {
-    if (!isAdmin) return;
-
-    try {
-      setUpdatingPayment(officerId);
-      const officer = officers.find(o => o.id === officerId);
-      if (!officer) return;
-
-      const newPaidStatus = !officer.is_paid;
-      const bulan = `${selectedMonth} ${selectedYear}`;
-      
-      // Cari admin ID
-      let adminId = null;
-      let adminName = 'Admin';
-      
-      if (user?.email) {
-        const { data: adminData } = await supabase
-          .from('officers')
-          .select('id, full_name')
-          .ilike('email', user.email)
-          .maybeSingle();
-        
-        if (adminData) {
-          adminId = adminData.id;
-          adminName = adminData.full_name || user.email;
-        }
-      }
-
-      // Update snapshot dengan status paid
-      const { error } = await supabase
-        .from('meal_allowance_snapshot')
-        .update({
-          is_paid: newPaidStatus,
-          paid_at: newPaidStatus ? new Date().toISOString() : null,
-          paid_by: newPaidStatus ? adminId : null,
-          is_locked: newPaidStatus // Kunci data kalau sudah PAID
-        })
-        .eq('officer_id', officerId)
-        .eq('bulan', bulan);
-
-      if (error) throw error;
-
-      // Update state
-      setOfficers(prev => prev.map(o => 
-        o.id === officerId 
-          ? { 
-              ...o, 
-              is_paid: newPaidStatus,
-              paid_at: newPaidStatus ? new Date().toISOString() : null,
-              paid_by: newPaidStatus ? adminName : null,
-              is_locked: newPaidStatus
-            }
-          : o
-      ));
-
-    } catch (error) {
-      console.error('Error updating payment status:', error);
-      alert('Gagal mengupdate status pembayaran');
-    } finally {
-      setUpdatingPayment(null);
-    }
-  };
-
-  // ===========================================
-  // DATA FETCHING
+  // DATA FETCHING (SAMA SEPERTI SEBELUMNYA)
   // ===========================================
 
   useEffect(() => {
@@ -279,14 +203,10 @@ export default function MealAllowancePage() {
       const schedule = scheduleResult.data || [];
       setScheduleData(schedule);
       
-      // Ambil snapshot dengan semua kolom termasuk is_paid
+      // Ambil snapshot
       const { data: snapData } = await supabase
         .from('meal_allowance_snapshot')
-        .select(`
-          officer_id, cuti_count, kasbon, etc, etc_note, 
-          last_edited_by, last_edited_at,
-          is_paid, paid_at, paid_by, is_locked
-        `)
+        .select('*')
         .eq('bulan', bulan);
       
       // Ambil data admin untuk mapping
@@ -307,9 +227,12 @@ export default function MealAllowancePage() {
         
         return {
           id: officer.id,
+          no: 0, // Akan diisi nanti
           full_name: officer.full_name,
           department: officer.department,
           join_date: officer.join_date,
+          lokasi_kerja: officer.location || '-',
+          grouping: officer.grouping || officer.department,
           baseAmount: rate?.base_amount || 0,
           prorate: rate?.prorate_per_day || 0,
           offCount: usia.off,
@@ -326,7 +249,6 @@ export default function MealAllowancePage() {
           link: link,
           lastEditedBy: snapshot?.last_edited_by ? adminMap[snapshot.last_edited_by] : null,
           lastEditedAt: snapshot?.last_edited_at || null,
-          // Status paid dari snapshot
           is_paid: snapshot?.is_paid || false,
           paid_at: snapshot?.paid_at || null,
           paid_by: snapshot?.paid_by ? adminMap[snapshot.paid_by] : null,
@@ -334,13 +256,25 @@ export default function MealAllowancePage() {
         };
       });
       
-      // Hitung umNet
-      const withUmNet = officersWithStats.map(o => {
-        const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
-        const denda = o.alphaCount * 50;
-        const umNet = Math.max(0, o.baseAmount - potongan - denda);
-        return { ...o, umNet };
-      });
+      // Hitung umNet dan beri nomor urut
+      const withUmNet = officersWithStats
+        .map((o, index) => {
+          const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
+          const denda = o.alphaCount * 50;
+          const umNet = Math.max(0, o.baseAmount - potongan - denda);
+          const finalNet = Math.max(0, umNet - (o.kasbon || 0) + (o.etc || 0));
+          return { 
+            ...o, 
+            no: index + 1,
+            umNet,
+            finalNet
+          };
+        })
+        .filter(o => {
+          if (!isAdmin) return o.department === 'CS DP WD';
+          return selectedDept === 'All' || o.department === selectedDept;
+        })
+        .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()));
       
       setOfficers(withUmNet);
       
@@ -391,6 +325,7 @@ export default function MealAllowancePage() {
       const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
       const denda = officer.alphaCount * 50;
       const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
+      const finalNetBaru = Math.max(0, umNetBaru - editForm.kasbon + editForm.etc);
       
       let adminName = 'Unknown';
       let adminId = null;
@@ -432,7 +367,6 @@ export default function MealAllowancePage() {
         etc_note: editForm.etc_note,
         last_edited_by: adminId,
         last_edited_at: new Date().toISOString(),
-        // Status paid tetap dipertahankan
         is_paid: officer.is_paid,
         paid_at: officer.paid_at,
         paid_by: officer.is_paid ? adminId : null,
@@ -445,6 +379,7 @@ export default function MealAllowancePage() {
       
       if (error) throw error;
       
+      // Update state
       setOfficers(prev => prev.map(o => 
         o.id === officer.id 
           ? { 
@@ -454,6 +389,7 @@ export default function MealAllowancePage() {
               etc: editForm.etc || 0,
               etc_note: editForm.etc_note,
               umNet: umNetBaru,
+              finalNet: finalNetBaru,
               lastEditedBy: adminName,
               lastEditedAt: new Date().toISOString()
             }
@@ -469,33 +405,68 @@ export default function MealAllowancePage() {
     }
   };
 
-  // ===========================================
-  // FILTER & PROCESS OFFICERS
-  // ===========================================
+  const togglePaymentStatus = async (officerId) => {
+    if (!isAdmin) return;
 
-  const officersWithStats = officers
-    .filter(o => {
-      if (!isAdmin) return o.department === 'CS DP WD';
-      return selectedDept === 'All' || o.department === selectedDept;
-    })
-    .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()))
-    .map((officer) => ({
-      ...officer,
-      finalNet: Math.max(0, (officer.umNet || 0) - (officer.kasbon || 0) + (officer.etc || 0))
-    }));
+    try {
+      const officer = officers.find(o => o.id === officerId);
+      if (!officer) return;
 
-  const groupedOfficers = {
-    'CS DP WD': officersWithStats.filter(o => o.department === 'CS DP WD'),
-    'CAPTAIN': officersWithStats.filter(o => o.department === 'CAPTAIN'),
-    'AM': officersWithStats.filter(o => o.department === 'AM')
+      const newPaidStatus = !officer.is_paid;
+      const bulan = `${selectedMonth} ${selectedYear}`;
+      
+      // Cari admin ID
+      let adminId = null;
+      let adminName = 'Admin';
+      
+      if (user?.email) {
+        const { data: adminData } = await supabase
+          .from('officers')
+          .select('id, full_name')
+          .ilike('email', user.email)
+          .maybeSingle();
+        
+        if (adminData) {
+          adminId = adminData.id;
+          adminName = adminData.full_name || user.email;
+        }
+      }
+
+      // Update snapshot
+      const { error } = await supabase
+        .from('meal_allowance_snapshot')
+        .update({
+          is_paid: newPaidStatus,
+          paid_at: newPaidStatus ? new Date().toISOString() : null,
+          paid_by: newPaidStatus ? adminId : null,
+          is_locked: newPaidStatus
+        })
+        .eq('officer_id', officerId)
+        .eq('bulan', bulan);
+
+      if (error) throw error;
+
+      // Update state
+      setOfficers(prev => prev.map(o => 
+        o.id === officerId 
+          ? { 
+              ...o, 
+              is_paid: newPaidStatus,
+              paid_at: newPaidStatus ? new Date().toISOString() : null,
+              paid_by: newPaidStatus ? adminName : null,
+              is_locked: newPaidStatus
+            }
+          : o
+      ));
+
+    } catch (error) {
+      console.error('Error updating payment status:', error);
+      alert('Gagal mengupdate status pembayaran');
+    }
   };
 
-  // Hitung total paid/unpaid
-  const totalPaid = officersWithStats.filter(o => o.is_paid).length;
-  const totalUnpaid = officersWithStats.filter(o => !o.is_paid).length;
-
   // ===========================================
-  // RENDER
+  // RENDER - VERSION SIMPLIFIED
   // ===========================================
 
   if (loading) {
@@ -533,304 +504,248 @@ export default function MealAllowancePage() {
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
+      {/* Header */}
       <div className="mb-6 flex items-center gap-4 flex-wrap">
         <Link href="/dashboard/financial" className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
-          <span>Back to Financial</span>
+          <span>Back</span>
         </Link>
         
         <div className="flex-1">
           <h1 className="text-3xl font-bold text-[#FFD700]">MEAL ALLOWANCE</h1>
           <p className="text-[#A7D8FF] mt-1">
-            {isAdmin ? '👑 Admin Mode (bisa edit)' : '👤 Staff Mode (read only)'} - {selectedMonth} {selectedYear}
+            {isAdmin ? '👑 Admin Mode' : '👤 Staff Mode'} - {selectedMonth} {selectedYear}
           </p>
         </div>
       </div>
 
-      {/* 4 Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {/* Total Officers */}
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total Officers</div>
-          <div className="text-2xl font-bold text-[#FFD700]">{officersWithStats.length}</div>
-          <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1">
-            {officersWithStats
-              .sort((a, b) => a.full_name.localeCompare(b.full_name))
-              .map(officer => (
-                <div key={officer.id} className="hover:bg-[#FFD700]/5 px-1 py-0.5 rounded">
-                  <span className="text-[#A7D8FF]">{officer.full_name}</span>
-                </div>
-              ))}
-          </div>
-          <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
-            {officersWithStats.length} orang
-          </div>
-        </div>
+      {/* Filters Bar */}
+      <div className="mb-6 flex flex-wrap gap-4 bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+        <select className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+          {months.map(month => <option key={month} value={month}>{month}</option>)}
+        </select>
+        <select className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+          {years.map(year => <option key={year} value={year}>{year}</option>)}
+        </select>
+        <select className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} disabled={!isAdmin}>
+          {availableDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+        </select>
+        <input 
+          type="text" 
+          placeholder="Cari nama..." 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px]" 
+          value={searchTerm} 
+          onChange={(e) => setSearchTerm(e.target.value)} 
+        />
+      </div>
 
-        {/* Total NET */}
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="text-[#A7D8FF] text-sm">Total Officer</div>
+          <div className="text-2xl font-bold text-[#FFD700]">{officers.length}</div>
+        </div>
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total NET</div>
           <div className="text-2xl font-bold text-[#FFD700]">
-            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}
+            ${Math.round(officers.reduce((sum, o) => sum + (o.finalNet || 0), 0))}
           </div>
-          <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1">
-            {officersWithStats
-              .filter(o => o.finalNet > 0)
-              .sort((a, b) => b.finalNet - a.finalNet)
-              .map(officer => (
-                <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded">
-                  <span className="text-[#A7D8FF] truncate max-w-[160px]">{officer.full_name}</span>
-                  <span className="text-[#FFD700] font-medium ml-2">${officer.finalNet}</span>
-                </div>
-              ))}
-          </div>
-          {officersWithStats.filter(o => o.finalNet > 0).length > 0 && (
-            <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
-              {officersWithStats.filter(o => o.finalNet > 0).length} orang
-            </div>
-          )}
         </div>
-
-        {/* Total Kasbon */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total Kasbon</div>
-          <div className="text-2xl font-bold text-red-400">
-            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.kasbon || 0), 0))}
+          <div className="text-[#A7D8FF] text-sm">Paid / Unpaid</div>
+          <div className="flex gap-3 text-lg font-bold">
+            <span className="text-green-400">{officers.filter(o => o.is_paid).length}</span>
+            <span className="text-gray-400">/</span>
+            <span className="text-red-400">{officers.filter(o => !o.is_paid).length}</span>
           </div>
-          <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1">
-            {officersWithStats
-              .filter(o => o.kasbon > 0)
-              .sort((a, b) => b.kasbon - a.kasbon)
-              .map(officer => (
-                <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded">
-                  <span className="text-[#A7D8FF] truncate max-w-[160px]">{officer.full_name}</span>
-                  <span className="text-red-400 font-medium ml-2">${officer.kasbon}</span>
-                </div>
-              ))}
-          </div>
-          {officersWithStats.filter(o => o.kasbon > 0).length > 0 && (
-            <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
-              {officersWithStats.filter(o => o.kasbon > 0).length} orang
-            </div>
-          )}
         </div>
-
-        {/* Total ETC */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total ETC</div>
-          <div className="text-2xl font-bold text-green-400">
-            ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.etc || 0), 0))}
+          <div className="text-[#A7D8FF] text-sm">Periode Data</div>
+          <div className="text-sm font-medium text-white">
+            {getPreviousMonthData(selectedMonth, selectedYear).month} {getPreviousMonthData(selectedMonth, selectedYear).year}
           </div>
-          <div className="mt-3 space-y-1.5 text-sm border-t border-[#FFD700]/20 pt-3 max-h-[140px] overflow-y-auto pr-1">
-            {officersWithStats
-              .filter(o => o.etc !== 0)
-              .sort((a, b) => b.etc - a.etc)
-              .map(officer => (
-                <div key={officer.id} className="flex justify-between items-center hover:bg-[#FFD700]/5 px-1 py-0.5 rounded">
-                  <span className="text-[#A7D8FF] truncate max-w-[160px]">{officer.full_name}</span>
-                  <span className={`font-medium ml-2 ${officer.etc > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {officer.etc > 0 ? '+' : ''}{officer.etc}
-                  </span>
-                </div>
-              ))}
-          </div>
-          {officersWithStats.filter(o => o.etc !== 0).length > 0 && (
-            <div className="mt-2 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-1.5 text-right">
-              {officersWithStats.filter(o => o.etc !== 0).length} orang
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-wrap gap-4">
-        <select className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-          {months.map(month => <option key={month} value={month}>{month}</option>)}
-        </select>
-        <select className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
-          {years.map(year => <option key={year} value={year}>{year}</option>)}
-        </select>
-        <select className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} disabled={!isAdmin}>
-          {availableDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
-        </select>
-        <input type="text" placeholder="Search name..." className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px]" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-      </div>
-
-      {/* Info Bar */}
-      <div className="mb-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-sm">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div>
-            <span className="text-[#A7D8FF]">Data dari schedule:</span> 
-            <span className="text-white font-medium">{getPreviousMonth(selectedMonth, selectedYear)}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[#A7D8FF]">Pembagian UM:</span> 
-            <span className="text-white font-medium">1 {selectedMonth} {selectedYear}</span>
-          </div>
+      {/* MAIN TABLE - SIMPLIFIED VERSION */}
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
+        <table className="w-full text-sm">
+          {/* TABLE HEADER */}
+          <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
+            <tr>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">No.</th>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Nama</th>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Jabatan</th>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Tgl Join</th>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Lokasi Kerja</th>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Grouping</th>
+              <th colSpan="2" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">POKOK UM</th>
+              <th colSpan="5" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">PRORATE</th>
+              <th colSpan="5" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">Potongan</th>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">UM</th>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">U. M NET</th>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">NAMA BANK</th>
+              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold">NO REK / BARCODE</th>
+            </tr>
+            <tr className="border-b border-[#FFD700]/30">
+              {/* Sub-header POKOK UM */}
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">/ DAY</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">HOLIDAY</th>
+              
+              {/* Sub-header PRORATE */}
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">IZIN</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">ALPHA</th>
+              
+              {/* Sub-header Potongan */}
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">(+)</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">(-)</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">IZIN</th>
+            </tr>
+          </thead>
           
-          {/* Summary Paid/Unpaid */}
-          <div className="ml-auto flex items-center gap-3">
-            <span className="text-green-400 font-medium">Paid: {totalPaid}</span>
-            <span className="text-red-400 font-medium">Unpaid: {totalUnpaid}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Officers List by Department */}
-      {['CS DP WD', 'CAPTAIN', 'AM'].map(dept => {
-        if (dept !== 'CS DP WD' && !isAdmin) return null;
-        if (groupedOfficers[dept]?.length === 0) return null;
-        
-        return (
-          <div key={dept} className="mb-8">
-            <div className="bg-[#1A2F4A] p-3 rounded-t-lg border border-[#FFD700]/30">
-              <h2 className="text-xl font-bold text-[#FFD700]">{dept} ({groupedOfficers[dept].length})</h2>
-            </div>
-            <div className="border-x border-b border-[#FFD700]/30 rounded-b-lg overflow-hidden">
-              {groupedOfficers[dept].map((officer) => (
-                <div key={officer.id} className="p-4 border-b border-[#FFD700]/30 last:border-b-0 hover:bg-[#1A2F4A]/50">
-                  {/* BARIS 1: Nama, Join Date, Bank */}
-                  <div className="flex flex-col md:flex-row md:items-center justify-between mb-3">
-                    <div>
-                      <div className="font-bold text-[#FFD700] text-lg">{officer.full_name}</div>
-                      <div className="text-xs text-[#A7D8FF]">Join: {new Date(officer.join_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' })}</div>
-                      {officer.paid_by && (
-                        <div className="text-xs text-green-400 mt-1">
-                          Paid by: {officer.paid_by}
-                        </div>
-                      )}
-                    </div>
-                    <div className="mt-2 md:mt-0 text-right">
-                      <div className="text-[#A7D8FF] text-xs font-medium">{officer.bank}</div>
-                      <div className="text-xs text-white break-all">{officer.rek}</div>
-                      {officer.link && (
-                        <a href={officer.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#FFD700] hover:underline block break-all mt-1">
-                          {officer.link}
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* BARIS 2: Angka-angka */}
-                  <div className="flex flex-wrap items-center gap-4 text-sm bg-[#1A2F4A] p-3 rounded-lg mb-3">
-                    <div className="flex items-center gap-1">
-                      <span className="text-[#A7D8FF] text-xs">Pokok:</span>
-                      <span className="font-medium text-white">${Math.round(officer.baseAmount || 0)}</span>
-                    </div>
-                    <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[#A7D8FF] text-xs">Rate/hari:</span>
-                      <span className="font-medium text-white">${officer.prorate || 0}</span>
-                    </div>
-                    <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[#A7D8FF] text-xs">S/I/U/A:</span>
-                      <span className="font-medium text-white">
-                        {officer.sakitCount || 0}/{officer.izinCount || 0}/{officer.unpaidCount || 0}/{officer.alphaCount || 0}
-                      </span>
-                    </div>
-                    <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[#A7D8FF] text-xs">Cuti Manual:</span>
-                      <span className="font-medium text-yellow-400">{officer.cutiCount || 0}</span>
-                    </div>
-                    <div className="w-px h-4 bg-[#FFD700]/30"></div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[#A7D8FF] text-xs">NET:</span>
-                      <span className="font-bold text-[#FFD700]">${officer.finalNet || 0}</span>
-                    </div>
-                  </div>
-                  
-                  {/* BARIS 3: Kolom Kasbon, ETC, Notes */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                    <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
-                      <div className="text-[#A7D8FF] text-xs mb-1">💰 KASBON</div>
-                      <div className="font-medium text-red-400">${officer.kasbon || 0}</div>
-                    </div>
-                    <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
-                      <div className="text-[#A7D8FF] text-xs mb-1">🔄 ETC/PRORATE</div>
-                      <div className={`font-medium ${(officer.etc || 0) > 0 ? 'text-green-400' : (officer.etc || 0) < 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                        {(officer.etc || 0) > 0 ? '+' : ''}{officer.etc || 0}
-                      </div>
-                    </div>
-                    <div className="bg-[#1A2F4A]/50 p-2 rounded border border-[#FFD700]/20">
-                      <div className="text-[#A7D8FF] text-xs mb-1">📝 NOTES</div>
-                      <div className="text-sm text-white truncate" title={officer.etc_note}>{officer.etc_note || '-'}</div>
-                    </div>
-                  </div>
-                  
-                  {/* Status PAID & Action Buttons */}
-                  <div className="flex items-center justify-between mt-4 pt-2 border-t border-[#FFD700]/20">
-                    {/* Last Edited Info */}
-                    {(officer.lastEditedBy || officer.lastEditedAt) && (
-                      <div className="text-[10px] text-[#A7D8FF]">
-                        Last edited by: {officer.lastEditedBy || 'Admin'} {officer.lastEditedAt ? `at ${new Date(officer.lastEditedAt).toLocaleString()}` : ''}
-                      </div>
+          {/* TABLE BODY */}
+          <tbody>
+            {officers.map((officer) => (
+              <tr key={officer.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                {/* No */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.no}</td>
+                
+                {/* Nama - VERTICAL */}
+                <td className="px-3 py-2 border-r border-[#FFD700]/10">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-[#FFD700]">{officer.full_name}</span>
+                    {officer.is_paid && (
+                      <span className="text-[10px] text-green-400 mt-1">✓ PAID</span>
                     )}
-                    
-                    {/* Payment Status & Buttons */}
-                    <div className="flex items-center gap-3 ml-auto">
-                      {/* Status Badge */}
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        officer.is_paid 
-                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
-                          : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      }`}>
-                        {officer.is_paid ? 'PAID' : 'UNPAID'}
-                      </span>
-
-                      {/* PAID/UNPAID Button (Admin Only) */}
-                      {isAdmin && (
-                        <button
-                          onClick={() => togglePaymentStatus(officer.id)}
-                          disabled={updatingPayment === officer.id}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                            officer.is_paid
-                              ? 'bg-green-500 text-white shadow-[0_0_20px_#10b981] border-2 border-green-400 hover:bg-green-600' 
-                              : 'bg-gray-600 text-gray-300 hover:bg-gray-700 border-2 border-transparent'
-                          }`}
-                        >
-                          {officer.is_paid ? 'PAID ✓' : 'Mark Paid'}
-                        </button>
-                      )}
-
-                      {/* Edit Button (Admin Only) - Disabled if locked */}
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleEditClick(officer)}
-                          disabled={officer.is_locked}
-                          className={`px-4 py-2 rounded text-sm font-medium flex items-center gap-2 transition-all ${
-                            officer.is_locked
-                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                              : 'bg-[#FFD700] hover:bg-[#FFD700]/80 text-black'
-                          }`}
-                          title={officer.is_locked ? 'Data terkunci karena sudah PAID' : 'Edit KASBON/ETC/CUTI'}
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                          <span>Edit</span>
-                        </button>
-                      )}
-                    </div>
+                    {!officer.is_paid && isAdmin && (
+                      <button
+                        onClick={() => togglePaymentStatus(officer.id)}
+                        className="text-[10px] bg-gray-600 hover:bg-gray-700 text-white px-2 py-0.5 rounded mt-1 w-fit"
+                      >
+                        Mark Paid
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleEditClick(officer)}
+                        disabled={officer.is_locked}
+                        className={`text-[10px] mt-1 px-2 py-0.5 rounded w-fit ${
+                          officer.is_locked 
+                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                            : 'bg-[#FFD700] text-black hover:bg-[#FFD700]/80'
+                        }`}
+                      >
+                        Edit
+                      </button>
+                    )}
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })}
+                </td>
+                
+                {/* Jabatan */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.department}</td>
+                
+                {/* Tgl Join */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">
+                  {new Date(officer.join_date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                </td>
+                
+                {/* Lokasi Kerja */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.lokasi_kerja}</td>
+                
+                {/* Grouping */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.grouping}</td>
+                
+                {/* POKOK UM / DAY */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.prorate}</td>
+                
+                {/* POKOK UM HOLIDAY */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">-</td>
+                
+                {/* PRORATE CUTI */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.cutiCount}</td>
+                
+                {/* PRORATE UNPAID */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.unpaidCount}</td>
+                
+                {/* PRORATE SAKIT */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.sakitCount}</td>
+                
+                {/* PRORATE IZIN */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.izinCount}</td>
+                
+                {/* PRORATE ALPHA */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.alphaCount}</td>
+                
+                {/* Potongan (+) - ETC Positif */}
+                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center">
+                  {officer.etc > 0 && (
+                    <span className="text-green-400">+{officer.etc}</span>
+                  )}
+                </td>
+                
+                {/* Potongan (-) - Kasbon */}
+                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center">
+                  {officer.kasbon > 0 && (
+                    <span className="text-red-400">{officer.kasbon}</span>
+                  )}
+                </td>
+                
+                {/* Potongan UNPAID (dalam $) */}
+                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
+                  {officer.unpaidCount > 0 ? officer.unpaidCount * officer.prorate : ''}
+                </td>
+                
+                {/* Potongan SAKIT (dalam $) */}
+                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
+                  {officer.sakitCount > 0 ? officer.sakitCount * officer.prorate : ''}
+                </td>
+                
+                {/* Potongan IZIN (dalam $) */}
+                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
+                  {officer.izinCount > 0 ? officer.izinCount * officer.prorate : ''}
+                </td>
+                
+                {/* UM */}
+                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-medium text-white">
+                  ${officer.baseAmount}
+                </td>
+                
+                {/* U. M NET */}
+                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-bold text-[#FFD700]">
+                  ${officer.finalNet}
+                </td>
+                
+                {/* NAMA BANK */}
+                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-white">{officer.bank}</td>
+                
+                {/* NO REK / BARCODE */}
+                <td className="px-3 py-2 text-white">
+                  <div className="flex flex-col">
+                    <span>{officer.rek}</span>
+                    {officer.link && (
+                      <a href={officer.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#FFD700] hover:underline mt-1">
+                        Link QRIS
+                      </a>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* Footer */}
-      <div className="mt-6 p-4 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg flex justify-between items-center">
-        <span className="text-[#FFD700] font-bold">Total Officers: {officersWithStats.length}</span>
-        <div className="flex gap-6">
-          <span className="text-green-400 font-bold">Paid: {totalPaid}</span>
-          <span className="text-red-400 font-bold">Unpaid: {totalUnpaid}</span>
-          <span className="text-[#FFD700] font-bold">Total NET: ${Math.round(officersWithStats.reduce((sum, o) => sum + (o.finalNet || 0), 0))}</span>
-        </div>
+      <div className="mt-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF] flex justify-between">
+        <span>Total: {officers.length} officers</span>
+        <span>Last updated: {new Date().toLocaleString()}</span>
       </div>
 
       {/* Edit Modal */}
@@ -842,46 +757,54 @@ export default function MealAllowancePage() {
             <div className="space-y-4">
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">KASBON ( - )</label>
-                <input type="text" value={editForm.kasbon} onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, '');
-                  setEditForm({...editForm, kasbon: value ? parseInt(value) : 0});
-                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="0" />
+                <input 
+                  type="number" 
+                  value={editForm.kasbon} 
+                  onChange={(e) => setEditForm({...editForm, kasbon: parseInt(e.target.value) || 0})} 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
+                  min="0"
+                />
               </div>
               
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">CUTI (hari)</label>
-                <input type="text" value={editForm.cuti} onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, '');
-                  setEditForm({...editForm, cuti: value ? parseInt(value) : 0});
-                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="0" />
-                <p className="text-[10px] text-[#A7D8FF] mt-1">*Akan mengganti hitungan cuti dari schedule</p>
+                <input 
+                  type="number" 
+                  value={editForm.cuti} 
+                  onChange={(e) => setEditForm({...editForm, cuti: parseInt(e.target.value) || 0})} 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
+                  min="0"
+                />
               </div>
               
               <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">ETC (+ nambah, - ngurang)</label>
-                <input type="text" value={editForm.etc} onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === '' || value === '-') {
-                    setEditForm({...editForm, etc: value});
-                    return;
-                  }
-                  if (/^-?\d*$/.test(value)) {
-                    setEditForm({...editForm, etc: value});
-                  }
-                }} onBlur={() => {
-                  const num = parseInt(editForm.etc);
-                  setEditForm({...editForm, etc: isNaN(num) ? 0 : num});
-                }} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="Contoh: 25 atau -10" />
+                <label className="text-[#A7D8FF] text-sm block mb-1">ETC (+/-)</label>
+                <input 
+                  type="number" 
+                  value={editForm.etc} 
+                  onChange={(e) => setEditForm({...editForm, etc: parseInt(e.target.value) || 0})} 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
+                />
               </div>
               
               <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">Keterangan / Note</label>
-                <input type="text" value={editForm.etc_note} onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})} className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" placeholder="Misal: Koreksi, Bonus, Denda, dll" />
+                <label className="text-[#A7D8FF] text-sm block mb-1">Keterangan</label>
+                <input 
+                  type="text" 
+                  value={editForm.etc_note} 
+                  onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})} 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
+                  placeholder="Misal: Koreksi, Bonus, Denda"
+                />
               </div>
               
               <div className="flex gap-2 pt-4">
-                <button onClick={handleEditSave} className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80">Simpan</button>
-                <button onClick={() => setEditingOfficer(null)} className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600">Batal</button>
+                <button onClick={handleEditSave} className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80">
+                  Simpan
+                </button>
+                <button onClick={() => setEditingOfficer(null)} className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600">
+                  Batal
+                </button>
               </div>
             </div>
           </div>
