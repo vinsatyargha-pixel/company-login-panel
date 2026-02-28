@@ -30,6 +30,9 @@ export default function MealAllowancePage() {
                   'July', 'August', 'September', 'October', 'November', 'December'];
   const years = ['2025', '2026', '2027'];
 
+  // Jatah OFF per periode (21 - 20)
+  const JATAH_OFF_PER_PERIODE = 4;
+
   // ===========================================
   // AUTO-SELECT BULAN BERDASARKAN TANGGAL (CUTOFF 20)
   // ===========================================
@@ -57,7 +60,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // HITUNG MASA KERJA (Presisi: bulan harus tercapai)
+  // HITUNG MASA KERJA
   // ===========================================
   const hitungMasaKerja = (joinDate) => {
     if (!joinDate) return '< 1 bln';
@@ -65,21 +68,17 @@ export default function MealAllowancePage() {
     const join = new Date(joinDate);
     const filterDate = new Date(`${selectedYear}-${String(months.indexOf(selectedMonth) + 1).padStart(2, '0')}-01`);
     
-    // Set ke tanggal 1 untuk menghindari issue tanggal
     join.setDate(1);
     filterDate.setDate(1);
     
-    // Hitung selisih tahun dan bulan
     let tahun = filterDate.getFullYear() - join.getFullYear();
     let bulan = filterDate.getMonth() - join.getMonth();
     
-    // Adjust kalau bulan negatif
     if (bulan < 0) {
       tahun -= 1;
       bulan += 12;
     }
     
-    // Format output
     if (tahun === 0 && bulan === 0) {
       return '< 1 bln';
     } else if (tahun === 0) {
@@ -189,7 +188,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // DATA FETCHING (⬇️ DOWNLOAD from Supabase)
+  // DATA FETCHING
   // ===========================================
 
   useEffect(() => {
@@ -212,9 +211,6 @@ export default function MealAllowancePage() {
     setEditForm({ kasbon: 0, cuti: 0, etc: 0, etc_note: '' });
   }, [selectedMonth, selectedYear]);
 
-  // ===========================================
-  // REFRESH FUNCTION (⬇️ MANUAL SYNC from Supabase)
-  // ===========================================
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchData();
@@ -235,14 +231,12 @@ export default function MealAllowancePage() {
       const bulan = `${selectedMonth} ${selectedYear}`;
       const prev = getPreviousMonthData(selectedMonth, selectedYear);
       
-      // ⬇️ AMBIL data officers FRESH dari Supabase
       const { data: officersData } = await supabase
         .from('officers')
         .select('*')
         .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
         .eq('status', 'REGULAR');
       
-      // ⬇️ AMBIL schedule FRESH dari API (Google Sheets)
       const scheduleResponse = await fetch(
         `/api/schedule?year=${prev.year}&month=${prev.month}`
       );
@@ -250,13 +244,11 @@ export default function MealAllowancePage() {
       const schedule = scheduleResult.data || [];
       setScheduleData(schedule);
       
-      // ⬇️ AMBIL snapshot FRESH dari Supabase (kasbon, cuti manual, dll)
       const { data: snapData } = await supabase
         .from('meal_allowance_snapshot')
         .select('*')
         .eq('bulan', bulan);
       
-      // ⬇️ AMBIL data admin untuk mapping
       const { data: adminData } = await supabase
         .from('officers')
         .select('id, full_name, email')
@@ -265,7 +257,6 @@ export default function MealAllowancePage() {
       const adminMap = {};
       adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
       
-      // 🔄 GABUNGIN semua data
       const officersWithStats = (officersData || []).map(officer => {
         const usia = hitungUSIA(officer.full_name, schedule);
         const snapshot = snapData?.find(s => s.officer_id === officer.id);
@@ -301,18 +292,34 @@ export default function MealAllowancePage() {
         };
       });
       
-      // 🧮 HITUNG ulang umNet dan finalNet
+      // 🧮 HITUNG dengan LOGIC PRORATE YANG BENAR (uang tambahan)
       const withUmNet = officersWithStats
         .map((o, index) => {
-          const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
+          // 🔥 OFF TIDAK DIAMBIL = DAPAT UANG TAMBAHAN (PRORATE)
+          const offDiambil = o.offCount || 0;
+          const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
+          
+          // Uang tambahan dari off yang tidak diambil
+          const uangProrate = offTidakDiambil * o.prorate;
+          
+          // Potongan dari ketidakhadiran (sakit, izin, unpaid, cuti)
+          const potongan = (o.sakitCount + o.izinCount + o.unpaidCount + o.cutiCount) * o.prorate;
+          
+          // Denda absen
           const denda = o.alphaCount * 50;
-          const umNet = Math.max(0, o.baseAmount - potongan - denda);
+          
+          // UM = Base + uangProrate - potongan - denda
+          const umNet = Math.max(0, o.baseAmount + uangProrate - potongan - denda);
           const finalNet = Math.max(0, umNet - (o.kasbon || 0) + (o.etc || 0));
+          
           return { 
             ...o, 
             no: index + 1,
             umNet,
-            finalNet
+            finalNet,
+            offTaken: offDiambil,
+            offRemaining: offTidakDiambil,
+            uangProrate
           };
         })
         .filter(o => {
@@ -331,7 +338,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // EDIT HANDLERS (⬆️ UPLOAD to Supabase)
+  // EDIT HANDLERS
   // ===========================================
 
   const handleEditClick = (officer) => {
@@ -367,9 +374,14 @@ export default function MealAllowancePage() {
       const officer = editingOfficer;
       const prev = getPreviousMonthData(selectedMonth, selectedYear);
       
+      // Hitung ulang dengan logic prorate yang benar (uang tambahan)
+      const offDiambil = officer.offCount || 0;
+      const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
+      const uangProrate = offTidakDiambil * officer.prorate;
+      
       const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
       const denda = officer.alphaCount * 50;
-      const umNetBaru = Math.max(0, officer.baseAmount - potongan - denda);
+      const umNetBaru = Math.max(0, officer.baseAmount + uangProrate - potongan - denda);
       const finalNetBaru = Math.max(0, umNetBaru - editForm.kasbon + editForm.etc);
       
       let adminName = 'Unknown';
@@ -390,7 +402,6 @@ export default function MealAllowancePage() {
         }
       }
       
-      // ⬆️ UPLOAD ke Supabase
       const snapshotData = {
         officer_id: officer.id,
         officer_name: officer.full_name,
@@ -425,7 +436,6 @@ export default function MealAllowancePage() {
       
       if (error) throw error;
       
-      // ✅ Update state LOCAL langsung (tanpa perlu refresh)
       setOfficers(prev => prev.map(o => 
         o.id === officer.id 
           ? { 
@@ -477,7 +487,6 @@ export default function MealAllowancePage() {
         }
       }
 
-      // ⬆️ UPLOAD status paid ke Supabase
       const { error } = await supabase
         .from('meal_allowance_snapshot')
         .update({
@@ -491,7 +500,6 @@ export default function MealAllowancePage() {
 
       if (error) throw error;
 
-      // ✅ Update state LOCAL langsung
       setOfficers(prev => prev.map(o => 
         o.id === officerId 
           ? { 
@@ -565,7 +573,6 @@ export default function MealAllowancePage() {
           </p>
         </div>
 
-        {/* 🔄 REFRESH BUTTON - 2-WAY SYNC */}
         <button
           onClick={handleRefresh}
           disabled={refreshing}
@@ -584,15 +591,14 @@ export default function MealAllowancePage() {
         </button>
       </div>
 
-      {/* ℹ️ Info 2-WAY SYNC */}
       <div className="mb-4 p-3 bg-[#0B1A33] rounded-lg border border-[#FFD700]/20 text-xs text-[#A7D8FF]">
-  <div className="flex items-center gap-2 flex-wrap">
-    <span className="text-[#FFD700] font-bold">💡 INFO:</span>
-    <span>Setelah edit data, silahkan klik</span>
-    <span className="text-[#FFD700] font-medium">Refresh & Sync</span>
-    <span>terlebih dahulu untuk save</span>
-  </div>
-</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[#FFD700] font-bold">💡 INFO:</span>
+          <span>Setelah edit data, silahkan klik</span>
+          <span className="text-[#FFD700] font-medium">Refresh & Sync</span>
+          <span>terlebih dahulu untuk save</span>
+        </div>
+      </div>
 
       {/* Filters Bar */}
       <div className="mb-6 flex flex-wrap gap-4 bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
@@ -613,7 +619,6 @@ export default function MealAllowancePage() {
           onChange={(e) => setSearchTerm(e.target.value)} 
         />
         
-        {/* Last Sync Info */}
         <div className="text-xs text-[#A7D8FF] flex items-center gap-2 ml-auto">
           <span>Last sync:</span>
           <span className="text-[#FFD700] font-medium">{lastSync.toLocaleTimeString()}</span>
@@ -652,7 +657,6 @@ export default function MealAllowancePage() {
       {/* MAIN TABLE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
         <table className="w-full text-sm">
-          {/* TABLE HEADER */}
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">No.</th>
@@ -661,7 +665,7 @@ export default function MealAllowancePage() {
               <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Tgl Join</th>
               <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Masa Kerja</th>
               <th colSpan="2" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">POKOK UM</th>
-              <th colSpan="5" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">KEHADIRAN</th>
+              <th colSpan="6" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">KEHADIRAN</th>
               <th colSpan="5" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">Potongan</th>
               <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">UM</th>
               <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">KASBON</th>
@@ -670,18 +674,14 @@ export default function MealAllowancePage() {
               <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold">NO REK / BARCODE</th>
             </tr>
             <tr className="border-b border-[#FFD700]/30">
-              {/* Sub-header POKOK UM */}
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">/ DAY</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">PRORATE</th>
-              
-              {/* Sub-header KEHADIRAN */}
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">OFF</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">IZIN</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">ABSEN</th>
-              
-              {/* Sub-header Potongan */}
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
@@ -690,14 +690,11 @@ export default function MealAllowancePage() {
             </tr>
           </thead>
           
-          {/* TABLE BODY */}
           <tbody>
             {officers.map((officer) => (
               <tr key={officer.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                {/* No */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.no}</td>
                 
-                {/* Nama - VERTICAL dengan tombol aksi */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10">
                   <div className="flex flex-col">
                     <span className="font-bold text-[#FFD700]">{officer.full_name}</span>
@@ -725,89 +722,65 @@ export default function MealAllowancePage() {
                         Edit
                       </button>
                     )}
+                    
+                    {/* Info prorate (uang tambahan) */}
+                    {officer.offRemaining > 0 && (
+                      <span className="text-[10px] text-green-400 mt-1">
+                        +${officer.uangProrate} (prorate {officer.offRemaining} hari)
+                      </span>
+                    )}
                   </div>
                 </td>
                 
-                {/* Jabatan */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.department}</td>
                 
-                {/* Tgl Join */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">
                   {new Date(officer.join_date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                 </td>
                 
-                {/* MASA KERJA */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">
                   <span className="bg-[#0B1A33] px-2 py-1 rounded text-[#FFD700] font-medium">
                     {hitungMasaKerja(officer.join_date)}
                   </span>
                 </td>
                 
-                {/* POKOK UM / DAY */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.prorate}</td>
-                
-                {/* POKOK UM PRORATE */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">-</td>
                 
-                {/* KEHADIRAN CUTI */}
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.offCount || 0}</td>
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.cutiCount}</td>
-                
-                {/* KEHADIRAN UNPAID */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.unpaidCount}</td>
-                
-                {/* KEHADIRAN SAKIT */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.sakitCount}</td>
-                
-                {/* KEHADIRAN IZIN */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.izinCount}</td>
-                
-                {/* KEHADIRAN ABSEN */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.alphaCount}</td>
                 
-                {/* Potongan CUTI */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
                   {officer.cutiCount > 0 ? officer.cutiCount * officer.prorate : ''}
                 </td>
-                
-                {/* Potongan UNPAID */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
                   {officer.unpaidCount > 0 ? officer.unpaidCount * officer.prorate : ''}
                 </td>
-                
-                {/* Potongan SAKIT */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
                   {officer.sakitCount > 0 ? officer.sakitCount * officer.prorate : ''}
                 </td>
-                
-                {/* Potongan IZIN */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
                   {officer.izinCount > 0 ? officer.izinCount * officer.prorate : ''}
                 </td>
-                
-                {/* Potongan ABSEN */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
                   {officer.alphaCount > 0 ? officer.alphaCount * 50 : ''}
                 </td>
                 
-                {/* UM */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-medium text-white">
                   ${officer.baseAmount}
                 </td>
-                
-                {/* KASBON */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-medium text-red-400">
                   {officer.kasbon > 0 ? `$${officer.kasbon}` : ''}
                 </td>
-                
-                {/* U.M NET */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-bold text-[#FFD700]">
                   ${officer.finalNet}
                 </td>
                 
-                {/* NAMA BANK */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-white">{officer.bank}</td>
-                
-                {/* NO REK / BARCODE */}
                 <td className="px-3 py-2 text-white">
                   <div className="flex flex-col">
                     <span>{officer.rek}</span>
@@ -824,7 +797,7 @@ export default function MealAllowancePage() {
         </table>
       </div>
 
-      {/* Footer dengan Sync Info */}
+      {/* Footer */}
       <div className="mt-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF] flex justify-between items-center">
         <div className="flex items-center gap-4">
           <span>Total: {officers.length} officers</span>
@@ -841,7 +814,6 @@ export default function MealAllowancePage() {
             onClick={handleRefresh}
             disabled={refreshing}
             className="text-[#FFD700] hover:underline flex items-center gap-1 disabled:opacity-50"
-            title="Klik untuk sync data terbaru dari Supabase"
           >
             <svg className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -878,6 +850,10 @@ export default function MealAllowancePage() {
                   className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
                   min="0"
                 />
+                <div className="flex gap-4 mt-1 text-[10px] text-[#A7D8FF]">
+                  <span>OFF diambil: {editingOfficer.offCount || 0}/{JATAH_OFF_PER_PERIODE}</span>
+                  <span>Sisa off: {Math.max(0, JATAH_OFF_PER_PERIODE - (editingOfficer.offCount || 0))}</span>
+                </div>
               </div>
               
               <div>
