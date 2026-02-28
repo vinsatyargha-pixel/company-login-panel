@@ -16,7 +16,6 @@ export default function MealAllowancePage() {
   const [scheduleData, setScheduleData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [availableDepartments, setAvailableDepartments] = useState(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
-  const [showProrateModal, setShowProrateModal] = useState(null);
   
   const [editingOfficer, setEditingOfficer] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -284,8 +283,10 @@ export default function MealAllowancePage() {
           const offDiambil = o.offCount || 0;
           const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
           
-          const isSpecialRole = o.department === 'CAPTAIN' || o.department === 'AM';
+          // SPECIAL: Untuk selain CS DP WD, prorate bisa dihapus
+          const isSpecialRole = o.department !== 'CS DP WD';
           
+          // Kalau special role dan prorate_disabled true, uang prorate jadi 0
           let uangProrate = offTidakDiambil * o.prorate;
           if (isSpecialRole && o.prorate_disabled) {
             uangProrate = 0;
@@ -505,28 +506,23 @@ export default function MealAllowancePage() {
 
   const toggleProrate = async (officer) => {
     if (!isAdmin) return;
-    if (!officer.isSpecialRole) {
-      alert('Hanya untuk CAPTAIN dan AM');
+    if (officer.department === 'CS DP WD') {
+      alert('CS DP WD tidak bisa diubah proratenya');
       return;
     }
     if (officer.is_locked) {
       alert('Data sudah terkunci');
       return;
     }
-    setShowProrateModal(officer);
-  };
-
-  const handleProrateToggle = async () => {
-    if (!showProrateModal) return;
     
     try {
       const bulan = `${selectedMonth} ${selectedYear}`;
-      const newStatus = !showProrateModal.prorate_disabled;
+      const newStatus = !officer.prorate_disabled;
       
       const { error } = await supabase
         .from('meal_allowance_snapshot')
         .upsert({
-          officer_id: showProrateModal.id,
+          officer_id: officer.id,
           bulan: bulan,
           prorate_disabled: newStatus,
           last_edited_by: user?.id,
@@ -537,7 +533,7 @@ export default function MealAllowancePage() {
       
       // Update local state
       setOfficers(prev => prev.map(o => {
-        if (o.id === showProrateModal.id) {
+        if (o.id === officer.id) {
           const offTidakDiambil = o.offRemaining;
           const uangProrateBaru = newStatus ? 0 : (offTidakDiambil * o.prorate);
           const potongan = (o.sakitCount + o.izinCount + o.unpaidCount + o.cutiCount) * o.prorate;
@@ -556,8 +552,7 @@ export default function MealAllowancePage() {
         return o;
       }));
       
-      setShowProrateModal(null);
-      alert(`✅ Prorate ${newStatus ? 'dinonaktifkan' : 'diaktifkan'}`);
+      alert(`✅ Prorate ${newStatus ? 'dihapus' : 'diaktifkan'} untuk ${officer.full_name}`);
       
     } catch (error) {
       console.error('Error:', error);
@@ -736,15 +731,16 @@ export default function MealAllowancePage() {
                   <div className="flex flex-col">
                     <span className="font-bold text-[#FFD700]">{officer.full_name}</span>
                     
+                    {/* Info prorate di kolom nama */}
                     {officer.offRemaining > 0 && !officer.prorate_disabled && (
                       <span className="text-[10px] text-green-400 font-medium mt-1">
                         ✓ Prorate +${officer.offRemaining * officer.prorate} ({officer.offRemaining} hari)
                       </span>
                     )}
                     
-                    {officer.isSpecialRole && officer.prorate_disabled && (
+                    {officer.department !== 'CS DP WD' && officer.prorate_disabled && (
                       <span className="text-[10px] text-red-400 font-medium mt-1">
-                        ⛔ Prorate DISABLED
+                        ⛔ Prorate dihapus
                       </span>
                     )}
                     
@@ -775,7 +771,8 @@ export default function MealAllowancePage() {
                       </button>
                     )}
 
-                    {isAdmin && officer.isSpecialRole && (
+                    {/* Tombol toggle prorate untuk selain CS DP WD */}
+                    {isAdmin && officer.department !== 'CS DP WD' && (
                       <button
                         onClick={() => toggleProrate(officer)}
                         disabled={officer.is_locked}
@@ -787,7 +784,7 @@ export default function MealAllowancePage() {
                               : 'bg-green-500/20 text-green-400 border border-green-400/30'
                         }`}
                       >
-                        {officer.prorate_disabled ? '⛔ Prorate OFF' : '✅ Prorate ON'}
+                        {officer.prorate_disabled ? '⛔ Hapus Prorate' : '✅ Aktifkan Prorate'}
                       </button>
                     )}
                   </div>
@@ -809,11 +806,8 @@ export default function MealAllowancePage() {
                 
                 {/* Kolom PRORATE */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center">
-                  {officer.isSpecialRole && officer.prorate_disabled ? (
-                    <div className="flex flex-col items-center">
-                      <span className="text-red-400 font-bold">DISABLED</span>
-                      <span className="text-[9px] text-[#A7D8FF]">by Admin</span>
-                    </div>
+                  {officer.department !== 'CS DP WD' && officer.prorate_disabled ? (
+                    <span className="text-red-400 font-bold">HAPUS</span>
                   ) : officer.offRemaining > 0 ? (
                     <div className="flex flex-col items-center">
                       <span className="text-green-400 font-bold">
@@ -963,55 +957,6 @@ export default function MealAllowancePage() {
                   Simpan
                 </button>
                 <button onClick={() => setEditingOfficer(null)} className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600">
-                  Batal
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Toggle Prorate untuk CAPTAIN/AM */}
-      {showProrateModal && isAdmin && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-xl font-bold text-[#FFD700] mb-4">
-              Prorate Settings - {showProrateModal.full_name}
-            </h3>
-            
-            <div className="space-y-4">
-              <div className="bg-[#1A2F4A] p-4 rounded-lg">
-                <div className="text-[#A7D8FF] text-sm mb-2">Status Prorate Saat Ini:</div>
-                <div className="flex items-center gap-2">
-                  <span className={`px-3 py-1 rounded-full text-sm ${
-                    showProrateModal.prorate_disabled 
-                      ? 'bg-red-500/20 text-red-400' 
-                      : 'bg-green-500/20 text-green-400'
-                  }`}>
-                    {showProrateModal.prorate_disabled ? 'DISABLED' : 'ENABLED'}
-                  </span>
-                </div>
-                
-                <div className="mt-4 text-sm">
-                  <p className="text-[#A7D8FF]">OFF tidak diambil: {showProrateModal.offRemaining} hari</p>
-                  <p className="text-[#A7D8FF]">Rate prorate: ${showProrateModal.prorate}/hari</p>
-                  <p className="text-green-400 font-bold mt-2">
-                    Potensi prorate: +${showProrateModal.offRemaining * showProrateModal.prorate}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex gap-2 pt-4">
-                <button
-                  onClick={handleProrateToggle}
-                  className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80"
-                >
-                  {showProrateModal.prorate_disabled ? 'Aktifkan Prorate' : 'Nonaktifkan Prorate'}
-                </button>
-                <button
-                  onClick={() => setShowProrateModal(null)}
-                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600"
-                >
                   Batal
                 </button>
               </div>
