@@ -655,147 +655,192 @@ export default function MealAllowancePage() {
       </div>
 
       {/* MAIN TABLE */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
-            <tr>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">No.</th>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Nama</th>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Jabatan</th>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Tgl Join</th>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Masa Kerja</th>
-              <th colSpan="2" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">POKOK UM</th>
-              <th colSpan="6" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">KEHADIRAN</th>
-              <th colSpan="5" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">Potongan</th>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">UM</th>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">KASBON</th>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">U.M NET</th>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">NAMA BANK</th>
-              <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold">NO REK / BARCODE</th>
-            </tr>
-            <tr className="border-b border-[#FFD700]/30">
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">/ DAY</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">PRORATE</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">OFF</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">IZIN</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">ABSEN</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">IZIN</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">ABSEN</th>
-            </tr>
-          </thead>
+<div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
+  <table className="w-full text-sm">
+    <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
+      <tr>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">No.</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Nama</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Jabatan</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Tgl Join</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Masa Kerja</th>
+        <th colSpan="2" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">POKOK UM</th>
+        <th colSpan="6" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">KEHADIRAN</th>
+        <th colSpan="5" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">Potongan</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">UM</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">KASBON</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">U.M NET</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">NAMA BANK</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold">NO REK / BARCODE</th>
+      </tr>
+      <tr className="border-b border-[#FFD700]/30">
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">/ DAY</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">PRORATE</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">OFF</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">IZIN</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">ABSEN</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">IZIN</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">ABSEN</th>
+      </tr>
+    </thead>
+    
+    <tbody>
+      {officers.map((officer) => (
+        <tr key={officer.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.no}</td>
           
-          <tbody>
-            {officers.map((officer) => (
-              <tr key={officer.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.no}</td>
-                
-                <td className="px-3 py-2 border-r border-[#FFD700]/10">
-                  <div className="flex flex-col">
-                    <span className="font-bold text-[#FFD700]">{officer.full_name}</span>
-                    {officer.is_paid && (
-                      <span className="text-[10px] text-green-400 mt-1">✓ PAID</span>
-                    )}
-                    {!officer.is_paid && isAdmin && (
-                      <button
-                        onClick={() => togglePaymentStatus(officer.id)}
-                        className="text-[10px] bg-gray-600 hover:bg-gray-700 text-white px-2 py-0.5 rounded mt-1 w-fit"
-                      >
-                        Mark Paid
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button
-                        onClick={() => handleEditClick(officer)}
-                        disabled={officer.is_locked}
-                        className={`text-[10px] mt-1 px-2 py-0.5 rounded w-fit ${
-                          officer.is_locked 
-                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
-                            : 'bg-[#FFD700] text-black hover:bg-[#FFD700]/80'
-                        }`}
-                      >
-                        Edit
-                      </button>
-                    )}
-                    
-                    {/* Info prorate (uang tambahan) */}
-                    {officer.offRemaining > 0 && (
-                      <span className="text-[10px] text-green-400 mt-1">
-                        +${officer.uangProrate} (prorate {officer.offRemaining} hari)
-                      </span>
-                    )}
-                  </div>
-                </td>
-                
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.department}</td>
-                
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">
-                  {new Date(officer.join_date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                </td>
-                
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">
-                  <span className="bg-[#0B1A33] px-2 py-1 rounded text-[#FFD700] font-medium">
-                    {hitungMasaKerja(officer.join_date)}
-                  </span>
-                </td>
-                
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.prorate}</td>
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">-</td>
-                
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.offCount || 0}</td>
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.cutiCount}</td>
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.unpaidCount}</td>
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.sakitCount}</td>
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.izinCount}</td>
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.alphaCount}</td>
-                
-                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
-                  {officer.cutiCount > 0 ? officer.cutiCount * officer.prorate : ''}
-                </td>
-                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
-                  {officer.unpaidCount > 0 ? officer.unpaidCount * officer.prorate : ''}
-                </td>
-                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
-                  {officer.sakitCount > 0 ? officer.sakitCount * officer.prorate : ''}
-                </td>
-                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
-                  {officer.izinCount > 0 ? officer.izinCount * officer.prorate : ''}
-                </td>
-                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
-                  {officer.alphaCount > 0 ? officer.alphaCount * 50 : ''}
-                </td>
-                
-                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-medium text-white">
-                  ${officer.baseAmount}
-                </td>
-                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-medium text-red-400">
-                  {officer.kasbon > 0 ? `$${officer.kasbon}` : ''}
-                </td>
-                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-bold text-[#FFD700]">
-                  ${officer.finalNet}
-                </td>
-                
-                <td className="px-3 py-2 border-r border-[#FFD700]/10 text-white">{officer.bank}</td>
-                <td className="px-3 py-2 text-white">
-                  <div className="flex flex-col">
-                    <span>{officer.rek}</span>
-                    {officer.link && (
-                      <a href={officer.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#FFD700] hover:underline mt-1">
-                        Link QRIS
-                      </a>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          <td className="px-3 py-2 border-r border-[#FFD700]/10">
+            <div className="flex flex-col">
+              <span className="font-bold text-[#FFD700]">{officer.full_name}</span>
+              
+              {/* Info prorate di kolom nama */}
+              {officer.offRemaining > 0 && (
+                <span className="text-[10px] text-green-400 font-medium mt-1">
+                  ✓ Prorate +${officer.offRemaining * officer.prorate} ({officer.offRemaining} hari)
+                </span>
+              )}
+              
+              {officer.is_paid && (
+                <span className="text-[10px] text-green-400 mt-1">✓ PAID</span>
+              )}
+              {!officer.is_paid && isAdmin && (
+                <button
+                  onClick={() => togglePaymentStatus(officer.id)}
+                  className="text-[10px] bg-gray-600 hover:bg-gray-700 text-white px-2 py-0.5 rounded mt-1 w-fit"
+                >
+                  Mark Paid
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={() => handleEditClick(officer)}
+                  disabled={officer.is_locked}
+                  className={`text-[10px] mt-1 px-2 py-0.5 rounded w-fit ${
+                    officer.is_locked 
+                      ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                      : 'bg-[#FFD700] text-black hover:bg-[#FFD700]/80'
+                  }`}
+                >
+                  Edit
+                </button>
+              )}
+            </div>
+          </td>
+          
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.department}</td>
+          
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">
+            {new Date(officer.join_date).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+          </td>
+          
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">
+            <span className="bg-[#0B1A33] px-2 py-1 rounded text-[#FFD700] font-medium">
+              {hitungMasaKerja(officer.join_date)}
+            </span>
+          </td>
+          
+          {/* POKOK UM / DAY */}
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.prorate}</td>
+          
+          {/* PRORATE - MENAMPILKAN UANG TAMBAHAN DARI OFF YANG TIDAK DIAMBIL */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center">
+            {officer.offRemaining > 0 ? (
+              <div className="flex flex-col items-center">
+                <span className="text-green-400 font-bold">
+                  +${officer.offRemaining * officer.prorate}
+                </span>
+                <span className="text-[9px] text-[#A7D8FF]">
+                  ({officer.offRemaining} hari)
+                </span>
+              </div>
+            ) : (
+              <span className="text-gray-400">-</span>
+            )}
+          </td>
+          
+          {/* KEHADIRAN OFF */}
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.offCount || 0}</td>
+          
+          {/* KEHADIRAN CUTI */}
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.cutiCount}</td>
+          
+          {/* KEHADIRAN UNPAID */}
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.unpaidCount}</td>
+          
+          {/* KEHADIRAN SAKIT */}
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.sakitCount}</td>
+          
+          {/* KEHADIRAN IZIN */}
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.izinCount}</td>
+          
+          {/* KEHADIRAN ABSEN */}
+          <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.alphaCount}</td>
+          
+          {/* Potongan CUTI */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
+            {officer.cutiCount > 0 ? officer.cutiCount * officer.prorate : ''}
+          </td>
+          
+          {/* Potongan UNPAID */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
+            {officer.unpaidCount > 0 ? officer.unpaidCount * officer.prorate : ''}
+          </td>
+          
+          {/* Potongan SAKIT */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
+            {officer.sakitCount > 0 ? officer.sakitCount * officer.prorate : ''}
+          </td>
+          
+          {/* Potongan IZIN */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
+            {officer.izinCount > 0 ? officer.izinCount * officer.prorate : ''}
+          </td>
+          
+          {/* Potongan ABSEN */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
+            {officer.alphaCount > 0 ? officer.alphaCount * 50 : ''}
+          </td>
+          
+          {/* UM */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-medium text-white">
+            ${officer.baseAmount}
+          </td>
+          
+          {/* KASBON */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-medium text-red-400">
+            {officer.kasbon > 0 ? `$${officer.kasbon}` : ''}
+          </td>
+          
+          {/* U.M NET */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-bold text-[#FFD700]">
+            ${officer.finalNet}
+          </td>
+          
+          {/* NAMA BANK */}
+          <td className="px-3 py-2 border-r border-[#FFD700]/10 text-white">{officer.bank}</td>
+          
+          {/* NO REK / BARCODE */}
+          <td className="px-3 py-2 text-white">
+            <div className="flex flex-col">
+              <span>{officer.rek}</span>
+              {officer.link && (
+                <a href={officer.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#FFD700] hover:underline mt-1">
+                  Link QRIS
+                </a>
+              )}
+            </div>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
 
       {/* Footer */}
       <div className="mt-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF] flex justify-between items-center">
