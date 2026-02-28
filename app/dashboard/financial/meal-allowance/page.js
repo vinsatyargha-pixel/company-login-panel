@@ -570,7 +570,7 @@ export default function MealAllowancePage() {
           onClick={handleRefresh}
           disabled={refreshing}
           className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          title="🔄 2-WAY SYNC: ⬇️ Download data terbaru dari Supabase | ⬆️ Upload edit langsung ke Supabase"
+          title="💡 Setelah edit, klik Refresh & Sync untuk save data"
         >
           <svg 
             className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} 
@@ -586,17 +586,13 @@ export default function MealAllowancePage() {
 
       {/* ℹ️ Info 2-WAY SYNC */}
       <div className="mb-4 p-3 bg-[#0B1A33] rounded-lg border border-[#FFD700]/20 text-xs text-[#A7D8FF]">
-        <div className="flex items-center gap-4 flex-wrap">
-          <span className="text-[#FFD700] font-bold">🔄 2-WAY SYNC</span>
-          <span className="flex items-center gap-1">
-            <span className="text-green-400">⬆️</span> Edit data → langsung ke Supabase
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="text-[#FFD700]">⬇️</span> Klik Refresh → tarik data terbaru dari Supabase
-          </span>
-          <span className="text-green-400 font-medium">✓ Real-time</span>
-        </div>
-      </div>
+  <div className="flex items-center gap-2 flex-wrap">
+    <span className="text-[#FFD700] font-bold">💡 INFO:</span>
+    <span>Setelah edit data, silahkan klik</span>
+    <span className="text-[#FFD700] font-medium">Refresh & Sync</span>
+    <span>terlebih dahulu untuk save</span>
+  </div>
+</div>
 
       {/* Filters Bar */}
       <div className="mb-6 flex flex-wrap gap-4 bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
