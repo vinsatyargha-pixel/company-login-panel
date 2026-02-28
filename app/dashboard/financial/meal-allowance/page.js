@@ -24,7 +24,7 @@ export default function MealAllowancePage() {
     etc: 0,
     etc_note: ''
   });
-  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [lastSync, setLastSync] = useState(new Date());
 
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 
                   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -189,7 +189,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // DATA FETCHING
+  // DATA FETCHING (⬇️ DOWNLOAD from Supabase)
   // ===========================================
 
   useEffect(() => {
@@ -213,13 +213,13 @@ export default function MealAllowancePage() {
   }, [selectedMonth, selectedYear]);
 
   // ===========================================
-  // REFRESH FUNCTION
+  // REFRESH FUNCTION (⬇️ MANUAL SYNC from Supabase)
   // ===========================================
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchData();
     setRefreshing(false);
-    setLastRefresh(new Date());
+    setLastSync(new Date());
   };
 
   const fetchData = async () => {
@@ -235,14 +235,14 @@ export default function MealAllowancePage() {
       const bulan = `${selectedMonth} ${selectedYear}`;
       const prev = getPreviousMonthData(selectedMonth, selectedYear);
       
-      // Ambil data officers
+      // ⬇️ AMBIL data officers FRESH dari Supabase
       const { data: officersData } = await supabase
         .from('officers')
         .select('*')
         .in('department', ['AM', 'CAPTAIN', 'CS DP WD'])
         .eq('status', 'REGULAR');
       
-      // Ambil schedule
+      // ⬇️ AMBIL schedule FRESH dari API (Google Sheets)
       const scheduleResponse = await fetch(
         `/api/schedule?year=${prev.year}&month=${prev.month}`
       );
@@ -250,13 +250,13 @@ export default function MealAllowancePage() {
       const schedule = scheduleResult.data || [];
       setScheduleData(schedule);
       
-      // Ambil snapshot
+      // ⬇️ AMBIL snapshot FRESH dari Supabase (kasbon, cuti manual, dll)
       const { data: snapData } = await supabase
         .from('meal_allowance_snapshot')
         .select('*')
         .eq('bulan', bulan);
       
-      // Ambil data admin untuk mapping
+      // ⬇️ AMBIL data admin untuk mapping
       const { data: adminData } = await supabase
         .from('officers')
         .select('id, full_name, email')
@@ -265,7 +265,7 @@ export default function MealAllowancePage() {
       const adminMap = {};
       adminData?.forEach(a => { adminMap[a.id] = a.full_name || a.email; });
       
-      // Gabungin data
+      // 🔄 GABUNGIN semua data
       const officersWithStats = (officersData || []).map(officer => {
         const usia = hitungUSIA(officer.full_name, schedule);
         const snapshot = snapData?.find(s => s.officer_id === officer.id);
@@ -301,7 +301,7 @@ export default function MealAllowancePage() {
         };
       });
       
-      // Hitung umNet dan beri nomor urut
+      // 🧮 HITUNG ulang umNet dan finalNet
       const withUmNet = officersWithStats
         .map((o, index) => {
           const potongan = (o.sakitCount + o.cutiCount + o.izinCount + o.unpaidCount) * o.prorate;
@@ -331,7 +331,7 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // EDIT HANDLERS
+  // EDIT HANDLERS (⬆️ UPLOAD to Supabase)
   // ===========================================
 
   const handleEditClick = (officer) => {
@@ -390,6 +390,7 @@ export default function MealAllowancePage() {
         }
       }
       
+      // ⬆️ UPLOAD ke Supabase
       const snapshotData = {
         officer_id: officer.id,
         officer_name: officer.full_name,
@@ -424,6 +425,7 @@ export default function MealAllowancePage() {
       
       if (error) throw error;
       
+      // ✅ Update state LOCAL langsung (tanpa perlu refresh)
       setOfficers(prev => prev.map(o => 
         o.id === officer.id 
           ? { 
@@ -475,6 +477,7 @@ export default function MealAllowancePage() {
         }
       }
 
+      // ⬆️ UPLOAD status paid ke Supabase
       const { error } = await supabase
         .from('meal_allowance_snapshot')
         .update({
@@ -488,6 +491,7 @@ export default function MealAllowancePage() {
 
       if (error) throw error;
 
+      // ✅ Update state LOCAL langsung
       setOfficers(prev => prev.map(o => 
         o.id === officerId 
           ? { 
@@ -561,11 +565,12 @@ export default function MealAllowancePage() {
           </p>
         </div>
 
-        {/* REFRESH BUTTON */}
+        {/* 🔄 REFRESH BUTTON - 2-WAY SYNC */}
         <button
           onClick={handleRefresh}
           disabled={refreshing}
           className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="🔄 2-WAY SYNC: ⬇️ Download data terbaru dari Supabase | ⬆️ Upload edit langsung ke Supabase"
         >
           <svg 
             className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} 
@@ -575,8 +580,22 @@ export default function MealAllowancePage() {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
-          <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+          <span>{refreshing ? 'Syncing...' : 'Refresh & Sync'}</span>
         </button>
+      </div>
+
+      {/* ℹ️ Info 2-WAY SYNC */}
+      <div className="mb-4 p-3 bg-[#0B1A33] rounded-lg border border-[#FFD700]/20 text-xs text-[#A7D8FF]">
+        <div className="flex items-center gap-4 flex-wrap">
+          <span className="text-[#FFD700] font-bold">🔄 2-WAY SYNC</span>
+          <span className="flex items-center gap-1">
+            <span className="text-green-400">⬆️</span> Edit data → langsung ke Supabase
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="text-[#FFD700]">⬇️</span> Klik Refresh → tarik data terbaru dari Supabase
+          </span>
+          <span className="text-green-400 font-medium">✓ Real-time</span>
+        </div>
       </div>
 
       {/* Filters Bar */}
@@ -598,9 +617,11 @@ export default function MealAllowancePage() {
           onChange={(e) => setSearchTerm(e.target.value)} 
         />
         
-        {/* Last Refresh Info */}
-        <div className="text-xs text-[#A7D8FF] flex items-center ml-auto">
-          Last: {lastRefresh.toLocaleTimeString()}
+        {/* Last Sync Info */}
+        <div className="text-xs text-[#A7D8FF] flex items-center gap-2 ml-auto">
+          <span>Last sync:</span>
+          <span className="text-[#FFD700] font-medium">{lastSync.toLocaleTimeString()}</span>
+          <span className="text-green-400">✓</span>
         </div>
       </div>
 
@@ -680,7 +701,7 @@ export default function MealAllowancePage() {
                 {/* No */}
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.no}</td>
                 
-                {/* Nama - VERTICAL */}
+                {/* Nama - VERTICAL dengan tombol aksi */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10">
                   <div className="flex flex-col">
                     <span className="font-bold text-[#FFD700]">{officer.full_name}</span>
@@ -807,19 +828,29 @@ export default function MealAllowancePage() {
         </table>
       </div>
 
-      {/* Footer */}
+      {/* Footer dengan Sync Info */}
       <div className="mt-4 p-3 bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF] flex justify-between items-center">
-        <span>Total: {officers.length} officers</span>
-        <div className="flex gap-4">
-          <span>Last refresh: {lastRefresh.toLocaleString()}</span>
+        <div className="flex items-center gap-4">
+          <span>Total: {officers.length} officers</span>
+          <span className="flex items-center gap-1 text-green-400">
+            <span>⬆️</span> Live edit
+          </span>
+          <span className="flex items-center gap-1 text-[#FFD700]">
+            <span>⬇️</span> Refresh sync
+          </span>
+        </div>
+        <div className="flex gap-4 items-center">
+          <span>Last sync: {lastSync.toLocaleString()}</span>
           <button 
             onClick={handleRefresh}
-            className="text-[#FFD700] hover:underline flex items-center gap-1"
+            disabled={refreshing}
+            className="text-[#FFD700] hover:underline flex items-center gap-1 disabled:opacity-50"
+            title="Klik untuk sync data terbaru dari Supabase"
           >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Refresh
+            {refreshing ? 'Syncing...' : 'Sync Now'}
           </button>
         </div>
       </div>
