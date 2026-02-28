@@ -662,22 +662,22 @@ export default function MealAllowancePage() {
           {/* POKOK UM / DAY */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.prorate}</td>
           
-          {/* POKOK UM HOLIDAY */}
+          {/* POKOK UM PRORATE */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">-</td>
           
-          {/* PRORATE CUTI */}
+          {/* KEHADIRAN CUTI */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.cutiCount}</td>
           
-          {/* PRORATE UNPAID */}
+          {/* KEHADIRAN UNPAID */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.unpaidCount}</td>
           
-          {/* PRORATE SAKIT */}
+          {/* KEHADIRAN SAKIT */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.sakitCount}</td>
           
-          {/* PRORATE IZIN */}
+          {/* KEHADIRAN IZIN */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.izinCount}</td>
           
-          {/* PRORATE ABSEN (dulu ALPHA) */}
+          {/* KEHADIRAN ABSEN (dulu ALPHA) */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.alphaCount}</td>
           
           {/* Potongan CUTI (dalam $) */}
