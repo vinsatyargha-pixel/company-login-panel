@@ -581,27 +581,27 @@ export default function MealAllowancePage() {
         <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Tgl Join</th>
         <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">Grouping</th>
         <th colSpan="2" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">POKOK UM</th>
-        <th colSpan="5" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">PRORATE</th>
+        <th colSpan="5" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">KEHADIRAN</th> {/* Ganti PRORATE → KEHADIRAN */}
         <th colSpan="5" className="px-3 py-2 text-center text-[#FFD700] font-bold border-r border-[#FFD700]/30">Potongan</th>
         <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">UM</th>
         <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">KASBON</th>
-        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">U. M NET</th>
+        <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">U.M NET</th>
         <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold border-r border-[#FFD700]/30">NAMA BANK</th>
         <th rowSpan="2" className="px-3 py-3 text-left text-[#FFD700] font-bold">NO REK / BARCODE</th>
       </tr>
       <tr className="border-b border-[#FFD700]/30">
         {/* Sub-header POKOK UM */}
         <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">/ DAY</th>
-        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">HOLIDAY</th>
+        <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">PRORATE</th> {/* Ganti HOLIDAY → PRORATE */}
         
-        {/* Sub-header PRORATE - ALPHA diganti ABSEN */}
+        {/* Sub-header KEHADIRAN (dulu PRORATE) */}
         <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
         <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
         <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
         <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">IZIN</th>
         <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">ABSEN</th>
         
-        {/* Sub-header Potongan - Lengkap CUTI, UNPAID, SAKIT, IZIN, ABSEN */}
+        {/* Sub-header Potongan */}
         <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
         <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
         <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">SAKIT</th>
@@ -610,7 +610,7 @@ export default function MealAllowancePage() {
       </tr>
     </thead>
     
-    {/* TABLE BODY */}
+    {/* TABLE BODY - tetap sama */}
     <tbody>
       {officers.map((officer) => (
         <tr key={officer.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
@@ -662,7 +662,7 @@ export default function MealAllowancePage() {
           {/* POKOK UM / DAY */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.prorate}</td>
           
-          {/* POKOK UM PRORATE */}
+          {/* POKOK UM PRORATE (dulu HOLIDAY) - masih dikosongin karena belum ada datanya */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">-</td>
           
           {/* KEHADIRAN CUTI */}
@@ -677,7 +677,7 @@ export default function MealAllowancePage() {
           {/* KEHADIRAN IZIN */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.izinCount}</td>
           
-          {/* KEHADIRAN ABSEN (dulu ALPHA) */}
+          {/* KEHADIRAN ABSEN */}
           <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.alphaCount}</td>
           
           {/* Potongan CUTI (dalam $) */}
@@ -710,12 +710,12 @@ export default function MealAllowancePage() {
             ${officer.baseAmount}
           </td>
           
-          {/* KASBON - Kolom baru sebelum UM NET */}
+          {/* KASBON */}
           <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-medium text-red-400">
             {officer.kasbon > 0 ? `$${officer.kasbon}` : ''}
           </td>
           
-          {/* U. M NET */}
+          {/* U.M NET */}
           <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center font-bold text-[#FFD700]">
             ${officer.finalNet}
           </td>
