@@ -175,105 +175,141 @@ export default function DPDataRawPage() {
   // ===========================================
 
   const processFile = async () => {
-    if (!selectedFile) return
+  if (!selectedFile) return
+  
+  setUploading(true)
+  setUploadProgress('Membaca file...')
+  
+  try {
+    const arrayBuffer = await selectedFile.arrayBuffer()
+    const workbook = XLSX.read(arrayBuffer)
+    const sheetName = workbook.SheetNames[0]
+    const worksheet = workbook.Sheets[sheetName]
+    const jsonData = XLSX.utils.sheet_to_json(worksheet)
     
-    setUploading(true)
-    setUploadProgress('Membaca file...')
+    console.log('📊 Data dari Excel:', jsonData.length, 'baris')
+    console.log('📋 Sample baris pertama:', jsonData[0])
+    console.log('📋 Nama kolom yang tersedia:', Object.keys(jsonData[0] || {}))
     
-    try {
-      const arrayBuffer = await selectedFile.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer)
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet)
-      
-      console.log('📊 Data dari Excel:', jsonData.length, 'baris')
-      
-      setUploadProgress('Memvalidasi data...')
-      
-      // Transform dan filter tanggal valid
-      const transactions = jsonData
-        .map((row: any) => {
-          // Ambil tanggal dari Approved Date
-          const dateStr = row['Approved Date']
-          if (!dateStr) return null
-          
-          const date = new Date(dateStr)
-          // Cek validitas tanggal
-          if (isNaN(date.getTime())) return null
-          
-          return {
-            nomor: row['No.'],
-            brand: row['Brand'],
-            ticket_number: row['Ticket Number'],
-            requested_date: row['Requested Date'],
-            approved_date: date.toISOString().split('T')[0],
-            bank_statement_date: row['Bank Statement Date'],
-            user_name: row['User Name'],
-            player_group: row['Player Group'],
-            full_name: row['Full Name'],
-            payment_type: row['Payment Type'],
-            deposit_amount: row['Deposit Amount'],
-            admin_fee: row['Admin Fee'],
-            agent_fee: row['Agent Fee'],
-            player_fee: row['Player Fee'],
-            nett_amount: row['Nett Amount'],
-            player_bank: row['Player Bank'],
-            bank_title: row['Bank Title'],
-            remarks: row['Remarks'],
-            reference: row['Reference'],
-            status: row['Status'],
-            reason: row['Reason'],
-            handler: row['Handler'],
-            handler_ip: row['HandlerIP'],
-            creator: row['Creator'],
-            website: row['Website'] || 'XLY',
-            referral_code: row['Referral Code'],
-            own_referral_code: row['Own Referral Code'],
-            bonus: row['Bonus'],
-            statement_status: row['Statement Status'],
-            file_name: selectedFile.name
+    setUploadProgress('Memvalidasi data...')
+    
+    // Transform dan filter tanggal valid
+    const transactions = jsonData
+      .map((row: any, index) => {
+        // Cek SEMUA cara penulisan kolom tanggal
+        const possibleDateFields = [
+          row['Approved Date'],
+          row['ApprovedDate'],
+          row['approved_date'],
+          row['approvedDate'],
+          row['Approved date'],
+          row['approved date']
+        ].find(val => val) // Ambil yang pertama ada nilainya
+        
+        const dateStr = possibleDateFields
+        
+        if (!dateStr) {
+          console.log(`⚠️ Baris ${index + 2}: Tidak ada kolom tanggal`, row)
+          return null
+        }
+        
+        // Coba parse tanggal dengan berbagai format
+        let date: Date | null = null
+        try {
+          // Format: "31-Jan-2026 22:26:26"
+          const parts = dateStr.split(' ')
+          if (parts.length >= 2) {
+            const [dayMonthYear, time] = parts
+            const [day, month, year] = dayMonthYear.split('-')
+            const monthMap: {[key: string]: string} = {
+              'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+              'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+            }
+            if (monthMap[month]) {
+              const formattedDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
+              date = new Date(`${formattedDate}T${time || '00:00:00'}`)
+            }
           }
-        })
-        .filter(Boolean) // Buang yang null
+          
+          if (!date || isNaN(date.getTime())) {
+            // Fallback ke new Date biasa
+            date = new Date(dateStr)
+          }
+        } catch (e) {
+          console.log(`⚠️ Baris ${index + 2}: Gagal parse tanggal:`, dateStr)
+          return null
+        }
+        
+        if (isNaN(date.getTime())) {
+          console.log(`⚠️ Baris ${index + 2}: Tanggal invalid:`, dateStr)
+          return null
+        }
+        
+        return {
+          nomor: row['No.'],
+          brand: row['Brand'],
+          ticket_number: row['Ticket Number'],
+          requested_date: row['Requested Date'],
+          approved_date: date.toISOString().split('T')[0],
+          bank_statement_date: row['Bank Statement Date'],
+          user_name: row['User Name'],
+          player_group: row['Player Group'],
+          full_name: row['Full Name'],
+          payment_type: row['Payment Type'],
+          deposit_amount: row['Deposit Amount'],
+          admin_fee: row['Admin Fee'],
+          agent_fee: row['Agent Fee'],
+          player_fee: row['Player Fee'],
+          nett_amount: row['Nett Amount'],
+          player_bank: row['Player Bank'],
+          bank_title: row['Bank Title'],
+          remarks: row['Remarks'],
+          reference: row['Reference'],
+          status: row['Status'],
+          reason: row['Reason'],
+          handler: row['Handler'],
+          handler_ip: row['HandlerIP'],
+          creator: row['Creator'],
+          website: row['Website'] || 'XLY',
+          referral_code: row['Referral Code'],
+          own_referral_code: row['Own Referral Code'],
+          bonus: row['Bonus'],
+          statement_status: row['Statement Status'],
+          file_name: selectedFile.name
+        }
+      })
+      .filter(Boolean)
 
-      setUploadProgress(`Menyimpan ${transactions.length} transaksi valid...`)
-      
-      if (transactions.length === 0) {
-        throw new Error('Tidak ada data valid dalam file')
-      }
-
-      // Insert ke deposit_transactions (batch)
-      const { error } = await supabase
-        .from('deposit_transactions')
-        .insert(transactions)
-
-      if (error) throw error
-
-      // Insert ke deposit_uploads buat tracking
-      await supabase
-        .from('deposit_uploads')
-        .insert({
-          upload_date: new Date().toISOString().split('T')[0],
-          file_name: selectedFile.name,
-          total_rows: transactions.length,
-          status: 'completed'
-        })
-
-      alert(`✅ Berhasil! ${transactions.length} data transaksi`)
-      
-      setShowModal(false)
-      setSelectedFile(null)
-      fetchTransactions() // Refresh tabel
-      
-    } catch (error: any) {
-      console.error('❌ Error:', error)
-      alert('❌ Gagal: ' + error.message)
-    } finally {
-      setUploading(false)
-      setUploadProgress('')
+    console.log('✅ Data valid:', transactions.length, 'baris')
+    console.log('📋 Sample data valid pertama:', transactions[0])
+    
+    setUploadProgress(`Menyimpan ${transactions.length} transaksi valid...`)
+    
+    if (transactions.length === 0) {
+      throw new Error('Tidak ada data valid dalam file')
     }
+
+    // Insert ke deposit_transactions (batch)
+    const { error } = await supabase
+      .from('deposit_transactions')
+      .insert(transactions)
+
+    if (error) throw error
+
+    alert(`✅ Berhasil! ${transactions.length} data transaksi`)
+    
+    setShowModal(false)
+    setSelectedFile(null)
+    fetchTransactions()
+    
+  } catch (error: any) {
+    console.error('❌ Error:', error)
+    alert('❌ Gagal: ' + error.message)
+  } finally {
+    setUploading(false)
+    setUploadProgress('')
   }
+}
 
   // ===========================================
   // HELPER FUNCTIONS
