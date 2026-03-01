@@ -1,45 +1,30 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
 export default function DPDataRawPage() {
-  const [uploads, setUploads] = useState([])
-  const [loading, setLoading] = useState(true)
-
   useEffect(() => {
-    async function loadData() {
-      const { data } = await supabase
+    async function test() {
+      const { data, error } = await supabase
         .from('deposit_uploads')
         .select('*')
-        .order('upload_date', { ascending: false })
       
-      console.log('Data uploads:', data)
-      setUploads(data || [])
-      setLoading(false)
+      console.log('DATA:', data)
+      console.log('ERROR:', error)
     }
-    loadData()
+    test()
   }, [])
-
-  if (loading) {
-    return <div className="p-6 text-white">Loading...</div>
-  }
 
   return (
     <div className="p-6 text-white">
       <Link href="/dashboard/data-raw" className="text-[#FFD700] mb-4 inline-block">
         ← BACK TO DATA RAW
       </Link>
-      
-      <h1 className="text-3xl font-bold text-[#FFD700] mb-6">DEPOSIT DATA RAW</h1>
-      
-      <div className="bg-[#1A2F4A] p-4 rounded-lg">
-        <h2 className="text-xl mb-4">Daftar File Upload</h2>
-        <pre className="text-sm">
-          {JSON.stringify(uploads, null, 2)}
-        </pre>
-      </div>
+      <h1 className="text-3xl font-bold text-[#FFD700]">DEPOSIT DATA RAW</h1>
+      <p className="mt-4 text-green-400">Halaman berhasil di-load!</p>
+      <p className="text-sm text-gray-400">Cek console (F12) untuk data dari Supabase</p>
     </div>
   )
 }
