@@ -21,6 +21,35 @@ type GroupedTransaction = {
   count: number
 }
 
+type DepositTransaction = {
+  nomor: number | null
+  brand: string | null
+  ticket_number: string | null
+  requested_date: string | null
+  approved_date: string
+  bank_statement_date: string | null
+  user_name: string | null
+  player_group: string | null
+  full_name: string | null
+  payment_type: string | null
+  deposit_amount: number
+  admin_fee: number
+  agent_fee: number
+  player_fee: number
+  nett_amount: number
+  player_bank: string | null
+  bank_title: string | null
+  remarks: string | null
+  reference: string | null
+  status: string | null
+  reason: string | null
+  handler: string | null
+  handler_ip: string | null
+  creator: string | null
+  website: string
+  file_name: string
+}
+
 // ===========================================
 // MAIN COMPONENT
 // ===========================================
@@ -115,13 +144,13 @@ export default function DPDataRawPage() {
       
       data?.forEach((item: any) => {
         const date = item.approved_date
-        if (!grouped[date]) {
+        if (date && !grouped[date]) {
           grouped[date] = {
             approved_date: date,
             file_name: item.file_name,
             count: 1
           }
-        } else {
+        } else if (date) {
           grouped[date].count += 1
         }
       })
@@ -254,70 +283,83 @@ export default function DPDataRawPage() {
       setUploadProgress('Memvalidasi data...')
       
       // Transform data
-      const validTransactions = dataRows
-        .map((row: any[], index) => {
-          if (!row || row.length === 0) return null
+      const validTransactions: DepositTransaction[] = []
+      
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i]
+        if (!row || row.length === 0) continue
+        
+        // Skip GRAND TOTAL
+        let isGrandTotal = false
+        for (let j = 0; j < row.length; j++) {
+          if (row[j] && row[j].toString().includes('GRAND TOTAL')) {
+            isGrandTotal = true
+            break
+          }
+        }
+        if (isGrandTotal) continue
+        
+        const dateStr = row[idx.approved]
+        if (!dateStr || dateStr.toString().trim() === '') continue
+        
+        try {
+          const cleanStr = dateStr.toString().trim()
+          const datePart = cleanStr.split(',')[0].trim()
+          const dateParts = datePart.split('-')
           
-          // Skip GRAND TOTAL
-          if (row.some((cell: any) => cell && cell.toString().includes('GRAND TOTAL'))) {
-            return null
+          if (dateParts.length < 3) continue
+          
+          const day = dateParts[0]
+          const month = dateParts[1]
+          const yearTime = dateParts[2]
+          const yearTimeParts = yearTime.split(' ')
+          
+          if (yearTimeParts.length < 1) continue
+          
+          const year = yearTimeParts[0]
+          
+          const monthMap: {[key: string]: string} = {
+            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+            'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
           }
           
-          const dateStr = row[idx.approved]
-          if (!dateStr || dateStr.toString().trim() === '') return null
+          if (!monthMap[month]) continue
           
-          // Parse tanggal
-          try {
-            const cleanStr = dateStr.toString().trim()
-            const datePart = cleanStr.split(',')[0].trim()
-            const [day, month, yearTime] = datePart.split('-')
-            const [year, time] = yearTime.split(' ')
-            
-            const monthMap: {[key: string]: string} = {
-              'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-              'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-            }
-            
-            if (!monthMap[month]) return null
-            
-            const formattedDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
-            const date = new Date(`${formattedDate}T${time || '00:00:00'}`)
-            
-            if (isNaN(date.getTime())) return null
-            
-            return {
-              nomor: row[idx.no],
-              brand: row[idx.brand],
-              ticket_number: row[idx.ticket],
-              requested_date: row[idx.requested],
-              approved_date: formattedDate,
-              bank_statement_date: row[idx.bank],
-              user_name: row[idx.userName],
-              player_group: row[idx.playerGroup],
-              full_name: row[idx.fullName],
-              payment_type: row[idx.paymentType],
-              deposit_amount: parseFloat(row[idx.amount]) || 0,
-              admin_fee: parseFloat(row[idx.adminFee]) || 0,
-              agent_fee: parseFloat(row[idx.agentFee]) || 0,
-              player_fee: parseFloat(row[idx.playerFee]) || 0,
-              nett_amount: parseFloat(row[idx.nett]) || 0,
-              player_bank: row[idx.playerBank],
-              bank_title: row[idx.bankTitle],
-              remarks: row[idx.remarks],
-              reference: row[idx.reference],
-              status: row[idx.status],
-              reason: row[idx.reason],
-              handler: row[idx.handler],
-              handler_ip: row[idx.handlerIp],
-              creator: row[idx.creator],
-              website: row[idx.website] || 'XLY',
-              file_name: selectedFile.name
-            }
-          } catch (e) {
-            return null
-          }
-        })
-        .filter(Boolean)
+          const formattedDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
+          
+          validTransactions.push({
+            nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
+            brand: row[idx.brand] || null,
+            ticket_number: row[idx.ticket] || null,
+            requested_date: row[idx.requested] || null,
+            approved_date: formattedDate,
+            bank_statement_date: row[idx.bank] || null,
+            user_name: row[idx.userName] || null,
+            player_group: row[idx.playerGroup] || null,
+            full_name: row[idx.fullName] || null,
+            payment_type: row[idx.paymentType] || null,
+            deposit_amount: row[idx.amount] ? parseFloat(row[idx.amount]) || 0 : 0,
+            admin_fee: row[idx.adminFee] ? parseFloat(row[idx.adminFee]) || 0 : 0,
+            agent_fee: row[idx.agentFee] ? parseFloat(row[idx.agentFee]) || 0 : 0,
+            player_fee: row[idx.playerFee] ? parseFloat(row[idx.playerFee]) || 0 : 0,
+            nett_amount: row[idx.nett] ? parseFloat(row[idx.nett]) || 0 : 0,
+            player_bank: row[idx.playerBank] || null,
+            bank_title: row[idx.bankTitle] || null,
+            remarks: row[idx.remarks] || null,
+            reference: row[idx.reference] || null,
+            status: row[idx.status] || null,
+            reason: row[idx.reason] || null,
+            handler: row[idx.handler] || null,
+            handler_ip: row[idx.handlerIp] || null,
+            creator: row[idx.creator] || null,
+            website: row[idx.website] || 'XLY',
+            file_name: selectedFile.name
+          })
+        } catch (e) {
+          console.log(`⚠️ Baris ${i + headerRowIndex + 2}: Gagal parse`)
+          continue
+        }
+      }
 
       console.log('✅ Data valid:', validTransactions.length)
       
@@ -367,7 +409,11 @@ export default function DPDataRawPage() {
   // ===========================================
 
   const getDayFromDate = (dateStr: string) => {
-    return new Date(dateStr).getDate()
+    try {
+      return new Date(dateStr).getDate()
+    } catch {
+      return 1
+    }
   }
 
   // ===========================================
