@@ -90,8 +90,6 @@ export default function DPDataRawPage() {
       
       const monthIndex = months.indexOf(selectedMonth) + 1
       const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      
-      // Hitung hari terakhir dalam bulan
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
@@ -171,145 +169,190 @@ export default function DPDataRawPage() {
   }, [])
 
   // ===========================================
-  // UPLOAD PROCESS
+  // UPLOAD PROCESS - SKIP 2 BARIS PERTAMA
   // ===========================================
 
   const processFile = async () => {
-  if (!selectedFile) return
-  
-  setUploading(true)
-  setUploadProgress('Membaca file...')
-  
-  try {
-    const arrayBuffer = await selectedFile.arrayBuffer()
-    const workbook = XLSX.read(arrayBuffer)
-    const sheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[sheetName]
-    const jsonData = XLSX.utils.sheet_to_json(worksheet)
+    if (!selectedFile) return
     
-    console.log('📊 Data dari Excel:', jsonData.length, 'baris')
-    console.log('📋 Sample baris pertama:', jsonData[0])
-    console.log('📋 Nama kolom yang tersedia:', Object.keys(jsonData[0] || {}))
+    setUploading(true)
+    setUploadProgress('Membaca file...')
     
-    setUploadProgress('Memvalidasi data...')
-    
-    // Transform dan filter tanggal valid
-    const transactions = jsonData
-      .map((row: any, index) => {
-        // Cek SEMUA cara penulisan kolom tanggal
-        const possibleDateFields = [
-          row['Approved Date'],
-          row['ApprovedDate'],
-          row['approved_date'],
-          row['approvedDate'],
-          row['Approved date'],
-          row['approved date']
-        ].find(val => val) // Ambil yang pertama ada nilainya
-        
-        const dateStr = possibleDateFields
-        
-        if (!dateStr) {
-          console.log(`⚠️ Baris ${index + 2}: Tidak ada kolom tanggal`, row)
-          return null
-        }
-        
-        // Coba parse tanggal dengan berbagai format
-        let date: Date | null = null
-        try {
-          // Format: "31-Jan-2026 22:26:26"
-          const parts = dateStr.split(' ')
-          if (parts.length >= 2) {
-            const [dayMonthYear, time] = parts
-            const [day, month, year] = dayMonthYear.split('-')
+    try {
+      const arrayBuffer = await selectedFile.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer)
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      
+      // 🔥 Baca sebagai array per baris, skip baris judul
+      const rows = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,  // Baca sebagai array
+        defval: '', 
+        blankrows: false 
+      }) as any[][]
+      
+      console.log('📋 Total baris (termasuk judul):', rows.length)
+      
+      // Baris 1: Judul (skip)
+      // Baris 2: Header kolom
+      // Baris 3 dst: Data
+      
+      if (rows.length < 3) {
+        throw new Error('File Excel tidak memiliki data yang cukup')
+      }
+      
+      const headers = rows[1] || [] // Header di baris ke-2
+      const dataRows = rows.slice(2) // Data mulai baris ke-3
+      
+      console.log('📋 Headers:', headers)
+      console.log('📊 Jumlah baris data:', dataRows.length)
+      
+      // Mapping index kolom
+      const findColumnIndex = (keyword: string) => {
+        return headers.findIndex(h => 
+          h && h.toString().toLowerCase().includes(keyword.toLowerCase())
+        )
+      }
+      
+      const idx = {
+        no: 0,
+        brand: 1,
+        ticket: 2,
+        requested: 3,
+        approved: findColumnIndex('Approved Date'),
+        bank: 5,
+        userName: 6,
+        playerGroup: 7,
+        fullName: 8,
+        paymentType: 9,
+        amount: 10,
+        adminFee: 11,
+        agentFee: 12,
+        playerFee: 13,
+        nett: 14,
+        playerBank: 15,
+        bankTitle: 16,
+        remarks: 17,
+        reference: 18,
+        status: 19,
+        reason: 20,
+        handler: 21,
+        handlerIp: 22,
+        creator: 23,
+        website: 24
+      }
+      
+      console.log('📋 Index kolom Approved Date:', idx.approved)
+      
+      if (idx.approved === -1) {
+        throw new Error('Kolom "Approved Date" tidak ditemukan di file Excel')
+      }
+      
+      setUploadProgress('Memvalidasi data...')
+      
+      // Transform data
+      const transactions = dataRows
+        .map((row: any[], index) => {
+          if (!row || row.length === 0 || !row[idx.approved]) return null
+          
+          const dateStr = row[idx.approved]
+          if (!dateStr || dateStr.toString().includes('GRAND TOTAL')) return null
+          
+          // Parse tanggal (format: "18-Jan-2026 22:19:09, Platform: (Web)")
+          let date: Date | null = null
+          try {
+            const cleanDateStr = dateStr.toString().split(',')[0].trim()
+            const [day, month, yearTime] = cleanDateStr.split('-')
+            const [year, time] = yearTime.split(' ')
+            
             const monthMap: {[key: string]: string} = {
               'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
               'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
             }
+            
             if (monthMap[month]) {
               const formattedDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
               date = new Date(`${formattedDate}T${time || '00:00:00'}`)
+            } else {
+              date = new Date(cleanDateStr)
             }
+          } catch (e) {
+            console.log(`⚠️ Baris ${index + 3}: Gagal parse tanggal:`, dateStr)
+            return null
           }
           
-          if (!date || isNaN(date.getTime())) {
-            // Fallback ke new Date biasa
-            date = new Date(dateStr)
+          if (!date || isNaN(date.getTime())) return null
+          
+          return {
+            nomor: row[idx.no],
+            brand: row[idx.brand],
+            ticket_number: row[idx.ticket],
+            requested_date: row[idx.requested],
+            approved_date: date.toISOString().split('T')[0],
+            bank_statement_date: row[idx.bank],
+            user_name: row[idx.userName],
+            player_group: row[idx.playerGroup],
+            full_name: row[idx.fullName],
+            payment_type: row[idx.paymentType],
+            deposit_amount: parseFloat(row[idx.amount]) || 0,
+            admin_fee: parseFloat(row[idx.adminFee]) || 0,
+            agent_fee: parseFloat(row[idx.agentFee]) || 0,
+            player_fee: parseFloat(row[idx.playerFee]) || 0,
+            nett_amount: parseFloat(row[idx.nett]) || 0,
+            player_bank: row[idx.playerBank],
+            bank_title: row[idx.bankTitle],
+            remarks: row[idx.remarks],
+            reference: row[idx.reference],
+            status: row[idx.status],
+            reason: row[idx.reason],
+            handler: row[idx.handler],
+            handler_ip: row[idx.handlerIp],
+            creator: row[idx.creator],
+            website: row[idx.website] || 'XLY',
+            file_name: selectedFile.name
           }
-        } catch (e) {
-          console.log(`⚠️ Baris ${index + 2}: Gagal parse tanggal:`, dateStr)
-          return null
-        }
-        
-        if (isNaN(date.getTime())) {
-          console.log(`⚠️ Baris ${index + 2}: Tanggal invalid:`, dateStr)
-          return null
-        }
-        
-        return {
-          nomor: row['No.'],
-          brand: row['Brand'],
-          ticket_number: row['Ticket Number'],
-          requested_date: row['Requested Date'],
-          approved_date: date.toISOString().split('T')[0],
-          bank_statement_date: row['Bank Statement Date'],
-          user_name: row['User Name'],
-          player_group: row['Player Group'],
-          full_name: row['Full Name'],
-          payment_type: row['Payment Type'],
-          deposit_amount: row['Deposit Amount'],
-          admin_fee: row['Admin Fee'],
-          agent_fee: row['Agent Fee'],
-          player_fee: row['Player Fee'],
-          nett_amount: row['Nett Amount'],
-          player_bank: row['Player Bank'],
-          bank_title: row['Bank Title'],
-          remarks: row['Remarks'],
-          reference: row['Reference'],
-          status: row['Status'],
-          reason: row['Reason'],
-          handler: row['Handler'],
-          handler_ip: row['HandlerIP'],
-          creator: row['Creator'],
-          website: row['Website'] || 'XLY',
-          referral_code: row['Referral Code'],
-          own_referral_code: row['Own Referral Code'],
-          bonus: row['Bonus'],
-          statement_status: row['Statement Status'],
-          file_name: selectedFile.name
-        }
-      })
-      .filter(Boolean)
+        })
+        .filter(Boolean)
 
-    console.log('✅ Data valid:', transactions.length, 'baris')
-    console.log('📋 Sample data valid pertama:', transactions[0])
-    
-    setUploadProgress(`Menyimpan ${transactions.length} transaksi valid...`)
-    
-    if (transactions.length === 0) {
-      throw new Error('Tidak ada data valid dalam file')
+      console.log('✅ Data valid:', transactions.length, 'baris')
+      
+      if (transactions.length === 0) {
+        throw new Error('Tidak ada data valid dalam file')
+      }
+
+      setUploadProgress(`Menyimpan ${transactions.length} transaksi...`)
+      
+      // Insert ke deposit_transactions (batch)
+      const { error } = await supabase
+        .from('deposit_transactions')
+        .insert(transactions)
+
+      if (error) throw error
+
+      // Insert ke deposit_uploads buat tracking
+      await supabase
+        .from('deposit_uploads')
+        .insert({
+          upload_date: new Date().toISOString().split('T')[0],
+          file_name: selectedFile.name,
+          total_rows: transactions.length,
+          status: 'completed'
+        })
+
+      alert(`✅ Berhasil! ${transactions.length} data transaksi`)
+      
+      setShowModal(false)
+      setSelectedFile(null)
+      fetchTransactions()
+      
+    } catch (error: any) {
+      console.error('❌ Error:', error)
+      alert('❌ Gagal: ' + error.message)
+    } finally {
+      setUploading(false)
+      setUploadProgress('')
     }
-
-    // Insert ke deposit_transactions (batch)
-    const { error } = await supabase
-      .from('deposit_transactions')
-      .insert(transactions)
-
-    if (error) throw error
-
-    alert(`✅ Berhasil! ${transactions.length} data transaksi`)
-    
-    setShowModal(false)
-    setSelectedFile(null)
-    fetchTransactions()
-    
-  } catch (error: any) {
-    console.error('❌ Error:', error)
-    alert('❌ Gagal: ' + error.message)
-  } finally {
-    setUploading(false)
-    setUploadProgress('')
   }
-}
 
   // ===========================================
   // HELPER FUNCTIONS
