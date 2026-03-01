@@ -30,8 +30,12 @@ export default function MealAllowancePage() {
                   'July', 'August', 'September', 'October', 'November', 'December'];
   const years = ['2025', '2026', '2027'];
 
+  // Jatah OFF per periode (21 - 20) - HANYA UNTUK CS DP WD
   const JATAH_OFF_PER_PERIODE = 4;
 
+  // ===========================================
+  // AUTO-SELECT BULAN BERDASARKAN TANGGAL (CUTOFF 20)
+  // ===========================================
   const getCurrentMonthByCutoff = () => {
     const today = new Date();
     const currentDate = today.getDate();
@@ -55,6 +59,9 @@ export default function MealAllowancePage() {
     }
   };
 
+  // ===========================================
+  // HITUNG MASA KERJA
+  // ===========================================
   const hitungMasaKerja = (joinDate) => {
     if (!joinDate) return '< 1 bln';
     
@@ -83,6 +90,10 @@ export default function MealAllowancePage() {
     }
   };
 
+  // ===========================================
+  // HELPER FUNCTIONS
+  // ===========================================
+  
   const formatBankAndRek = (bankAccount) => {
     if (!bankAccount) return { bank: '-', rek: '-', link: '' };
     
@@ -175,6 +186,10 @@ export default function MealAllowancePage() {
       off: totals['OFF'] || 0
     };
   };
+
+  // ===========================================
+  // DATA FETCHING
+  // ===========================================
 
   useEffect(() => {
     getCurrentMonthByCutoff();
@@ -273,23 +288,30 @@ export default function MealAllowancePage() {
           is_paid: snapshot?.is_paid || false,
           paid_at: snapshot?.paid_at || null,
           paid_by: snapshot?.paid_by ? adminMap[snapshot.paid_by] : null,
-          is_locked: snapshot?.is_locked || false,
-          prorate_disabled: snapshot?.prorate_disabled || false
+          is_locked: snapshot?.is_locked || false
         };
       });
       
+      // 🧮 HITUNG dengan LOGIC PRORATE - HANYA UNTUK CS DP WD
       const withUmNet = officersWithStats
         .map((o, index) => {
-          const offDiambil = o.offCount || 0;
-          const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
+          let uangProrate = 0;
+          let offRemaining = 0;
           
-          let uangProrate = offTidakDiambil * o.prorate;
-          if (o.prorate_disabled && o.department !== 'CS DP WD') {
-            uangProrate = 0;
+          // Hanya CS DP WD yang dapat prorate
+          if (o.department === 'CS DP WD') {
+            const offDiambil = o.offCount || 0;
+            offRemaining = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
+            uangProrate = offRemaining * o.prorate;
           }
           
+          // Potongan dari ketidakhadiran (sakit, izin, unpaid, cuti)
           const potongan = (o.sakitCount + o.izinCount + o.unpaidCount + o.cutiCount) * o.prorate;
+          
+          // Denda absen
           const denda = o.alphaCount * 50;
+          
+          // UM = Base + uangProrate - potongan - denda
           const umNet = Math.max(0, o.baseAmount + uangProrate - potongan - denda);
           const finalNet = Math.max(0, umNet - (o.kasbon || 0) + (o.etc || 0));
           
@@ -298,8 +320,7 @@ export default function MealAllowancePage() {
             no: index + 1,
             umNet,
             finalNet,
-            offTaken: offDiambil,
-            offRemaining: offTidakDiambil,
+            offRemaining,
             uangProrate
           };
         })
@@ -317,6 +338,10 @@ export default function MealAllowancePage() {
       setLoading(false);
     }
   };
+
+  // ===========================================
+  // EDIT HANDLERS
+  // ===========================================
 
   const handleEditClick = (officer) => {
     if (!isAdmin) return;
@@ -351,12 +376,12 @@ export default function MealAllowancePage() {
       const officer = editingOfficer;
       const prev = getPreviousMonthData(selectedMonth, selectedYear);
       
-      const offDiambil = officer.offCount || 0;
-      const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
-      
-      let uangProrate = offTidakDiambil * officer.prorate;
-      if (officer.prorate_disabled && officer.department !== 'CS DP WD') {
-        uangProrate = 0;
+      // Hitung ulang - Hanya CS DP WD yang dapat prorate
+      let uangProrate = 0;
+      if (officer.department === 'CS DP WD') {
+        const offDiambil = officer.offCount || 0;
+        const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
+        uangProrate = offTidakDiambil * officer.prorate;
       }
       
       const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
@@ -407,8 +432,7 @@ export default function MealAllowancePage() {
         is_paid: officer.is_paid,
         paid_at: officer.paid_at,
         paid_by: officer.is_paid ? adminId : null,
-        is_locked: officer.is_locked,
-        prorate_disabled: officer.prorate_disabled
+        is_locked: officer.is_locked
       };
       
       const { error } = await supabase
@@ -475,44 +499,9 @@ export default function MealAllowancePage() {
     }
   };
 
-  const toggleProrate = async (officer) => {
-    if (!isAdmin) return;
-    if (officer.department === 'CS DP WD') {
-      alert('CS DP WD tidak bisa diubah proratenya');
-      return;
-    }
-    if (officer.is_locked) {
-      alert('Data sudah terkunci');
-      return;
-    }
-    
-    try {
-      const bulan = `${selectedMonth} ${selectedYear}`;
-      const newStatus = !officer.prorate_disabled;
-      
-      const { error } = await supabase
-        .from('meal_allowance_snapshot')
-        .upsert({
-          officer_id: officer.id,
-          officer_name: officer.full_name,
-          department: officer.department,
-          bulan: bulan,
-          prorate_disabled: newStatus,
-          last_edited_by: user?.id,
-          last_edited_at: new Date().toISOString()
-        }, { onConflict: 'officer_id, bulan' });
-      
-      if (error) throw error;
-      
-      await fetchData();
-      
-      alert(`✅ Prorate ${newStatus ? 'dihapus' : 'diaktifkan'} untuk ${officer.full_name}`);
-      
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Gagal update prorate');
-    }
-  };
+  // ===========================================
+  // RENDER
+  // ===========================================
 
   if (loading && !refreshing) {
     return (
@@ -685,9 +674,10 @@ export default function MealAllowancePage() {
                   <div className="flex flex-col">
                     <span className="font-bold text-[#FFD700]">{officer.full_name}</span>
                     
-                    {officer.offRemaining > 0 && (
+                    {/* Info prorate hanya untuk CS DP WD */}
+                    {officer.department === 'CS DP WD' && officer.offRemaining > 0 && (
                       <span className="text-[10px] text-green-400 mt-1">
-                        +${officer.uangProrate} (prorate {officer.offRemaining} hari) {officer.department !== 'CS DP WD' && '(HAPUS)'}
+                        +${officer.uangProrate} (prorate {officer.offRemaining} hari)
                       </span>
                     )}
                     
@@ -717,26 +707,6 @@ export default function MealAllowancePage() {
                         Edit
                       </button>
                     )}
-
-                    {isAdmin && officer.department !== 'CS DP WD' && !officer.prorate_disabled && (
-                      <button
-                        onClick={() => toggleProrate(officer)}
-                        disabled={officer.is_locked}
-                        className="text-[10px] mt-1 px-2 py-0.5 rounded w-fit bg-red-500/20 text-red-400 border border-red-400/30"
-                      >
-                        Hapus Prorate
-                      </button>
-                    )}
-
-                    {isAdmin && officer.department !== 'CS DP WD' && officer.prorate_disabled && (
-                      <button
-                        onClick={() => toggleProrate(officer)}
-                        disabled={officer.is_locked}
-                        className="text-[10px] mt-1 px-2 py-0.5 rounded w-fit bg-green-500/20 text-green-400 border border-green-400/30"
-                      >
-                        Aktifkan Prorate
-                      </button>
-                    )}
                   </div>
                 </td>
                 
@@ -754,14 +724,15 @@ export default function MealAllowancePage() {
                 
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.prorate}</td>
                 
+                {/* PRORATE - HANYA UNTUK CS DP WD */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center">
-                  {officer.offRemaining > 0 ? (
+                  {officer.department === 'CS DP WD' && officer.offRemaining > 0 ? (
                     <div className="flex flex-col items-center">
                       <span className="text-green-400 font-bold">
                         +${officer.offRemaining * officer.prorate}
                       </span>
                       <span className="text-[9px] text-[#A7D8FF]">
-                        ({officer.offRemaining} hari) {officer.department !== 'CS DP WD' && '(HAPUS)'}
+                        ({officer.offRemaining} hari)
                       </span>
                     </div>
                   ) : (
