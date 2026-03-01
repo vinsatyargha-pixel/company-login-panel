@@ -270,25 +270,32 @@ export default function WDDataRawPage() {
       
       // INDEX KOLOM (SESUAIKAN DENGAN FILE WD)
       const idx = {
-        no: 0,
-        brand: 1,
-        ticket: 2,
-        withdrawalAmount: 3,
-        playerFee: 4,
-        agentFee: 5,
-        nett: 6,
-        requested: 7,
-        approved: 8,
-        bank: 9,
-        userName: 10,
-        playerGroup: 11,
-        fullName: 12,
-        playerBank: 13,
-        bankTitle: 14,
-        remarks: 15,
-        status: 16,
-        reason: 17
-      }
+  no: 0,
+  brand: 1,
+  ticket: 2,
+  withdrawalAmount: 3,
+  playerFee: 4,
+  agentFee: 5,
+  nett: 6,
+  requested: 7,
+  approved: 8,
+  bank: 9,
+  userName: 10,
+  playerGroup: 11,
+  fullName: 12,
+  playerBank: 13,
+  bankTitle: 14,
+  remarks: 15,
+  status: 16,
+  reason: 17,
+  handler: 18,
+  handlerIp: 19,
+  creator: 20,
+  website: 21,
+  referralCode: 22,
+  ownReferralCode: 23,
+  lastBalance: 24
+}
       
       setUploadProgress('Memvalidasi data...')
       
