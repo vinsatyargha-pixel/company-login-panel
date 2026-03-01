@@ -1,10 +1,7 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
 
 export async function GET() {
-  const supabase = createRouteHandlerClient({ cookies })
-  
   const { data, error } = await supabase
     .from('deposit_report')
     .select('*')
@@ -18,17 +15,20 @@ export async function GET() {
 }
 
 export async function POST(req) {
-  const supabase = createRouteHandlerClient({ cookies })
-  const body = await req.json()
-  
-  const { data, error } = await supabase
-    .from('deposit_report')
-    .insert(body)
-    .select()
-  
-  if (error) {
+  try {
+    const body = await req.json()
+    
+    const { data, error } = await supabase
+      .from('deposit_report')
+      .insert(body)
+      .select()
+    
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+    
+    return NextResponse.json(data)
+  } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-  
-  return NextResponse.json(data)
 }
