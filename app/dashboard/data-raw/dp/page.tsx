@@ -309,27 +309,23 @@ export default function DPDataRawPage() {
       {/* MODAL UPLOAD */}
       {showModal && (
   <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-    <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
+    <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full">
       <h2 className="text-xl font-bold text-[#FFD700] mb-4">Upload File Deposit</h2>
-      <p className="text-sm text-[#A7D8FF] mb-4">
-        Pilih file Excel. Sistem akan otomatis membaca data.
-      </p>
       
       <input
         type="file"
         accept=".xlsx,.xls,.csv"
         onChange={(e) => {
           const file = e.target.files?.[0]
-          console.log('File selected:', file)
+          console.log('FILE DIPILIH:', file?.name)
           setUploadFile(file || null)
         }}
         className="mb-4 w-full text-white"
       />
       
       {uploadFile && (
-        <div className="bg-[#0B1A33] p-3 rounded-lg mb-4">
-          <p className="text-sm text-green-400">{uploadFile.name}</p>
-          <p className="text-xs text-gray-400">{(uploadFile.size / 1024).toFixed(2)} KB</p>
+        <div className="bg-[#0B1A33] p-3 rounded mb-4">
+          <p className="text-green-400">✓ {uploadFile.name}</p>
         </div>
       )}
       
@@ -339,21 +335,23 @@ export default function DPDataRawPage() {
             setShowModal(false)
             setUploadFile(null)
           }}
-          className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded transition-colors"
+          className="px-4 py-2 text-gray-400"
         >
           Batal
         </button>
         <button
-          onClick={() => {
+          onClick={async () => {
+            console.log('STATE UPLOADFILE:', uploadFile)
+            
             if (!uploadFile) {
               alert('Pilih file dulu!')
               return
             }
+            
             alert(`Upload file: ${uploadFile.name}`)
-            // Sementara pake alert dulu, nanti ganti dengan processExcelFile()
-            // processExcelFile()
+            // Nanti ganti dengan proses beneran
           }}
-          className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded font-bold hover:bg-[#FFD700]/80"
+          className="px-4 py-2 bg-[#FFD700] text-black rounded font-bold"
         >
           Upload
         </button>
