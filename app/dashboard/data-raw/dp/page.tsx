@@ -47,17 +47,6 @@ export default function DPDataRawPage() {
       return
     }
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (error || profile?.role !== 'admin') {
-      router.push('/dashboard')
-      return
-    }
-
     setLoading(false)
   }
 
@@ -153,6 +142,7 @@ export default function DPDataRawPage() {
           const totalDays = month.days.length
           const uploadedDays = month.days.filter(d => d.hasUpload).length
           const pendingDays = month.days.filter(d => d.uploadStatus === 'processing').length
+          const failedDays = month.days.filter(d => d.uploadStatus === 'failed').length
           
           return (
             <div key={`${month.month}-${month.year}`} className="bg-white rounded-lg shadow overflow-hidden">
@@ -183,10 +173,12 @@ export default function DPDataRawPage() {
                       <div className="flex items-center space-x-3">
                         {day.uploadStatus === 'processing' ? (
                           <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+                        ) : day.uploadStatus === 'failed' ? (
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                         ) : day.hasUpload ? (
                           <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                         ) : (
-                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
                         )}
                         
                         <span className="text-sm">
@@ -199,9 +191,15 @@ export default function DPDataRawPage() {
                           </span>
                         )}
                         
+                        {day.uploadStatus === 'failed' && (
+                          <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">
+                            Failed
+                          </span>
+                        )}
+                        
                         {day.hasUpload && day.fileName && (
                           <span className="text-xs text-gray-500 truncate max-w-[150px]">
-                            {day.fileName.length > 20 ? day.fileName.substring(0, 20) + '...' : day.fileName}
+                            {day.fileName}
                           </span>
                         )}
                       </div>
@@ -227,11 +225,14 @@ export default function DPDataRawPage() {
               )}
 
               <div className="px-4 py-2 bg-gray-50 text-xs text-gray-600 flex justify-between border-t">
-                <span>✅ Terupload: {uploadedDays} hari</span>
+                <span>✅ Sukses: {uploadedDays - failedDays} hari</span>
                 {pendingDays > 0 && (
-                  <span className="text-yellow-600">⏳ Processing: {pendingDays}</span>
+                  <span className="text-yellow-600">⏳ Proses: {pendingDays}</span>
                 )}
-                <span className="text-red-500">❌ Belum: {totalDays - uploadedDays} hari</span>
+                {failedDays > 0 && (
+                  <span className="text-red-600">❌ Gagal: {failedDays}</span>
+                )}
+                <span className="text-gray-500">⚪ Sisa: {totalDays - uploadedDays} hari</span>
               </div>
             </div>
           )
@@ -250,8 +251,8 @@ export default function DPDataRawPage() {
             <div className="mt-1 text-sm text-blue-700">
               <p>• <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-1"></span> Hijau = File sudah diupload</p>
               <p>• <span className="inline-block w-2 h-2 bg-yellow-500 rounded-full mr-1"></span> Kuning = Sedang diproses</p>
-              <p>• <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span> Merah = Belum ada file</p>
-              <p>• Klik tanggal untuk upload atau lihat data</p>
+              <p>• <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-1"></span> Merah = Gagal upload</p>
+              <p>• <span className="inline-block w-2 h-2 bg-gray-300 rounded-full mr-1"></span> Abu = Belum ada file</p>
             </div>
           </div>
         </div>
