@@ -255,39 +255,41 @@ export default function DPDataRawPage() {
       setUploadProgress('Memvalidasi data...')
       
       // Transform data
-      const transactions = dataRows
-        .map((row: any[], index) => {
-          if (!row || row.length === 0) return null
-          if (row[0]?.toString().includes('GRAND TOTAL')) return null
-          
-          const dateStr = row[idx.approved]
-          if (!dateStr) return null
-          
-          // Parse tanggal
-          let date: Date | null = null
-          try {
-            const cleanDateStr = dateStr.toString().split(',')[0].trim()
-            const [day, month, yearTime] = cleanDateStr.split('-')
-            const [year, time] = yearTime.split(' ')
-            
-            const monthMap: {[key: string]: string} = {
-              'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-              'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-            }
-            
-            if (monthMap[month]) {
-              const formattedDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
-              date = new Date(`${formattedDate}T${time || '00:00:00'}`)
-            } else {
-              date = new Date(cleanDateStr)
-            }
-          } catch (e) {
-            return null
-          }
-          
-          if (!date || isNaN(date.getTime())) return null
-          
-          return {
+const transactions = dataRows
+  .map((row: any[], index) => {
+    if (!row || row.length === 0) return null
+    if (row[0]?.toString().includes('GRAND TOTAL')) return null
+    
+    const dateStr = row[idx.approved]
+    // 🔥 CEK STRING KOSONG
+    if (!dateStr || dateStr.toString().trim() === '') return null
+    
+    // Parse tanggal
+    let date: Date | null = null
+    try {
+      const cleanDateStr = dateStr.toString().split(',')[0].trim()
+      const [day, month, yearTime] = cleanDateStr.split('-')
+      const [year, time] = yearTime.split(' ')
+      
+      const monthMap: {[key: string]: string} = {
+        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+        'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      }
+      
+      if (monthMap[month]) {
+        const formattedDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
+        date = new Date(`${formattedDate}T${time || '00:00:00'}`)
+      } else {
+        date = new Date(cleanDateStr)
+      }
+    } catch (e) {
+      console.log(`⚠️ Baris ${index + headerRowIndex + 2}: Gagal parse tanggal:`, dateStr)
+      return null
+    }
+    
+    if (!date || isNaN(date.getTime())) return null
+    
+    return {
             nomor: row[idx.no],
             brand: row[idx.brand],
             ticket_number: row[idx.ticket],
