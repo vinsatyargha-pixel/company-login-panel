@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'  // ← PAKAI INI!
+import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 
@@ -50,6 +50,10 @@ type WithdrawalTransaction = {
   file_name: string
 }
 
+// ===========================================
+// MAIN COMPONENT
+// ===========================================
+
 export default function WDDataRawPage() {
   // Data states
   const [transactions, setTransactions] = useState<GroupedTransaction[]>([])
@@ -73,6 +77,60 @@ export default function WDDataRawPage() {
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ]
   const years = ['2025', '2026', '2027']
+
+  // ===========================================
+  // HELPER FUNCTION PARSE TANGGAL (HANDLE SEMUA FORMAT)
+  // ===========================================
+
+  const parseExcelDate = (value: any): string | null => {
+    if (!value) return null
+
+    try {
+      // ✅ CASE 1: Excel serial number (contoh: 45234.9567)
+      if (typeof value === 'number') {
+        const date = XLSX.SSF.parse_date_code(value)
+        if (!date) return null
+        
+        const jsDate = new Date(
+          date.y,
+          date.m - 1,
+          date.d,
+          date.H || 0,
+          date.M || 0,
+          date.S || 0
+        )
+
+        return jsDate.toISOString()
+      }
+
+      // ✅ CASE 2: String dengan tambahan ", Platform"
+      let cleanStr = value.toString().trim()
+
+      // Buang bagian setelah koma
+      cleanStr = cleanStr.split(',')[0].trim()
+
+      // Format: 31-Jan-2026 22:57:50
+      const parts = cleanStr.split(' ')
+      if (parts.length >= 2) {
+        const [dayMonthYear, time] = parts
+        const [day, month, year] = dayMonthYear.split('-')
+
+        const monthMap: any = {
+          Jan: '01', Feb: '02', Mar: '03', Apr: '04',
+          May: '05', Jun: '06', Jul: '07', Aug: '08',
+          Sep: '09', Oct: '10', Nov: '11', Dec: '12'
+        }
+
+        if (monthMap[month]) {
+          return `${year}-${monthMap[month]}-${day.padStart(2, '0')}T${time}`
+        }
+      }
+
+      return null
+    } catch (e) {
+      return null
+    }
+  }
 
   // ===========================================
   // INITIAL DATA
@@ -194,38 +252,6 @@ export default function WDDataRawPage() {
   }, [])
 
   // ===========================================
-  // HELPER FUNCTION PARSE TANGGAL (SEDERHANA)
-  // ===========================================
-
-  const parseExcelDate = (dateStr: any): string | null => {
-    if (!dateStr) return null
-    
-    try {
-      const cleanStr = dateStr.toString().trim()
-      
-      // Format: "31-Jan-2026 22:57:50"
-      const parts = cleanStr.split(' ')
-      if (parts.length >= 2) {
-        const [dayMonthYear, time] = parts
-        const [day, month, year] = dayMonthYear.split('-')
-        
-        const monthMap: {[key: string]: string} = {
-          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-          'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-        }
-        
-        if (monthMap[month]) {
-          return `${year}-${monthMap[month]}-${day}T${time}`
-        }
-      }
-      
-      return null
-    } catch (e) {
-      return null
-    }
-  }
-
-  // ===========================================
   // UPLOAD PROCESS
   // ===========================================
 
@@ -268,48 +294,59 @@ export default function WDDataRawPage() {
       
       console.log('📊 Jumlah baris data:', dataRows.length)
       
-      // INDEX KOLOM (SESUAIKAN DENGAN FILE WD)
+      // INDEX KOLOM LENGKAP (25 kolom)
       const idx = {
-  no: 0,
-  brand: 1,
-  ticket: 2,
-  withdrawalAmount: 3,
-  playerFee: 4,
-  agentFee: 5,
-  nett: 6,
-  requested: 7,
-  approved: 8,
-  bank: 9,
-  userName: 10,
-  playerGroup: 11,
-  fullName: 12,
-  playerBank: 13,
-  bankTitle: 14,
-  remarks: 15,
-  status: 16,
-  reason: 17,
-  handler: 18,
-  handlerIp: 19,
-  creator: 20,
-  website: 21,
-  referralCode: 22,
-  ownReferralCode: 23,
-  lastBalance: 24
-}
+        no: 0,
+        brand: 1,
+        ticket: 2,
+        withdrawalAmount: 3,
+        playerFee: 4,
+        agentFee: 5,
+        nett: 6,
+        requested: 7,
+        approved: 8,
+        bank: 9,
+        userName: 10,
+        playerGroup: 11,
+        fullName: 12,
+        playerBank: 13,
+        bankTitle: 14,
+        remarks: 15,
+        status: 16,
+        reason: 17,
+        handler: 18,
+        handlerIp: 19,
+        creator: 20,
+        website: 21,
+        referralCode: 22,
+        ownReferralCode: 23,
+        lastBalance: 24
+      }
       
       setUploadProgress('Memvalidasi data...')
       
       const validTransactions: WithdrawalTransaction[] = []
+      let skippedCount = 0
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
-        if (!row || row.length === 0) continue
+        if (!row || row.length === 0) {
+          skippedCount++
+          continue
+        }
         
         // Skip GRAND TOTAL
-        if (row[2]?.toString().includes('GRAND TOTAL')) continue
+        if (row[2]?.toString().includes('GRAND TOTAL')) {
+          skippedCount++
+          continue
+        }
         
         const approvedDate = parseExcelDate(row[idx.approved])
-        if (!approvedDate) continue
+        if (!approvedDate) {
+          console.log(`⏭️ Baris ${i+1} skip: approved date null`, row[idx.approved])
+          skippedCount++
+          continue
+        }
         
         validTransactions.push({
           nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
@@ -330,18 +367,19 @@ export default function WDDataRawPage() {
           remarks: row[idx.remarks] || null,
           status: row[idx.status] || null,
           reason: row[idx.reason] || null,
-          handler: null,
-          handler_ip: null,
-          creator: null,
-          website: row[idx.brand] || 'XLY',
-          referral_code: null,
-          own_referral_code: null,
-          last_balance: null,
+          handler: row[idx.handler] || null,
+          handler_ip: row[idx.handlerIp] || null,
+          creator: row[idx.creator] || null,
+          website: row[idx.website] || 'XLY',
+          referral_code: row[idx.referralCode] || null,
+          own_referral_code: row[idx.ownReferralCode] || null,
+          last_balance: row[idx.lastBalance] ? parseFloat(row[idx.lastBalance]) || null : null,
           file_name: selectedFile.name
         })
       }
 
       console.log('✅ Data valid:', validTransactions.length)
+      console.log('⏭️ Data skipped:', skippedCount)
       
       if (validTransactions.length === 0) {
         throw new Error('Tidak ada data valid dalam file')
