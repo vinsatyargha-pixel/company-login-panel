@@ -261,8 +261,18 @@ const transactions = dataRows
     if (row[0]?.toString().includes('GRAND TOTAL')) return null
     
     const dateStr = row[idx.approved]
-    // 🔥 CEK STRING KOSONG
-    if (!dateStr || dateStr.toString().trim() === '') return null
+    
+    // 🔥 DEBUG: Liat data kosong
+    if (!dateStr || dateStr.toString().trim() === '') {
+      console.log(`🚨 Baris ${index + headerRowIndex + 2} (index ${index}):`, {
+        no: row[0],
+        brand: row[1],
+        ticket: row[2],
+        approved_date: row[idx.approved],
+        full_row: row
+      })
+      return null
+    }
     
     // Parse tanggal
     let date: Date | null = null
@@ -290,35 +300,35 @@ const transactions = dataRows
     if (!date || isNaN(date.getTime())) return null
     
     return {
-            nomor: row[idx.no],
-            brand: row[idx.brand],
-            ticket_number: row[idx.ticket],
-            requested_date: row[idx.requested],
-            approved_date: date.toISOString().split('T')[0],
-            bank_statement_date: row[idx.bank],
-            user_name: row[idx.userName],
-            player_group: row[idx.playerGroup],
-            full_name: row[idx.fullName],
-            payment_type: row[idx.paymentType],
-            deposit_amount: parseFloat(row[idx.amount]) || 0,
-            admin_fee: parseFloat(row[idx.adminFee]) || 0,
-            agent_fee: parseFloat(row[idx.agentFee]) || 0,
-            player_fee: parseFloat(row[idx.playerFee]) || 0,
-            nett_amount: parseFloat(row[idx.nett]) || 0,
-            player_bank: row[idx.playerBank],
-            bank_title: row[idx.bankTitle],
-            remarks: row[idx.remarks],
-            reference: row[idx.reference],
-            status: row[idx.status],
-            reason: row[idx.reason],
-            handler: row[idx.handler],
-            handler_ip: row[idx.handlerIp],
-            creator: row[idx.creator],
-            website: row[idx.website] || 'XLY',
-            file_name: selectedFile.name
-          }
-        })
-        .filter(Boolean)
+      nomor: row[idx.no],
+      brand: row[idx.brand],
+      ticket_number: row[idx.ticket],
+      requested_date: row[idx.requested],
+      approved_date: date.toISOString().split('T')[0],
+      bank_statement_date: row[idx.bank],
+      user_name: row[idx.userName],
+      player_group: row[idx.playerGroup],
+      full_name: row[idx.fullName],
+      payment_type: row[idx.paymentType],
+      deposit_amount: parseFloat(row[idx.amount]) || 0,
+      admin_fee: parseFloat(row[idx.adminFee]) || 0,
+      agent_fee: parseFloat(row[idx.agentFee]) || 0,
+      player_fee: parseFloat(row[idx.playerFee]) || 0,
+      nett_amount: parseFloat(row[idx.nett]) || 0,
+      player_bank: row[idx.playerBank],
+      bank_title: row[idx.bankTitle],
+      remarks: row[idx.remarks],
+      reference: row[idx.reference],
+      status: row[idx.status],
+      reason: row[idx.reason],
+      handler: row[idx.handler],
+      handler_ip: row[idx.handlerIp],
+      creator: row[idx.creator],
+      website: row[idx.website] || 'XLY',
+      file_name: selectedFile.name
+    }
+  })
+  .filter(Boolean)
 
       console.log('✅ Data valid:', transactions.length)
       
