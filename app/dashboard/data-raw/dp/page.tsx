@@ -41,13 +41,24 @@ export default function DPDataRawPage() {
   }, [])
 
   async function checkAccess() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/login')
-      return
-    }
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    router.push('/login')
+    return
   }
 
+  // Opsi 1: Langsung lanjut aja (semua authenticated user bisa akses)
+  // setLoading(false)
+  
+  // Opsi 2: Cek dari user_metadata (kalo role disimpen di situ)
+  const role = user.user_metadata?.role || 'user'
+  if (role !== 'admin') {
+    router.push('/dashboard')
+  }
+  
+  setLoading(false)
+}
   async function loadUploads() {
     setLoading(true)
     
