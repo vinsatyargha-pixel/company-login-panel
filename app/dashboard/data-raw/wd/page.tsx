@@ -205,31 +205,35 @@ export default function WDDataRawPage() {
     if (!dateStr || typeof dateStr !== 'string') return null
     
     try {
-      // Bersihin dari "Platform: (Web)" dan koma
-      const cleanStr = dateStr.split(',')[0].split('Platform')[0].trim()
-      const parts = cleanStr.split('-')
+      const cleanStr = dateStr.toString().trim()
       
-      if (parts.length < 3) return null
-      
-      const day = parts[0].padStart(2, '0')
-      const month = parts[1]
-      const yearTime = parts[2]
-      const timeParts = yearTime.split(' ')
-      
-      if (timeParts.length < 1) return null
-      
-      const year = timeParts[0]
-      const time = timeParts[1] || '00:00:00'
-      
-      const monthMap: {[key: string]: string} = {
-        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-        'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      // Format: "31-Jan-2026 22:47:50, Platform :Web"
+      if (cleanStr.includes('-')) {
+        const parts = cleanStr.split(',')[0].split('Platform')[0].trim().split('-')
+        
+        if (parts.length < 3) return null
+        
+        const day = parts[0].padStart(2, '0')
+        const month = parts[1]
+        const yearTime = parts[2]
+        const timeParts = yearTime.split(' ')
+        
+        if (timeParts.length < 1) return null
+        
+        const year = timeParts[0]
+        const time = timeParts[1] || '00:00:00'
+        
+        const monthMap: {[key: string]: string} = {
+          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+          'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+        }
+        
+        if (!monthMap[month]) return null
+        
+        return `${year}-${monthMap[month]}-${day}T${time}`
       }
       
-      if (!monthMap[month]) return null
-      
-      // Return format ISO untuk timestamp
-      return `${year}-${monthMap[month]}-${day}T${time}`
+      return null
     } catch (e) {
       return null
     }
