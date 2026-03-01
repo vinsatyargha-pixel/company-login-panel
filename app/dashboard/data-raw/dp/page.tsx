@@ -88,52 +88,58 @@ export default function DPDataRawPage() {
   }
 
   const fetchTransactions = async () => {
-    try {
-      setLoading(true)
-      
-      const monthIndex = months.indexOf(selectedMonth) + 1
-      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-31`
+  try {
+    setLoading(true)
+    
+    const monthIndex = months.indexOf(selectedMonth) + 1
+    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-31`
 
-      let query = supabase
-        .from('deposit_transactions')
-        .select('id, approved_date, file_name, website')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
-        .order('approved_date', { ascending: true })
+    let query = supabase
+      .from('deposit_transactions')
+      .select('approved_date, file_name, website')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate)
+      .order('approved_date', { ascending: true })
 
-      if (selectedAsset !== 'all') {
-        const asset = assets.find(a => a.id === selectedAsset)
-        if (asset) {
-          query = query.eq('website', asset.asset_code)
-        }
+    if (selectedAsset !== 'all') {
+      const asset = assets.find(a => a.id === selectedAsset)
+      if (asset) {
+        query = query.eq('website', asset.asset_code)
       }
-
-      const { data, error } = await query
-      if (error) throw error
-      
-      // Group by date and count
-      const grouped = (data || []).reduce((acc: any, curr) => {
-        const date = curr.approved_date
-        if (!acc[date]) {
-          acc[date] = {
-            approved_date: date,
-            file_name: curr.file_name,
-            count: 1
-          }
-        } else {
-          acc[date].count += 1
-        }
-        return acc
-      }, {})
-      
-      setTransactions(Object.values(grouped))
-    } catch (error) {
-      console.error('Error fetching transactions:', error)
-    } finally {
-      setLoading(false)
     }
+
+    const { data, error } = await query
+    if (error) throw error
+    
+    console.log('Data mentah:', data)
+    
+    // Group by date and count
+    const grouped: { [key: string]: any } = {}
+    
+    data?.forEach((item: any) => {
+      const date = item.approved_date
+      if (!grouped[date]) {
+        grouped[date] = {
+          approved_date: date,
+          file_name: item.file_name,
+          count: 1
+        }
+      } else {
+        grouped[date].count += 1
+      }
+    })
+    
+    const groupedArray = Object.values(grouped)
+    console.log('Data per tanggal:', groupedArray)
+    
+    setTransactions(groupedArray)
+  } catch (error) {
+    console.error('Error fetching transactions:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
   // ===========================================
   // DRAG & DROP HANDLERS
@@ -350,24 +356,25 @@ export default function DPDataRawPage() {
             </tr>
           </thead>
           <tbody>
-            {transactions.length > 0 ? (
-              transactions.map((item, idx) => (
-                <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                  <td className="px-4 py-3">
-                    {getDayFromDate(item.approved_date)} {selectedMonth} {selectedYear}
-                  </td>
-                  <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                  <td className="px-4 py-3">{item.count || 1} data</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                  Tidak ada data untuk periode ini
-                </td>
-              </tr>
-            )}
-          </tbody>
+  {transactions.length > 0 ? (
+    transactions.map((item: any, idx: number) => {
+      const day = new Date(item.approved_date).getDate()
+      return (
+        <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+          <td className="px-4 py-3">{day} {selectedMonth} {selectedYear}</td>
+          <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+          <td className="px-4 py-3">{item.count} data</td>
+        </tr>
+      )
+    })
+  ) : (
+    <tr>
+      <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
+        Tidak ada data untuk periode ini
+      </td>
+    </tr>
+  )}
+</tbody>
         </table>
       </div>
 
