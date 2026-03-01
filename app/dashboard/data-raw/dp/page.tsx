@@ -158,86 +158,38 @@ export default function DPDataRawPage() {
   // UPLOAD PROCESS
   // ===========================================
 
-  const processFile = async () => {
-    if (!selectedFile) return
+  const fetchUploads = async () => {
+  try {
+    setLoading(true)
     
-    setUploading(true)
-    setUploadProgress('Membaca file...')
-    
-    try {
-      // Baca file Excel
-      const arrayBuffer = await selectedFile.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer)
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet)
-      
-      console.log('📊 Data mentah dari Excel:', jsonData)
-      
-      // Kelompokkan berdasarkan tanggal (Approved Date)
-      setUploadProgress('Mengelompokkan data per tanggal...')
-      const groupedByDate: { [key: string]: any[] } = {}
-      
-      jsonData.forEach((row: any) => {
-        // Sesuaikan dengan nama kolom di Excel lo
-        const dateStr = row['Approved Date'] || row['approved_date'] || row['tanggal']
-        if (!dateStr) return
-        
-        const dateObj = new Date(dateStr)
-        if (isNaN(dateObj.getTime())) return // Skip kalo tanggal invalid
-        
-        const dateKey = dateObj.toISOString().split('T')[0]
-        
-        if (!groupedByDate[dateKey]) {
-          groupedByDate[dateKey] = []
-        }
-        groupedByDate[dateKey].push(row)
-      })
-      
-      console.log('📅 Data per tanggal:', groupedByDate)
-      
-      // Insert ke database
-      setUploadProgress('Menyimpan ke database...')
-      let totalInserted = 0
-      
-      for (const [date, rows] of Object.entries(groupedByDate)) {
-        console.log(`📝 Insert untuk ${date}: ${rows.length} baris`)
-        
-        const { data, error } = await supabase
-          .from('deposit_uploads')
-          .insert({
-            upload_date: date,
-            file_name: selectedFile.name,
-            total_rows: rows.length,
-            status: 'completed',
-            // website: rows[0]?.Website || 'XLY' // Uncomment kalo ada kolom website
-          })
-          .select()
-        
-        if (error) {
-          console.error('❌ Error insert:', error)
-          throw error
-        }
-        
-        console.log(`✅ Sukses insert ${date}:`, data)
-        totalInserted += rows.length
+    const monthIndex = months.indexOf(selectedMonth) + 1
+    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-31`
+
+    let query = supabase
+      .from('deposit_transactions')  // ← GANTI KE TABEL BARU
+      .select('*')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate)
+      .order('approved_date', { ascending: true })
+
+    if (selectedAsset !== 'all') {
+      const asset = assets.find(a => a.id === selectedAsset)
+      if (asset) {
+        query = query.eq('website', asset.asset_code)
       }
-      
-      alert(`✅ Berhasil! ${totalInserted} data dari ${Object.keys(groupedByDate).length} tanggal`)
-      
-      // Reset modal dan refresh data
-      setShowModal(false)
-      setSelectedFile(null)
-      fetchUploads()
-      
-    } catch (error: any) {
-      console.error('❌ Upload error:', error)
-      alert('❌ Gagal: ' + error.message)
-    } finally {
-      setUploading(false)
-      setUploadProgress('')
     }
+
+    const { data, error } = await query
+    if (error) throw error
+    
+    setUploads(data || []) // ← data sekarang dari deposit_transactions
+  } catch (error) {
+    console.error('Error fetching uploads:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
   // ===========================================
   // HELPER FUNCTIONS
