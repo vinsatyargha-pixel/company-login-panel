@@ -103,66 +103,66 @@ export default function DPDataRawPage() {
   // ===========================================
 
   const processFile = async () => {
-    if (!selectedFile) return
+  if (!selectedFile) return
+  
+  setUploading(true)
+  
+  try {
+    const arrayBuffer = await selectedFile.arrayBuffer()
+    const workbook = XLSX.read(arrayBuffer)
+    const sheetName = workbook.SheetNames[0]
+    const worksheet = workbook.Sheets[sheetName]
+    const jsonData = XLSX.utils.sheet_to_json(worksheet)
     
-    setUploading(true)
+    console.log('Data mentah dari Excel:', jsonData)
     
-    try {
-      const arrayBuffer = await selectedFile.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer)
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet)
+    // 🔥 KELOMPOKKAN PER TANGGAL (Approved Date)
+    const groupedByDate: { [key: string]: any[] } = {}
+    
+    jsonData.forEach((row: any) => {
+      // UBAH INI SESUAI FORMAT KOLOM DI EXCEL LO
+      const dateStr = row['Approved Date'] || row['approved_date'] || row['tanggal']
+      if (!dateStr) return
       
-      console.log('Data dari Excel:', jsonData)
+      const dateObj = new Date(dateStr)
+      const dateKey = dateObj.toISOString().split('T')[0] // 2026-01-15
       
-      // Kelompokkan berdasarkan tanggal
-      const groupedByDate: { [key: string]: any[] } = {}
-      
-      jsonData.forEach((row: any) => {
-        const dateStr = row['Approved Date'] || row['upload_date'] || row['tanggal']
-        if (!dateStr) return
-        
-        const dateObj = new Date(dateStr)
-        const dateKey = dateObj.toISOString().split('T')[0]
-        
-        if (!groupedByDate[dateKey]) {
-          groupedByDate[dateKey] = []
-        }
-        groupedByDate[dateKey].push(row)
-      })
-      
-      // Insert ke deposit_uploads
-      let totalInserted = 0
-      
-      for (const [date, rows] of Object.entries(groupedByDate)) {
-        const { error } = await supabase
-          .from('deposit_uploads')
-          .insert({
-            upload_date: date,
-            file_name: selectedFile.name,
-            total_rows: rows.length,
-            status: 'completed'
-          })
-        
-        if (error) throw error
-        totalInserted += rows.length
+      if (!groupedByDate[dateKey]) {
+        groupedByDate[dateKey] = []
       }
+      groupedByDate[dateKey].push(row)
+    })
+    
+    console.log('Data per tanggal:', groupedByDate)
+    
+    // 🔥 INSERT KE SUPABASE
+    for (const [date, rows] of Object.entries(groupedByDate)) {
+      const { error } = await supabase
+        .from('deposit_uploads')
+        .insert({
+          upload_date: date,
+          file_name: selectedFile.name,
+          total_rows: rows.length,
+          status: 'completed'
+          // website: rows[0]?.Website || 'XLY'  // KALO ADA KOLOM ASSET
+        })
       
-      alert(`✅ Berhasil! ${totalInserted} data dari ${Object.keys(groupedByDate).length} tanggal`)
-      
-      // Reset & refresh
-      setShowModal(false)
-      setSelectedFile(null)
-      fetchUploads()
-      
-    } catch (error: any) {
-      console.error('Error:', error)
-      alert('❌ Gagal: ' + error.message)
-    } finally {
-      setUploading(false)
+      if (error) throw error
     }
+    
+    alert(`✅ Berhasil! Data dari ${Object.keys(groupedByDate).length} tanggal`)
+    
+    setShowModal(false)
+    setSelectedFile(null)
+    fetchUploads()
+    
+  } catch (error: any) {
+    console.error('Error:', error)
+    alert('❌ Gagal: ' + error.message)
+  } finally {
+    setUploading(false)
   }
+}
 
   // ===========================================
   // RENDER
