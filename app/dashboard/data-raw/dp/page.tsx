@@ -9,19 +9,16 @@ import * as XLSX from 'xlsx'
 // TYPES
 // ===========================================
 
-type DepositTransaction = {
-  id: string
-  approved_date: string
-  file_name: string
-  total_rows?: number
-  status?: string
-  website?: string
-}
-
 type Asset = {
   id: string
   asset_name: string
   asset_code: string
+}
+
+type GroupedTransaction = {
+  approved_date: string
+  file_name: string
+  count: number
 }
 
 // ===========================================
@@ -30,7 +27,7 @@ type Asset = {
 
 export default function DPDataRawPage() {
   // Data states
-  const [transactions, setTransactions] = useState<DepositTransaction[]>([])
+  const [transactions, setTransactions] = useState<GroupedTransaction[]>([])
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   
@@ -88,58 +85,56 @@ export default function DPDataRawPage() {
   }
 
   const fetchTransactions = async () => {
-  try {
-    setLoading(true)
-    
-    const monthIndex = months.indexOf(selectedMonth) + 1
-    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-31`
+    try {
+      setLoading(true)
+      
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+      
+      // Hitung hari terakhir dalam bulan
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-    let query = supabase
-      .from('deposit_transactions')
-      .select('approved_date, file_name, website')
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate)
-      .order('approved_date', { ascending: true })
+      let query = supabase
+        .from('deposit_transactions')
+        .select('approved_date, file_name, website')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate)
+        .order('approved_date', { ascending: true })
 
-    if (selectedAsset !== 'all') {
-      const asset = assets.find(a => a.id === selectedAsset)
-      if (asset) {
-        query = query.eq('website', asset.asset_code)
-      }
-    }
-
-    const { data, error } = await query
-    if (error) throw error
-    
-    console.log('Data mentah:', data)
-    
-    // Group by date and count
-    const grouped: { [key: string]: any } = {}
-    
-    data?.forEach((item: any) => {
-      const date = item.approved_date
-      if (!grouped[date]) {
-        grouped[date] = {
-          approved_date: date,
-          file_name: item.file_name,
-          count: 1
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset)
+        if (asset) {
+          query = query.eq('website', asset.asset_code)
         }
-      } else {
-        grouped[date].count += 1
       }
-    })
-    
-    const groupedArray = Object.values(grouped)
-    console.log('Data per tanggal:', groupedArray)
-    
-    setTransactions(groupedArray)
-  } catch (error) {
-    console.error('Error fetching transactions:', error)
-  } finally {
-    setLoading(false)
+
+      const { data, error } = await query
+      if (error) throw error
+      
+      // Group by date
+      const grouped: { [key: string]: GroupedTransaction } = {}
+      
+      data?.forEach((item: any) => {
+        const date = item.approved_date
+        if (!grouped[date]) {
+          grouped[date] = {
+            approved_date: date,
+            file_name: item.file_name,
+            count: 1
+          }
+        } else {
+          grouped[date].count += 1
+        }
+      })
+      
+      setTransactions(Object.values(grouped))
+    } catch (error) {
+      console.error('Error fetching transactions:', error)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   // ===========================================
   // DRAG & DROP HANDLERS
@@ -194,44 +189,60 @@ export default function DPDataRawPage() {
       
       console.log('📊 Data dari Excel:', jsonData.length, 'baris')
       
-      setUploadProgress('Menyiapkan data...')
+      setUploadProgress('Memvalidasi data...')
       
-      // Transform data sesuai kolom di deposit_transactions
-      const transactions = jsonData.map((row: any) => ({
-        nomor: row['No.'],
-        brand: row['Brand'],
-        ticket_number: row['Ticket Number'],
-        requested_date: row['Requested Date'],
-        approved_date: row['Approved Date'] ? new Date(row['Approved Date']).toISOString().split('T')[0] : null,
-        bank_statement_date: row['Bank Statement Date'],
-        user_name: row['User Name'],
-        player_group: row['Player Group'],
-        full_name: row['Full Name'],
-        payment_type: row['Payment Type'],
-        deposit_amount: row['Deposit Amount'],
-        admin_fee: row['Admin Fee'],
-        agent_fee: row['Agent Fee'],
-        player_fee: row['Player Fee'],
-        nett_amount: row['Nett Amount'],
-        player_bank: row['Player Bank'],
-        bank_title: row['Bank Title'],
-        remarks: row['Remarks'],
-        reference: row['Reference'],
-        status: row['Status'],
-        reason: row['Reason'],
-        handler: row['Handler'],
-        handler_ip: row['HandlerIP'],
-        creator: row['Creator'],
-        website: row['Website'] || 'XLY',
-        referral_code: row['Referral Code'],
-        own_referral_code: row['Own Referral Code'],
-        bonus: row['Bonus'],
-        statement_status: row['Statement Status'],
-        file_name: selectedFile.name
-      }))
+      // Transform dan filter tanggal valid
+      const transactions = jsonData
+        .map((row: any) => {
+          // Ambil tanggal dari Approved Date
+          const dateStr = row['Approved Date']
+          if (!dateStr) return null
+          
+          const date = new Date(dateStr)
+          // Cek validitas tanggal
+          if (isNaN(date.getTime())) return null
+          
+          return {
+            nomor: row['No.'],
+            brand: row['Brand'],
+            ticket_number: row['Ticket Number'],
+            requested_date: row['Requested Date'],
+            approved_date: date.toISOString().split('T')[0],
+            bank_statement_date: row['Bank Statement Date'],
+            user_name: row['User Name'],
+            player_group: row['Player Group'],
+            full_name: row['Full Name'],
+            payment_type: row['Payment Type'],
+            deposit_amount: row['Deposit Amount'],
+            admin_fee: row['Admin Fee'],
+            agent_fee: row['Agent Fee'],
+            player_fee: row['Player Fee'],
+            nett_amount: row['Nett Amount'],
+            player_bank: row['Player Bank'],
+            bank_title: row['Bank Title'],
+            remarks: row['Remarks'],
+            reference: row['Reference'],
+            status: row['Status'],
+            reason: row['Reason'],
+            handler: row['Handler'],
+            handler_ip: row['HandlerIP'],
+            creator: row['Creator'],
+            website: row['Website'] || 'XLY',
+            referral_code: row['Referral Code'],
+            own_referral_code: row['Own Referral Code'],
+            bonus: row['Bonus'],
+            statement_status: row['Statement Status'],
+            file_name: selectedFile.name
+          }
+        })
+        .filter(Boolean) // Buang yang null
 
-      setUploadProgress(`Menyimpan ${transactions.length} transaksi...`)
+      setUploadProgress(`Menyimpan ${transactions.length} transaksi valid...`)
       
+      if (transactions.length === 0) {
+        throw new Error('Tidak ada data valid dalam file')
+      }
+
       // Insert ke deposit_transactions (batch)
       const { error } = await supabase
         .from('deposit_transactions')
@@ -239,7 +250,7 @@ export default function DPDataRawPage() {
 
       if (error) throw error
 
-      // Insert ke deposit_uploads buat tracking (1 baris per file)
+      // Insert ke deposit_uploads buat tracking
       await supabase
         .from('deposit_uploads')
         .insert({
@@ -286,7 +297,7 @@ export default function DPDataRawPage() {
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-      {/* Header with Back Button */}
+      {/* Header */}
       <div className="mb-6 flex justify-between items-center">
         <Link href="/dashboard/data-raw" className="text-[#FFD700] hover:underline">
           ← BACK TO DATA RAW
@@ -356,29 +367,28 @@ export default function DPDataRawPage() {
             </tr>
           </thead>
           <tbody>
-  {transactions.length > 0 ? (
-    transactions.map((item: any, idx: number) => {
-      const day = new Date(item.approved_date).getDate()
-      return (
-        <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-          <td className="px-4 py-3">{day} {selectedMonth} {selectedYear}</td>
-          <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-          <td className="px-4 py-3">{item.count} data</td>
-        </tr>
-      )
-    })
-  ) : (
-    <tr>
-      <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-        Tidak ada data untuk periode ini
-      </td>
-    </tr>
-  )}
-</tbody>
+            {transactions.length > 0 ? (
+              transactions.map((item, idx) => (
+                <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                  <td className="px-4 py-3">
+                    {getDayFromDate(item.approved_date)} {selectedMonth} {selectedYear}
+                  </td>
+                  <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                  <td className="px-4 py-3">{item.count} data</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
+                  Tidak ada data untuk periode ini
+                </td>
+              </tr>
+            )}
+          </tbody>
         </table>
       </div>
 
-      {/* UPLOAD MODAL - DRAG & DROP */}
+      {/* UPLOAD MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
