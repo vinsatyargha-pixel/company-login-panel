@@ -26,7 +26,7 @@ type DepositTransaction = {
   brand: string | null
   ticket_number: string | null
   requested_date: string | null
-  approved_date: string
+  approved_date: string | null
   bank_statement_date: string | null
   user_name: string | null
   player_group: string | null
@@ -198,6 +198,44 @@ export default function DPDataRawPage() {
   }, [])
 
   // ===========================================
+  // HELPER FUNCTION PARSE TANGGAL
+  // ===========================================
+
+  const parseExcelDate = (dateStr: any): string | null => {
+    if (!dateStr || typeof dateStr !== 'string') return null
+    
+    try {
+      // Bersihin dari "Platform: (Web)" dan koma
+      const cleanStr = dateStr.split(',')[0].split('Platform')[0].trim()
+      const parts = cleanStr.split('-')
+      
+      if (parts.length < 3) return null
+      
+      const day = parts[0].padStart(2, '0')
+      const month = parts[1]
+      const yearTime = parts[2]
+      const timeParts = yearTime.split(' ')
+      
+      if (timeParts.length < 1) return null
+      
+      const year = timeParts[0]
+      const time = timeParts[1] || '00:00:00'
+      
+      const monthMap: {[key: string]: string} = {
+        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+        'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      }
+      
+      if (!monthMap[month]) return null
+      
+      // Return format ISO untuk timestamp
+      return `${year}-${monthMap[month]}-${day}T${time}`
+    } catch (e) {
+      return null
+    }
+  }
+
+  // ===========================================
   // UPLOAD PROCESS
   // ===========================================
 
@@ -299,66 +337,42 @@ export default function DPDataRawPage() {
         }
         if (isGrandTotal) continue
         
-        const dateStr = row[idx.approved]
-        if (!dateStr || dateStr.toString().trim() === '') continue
+        // 🔥 PARSE SEMUA KOLOM TANGGAL dengan helper function
+        const requestedDate = parseExcelDate(row[idx.requested])
+        const approvedDate = parseExcelDate(row[idx.approved])
+        const bankDate = parseExcelDate(row[idx.bank])
         
-        try {
-          const cleanStr = dateStr.toString().trim()
-          const datePart = cleanStr.split(',')[0].trim()
-          const dateParts = datePart.split('-')
-          
-          if (dateParts.length < 3) continue
-          
-          const day = dateParts[0]
-          const month = dateParts[1]
-          const yearTime = dateParts[2]
-          const yearTimeParts = yearTime.split(' ')
-          
-          if (yearTimeParts.length < 1) continue
-          
-          const year = yearTimeParts[0]
-          
-          const monthMap: {[key: string]: string} = {
-            'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-            'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-          }
-          
-          if (!monthMap[month]) continue
-          
-          const formattedDate = `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
-          
-          validTransactions.push({
-            nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
-            brand: row[idx.brand] || null,
-            ticket_number: row[idx.ticket] || null,
-            requested_date: row[idx.requested] || null,
-            approved_date: formattedDate,
-            bank_statement_date: row[idx.bank] || null,
-            user_name: row[idx.userName] || null,
-            player_group: row[idx.playerGroup] || null,
-            full_name: row[idx.fullName] || null,
-            payment_type: row[idx.paymentType] || null,
-            deposit_amount: row[idx.amount] ? parseFloat(row[idx.amount]) || 0 : 0,
-            admin_fee: row[idx.adminFee] ? parseFloat(row[idx.adminFee]) || 0 : 0,
-            agent_fee: row[idx.agentFee] ? parseFloat(row[idx.agentFee]) || 0 : 0,
-            player_fee: row[idx.playerFee] ? parseFloat(row[idx.playerFee]) || 0 : 0,
-            nett_amount: row[idx.nett] ? parseFloat(row[idx.nett]) || 0 : 0,
-            player_bank: row[idx.playerBank] || null,
-            bank_title: row[idx.bankTitle] || null,
-            remarks: row[idx.remarks] || null,
-            reference: row[idx.reference] || null,
-            status: row[idx.status] || null,
-            reason: row[idx.reason] || null,
-            handler: row[idx.handler] || null,
-            handler_ip: row[idx.handlerIp] || null,
-            creator: row[idx.creator] || null,
-            website: row[idx.website] || 'XLY',
-            file_name: selectedFile.name
-          })
-        } catch (e) {
-          console.log(`⚠️ Baris ${i + headerRowIndex + 2}: Gagal parse`)
-          continue
-        }
+        // Minimal approved date harus ada
+        if (!approvedDate) continue
+        
+        validTransactions.push({
+          nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
+          brand: row[idx.brand] || null,
+          ticket_number: row[idx.ticket] || null,
+          requested_date: requestedDate,
+          approved_date: approvedDate,
+          bank_statement_date: bankDate,
+          user_name: row[idx.userName] || null,
+          player_group: row[idx.playerGroup] || null,
+          full_name: row[idx.fullName] || null,
+          payment_type: row[idx.paymentType] || null,
+          deposit_amount: row[idx.amount] ? parseFloat(row[idx.amount]) || 0 : 0,
+          admin_fee: row[idx.adminFee] ? parseFloat(row[idx.adminFee]) || 0 : 0,
+          agent_fee: row[idx.agentFee] ? parseFloat(row[idx.agentFee]) || 0 : 0,
+          player_fee: row[idx.playerFee] ? parseFloat(row[idx.playerFee]) || 0 : 0,
+          nett_amount: row[idx.nett] ? parseFloat(row[idx.nett]) || 0 : 0,
+          player_bank: row[idx.playerBank] || null,
+          bank_title: row[idx.bankTitle] || null,
+          remarks: row[idx.remarks] || null,
+          reference: row[idx.reference] || null,
+          status: row[idx.status] || null,
+          reason: row[idx.reason] || null,
+          handler: row[idx.handler] || null,
+          handler_ip: row[idx.handlerIp] || null,
+          creator: row[idx.creator] || null,
+          website: row[idx.website] || 'XLY',
+          file_name: selectedFile.name
+        })
       }
 
       console.log('✅ Data valid:', validTransactions.length)
