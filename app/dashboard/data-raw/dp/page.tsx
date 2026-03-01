@@ -33,7 +33,6 @@ export default function DPDataRawPage() {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const [monthData, setMonthData] = useState<MonthData[]>([])
   const [loading, setLoading] = useState(true)
-  const [uploads, setUploads] = useState<UploadRecord[]>([])
 
   useEffect(() => {
     checkAccess()
@@ -41,48 +40,44 @@ export default function DPDataRawPage() {
   }, [])
 
   async function checkAccess() {
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  if (!user) {
-    router.push('/login')
-    return
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
+    // Cek role dari tabel profiles
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (error || profile?.role !== 'admin') {
+      router.push('/dashboard')
+      return
+    }
+
+    setLoading(false)
   }
 
-  // Opsi 1: Langsung lanjut aja (semua authenticated user bisa akses)
-  // setLoading(false)
-  
-  // Opsi 2: Cek dari user_metadata (kalo role disimpen di situ)
-  const role = user.user_metadata?.role || 'user'
-  if (role !== 'admin') {
-    router.push('/dashboard')
-  }
-  
-  setLoading(false)
-}
   async function loadUploads() {
-    setLoading(true)
-    
-    // Ambil data upload dari tabel deposit_uploads
     const { data, error } = await supabase
       .from('deposit_uploads')
       .select('upload_date, status, file_name, total_rows')
       .order('upload_date', { ascending: false })
 
-    if (error) {
-      console.error('Error loading uploads:', error)
-    } else {
-      setUploads(data || [])
-      generateMonthStructure(data || [])
+    if (!error && data) {
+      generateMonthStructure(data)
     }
-    
-    setLoading(false)
   }
 
   function generateMonthStructure(uploadsData: UploadRecord[]) {
     const months: { [key: string]: MonthData } = {}
     const today = new Date()
     
-    // Generate 6 bulan terakhir (bisa disesuaikan)
+    // Generate 6 bulan terakhir
     for (let i = 0; i < 6; i++) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1)
       const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`
@@ -95,12 +90,9 @@ export default function DPDataRawPage() {
         days: []
       }
       
-      // Generate semua hari dalam bulan
       const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
       for (let d = 1; d <= daysInMonth; d++) {
         const dayDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-        
-        // Cari apakah ada upload untuk tanggal ini
         const upload = uploadsData.find(u => u.upload_date === dayDate)
         
         months[monthKey].days.push({
@@ -115,18 +107,14 @@ export default function DPDataRawPage() {
     }
     
     setMonthData(Object.values(months))
+    setLoading(false)
   }
 
-  // Fungsi untuk handle klik upload per tanggal
   const handleUploadClick = (date: string) => {
-    // Nanti kita isi dengan fungsi upload file
     alert(`Upload untuk tanggal ${date}`)
-    // TODO: buka modal upload
   }
 
-  // Fungsi untuk handle lihat data per tanggal
   const handleViewData = (date: string) => {
-    // Nanti kita isi dengan navigasi ke detail tanggal
     router.push(`/dashboard/data-raw/dp/${date}`)
   }
 
@@ -169,7 +157,7 @@ export default function DPDataRawPage() {
         {monthData.map((month) => {
           const totalDays = month.days.length
           const uploadedDays = month.days.filter(d => d.hasUpload).length
-          const pendingDays = month.days.filter(d => d.uploadStatus === 'pending').length
+          const pendingDays = month.days.filter(d => d.uploadStatus === 'processing').length
           
           return (
             <div key={`${month.month}-${month.year}`} className="bg-white rounded-lg shadow overflow-hidden">
