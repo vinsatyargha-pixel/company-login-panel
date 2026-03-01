@@ -169,7 +169,7 @@ export default function DPDataRawPage() {
   }, [])
 
   // ===========================================
-  // UPLOAD PROCESS - SKIP 2 BARIS PERTAMA
+  // UPLOAD PROCESS - AUTO SKIP BARIS JUDUL
   // ===========================================
 
   const processFile = async () => {
@@ -184,68 +184,72 @@ export default function DPDataRawPage() {
       const sheetName = workbook.SheetNames[0]
       const worksheet = workbook.Sheets[sheetName]
       
-      // 🔥 Baca sebagai array per baris, skip baris judul
+      // 🔥 Baca sebagai array per baris
       const rows = XLSX.utils.sheet_to_json(worksheet, { 
-        header: 1,  // Baca sebagai array
-        defval: '', 
-        blankrows: false 
+        header: 1,
+        defval: '',
+        blankrows: false
       }) as any[][]
       
-      console.log('📋 Total baris (termasuk judul):', rows.length)
+      console.log('📋 Total baris:', rows.length)
       
-      // Baris 1: Judul (skip)
-      // Baris 2: Header kolom
-      // Baris 3 dst: Data
-      
-      if (rows.length < 3) {
-        throw new Error('File Excel tidak memiliki data yang cukup')
+      // 🔥 CARI BARIS HEADER (yang ada "No.")
+      let headerRowIndex = -1
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
+        if (row && row[0] && row[0].toString().includes('No.')) {
+          headerRowIndex = i
+          break
+        }
       }
       
-      const headers = rows[1] || [] // Header di baris ke-2
-      const dataRows = rows.slice(2) // Data mulai baris ke-3
+      if (headerRowIndex === -1) {
+        throw new Error('Tidak menemukan baris header (No.)')
+      }
+      
+      const headers = rows[headerRowIndex]
+      const dataRows = rows.slice(headerRowIndex + 1)
       
       console.log('📋 Headers:', headers)
       console.log('📊 Jumlah baris data:', dataRows.length)
       
-      // Mapping index kolom
-      const findColumnIndex = (keyword: string) => {
-        return headers.findIndex(h => 
+      // Cari index kolom yang diperlukan
+      const findIndex = (keyword: string) => {
+        return headers.findIndex((h: string) => 
           h && h.toString().toLowerCase().includes(keyword.toLowerCase())
         )
       }
       
       const idx = {
         no: 0,
-        brand: 1,
-        ticket: 2,
-        requested: 3,
-        approved: findColumnIndex('Approved Date'),
-        bank: 5,
-        userName: 6,
-        playerGroup: 7,
-        fullName: 8,
-        paymentType: 9,
-        amount: 10,
-        adminFee: 11,
-        agentFee: 12,
-        playerFee: 13,
-        nett: 14,
-        playerBank: 15,
-        bankTitle: 16,
-        remarks: 17,
-        reference: 18,
-        status: 19,
-        reason: 20,
-        handler: 21,
-        handlerIp: 22,
-        creator: 23,
-        website: 24
+        brand: findIndex('brand'),
+        ticket: findIndex('ticket'),
+        requested: findIndex('requested'),
+        approved: findIndex('approved date'),
+        bank: findIndex('bank statement'),
+        userName: findIndex('user name'),
+        playerGroup: findIndex('player group'),
+        fullName: findIndex('full name'),
+        paymentType: findIndex('payment type'),
+        amount: findIndex('deposit amount'),
+        adminFee: findIndex('admin fee'),
+        agentFee: findIndex('agent fee'),
+        playerFee: findIndex('player fee'),
+        nett: findIndex('nett amount'),
+        playerBank: findIndex('player bank'),
+        bankTitle: findIndex('bank title'),
+        remarks: findIndex('remarks'),
+        reference: findIndex('reference'),
+        status: findIndex('status'),
+        reason: findIndex('reason'),
+        handler: findIndex('handler'),
+        handlerIp: findIndex('handlerip'),
+        creator: findIndex('creator'),
+        website: findIndex('website')
       }
       
-      console.log('📋 Index kolom Approved Date:', idx.approved)
-      
       if (idx.approved === -1) {
-        throw new Error('Kolom "Approved Date" tidak ditemukan di file Excel')
+        throw new Error('Kolom Approved Date tidak ditemukan')
       }
       
       setUploadProgress('Memvalidasi data...')
@@ -253,12 +257,13 @@ export default function DPDataRawPage() {
       // Transform data
       const transactions = dataRows
         .map((row: any[], index) => {
-          if (!row || row.length === 0 || !row[idx.approved]) return null
+          if (!row || row.length === 0) return null
+          if (row[0]?.toString().includes('GRAND TOTAL')) return null
           
           const dateStr = row[idx.approved]
-          if (!dateStr || dateStr.toString().includes('GRAND TOTAL')) return null
+          if (!dateStr) return null
           
-          // Parse tanggal (format: "18-Jan-2026 22:19:09, Platform: (Web)")
+          // Parse tanggal
           let date: Date | null = null
           try {
             const cleanDateStr = dateStr.toString().split(',')[0].trim()
@@ -277,7 +282,6 @@ export default function DPDataRawPage() {
               date = new Date(cleanDateStr)
             }
           } catch (e) {
-            console.log(`⚠️ Baris ${index + 3}: Gagal parse tanggal:`, dateStr)
             return null
           }
           
@@ -314,7 +318,7 @@ export default function DPDataRawPage() {
         })
         .filter(Boolean)
 
-      console.log('✅ Data valid:', transactions.length, 'baris')
+      console.log('✅ Data valid:', transactions.length)
       
       if (transactions.length === 0) {
         throw new Error('Tidak ada data valid dalam file')
