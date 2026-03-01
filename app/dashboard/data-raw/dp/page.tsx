@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import * as XLSX from 'xlsx'
 
 // ===========================================
 // TYPE DEFINITIONS - Data konkrit & detail
@@ -41,12 +42,17 @@ type DayData = {
 // ===========================================
 
 export default function DPDataRawPage() {
-  // STATE dengan tipe yang jelas
+  // STATE
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const [monthData, setMonthData] = useState<MonthData[]>([])
   const [uploads, setUploads] = useState<DepositUpload[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // STATE UPLOAD MODAL
+  const [showModal, setShowModal] = useState<boolean>(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState<boolean>(false)
 
   // ===========================================
   // EFFECT: Ambil data dari Supabase
@@ -120,17 +126,134 @@ export default function DPDataRawPage() {
   }
 
   // ===========================================
-  // HANDLERS
+  // UPLOAD HANDLER - BEBAS 1 KALI LEMPAR
   // ===========================================
 
-  const handleUploadClick = (date: string) => {
-    alert(`Upload untuk tanggal ${date}`)
-    // TODO: buka modal upload
+  const handleUploadClick = () => {
+    setShowModal(true)
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadFile(e.target.files[0])
+    }
+  }
+
+  const processExcelFile = async () => {
+    if (!uploadFile) return
+    
+    setUploading(true)
+    
+    try {
+      // Baca file Excel
+      const data = await uploadFile.arrayBuffer()
+      const workbook = XLSX.read(data)
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      const jsonData = XLSX.utils.sheet_to_json(worksheet)
+      
+      console.log('Data dari Excel:', jsonData)
+      
+      // 🔥 KELOMPOKKAN BERDASARKAN APPROVED DATE
+      const groupedByDate: { [key: string]: any[] } = {}
+      
+      jsonData.forEach((row: any) => {
+        // Ambil approved_date (format: "28-Feb-2026 23:31:15")
+        const approvedDateStr = row['Approved Date']
+        if (!approvedDateStr) return
+        
+        // Konversi ke format YYYY-MM-DD
+        const dateObj = new Date(approvedDateStr)
+        const dateKey = dateObj.toISOString().split('T')[0] // 2026-02-28
+        
+        if (!groupedByDate[dateKey]) {
+          groupedByDate[dateKey] = []
+        }
+        groupedByDate[dateKey].push(row)
+      })
+      
+      console.log('Data per tanggal:', groupedByDate)
+      
+      // 🔥 INSERT KE DATABASE PER TANGGAL
+      let totalInserted = 0
+      const uploadResults = []
+      
+      for (const [date, rows] of Object.entries(groupedByDate)) {
+        // Insert batch untuk tanggal ini
+        const { data: insertedData, error } = await supabase
+          .from('deposit_report')
+          .insert(rows.map((row: any) => ({
+            nomor: row['No.'],
+            brand: row['Brand'],
+            ticket_number: row['Ticket Number'],
+            requested_date: row['Requested Date'],
+            approved_date: row['Approved Date'],
+            bank_statement_date: row['Bank Statement Date'],
+            user_name: row['User Name'],
+            player_group: row['Player Group'],
+            full_name: row['Full Name'],
+            payment_type: row['Payment Type'],
+            deposit_amount: row['Deposit Amount'],
+            admin_fee: row['Admin Fee'],
+            agent_fee: row['Agent Fee'],
+            player_fee: row['Player Fee'],
+            nett_amount: row['Nett Amount'],
+            player_bank: row['Player Bank'],
+            bank_title: row['Bank Title'],
+            remarks: row['Remarks'],
+            reference: row['Reference'],
+            status: row['Status'],
+            reason: row['Reason'],
+            handler: row['Handler'],
+            handler_ip: row['HandlerIP'],
+            creator: row['Creator'],
+            website: row['Website'],
+            referral_code: row['Referral Code'],
+            own_referral_code: row['Own Referral Code'],
+            bonus: row['Bonus'],
+            statement_status: row['Statement Status'],
+            file_name: uploadFile.name
+          })))
+          .select()
+        
+        if (error) throw error
+        
+        totalInserted += rows.length
+        uploadResults.push({
+          date,
+          count: rows.length,
+          status: 'completed'
+        })
+      }
+      
+      // 🔥 UPDATE TABEL UPLOADS untuk tracking per tanggal
+      for (const result of uploadResults) {
+        await supabase
+          .from('deposit_uploads')
+          .insert({
+            upload_date: result.date,
+            file_name: uploadFile.name,
+            total_rows: result.count,
+            status: result.status
+          })
+      }
+      
+      alert(`✅ Berhasil! ${totalInserted} data dari ${Object.keys(groupedByDate).length} tanggal berbeda`)
+      
+      setShowModal(false)
+      setUploadFile(null)
+      fetchUploads() // Refresh tampilan
+      
+    } catch (error: any) {
+      console.error('Error:', error)
+      alert('❌ Gagal: ' + error.message)
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleViewData = (date: string) => {
-    alert(`Lihat data untuk tanggal ${date}`)
-    // TODO: navigasi ke halaman detail
+    alert(`Lihat data untuk tanggal ${date} (Fitur dalam pengembangan)`)
   }
 
   // ===========================================
@@ -170,9 +293,20 @@ export default function DPDataRawPage() {
       </Link>
       
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#FFD700]">DEPOSIT DATA RAW</h1>
-        <p className="text-[#A7D8FF] mt-2">Kelola file import deposit per bulan</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-[#FFD700]">DEPOSIT DATA RAW</h1>
+          <p className="text-[#A7D8FF] mt-2">Upload file Excel, sistem otomatis kelompokkan per tanggal</p>
+        </div>
+        <button
+          onClick={handleUploadClick}
+          className="bg-[#FFD700] text-[#0B1A33] px-6 py-3 rounded-lg font-bold hover:bg-[#FFD700]/80 transition-colors flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          Upload File Excel
+        </button>
       </div>
 
       {/* Summary Cards */}
@@ -188,7 +322,7 @@ export default function DPDataRawPage() {
           </div>
         </div>
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-sm text-[#A7D8FF]">Success</div>
+          <div className="text-sm text-[#A7D8FF]">Tanggal Terisi</div>
           <div className="text-2xl font-bold text-green-400">
             {uploads.filter(u => u.status === 'completed').length}
           </div>
@@ -290,12 +424,9 @@ export default function DPDataRawPage() {
                           Lihat ({day.totalData || 0})
                         </button>
                       ) : (
-                        <button 
-                          onClick={() => handleUploadClick(day.date)}
-                          className="text-xs bg-[#FFD700]/20 text-[#FFD700] px-2 py-1 rounded hover:bg-[#FFD700]/30"
-                        >
-                          Upload
-                        </button>
+                        <div className="text-xs text-gray-500 px-2 py-1">
+                          Kosong
+                        </div>
                       )}
                     </div>
                   ))}
@@ -304,19 +435,64 @@ export default function DPDataRawPage() {
 
               {/* Summary */}
               <div className="px-4 py-2 bg-[#0B1A33]/50 text-xs text-gray-400 flex justify-between border-t border-[#FFD700]/30">
-                <span>✅ Sukses: {uploadedDays - failedDays}</span>
+                <span>✅ Terisi: {uploadedDays - failedDays}</span>
                 {pendingDays > 0 && (
                   <span className="text-yellow-400">⏳ Proses: {pendingDays}</span>
                 )}
                 {failedDays > 0 && (
                   <span className="text-red-400">❌ Gagal: {failedDays}</span>
                 )}
-                <span className="text-gray-500">⚪ Sisa: {totalDays - uploadedDays}</span>
+                <span className="text-gray-500">⚪ Kosong: {totalDays - uploadedDays}</span>
               </div>
             </div>
           )
         })}
       </div>
+
+      {/* MODAL UPLOAD */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
+            <h2 className="text-xl font-bold text-[#FFD700] mb-4">Upload File Deposit</h2>
+            <p className="text-sm text-[#A7D8FF] mb-4">
+              Pilih file Excel. Sistem akan otomatis mengelompokkan data berdasarkan <span className="text-[#FFD700] font-medium">Approved Date</span>.
+            </p>
+            
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              onChange={handleFileChange}
+              className="mb-4 w-full text-white"
+            />
+            
+            {uploadFile && (
+              <div className="bg-[#0B1A33] p-3 rounded-lg mb-4">
+                <p className="text-sm text-green-400">File: {uploadFile.name}</p>
+                <p className="text-xs text-gray-400 mt-1">{(uploadFile.size / 1024).toFixed(2)} KB</p>
+              </div>
+            )}
+            
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => {
+                  setShowModal(false)
+                  setUploadFile(null)
+                }}
+                className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={processExcelFile}
+                disabled={!uploadFile || uploading}
+                className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded font-bold hover:bg-[#FFD700]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {uploading ? 'Memproses...' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Info Panel */}
       <div className="mt-8 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg p-4">
@@ -327,11 +503,12 @@ export default function DPDataRawPage() {
             </svg>
           </div>
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-[#FFD700]">Informasi Data</h3>
-            <div className="mt-1 text-sm text-[#A7D8FF]">
-              <p>• Total {uploads.length} file upload terdeteksi</p>
-              <p>• Klik bulan untuk lihat detail tanggal</p>
-              <p>• Tombol Upload untuk menambah file baru</p>
+            <h3 className="text-sm font-medium text-[#FFD700]">✨ Cara Kerja</h3>
+            <div className="mt-1 text-sm text-[#A7D8FF] space-y-1">
+              <p>• Upload 1 file Excel berisi banyak transaksi</p>
+              <p>• Sistem otomatis kelompokkan berdasarkan kolom <span className="text-[#FFD700]">Approved Date</span></p>
+              <p>• Setiap tanggal yang muncul akan otomatis ter-ceklist ✅</p>
+              <p>• Total file: {uploads.length} | Total data: {uploads.reduce((sum, u) => sum + (u.total_rows || 0), 0)} baris</p>
             </div>
           </div>
         </div>
