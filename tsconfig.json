@@ -22,8 +22,9 @@
         "name": "next"
       }
     ],
-    "baseUrl": ".",                      // <== tambahkan ini
-    "paths": {                          // <== tambahkan ini
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["*"],
       "@lib/*": ["lib/*"]
     }
   },
