@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../../../../lib/supabaseClient'
+import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -47,7 +47,6 @@ export default function DPDataRawPage() {
       return
     }
 
-    // Cek role dari tabel profiles
     const { data: profile, error } = await supabase
       .from('profiles')
       .select('role')
@@ -77,7 +76,6 @@ export default function DPDataRawPage() {
     const months: { [key: string]: MonthData } = {}
     const today = new Date()
     
-    // Generate 6 bulan terakhir
     for (let i = 0; i < 6; i++) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1)
       const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`
@@ -128,14 +126,12 @@ export default function DPDataRawPage() {
 
   return (
     <div className="p-6">
-      {/* Breadcrumb */}
       <div className="text-sm text-gray-500 mb-4">
         <Link href="/dashboard" className="hover:text-blue-600">Dashboard</Link> &gt;{' '}
         <Link href="/dashboard/data-raw" className="hover:text-blue-600">Data Raw</Link> &gt;{' '}
         <span className="text-blue-600 font-semibold">DP Data Raw</span>
       </div>
 
-      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Deposit Data Raw</h1>
@@ -152,7 +148,6 @@ export default function DPDataRawPage() {
         </button>
       </div>
 
-      {/* Grid Bulan */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {monthData.map((month) => {
           const totalDays = month.days.length
@@ -161,7 +156,6 @@ export default function DPDataRawPage() {
           
           return (
             <div key={`${month.month}-${month.year}`} className="bg-white rounded-lg shadow overflow-hidden">
-              {/* Header Bulan */}
               <div 
                 className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center cursor-pointer hover:bg-gray-100"
                 onClick={() => setSelectedMonth(selectedMonth === month.month ? null : month.month)}
@@ -182,13 +176,11 @@ export default function DPDataRawPage() {
                 </div>
               </div>
 
-              {/* List Tanggal */}
               {selectedMonth === month.month && (
                 <div className="divide-y max-h-96 overflow-y-auto">
                   {month.days.map((day) => (
                     <div key={day.date} className="px-4 py-2 hover:bg-gray-50 flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        {/* Status Indicator */}
                         {day.uploadStatus === 'processing' ? (
                           <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
                         ) : day.hasUpload ? (
@@ -197,19 +189,16 @@ export default function DPDataRawPage() {
                           <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                         )}
                         
-                        {/* Tanggal */}
                         <span className="text-sm">
                           {day.day} {month.month.split(' ')[0]} {month.year}
                         </span>
 
-                        {/* Badge Status */}
                         {day.uploadStatus === 'processing' && (
                           <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">
                             Processing
                           </span>
                         )}
                         
-                        {/* Keterangan file */}
                         {day.hasUpload && day.fileName && (
                           <span className="text-xs text-gray-500 truncate max-w-[150px]">
                             {day.fileName.length > 20 ? day.fileName.substring(0, 20) + '...' : day.fileName}
@@ -217,7 +206,6 @@ export default function DPDataRawPage() {
                         )}
                       </div>
 
-                      {/* Action Button */}
                       {day.hasUpload ? (
                         <button 
                           onClick={() => handleViewData(day.date)}
@@ -238,7 +226,6 @@ export default function DPDataRawPage() {
                 </div>
               )}
 
-              {/* Summary */}
               <div className="px-4 py-2 bg-gray-50 text-xs text-gray-600 flex justify-between border-t">
                 <span>✅ Terupload: {uploadedDays} hari</span>
                 {pendingDays > 0 && (
@@ -251,7 +238,6 @@ export default function DPDataRawPage() {
         })}
       </div>
 
-      {/* Info Panel */}
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start">
           <div className="flex-shrink-0">

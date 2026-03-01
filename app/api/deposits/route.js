@@ -17,7 +17,7 @@ export async function GET() {
   return NextResponse.json(data)
 }
 
-export async function POST(req: Request) {
+export async function POST(req) {
   const supabase = createRouteHandlerClient({ cookies })
   const body = await req.json()
   
