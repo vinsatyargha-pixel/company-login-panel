@@ -127,71 +127,53 @@ export default function DPDataRawPage() {
   // ===========================================
 
   const processExcelFile = async () => {
-    if (!uploadFile) return
-    
-    setUploading(true)
-    
-    try {
-      const arrayBuffer = await uploadFile.arrayBuffer()
-      const workbook = XLSX.read(arrayBuffer)
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet)
-      
-      // Kelompokkan berdasarkan tanggal
-      const groupedByDate: { [key: string]: any[] } = {}
-      
-      jsonData.forEach((row: any) => {
-        // Coba ambil dari Approved Date atau kolom tanggal lainnya
-        const dateStr = row['Approved Date'] || row['upload_date'] || row['tanggal']
-        if (!dateStr) return
-        
-        const dateObj = new Date(dateStr)
-        const dateKey = dateObj.toISOString().split('T')[0]
-        
-        if (!groupedByDate[dateKey]) {
-          groupedByDate[dateKey] = []
-        }
-        groupedByDate[dateKey].push(row)
-      })
-      
-      // Insert ke deposit_report (opsional, kalo ada tabelnya)
-      // Insert ke deposit_uploads untuk tracking
-      let totalInserted = 0
-      const uploadResults = []
-      
-      for (const [date, rows] of Object.entries(groupedByDate)) {
-        // Insert ke deposit_uploads
-        const { error } = await supabase
-          .from('deposit_uploads')
-          .insert({
-            upload_date: date,
-            file_name: uploadFile.name,
-            total_rows: rows.length,
-            status: 'completed',
-            website: rows[0]?.Website || rows[0]?.website || 'XLY'
-          })
-        
-        if (error) throw error
-        
-        totalInserted += rows.length
-        uploadResults.push({ date, count: rows.length })
-      }
-      
-      alert(`✅ Berhasil! ${totalInserted} data dari ${uploadResults.length} tanggal`)
-      
-      // Reset modal dan refresh data
-      setShowModal(false)
-      setUploadFile(null)
-      fetchUploads()
-      
-    } catch (error: any) {
-      console.error('Upload error:', error)
-      alert('❌ Gagal: ' + error.message)
-    } finally {
-      setUploading(false)
-    }
+  if (!uploadFile) {
+    alert('Pilih file dulu!')
+    return
   }
+  
+  setUploading(true)
+  
+  try {
+    // Baca file
+    const arrayBuffer = await uploadFile.arrayBuffer()
+    const workbook = XLSX.read(arrayBuffer)
+    const sheetName = workbook.SheetNames[0]
+    const worksheet = workbook.Sheets[sheetName]
+    
+    // Konversi ke JSON
+    const jsonData = XLSX.utils.sheet_to_json(worksheet)
+    console.log('Data dari Excel:', jsonData)
+    
+    // Proses data (contoh sederhana)
+    const totalRows = jsonData.length
+    
+    // Insert ke database (contoh pake deposit_uploads)
+    const { error } = await supabase
+      .from('deposit_uploads')
+      .insert({
+        upload_date: new Date().toISOString().split('T')[0],
+        file_name: uploadFile.name,
+        total_rows: totalRows,
+        status: 'completed'
+      })
+    
+    if (error) throw error
+    
+    alert(`✅ Berhasil upload ${totalRows} data!`)
+    
+    // Tutup modal dan refresh
+    setShowModal(false)
+    setUploadFile(null)
+    fetchUploads() // Panggil ulang data
+    
+  } catch (error: any) {
+    console.error('Error:', error)
+    alert('❌ Gagal: ' + error.message)
+  } finally {
+    setUploading(false)
+  }
+}
 
   // ===========================================
   // HELPER FUNCTIONS
