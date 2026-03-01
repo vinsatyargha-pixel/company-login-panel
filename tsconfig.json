@@ -21,7 +21,11 @@
       {
         "name": "next"
       }
-    ]
+    ],
+    "baseUrl": ".",                      // <== tambahkan ini
+    "paths": {                          // <== tambahkan ini
+      "@lib/*": ["lib/*"]
+    }
   },
   "include": [
     "next-env.d.ts",
