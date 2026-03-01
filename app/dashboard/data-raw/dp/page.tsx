@@ -5,36 +5,88 @@ import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 
+// ===========================================
+// TYPES
+// ===========================================
+
 type DepositUpload = {
   id: string
   upload_date: string
   file_name: string
   total_rows: number
-  status: string
+  status: 'completed' | 'processing' | 'failed'
+  website?: string
 }
 
+type Asset = {
+  id: string
+  asset_name: string
+  asset_code: string
+}
+
+// ===========================================
+// MAIN COMPONENT
+// ===========================================
+
 export default function DPDataRawPage() {
+  // Data states
   const [uploads, setUploads] = useState<DepositUpload[]>([])
+  const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Filter states
+  const [selectedMonth, setSelectedMonth] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
+  const [selectedAsset, setSelectedAsset] = useState('all')
+  
+  // Upload modal states
   const [showModal, setShowModal] = useState(false)
   const [uploading, setUploading] = useState(false)
-  
-  // Drag & Drop states
   const [dragActive, setDragActive] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState('')
 
-  // Filter states
-  const [selectedMonth, setSelectedMonth] = useState('Maret')
-  const [selectedYear, setSelectedYear] = useState('2026')
-  const [selectedAsset, setSelectedAsset] = useState('all')
-
-  const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+  const months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ]
   const years = ['2025', '2026', '2027']
 
   // ===========================================
-  // FETCH UPLOADS
+  // INITIAL DATA
   // ===========================================
-  
+
+  useEffect(() => {
+    const today = new Date()
+    setSelectedMonth(months[today.getMonth()])
+    setSelectedYear(today.getFullYear().toString())
+    fetchAssets()
+  }, [])
+
+  useEffect(() => {
+    if (selectedMonth && selectedYear) {
+      fetchUploads()
+    }
+  }, [selectedMonth, selectedYear, selectedAsset])
+
+  // ===========================================
+  // FETCH FUNCTIONS
+  // ===========================================
+
+  const fetchAssets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('assets')
+        .select('id, asset_name, asset_code')
+        .order('asset_name')
+      
+      if (error) throw error
+      setAssets(data || [])
+    } catch (error) {
+      console.error('Error fetching assets:', error)
+    }
+  }
+
   const fetchUploads = async () => {
     try {
       setLoading(true)
@@ -43,26 +95,30 @@ export default function DPDataRawPage() {
       const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-31`
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('deposit_uploads')
         .select('*')
         .gte('upload_date', startDate)
         .lte('upload_date', endDate)
         .order('upload_date', { ascending: true })
 
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset)
+        if (asset) {
+          query = query.eq('website', asset.asset_code)
+        }
+      }
+
+      const { data, error } = await query
       if (error) throw error
-      setUploads(data || [])
       
+      setUploads(data || [])
     } catch (error) {
       console.error('Error fetching uploads:', error)
     } finally {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    fetchUploads()
-  }, [selectedMonth, selectedYear, selectedAsset])
 
   // ===========================================
   // DRAG & DROP HANDLERS
@@ -99,70 +155,106 @@ export default function DPDataRawPage() {
   }, [])
 
   // ===========================================
-  // PROCESS FILE
+  // UPLOAD PROCESS
   // ===========================================
 
   const processFile = async () => {
-  if (!selectedFile) return
-  
-  setUploading(true)
-  
-  try {
-    const arrayBuffer = await selectedFile.arrayBuffer()
-    const workbook = XLSX.read(arrayBuffer)
-    const sheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[sheetName]
-    const jsonData = XLSX.utils.sheet_to_json(worksheet)
+    if (!selectedFile) return
     
-    console.log('Data mentah dari Excel:', jsonData)
+    setUploading(true)
+    setUploadProgress('Membaca file...')
     
-    // 🔥 KELOMPOKKAN PER TANGGAL (Approved Date)
-    const groupedByDate: { [key: string]: any[] } = {}
-    
-    jsonData.forEach((row: any) => {
-      // UBAH INI SESUAI FORMAT KOLOM DI EXCEL LO
-      const dateStr = row['Approved Date'] || row['approved_date'] || row['tanggal']
-      if (!dateStr) return
+    try {
+      // Baca file Excel
+      const arrayBuffer = await selectedFile.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer)
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      const jsonData = XLSX.utils.sheet_to_json(worksheet)
       
-      const dateObj = new Date(dateStr)
-      const dateKey = dateObj.toISOString().split('T')[0] // 2026-01-15
+      console.log('📊 Data mentah dari Excel:', jsonData)
       
-      if (!groupedByDate[dateKey]) {
-        groupedByDate[dateKey] = []
+      // Kelompokkan berdasarkan tanggal (Approved Date)
+      setUploadProgress('Mengelompokkan data per tanggal...')
+      const groupedByDate: { [key: string]: any[] } = {}
+      
+      jsonData.forEach((row: any) => {
+        // Sesuaikan dengan nama kolom di Excel lo
+        const dateStr = row['Approved Date'] || row['approved_date'] || row['tanggal']
+        if (!dateStr) return
+        
+        const dateObj = new Date(dateStr)
+        if (isNaN(dateObj.getTime())) return // Skip kalo tanggal invalid
+        
+        const dateKey = dateObj.toISOString().split('T')[0]
+        
+        if (!groupedByDate[dateKey]) {
+          groupedByDate[dateKey] = []
+        }
+        groupedByDate[dateKey].push(row)
+      })
+      
+      console.log('📅 Data per tanggal:', groupedByDate)
+      
+      // Insert ke database
+      setUploadProgress('Menyimpan ke database...')
+      let totalInserted = 0
+      
+      for (const [date, rows] of Object.entries(groupedByDate)) {
+        console.log(`📝 Insert untuk ${date}: ${rows.length} baris`)
+        
+        const { data, error } = await supabase
+          .from('deposit_uploads')
+          .insert({
+            upload_date: date,
+            file_name: selectedFile.name,
+            total_rows: rows.length,
+            status: 'completed',
+            // website: rows[0]?.Website || 'XLY' // Uncomment kalo ada kolom website
+          })
+          .select()
+        
+        if (error) {
+          console.error('❌ Error insert:', error)
+          throw error
+        }
+        
+        console.log(`✅ Sukses insert ${date}:`, data)
+        totalInserted += rows.length
       }
-      groupedByDate[dateKey].push(row)
-    })
-    
-    console.log('Data per tanggal:', groupedByDate)
-    
-    // 🔥 INSERT KE SUPABASE
-    for (const [date, rows] of Object.entries(groupedByDate)) {
-      const { error } = await supabase
-        .from('deposit_uploads')
-        .insert({
-          upload_date: date,
-          file_name: selectedFile.name,
-          total_rows: rows.length,
-          status: 'completed'
-          // website: rows[0]?.Website || 'XLY'  // KALO ADA KOLOM ASSET
-        })
       
-      if (error) throw error
+      alert(`✅ Berhasil! ${totalInserted} data dari ${Object.keys(groupedByDate).length} tanggal`)
+      
+      // Reset modal dan refresh data
+      setShowModal(false)
+      setSelectedFile(null)
+      fetchUploads()
+      
+    } catch (error: any) {
+      console.error('❌ Upload error:', error)
+      alert('❌ Gagal: ' + error.message)
+    } finally {
+      setUploading(false)
+      setUploadProgress('')
     }
-    
-    alert(`✅ Berhasil! Data dari ${Object.keys(groupedByDate).length} tanggal`)
-    
-    setShowModal(false)
-    setSelectedFile(null)
-    fetchUploads()
-    
-  } catch (error: any) {
-    console.error('Error:', error)
-    alert('❌ Gagal: ' + error.message)
-  } finally {
-    setUploading(false)
   }
-}
+
+  // ===========================================
+  // HELPER FUNCTIONS
+  // ===========================================
+
+  const getDayFromDate = (dateStr: string) => {
+    return new Date(dateStr).getDate()
+  }
+
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'completed': return 'bg-green-500/20 text-green-400'
+      case 'processing': return 'bg-yellow-500/20 text-yellow-400'
+      case 'failed': return 'bg-red-500/20 text-red-400'
+      default: return 'bg-gray-500/20 text-gray-400'
+    }
+  }
 
   // ===========================================
   // RENDER
@@ -178,7 +270,7 @@ export default function DPDataRawPage() {
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-      {/* Header */}
+      {/* Header with Back Button */}
       <div className="mb-6 flex justify-between items-center">
         <Link href="/dashboard/data-raw" className="text-[#FFD700] hover:underline">
           ← BACK TO DATA RAW
@@ -197,28 +289,39 @@ export default function DPDataRawPage() {
 
       <h1 className="text-3xl font-bold text-[#FFD700] mb-6">DEPOSIT DATA RAW</h1>
 
-      {/* Filters */}
-      <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex gap-4">
+      {/* FILTERS */}
+      <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-4 py-2"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
         >
-          {months.map(m => <option key={m}>{m}</option>)}
+          {months.map(month => (
+            <option key={month} value={month}>{month}</option>
+          ))}
         </select>
+        
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-4 py-2"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
         >
-          {years.map(y => <option key={y}>{y}</option>)}
+          {years.map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
         </select>
+        
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-4 py-2"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
           value={selectedAsset}
           onChange={(e) => setSelectedAsset(e.target.value)}
         >
           <option value="all">SEMUA ASSET</option>
+          {assets.map(asset => (
+            <option key={asset.id} value={asset.id}>
+              {asset.asset_name}
+            </option>
+          ))}
         </select>
 
         <div className="ml-auto text-[#A7D8FF]">
@@ -226,7 +329,7 @@ export default function DPDataRawPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* TABLE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
@@ -238,26 +341,33 @@ export default function DPDataRawPage() {
             </tr>
           </thead>
           <tbody>
-            {uploads.map((upload) => {
-              const day = new Date(upload.upload_date).getDate()
-              return (
-                <tr key={upload.id} className="border-b border-[#FFD700]/10">
-                  <td className="px-4 py-3">{day} {selectedMonth} {selectedYear}</td>
-                  <td className="px-4 py-3">{upload.file_name}</td>
+            {uploads.length > 0 ? (
+              uploads.map((upload) => (
+                <tr key={upload.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                  <td className="px-4 py-3">
+                    {getDayFromDate(upload.upload_date)} {selectedMonth} {selectedYear}
+                  </td>
+                  <td className="px-4 py-3 text-[#A7D8FF]">{upload.file_name}</td>
                   <td className="px-4 py-3">{upload.total_rows} data</td>
                   <td className="px-4 py-3">
-                    <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-xs">
+                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(upload.status)}`}>
                       {upload.status}
                     </span>
                   </td>
                 </tr>
-              )
-            })}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                  Tidak ada data untuk periode ini
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* MODAL DRAG & DROP */}
+      {/* UPLOAD MODAL - DRAG & DROP */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
@@ -266,7 +376,7 @@ export default function DPDataRawPage() {
               Geser file Excel ke area di bawah, atau klik untuk memilih
             </p>
             
-            {/* Drag & Drop Area */}
+            {/* DRAG & DROP AREA */}
             <div
               className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer transition-colors
                 ${dragActive 
@@ -304,12 +414,20 @@ export default function DPDataRawPage() {
               )}
             </div>
             
-            {/* Buttons */}
+            {/* PROGRESS */}
+            {uploadProgress && (
+              <div className="mb-4 text-sm text-[#A7D8FF] text-center">
+                {uploadProgress}
+              </div>
+            )}
+            
+            {/* ACTION BUTTONS */}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
                   setShowModal(false)
                   setSelectedFile(null)
+                  setUploadProgress('')
                 }}
                 className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded transition-colors"
               >
@@ -323,7 +441,7 @@ export default function DPDataRawPage() {
                 {uploading ? (
                   <span className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-[#0B1A33] border-t-transparent rounded-full animate-spin"></div>
-                    Memproses...
+                    Uploading...
                   </span>
                 ) : 'Upload'}
               </button>
