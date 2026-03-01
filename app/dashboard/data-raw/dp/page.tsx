@@ -22,6 +22,16 @@ type DepositData = {
   file_name: string
 }
 
+type AssetStats = {
+  [key: string]: {
+    total: number
+    approved: number
+    rejected: number
+    failed: number
+    amount: number
+  }
+}
+
 export default function DPDataRawPage() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [selectedAsset, setSelectedAsset] = useState<string>('all')
@@ -31,8 +41,8 @@ export default function DPDataRawPage() {
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
 
-  // Stats per asset
-  const [assetStats, setAssetStats] = useState({})
+  // Stats per asset - dengan type yang bener
+  const [assetStats, setAssetStats] = useState<AssetStats>({})
 
   // Modal upload
   const [showModal, setShowModal] = useState(false)
@@ -68,7 +78,7 @@ export default function DPDataRawPage() {
   }
 
   // ===========================================
-  // FILTER TANGGAL (SAMA PERSIS DENGAN ASSETS)
+  // FILTER TANGGAL
   // ===========================================
 
   const getDateRange = (filter: string) => {
@@ -146,8 +156,9 @@ export default function DPDataRawPage() {
 
       setDepositData(data || [])
 
-      // Hitung stats per asset
-      const stats = {}
+      // Hitung stats per asset - dengan type yang bener
+      const stats: AssetStats = {}
+      
       assets.forEach(asset => {
         const assetTransactions = (data || []).filter(t => 
           t.website === asset.asset_code || t.website === asset.wlb_code
@@ -251,7 +262,7 @@ export default function DPDataRawPage() {
     }
   }
 
-  // Format IDR (sama dengan di assets)
+  // Format IDR
   const formatIDR = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -300,7 +311,7 @@ export default function DPDataRawPage() {
         </div>
       </div>
 
-      {/* FILTER - SAMA PERSIS DENGAN ASSETS */}
+      {/* FILTER */}
       <div className="mb-8 p-4 border border-[#FFD700]/30 rounded-lg bg-[#1A2F4A]">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1">
@@ -411,7 +422,7 @@ export default function DPDataRawPage() {
         </div>
       </div>
 
-      {/* ASSETS LIST - SAMA PERSIS DENGAN TAMPILAN ASSETS */}
+      {/* ASSETS LIST */}
       <div className="space-y-6">
         {(selectedAsset === 'all' ? assets : assets.filter(a => a.id === selectedAsset)).map(asset => {
           const stats = assetStats[asset.id] || {
