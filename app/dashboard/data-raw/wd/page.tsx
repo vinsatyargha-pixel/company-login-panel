@@ -124,32 +124,22 @@ export default function WDDataRawPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      console.log('🔍 Filter Supabase:', { 
-        table: 'withdrawal_uploads',
+      console.log('🔍 Filter:', { 
+        selectedMonth, 
+        selectedYear,
+        monthIndex,
         startDate, 
-        endDate,
-        selectedMonth,
-        selectedYear
+        endDate 
       })
 
-      // 🔥 FILTER LANGSUNG DI SUPABASE (PALING AMAN)
-      let query = supabase
+      // 🔥 FILTER LANGSUNG PAKAI SUPABASE
+      const { data, error } = await supabase
         .from('withdrawal_uploads')
         .select('*')
         .gte('upload_date', startDate)
         .lte('upload_date', endDate)
         .order('upload_date', { ascending: true })
 
-      // Tambah filter asset kalo diperlukan
-      if (selectedAsset !== 'all') {
-        const asset = assets.find(a => a.id === selectedAsset)
-        if (asset) {
-          query = query.eq('website', asset.asset_code)
-        }
-      }
-
-      const { data, error } = await query
-      
       if (error) {
         console.error('❌ Error Supabase:', error)
         throw error
@@ -218,7 +208,7 @@ export default function WDDataRawPage() {
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
 
-      // Handle string format: "01-Mar-2026 17:13:47"
+      // Handle string format
       const str = value.toString().trim()
       const cleanStr = str.split(',')[0].split('Platform')[0].trim()
       const parts = cleanStr.split(' ')
@@ -268,7 +258,7 @@ export default function WDDataRawPage() {
       
       console.log('📋 Total baris:', rows.length)
       
-      // CARI BARIS HEADER (yang ada "No.")
+      // CARI BARIS HEADER
       let headerRowIndex = -1
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
@@ -282,12 +272,10 @@ export default function WDDataRawPage() {
         throw new Error('Tidak menemukan baris header (No.)')
       }
       
-      const headers = rows[headerRowIndex]
       const dataRows = rows.slice(headerRowIndex + 1)
-      
       console.log('📊 Jumlah baris data:', dataRows.length)
       
-      // INDEX KOLOM TETAP UNTUK WITHDRAWAL
+      // INDEX KOLOM TETAP
       const idx = {
         no: 0,
         brand: 1,
@@ -318,7 +306,6 @@ export default function WDDataRawPage() {
       
       setUploadProgress('Memvalidasi data...')
       
-      // Transform data
       const validTransactions: WithdrawalTransaction[] = []
       const transactionDates = new Set<string>()
       
@@ -326,14 +313,10 @@ export default function WDDataRawPage() {
         const row = dataRows[i]
         if (!row || row.length === 0) continue
         
-        // Skip GRAND TOTAL
         if (row[2]?.toString().includes('GRAND TOTAL')) continue
         
         const approvedDate = parseExcelDate(row[idx.approved])
-        if (!approvedDate) {
-          console.log(`⛔ Skip baris ${i+1}: approved date null`, row[idx.approved])
-          continue
-        }
+        if (!approvedDate) continue
         
         const dateOnly = approvedDate.split(' ')[0]
         transactionDates.add(dateOnly)
@@ -368,8 +351,7 @@ export default function WDDataRawPage() {
         })
       }
 
-      console.log('✅ Data valid WD:', validTransactions.length)
-      console.log('📅 Tanggal dalam file:', Array.from(transactionDates))
+      console.log('✅ Data valid:', validTransactions.length)
       
       if (validTransactions.length === 0) {
         throw new Error('Tidak ada data valid dalam file')
@@ -382,26 +364,19 @@ export default function WDDataRawPage() {
         .from('withdrawal_transactions')
         .insert(validTransactions)
 
-      if (error) {
-        console.error('❌ Error detail:', error)
-        throw error
-      }
+      if (error) throw error
 
-      // Insert ke withdrawal_uploads (SATU BARIS PER TANGGAL)
-      setUploadProgress('Menyimpan tracking upload...')
-      
+      // Insert ke withdrawal_uploads (PER TANGGAL)
       const transactionsByDate: { [key: string]: WithdrawalTransaction[] } = {}
       validTransactions.forEach(t => {
         const date = t.approved_date?.split(' ')[0]
         if (!date) return
-        if (!transactionsByDate[date]) {
-          transactionsByDate[date] = []
-        }
+        if (!transactionsByDate[date]) transactionsByDate[date] = []
         transactionsByDate[date].push(t)
       })
 
       for (const [date, transactions] of Object.entries(transactionsByDate)) {
-        const { error: uploadError } = await supabase
+        await supabase
           .from('withdrawal_uploads')
           .insert({
             upload_date: date,
@@ -409,13 +384,9 @@ export default function WDDataRawPage() {
             total_rows: transactions.length,
             status: 'completed'
           })
-        
-        if (uploadError) {
-          console.error('❌ Error insert upload:', uploadError)
-        }
       }
 
-      alert(`✅ Berhasil! ${validTransactions.length} data transaksi withdrawal dari ${Object.keys(transactionsByDate).length} tanggal`)
+      alert(`✅ Berhasil! ${validTransactions.length} data dari ${Object.keys(transactionsByDate).length} tanggal`)
       
       setShowModal(false)
       setSelectedFile(null)
@@ -427,28 +398,6 @@ export default function WDDataRawPage() {
     } finally {
       setUploading(false)
       setUploadProgress('')
-    }
-  }
-
-  // ===========================================
-  // HELPER FUNCTIONS
-  // ===========================================
-
-  const getDayFromDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr)
-      return date.getDate()
-    } catch {
-      return 1
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch(status?.toLowerCase()) {
-      case 'completed': return 'bg-green-500/20 text-green-400'
-      case 'processing': return 'bg-yellow-500/20 text-yellow-400'
-      case 'failed': return 'bg-red-500/20 text-red-400'
-      default: return 'bg-gray-500/20 text-gray-400'
     }
   }
 
@@ -488,7 +437,7 @@ export default function WDDataRawPage() {
       {/* FILTERS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
         >
@@ -498,7 +447,7 @@ export default function WDDataRawPage() {
         </select>
         
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
         >
@@ -508,7 +457,7 @@ export default function WDDataRawPage() {
         </select>
         
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
           value={selectedAsset}
           onChange={(e) => setSelectedAsset(e.target.value)}
         >
@@ -541,18 +490,16 @@ export default function WDDataRawPage() {
               uploads.map((item) => {
                 const date = new Date(item.upload_date)
                 const day = date.getDate()
-                const month = months[date.getMonth()]
+                const monthName = months[date.getMonth()]
                 const year = date.getFullYear()
                 
                 return (
                   <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                    <td className="px-4 py-3">
-                      {day} {month} {year}
-                    </td>
+                    <td className="px-4 py-3">{day} {monthName} {year}</td>
                     <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                     <td className="px-4 py-3">{item.total_rows} data</td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
+                      <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
                         {item.status}
                       </span>
                     </td>
@@ -570,7 +517,7 @@ export default function WDDataRawPage() {
         </table>
       </div>
 
-      {/* UPLOAD MODAL */}
+      {/* MODAL UPLOAD */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
@@ -581,10 +528,7 @@ export default function WDDataRawPage() {
             
             <div
               className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer transition-colors
-                ${dragActive 
-                  ? 'border-[#FFD700] bg-[#FFD700]/10' 
-                  : 'border-[#FFD700]/30 hover:border-[#FFD700] hover:bg-[#FFD700]/5'
-                }`}
+                ${dragActive ? 'border-[#FFD700] bg-[#FFD700]/10' : 'border-[#FFD700]/30 hover:border-[#FFD700]'}`}
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
@@ -602,24 +546,19 @@ export default function WDDataRawPage() {
               {selectedFile ? (
                 <div className="text-green-400">
                   <p className="text-lg mb-2">✓ {selectedFile.name}</p>
-                  <p className="text-sm text-[#A7D8FF]">
-                    {(selectedFile.size / 1024).toFixed(2)} KB
-                  </p>
+                  <p className="text-sm text-[#A7D8FF]">{(selectedFile.size / 1024).toFixed(2)} KB</p>
                 </div>
               ) : (
                 <>
                   <div className="text-4xl mb-2">📂</div>
                   <p className="text-[#FFD700] font-medium">Geser file ke sini</p>
                   <p className="text-sm text-[#A7D8FF] mt-2">atau klik untuk memilih</p>
-                  <p className="text-xs text-gray-400 mt-4">Format: .xlsx, .xls, .csv</p>
                 </>
               )}
             </div>
             
             {uploadProgress && (
-              <div className="mb-4 text-sm text-[#A7D8FF] text-center">
-                {uploadProgress}
-              </div>
+              <div className="mb-4 text-sm text-[#A7D8FF] text-center">{uploadProgress}</div>
             )}
             
             <div className="flex justify-end gap-2">
@@ -627,23 +566,17 @@ export default function WDDataRawPage() {
                 onClick={() => {
                   setShowModal(false)
                   setSelectedFile(null)
-                  setUploadProgress('')
                 }}
-                className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded transition-colors"
+                className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded"
               >
                 Batal
               </button>
               <button
                 onClick={processFile}
                 disabled={!selectedFile || uploading}
-                className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded font-bold hover:bg-[#FFD700]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded font-bold hover:bg-[#FFD700]/80 disabled:opacity-50"
               >
-                {uploading ? (
-                  <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-[#0B1A33] border-t-transparent rounded-full animate-spin"></div>
-                    Uploading...
-                  </span>
-                ) : 'Upload'}
+                {uploading ? 'Uploading...' : 'Upload'}
               </button>
             </div>
           </div>
