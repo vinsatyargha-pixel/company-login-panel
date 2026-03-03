@@ -101,12 +101,13 @@ export default function OfficersKPIPage() {
       const { data, error } = await supabase
         .from('officers')
         .select('id, panel_id, full_name, department, status')
-        .in('department', ['CS DP WD', 'CAPTAIN'])
         .order('full_name')
 
       if (error) throw error
       
       console.log('📊 Officers found:', data?.length || 0)
+      console.log('👥 Panel IDs:', data?.map(o => ({ panel: o.panel_id, name: o.full_name })))
+      
       setOfficers(data || [])
       
     } catch (error: any) {
@@ -155,7 +156,7 @@ export default function OfficersKPIPage() {
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi
+      // Inisialisasi dengan SEMUA officer
       officers.forEach(officer => {
         kpiMap[officer.panel_id] = {
           officer_id: officer.id,
@@ -191,93 +192,83 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses deposit
-depositData?.forEach((tx: any) => {
-  // SKIP SYSTEM
-  if (tx.handler === 'SYSTEM' || tx.handler?.toLowerCase() === 'system') {
-    return // Lewati, bukan officer
-  }
-  
-  if (!tx.handler || typeof tx.handler !== 'string') return
-  
-  const officer = officers.find(o => 
-    o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
-  )
-  
-  if (!officer) return
+      // Proses Deposit (skip SYSTEM)
+      depositData?.forEach((tx: any) => {
+        if (tx.handler === 'SYSTEM' || tx.handler?.toLowerCase() === 'system') return
+        if (!tx.handler || typeof tx.handler !== 'string') return
+        
+        const officer = officers.find(o => 
+          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
+        )
+        if (!officer) return
 
-  const kpi = kpiMap[officer.panel_id]
-  kpi.dep_total++
+        const kpi = kpiMap[officer.panel_id]
+        kpi.dep_total++
 
-  if (tx.status?.toLowerCase() === 'approved') {
-    kpi.dep_approved++
-    kpi.dep_approve_count++
-    kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
-    
-    if (tx.duration_minutes <= 3) {
-      kpi.dep_sop++
-    } else {
-      kpi.dep_non_sop++
-    }
-  } else if (tx.status?.toLowerCase() === 'rejected') {
-    kpi.dep_rejected++
-    kpi.dep_reject_count++
-    kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
-  }
+        if (tx.status?.toLowerCase() === 'approved') {
+          kpi.dep_approved++
+          kpi.dep_approve_count++
+          kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
+          
+          if (tx.duration_minutes <= 3) {
+            kpi.dep_sop++
+          } else {
+            kpi.dep_non_sop++
+          }
+        } else if (tx.status?.toLowerCase() === 'rejected') {
+          kpi.dep_rejected++
+          kpi.dep_reject_count++
+          kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
+        }
 
-  // Human error
-  if (tx.reason?.toLowerCase().includes('mistake') ||
-      tx.reason?.toLowerCase().includes('crossbank') ||
-      tx.reason?.toLowerCase().includes('cross asset') ||
-      tx.reason?.toLowerCase().includes('wrong process')) {
-    kpi.human_error++
-  }
-})
+        // Human error
+        if (tx.reason?.toLowerCase().includes('mistake') ||
+            tx.reason?.toLowerCase().includes('crossbank') ||
+            tx.reason?.toLowerCase().includes('cross asset') ||
+            tx.reason?.toLowerCase().includes('wrong process')) {
+          kpi.human_error++
+        }
+      })
 
-// Proses withdrawal (sama)
-withdrawalData?.forEach((tx: any) => {
-  // SKIP SYSTEM
-  if (tx.handler === 'SYSTEM' || tx.handler?.toLowerCase() === 'system') {
-    return
-  }
-  
-  if (!tx.handler || typeof tx.handler !== 'string') return
-  
-  const officer = officers.find(o => 
-    o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
-  )
-  
-  if (!officer) return
+      // Proses Withdrawal (skip SYSTEM)
+      withdrawalData?.forEach((tx: any) => {
+        if (tx.handler === 'SYSTEM' || tx.handler?.toLowerCase() === 'system') return
+        if (!tx.handler || typeof tx.handler !== 'string') return
+        
+        const officer = officers.find(o => 
+          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
+        )
+        if (!officer) return
 
-  const kpi = kpiMap[officer.panel_id]
-  kpi.wd_total++
+        const kpi = kpiMap[officer.panel_id]
+        kpi.wd_total++
 
-  if (tx.status?.toLowerCase() === 'approved') {
-    kpi.wd_approved++
-    kpi.wd_approve_count++
-    kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
-    
-    if (tx.duration_minutes <= 5) {
-      kpi.wd_sop++
-    } else {
-      kpi.wd_non_sop++
-    }
-  } else if (tx.status?.toLowerCase() === 'rejected') {
-    kpi.wd_rejected++
-    kpi.wd_reject_count++
-    kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
-  }
+        if (tx.status?.toLowerCase() === 'approved') {
+          kpi.wd_approved++
+          kpi.wd_approve_count++
+          kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
+          
+          if (tx.duration_minutes <= 5) {
+            kpi.wd_sop++
+          } else {
+            kpi.wd_non_sop++
+          }
+        } else if (tx.status?.toLowerCase() === 'rejected') {
+          kpi.wd_rejected++
+          kpi.wd_reject_count++
+          kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
+        }
 
-  // Human error
-  if (tx.reason?.toLowerCase().includes('mistake') ||
-      tx.reason?.toLowerCase().includes('crossbank') ||
-      tx.reason?.toLowerCase().includes('cross asset') ||
-      tx.reason?.toLowerCase().includes('wrong process')) {
-    kpi.human_error++
-  }
-})
+        // Human error
+        if (tx.reason?.toLowerCase().includes('mistake') ||
+            tx.reason?.toLowerCase().includes('crossbank') ||
+            tx.reason?.toLowerCase().includes('cross asset') ||
+            tx.reason?.toLowerCase().includes('wrong process')) {
+          kpi.human_error++
+        }
+      })
 
-      // Format data
+      // Format data untuk tabel
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
         // Deposit rates
         const dep_approve_rate = kpi.dep_total > 0 
@@ -365,37 +356,61 @@ withdrawalData?.forEach((tx: any) => {
     )
   }
 
-  const filteredKpiData = kpiData.filter(item => item.department === 'CS DP WD')
+  if (error) {
+    return (
+      <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
+        <Link href="/dashboard" className="text-[#FFD700] hover:underline inline-block mb-4">
+          ← BACK TO DASHBOARD
+        </Link>
+        <div className="bg-red-900/50 border border-red-500 p-4 rounded-lg">
+          <h2 className="text-xl font-bold text-red-400 mb-2">Error</h2>
+          <p className="text-white">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const totalTransactions = kpiData.reduce((sum, item) => sum + item.total_transactions, 0)
+  const totalApproved = kpiData.reduce((sum, item) => sum + item.total_approved, 0)
+  const totalRejected = kpiData.reduce((sum, item) => sum + item.total_rejected, 0)
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
+      {/* Header */}
       <div className="mb-6">
         <Link href="/dashboard" className="text-[#FFD700] hover:underline inline-block mb-4">
           ← BACK TO DASHBOARD
         </Link>
+        
         <h1 className="text-3xl font-bold text-[#FFD700]">KPI LIVE OFFICERS</h1>
-        <p className="text-[#A7D8FF] mt-2">Deposit & Withdrawal Performance</p>
+        <p className="text-[#A7D8FF] mt-2">Performance monitoring all officers</p>
       </div>
 
-      {/* FILTER */}
+      {/* FILTER BULAN & TAHUN */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex gap-4 items-center">
           <select 
-            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
           >
-            {months.map(m => <option key={m}>{m}</option>)}
+            {months.map(month => (
+              <option key={month} value={month}>{month}</option>
+            ))}
           </select>
+          
           <select 
-            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
           >
-            {years.map(y => <option key={y}>{y}</option>)}
+            {years.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
           </select>
+
           <div className="ml-auto text-[#A7D8FF]">
-            {selectedMonth} {selectedYear}
+            Periode: {selectedMonth} {selectedYear}
           </div>
         </div>
       </div>
@@ -408,6 +423,7 @@ withdrawalData?.forEach((tx: any) => {
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">No</th>
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Panel ID</th>
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Officer</th>
+              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Dept</th>
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Status</th>
               
               <th colSpan={6} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">DEPOSIT</th>
@@ -433,37 +449,48 @@ withdrawalData?.forEach((tx: any) => {
             </tr>
           </thead>
           <tbody>
-            {filteredKpiData.map((item, idx) => (
-              <tr key={item.panel_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                <td className="px-2 py-2">{idx + 1}</td>
-                <td className="px-2 py-2 text-[#FFD700]">{item.panel_id}</td>
-                <td className="px-2 py-2">{item.officer_name}</td>
-                <td className="px-2 py-2">
-                  <span className="px-1 py-0.5 rounded text-[10px] bg-green-500/20 text-green-400">
-                    {item.status}
-                  </span>
+            {kpiData.length > 0 ? (
+              kpiData.map((item, idx) => (
+                <tr key={item.panel_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                  <td className="px-2 py-2">{idx + 1}</td>
+                  <td className="px-2 py-2 text-[#FFD700]">{item.panel_id}</td>
+                  <td className="px-2 py-2">{item.officer_name}</td>
+                  <td className="px-2 py-2">{item.department}</td>
+                  <td className="px-2 py-2">
+                    <span className="px-1 py-0.5 rounded text-[10px] bg-green-500/20 text-green-400">
+                      {item.status}
+                    </span>
+                  </td>
+                  
+                  {/* Deposit */}
+                  <td className="px-2 py-2">{item.dep_total}</td>
+                  <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
+                  <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
+                  <td className="px-2 py-2">{item.dep_approve_rate}%</td>
+                  <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
+                  <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
+                  
+                  {/* Withdrawal */}
+                  <td className="px-2 py-2">{item.wd_total}</td>
+                  <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
+                  <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
+                  <td className="px-2 py-2">{item.wd_approve_rate}%</td>
+                  <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
+                  <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
+                  
+                  {/* Human Error */}
+                  <td className="px-2 py-2 text-red-400">{item.human_error}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={17} className="px-4 py-12 text-center text-gray-400">
+                  <div className="text-4xl mb-2">📊</div>
+                  <p className="text-lg mb-1">Belum ada data untuk {selectedMonth} {selectedYear}</p>
+                  <p className="text-sm">Upload data terlebih dahulu di halaman DP/WD</p>
                 </td>
-                
-                {/* Deposit */}
-                <td className="px-2 py-2">{item.dep_total}</td>
-                <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
-                <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
-                <td className="px-2 py-2">{item.dep_approve_rate}%</td>
-                <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
-                <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
-                
-                {/* Withdrawal */}
-                <td className="px-2 py-2">{item.wd_total}</td>
-                <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
-                <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
-                <td className="px-2 py-2">{item.wd_approve_rate}%</td>
-                <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
-                <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
-                
-                {/* Human Error */}
-                <td className="px-2 py-2 text-red-400">{item.human_error}</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -471,10 +498,10 @@ withdrawalData?.forEach((tx: any) => {
       {/* Summary */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF]">
         <div className="flex justify-between">
-          <span>Officers: {filteredKpiData.length}</span>
-          <span>Total Trans: {filteredKpiData.reduce((s,i) => s + i.total_transactions,0)}</span>
-          <span className="text-green-400">Approved: {filteredKpiData.reduce((s,i) => s + i.total_approved,0)}</span>
-          <span className="text-red-400">Rejected: {filteredKpiData.reduce((s,i) => s + i.total_rejected,0)}</span>
+          <span>Total Officers: {kpiData.length}</span>
+          <span>Total Transactions: {totalTransactions}</span>
+          <span className="text-green-400">Approved: {totalApproved}</span>
+          <span className="text-red-400">Rejected: {totalRejected}</span>
         </div>
       </div>
     </div>
