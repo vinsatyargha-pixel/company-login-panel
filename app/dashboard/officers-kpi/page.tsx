@@ -29,8 +29,8 @@ type KPIData = {
   dep_rejected: number
   dep_approve_rate: string
   dep_reject_rate: string
-  dep_avg_approve: string
-  dep_avg_reject: string
+  dep_avg_approve: string  // HH:MM:SS
+  dep_avg_reject: string    // HH:MM:SS
   dep_sop: number
   dep_non_sop: number
   
@@ -40,8 +40,8 @@ type KPIData = {
   wd_rejected: number
   wd_approve_rate: string
   wd_reject_rate: string
-  wd_avg_approve: string
-  wd_avg_reject: string
+  wd_avg_approve: string    // HH:MM:SS
+  wd_avg_reject: string      // HH:MM:SS
   wd_sop: number
   wd_non_sop: number
   
@@ -51,6 +51,19 @@ type KPIData = {
   total_rejected: number
   
   human_error: number
+}
+
+// ===========================================
+// HELPER: Konversi menit ke HH:MM:SS
+// ===========================================
+const minutesToHHMMSS = (minutes: number): string => {
+  if (!minutes || minutes < 0) return '00:00:00'
+  
+  const hours = Math.floor(minutes / 60)
+  const mins = Math.floor(minutes % 60)
+  const secs = Math.floor((minutes * 60) % 60)
+  
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
 // ===========================================
@@ -90,7 +103,7 @@ export default function OfficersKPIPage() {
   }, [selectedMonth, selectedYear, officers])
 
   // ===========================================
-  // FETCH OFFICERS (dengan SYSTEM)
+  // FETCH OFFICERS
   // ===========================================
 
   const fetchOfficers = async () => {
@@ -135,41 +148,6 @@ export default function OfficersKPIPage() {
       setLoading(true)
       setError(null)
       
-      // 🔥🔥🔥 CEK TOTAL DATA DI TABEL DEPOSIT
-      console.log('🔍 CEK 1: Total data di tabel deposit')
-      const { count: totalDeposit, error: countError } = await supabase
-        .from('deposit_transactions')
-        .select('*', { count: 'exact', head: true })
-      
-      console.log('📊 TOTAL DEPOSIT DI DATABASE:', totalDeposit)
-      
-      // 🔥🔥🔥 CEK SAMPLE DATA DEPOSIT (5 baris)
-      console.log('🔍 CEK 2: Sample data deposit (5 baris)')
-      const { data: sampleDeposit, error: sampleError } = await supabase
-        .from('deposit_transactions')
-        .select('approved_date, handler, status, duration_minutes')
-        .limit(5)
-      
-      console.log('📋 SAMPLE DEPOSIT:', sampleDeposit)
-      
-      // 🔥🔥🔥 CEK RENTANG TANGGAL DEPOSIT
-      console.log('🔍 CEK 3: Rentang tanggal deposit')
-      const { data: oldestDeposit } = await supabase
-        .from('deposit_transactions')
-        .select('approved_date')
-        .order('approved_date', { ascending: true })
-        .limit(1)
-      
-      const { data: newestDeposit } = await supabase
-        .from('deposit_transactions')
-        .select('approved_date')
-        .order('approved_date', { ascending: false })
-        .limit(1)
-      
-      console.log('📅 DEPOSIT TERTUA:', oldestDeposit?.[0]?.approved_date)
-      console.log('📅 DEPOSIT TERBARU:', newestDeposit?.[0]?.approved_date)
-      
-      // Lanjut dengan filter bulan
       const monthIndex = months.indexOf(selectedMonth) + 1
       const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
@@ -177,32 +155,26 @@ export default function OfficersKPIPage() {
 
       console.log('🔍 Filter:', { selectedMonth, selectedYear, startDate, endDate })
 
-      // 🔥🔥🔥 CEK DATA DEPOSIT DENGAN FILTER
-      console.log('🔍 CEK 4: Data deposit dengan filter tanggal')
+      // Ambil data deposit
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
-        .select('handler, status, duration_minutes, reason, approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
+        .select('handler, status, duration_minutes, reason')
+        .gte('approved_date::date', startDate)
+        .lte('approved_date::date', endDate)
 
       if (depositError) throw depositError
 
-      console.log('📊 DEPOSIT DENGAN FILTER:', depositData?.length || 0)
-      if (depositData && depositData.length > 0) {
-        console.log('📋 SAMPLE DEPOSIT DENGAN FILTER:', depositData.slice(0, 3))
-      }
-
-      // 🔥🔥🔥 CEK DATA WITHDRAWAL
-      console.log('🔍 CEK 5: Data withdrawal dengan filter tanggal')
+      // Ambil data withdrawal
       const { data: withdrawalData, error: withdrawalError } = await supabase
         .from('withdrawal_transactions')
-        .select('handler, status, duration_minutes, reason, approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
+        .select('handler, status, duration_minutes, reason')
+        .gte('approved_date::date', startDate)
+        .lte('approved_date::date', endDate)
 
       if (withdrawalError) throw withdrawalError
 
-      console.log('📊 WITHDRAWAL DENGAN FILTER:', withdrawalData?.length || 0)
+      console.log('📊 Deposit:', depositData?.length || 0)
+      console.log('📊 Withdrawal:', withdrawalData?.length || 0)
 
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
@@ -216,6 +188,7 @@ export default function OfficersKPIPage() {
           department: officer.department,
           status: officer.status || 'REGULAR',
           
+          // Deposit
           dep_total: 0,
           dep_approved: 0,
           dep_rejected: 0,
@@ -226,6 +199,7 @@ export default function OfficersKPIPage() {
           dep_sop: 0,
           dep_non_sop: 0,
           
+          // Withdrawal
           wd_total: 0,
           wd_approved: 0,
           wd_rejected: 0,
@@ -236,6 +210,7 @@ export default function OfficersKPIPage() {
           wd_sop: 0,
           wd_non_sop: 0,
           
+          // Human error
           human_error: 0
         }
       })
@@ -268,6 +243,7 @@ export default function OfficersKPIPage() {
           kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
         }
 
+        // Human error
         if (tx.reason?.toLowerCase().includes('mistake') ||
             tx.reason?.toLowerCase().includes('crossbank') ||
             tx.reason?.toLowerCase().includes('cross asset') ||
@@ -304,6 +280,7 @@ export default function OfficersKPIPage() {
           kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
         }
 
+        // Human error
         if (tx.reason?.toLowerCase().includes('mistake') ||
             tx.reason?.toLowerCase().includes('crossbank') ||
             tx.reason?.toLowerCase().includes('cross asset') ||
@@ -314,24 +291,31 @@ export default function OfficersKPIPage() {
 
       // Format data untuk tabel
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
+        // Deposit rates
         const dep_approve_rate = kpi.dep_total > 0 
           ? ((kpi.dep_approved / kpi.dep_total) * 100).toFixed(2) : '0.00'
         const dep_reject_rate = kpi.dep_total > 0 
           ? ((kpi.dep_rejected / kpi.dep_total) * 100).toFixed(2) : '0.00'
+        
+        // 🔥 RATA-RATA DURASI DEPOSIT dalam HH:MM:SS
         const dep_avg_approve = kpi.dep_approve_count > 0 
-          ? (kpi.dep_approve_minutes_sum / kpi.dep_approve_count).toFixed(2) : '-'
+          ? minutesToHHMMSS(kpi.dep_approve_minutes_sum / kpi.dep_approve_count) : '-'
         const dep_avg_reject = kpi.dep_reject_count > 0 
-          ? (kpi.dep_reject_minutes_sum / kpi.dep_reject_count).toFixed(2) : '-'
+          ? minutesToHHMMSS(kpi.dep_reject_minutes_sum / kpi.dep_reject_count) : '-'
 
+        // Withdrawal rates
         const wd_approve_rate = kpi.wd_total > 0 
           ? ((kpi.wd_approved / kpi.wd_total) * 100).toFixed(2) : '0.00'
         const wd_reject_rate = kpi.wd_total > 0 
           ? ((kpi.wd_rejected / kpi.wd_total) * 100).toFixed(2) : '0.00'
+        
+        // 🔥 RATA-RATA DURASI WITHDRAWAL dalam HH:MM:SS
         const wd_avg_approve = kpi.wd_approve_count > 0 
-          ? (kpi.wd_approve_minutes_sum / kpi.wd_approve_count).toFixed(2) : '-'
+          ? minutesToHHMMSS(kpi.wd_approve_minutes_sum / kpi.wd_approve_count) : '-'
         const wd_avg_reject = kpi.wd_reject_count > 0 
-          ? (kpi.wd_reject_minutes_sum / kpi.wd_reject_count).toFixed(2) : '-'
+          ? minutesToHHMMSS(kpi.wd_reject_minutes_sum / kpi.wd_reject_count) : '-'
 
+        // Total gabungan
         const total_trans = kpi.dep_total + kpi.wd_total
         const total_app = kpi.dep_approved + kpi.wd_approved
         const total_rej = kpi.dep_rejected + kpi.wd_rejected
@@ -343,6 +327,7 @@ export default function OfficersKPIPage() {
           department: kpi.department,
           status: kpi.status,
           
+          // Deposit
           dep_total: kpi.dep_total,
           dep_approved: kpi.dep_approved,
           dep_rejected: kpi.dep_rejected,
@@ -353,6 +338,7 @@ export default function OfficersKPIPage() {
           dep_sop: kpi.dep_sop,
           dep_non_sop: kpi.dep_non_sop,
           
+          // Withdrawal
           wd_total: kpi.wd_total,
           wd_approved: kpi.wd_approved,
           wd_rejected: kpi.wd_rejected,
@@ -363,6 +349,7 @@ export default function OfficersKPIPage() {
           wd_sop: kpi.wd_sop,
           wd_non_sop: kpi.wd_non_sop,
           
+          // Total
           total_transactions: total_trans,
           total_approved: total_app,
           total_rejected: total_rej,
@@ -371,16 +358,17 @@ export default function OfficersKPIPage() {
         }
       })
 
+      // Urutkan: officer biasa dulu, SYSTEM di paling bawah
       const sortedData = [
         ...formattedData.filter(item => item.panel_id !== 'SYSTEM'),
         ...formattedData.filter(item => item.panel_id === 'SYSTEM')
       ]
       
-      console.log('✅ FINAL KPI DATA:', sortedData)
+      console.log('✅ KPI Data:', sortedData)
       setKpiData(sortedData)
       
     } catch (error: any) {
-      console.error('❌ ERROR:', error)
+      console.error('❌ Error:', error)
       setError(error.message)
     } finally {
       setLoading(false)
@@ -419,14 +407,17 @@ export default function OfficersKPIPage() {
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
+      {/* Header */}
       <div className="mb-6">
         <Link href="/dashboard" className="text-[#FFD700] hover:underline inline-block mb-4">
           ← BACK TO DASHBOARD
         </Link>
+        
         <h1 className="text-3xl font-bold text-[#FFD700]">KPI LIVE OFFICERS</h1>
         <p className="text-[#A7D8FF] mt-2">Performance monitoring all officers (including SYSTEM)</p>
       </div>
 
+      {/* FILTER BULAN & TAHUN */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex gap-4 items-center">
           <select 
@@ -455,6 +446,7 @@ export default function OfficersKPIPage() {
         </div>
       </div>
 
+      {/* TABLE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
@@ -465,22 +457,28 @@ export default function OfficersKPIPage() {
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Dept</th>
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Status</th>
               
-              <th colSpan={6} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">DEPOSIT</th>
-              <th colSpan={6} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">WITHDRAWAL</th>
+              <th colSpan={8} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">DEPOSIT</th>
+              <th colSpan={8} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">WITHDRAWAL</th>
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Human Error</th>
             </tr>
             <tr className="border-b border-[#FFD700]/30">
+              {/* Deposit */}
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
               
+              {/* Withdrawal */}
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
             </tr>
@@ -508,26 +506,33 @@ export default function OfficersKPIPage() {
                     </span>
                   </td>
                   
+                  {/* Deposit */}
                   <td className="px-2 py-2">{item.dep_total}</td>
                   <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
                   <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
                   <td className="px-2 py-2">{item.dep_approve_rate}%</td>
+                  <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
+                  <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_reject}</td>
                   <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
                   <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
                   
+                  {/* Withdrawal */}
                   <td className="px-2 py-2">{item.wd_total}</td>
                   <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
                   <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
                   <td className="px-2 py-2">{item.wd_approve_rate}%</td>
+                  <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
+                  <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_reject}</td>
                   <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
                   <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
                   
+                  {/* Human Error */}
                   <td className="px-2 py-2 text-red-400">{item.human_error}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={17} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={21} className="px-4 py-12 text-center text-gray-400">
                   <div className="text-4xl mb-2">📊</div>
                   <p className="text-lg mb-1">Belum ada data untuk {selectedMonth} {selectedYear}</p>
                   <p className="text-sm">Upload data terlebih dahulu di halaman DP/WD</p>
@@ -538,6 +543,7 @@ export default function OfficersKPIPage() {
         </table>
       </div>
 
+      {/* Summary */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF]">
         <div className="flex justify-between">
           <span>Total Officers: {kpiData.length - 1} + SYSTEM</span>
