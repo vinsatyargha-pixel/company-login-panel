@@ -125,36 +125,22 @@ export default function WDDataRawPage() {
     const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
     const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-    console.log('🔍 Filter:', { 
-      selectedMonth, 
-      selectedYear, 
-      monthIndex,
-      startDate, 
-      endDate 
-    })
+    console.log('🔍 Filter:', { startDate, endDate })
 
-    // Ambil dari tabel withdrawal_uploads
-    let query = supabase
+    // Query langsung pake select semua kolom
+    const { data, error } = await supabase
       .from('withdrawal_uploads')
       .select('*')
       .gte('upload_date', startDate)
       .lte('upload_date', endDate)
       .order('upload_date', { ascending: true })
 
-    // HAPUS DULU FILTER ASSET BUAT TEST
-    // if (selectedAsset !== 'all') {
-    //   const asset = assets.find(a => a.id === selectedAsset)
-    //   if (asset) {
-    //     query = query.eq('website', asset.asset_code)
-    //   }
-    // }
-
-    const { data, error } = await query
-    if (error) throw error
+    if (error) {
+      console.error('❌ Error query:', error)
+      throw error
+    }
     
-    console.log('📅 Data ditemukan:', data?.length || 0, 'baris')
-    console.log('📅 Data:', data)
-    
+    console.log('📅 Data dari Supabase:', data)
     setUploads(data || [])
   } catch (error) {
     console.error('Error fetching uploads:', error)
