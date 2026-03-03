@@ -101,7 +101,7 @@ export default function OfficersKPIPage() {
       const { data, error } = await supabase
         .from('officers')
         .select('id, panel_id, full_name, department, status')
-        .eq('department', 'CS DP WD')  // HANYA CS DP WD
+        .eq('department', 'CS DP WD')
         .order('full_name')
 
       if (error) throw error
@@ -143,31 +143,37 @@ export default function OfficersKPIPage() {
 
       console.log('🔍 Filter:', { selectedMonth, selectedYear, startDate, endDate })
 
-      // 🔥 FIX: Ambil data deposit dengan ::date
+      // 🔥 AMBIL DATA DEPOSIT - ambil SEMUA kolom dulu biar aman
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
-        .select('handler, status, duration_minutes, reason')
-        .gte('approved_date::date', startDate)  // TAMBAH ::date
-        .lte('approved_date::date', endDate)    // TAMBAH ::date
+        .select('*')
+        .gte('approved_date::date', startDate)
+        .lte('approved_date::date', endDate)
 
       if (depositError) throw depositError
 
-      // 🔥 FIX: Ambil data withdrawal dengan ::date
+      // 🔥 AMBIL DATA WITHDRAWAL
       const { data: withdrawalData, error: withdrawalError } = await supabase
         .from('withdrawal_transactions')
         .select('handler, status, duration_minutes, reason')
-        .gte('approved_date::date', startDate)  // TAMBAH ::date
-        .lte('approved_date::date', endDate)    // TAMBAH ::date
+        .gte('approved_date::date', startDate)
+        .lte('approved_date::date', endDate)
 
       if (withdrawalError) throw withdrawalError
 
       console.log('📊 Deposit:', depositData?.length || 0)
       console.log('📊 Withdrawal:', withdrawalData?.length || 0)
+      
+      // 🔥 DEBUG: liat sample data deposit
+      if (depositData && depositData.length > 0) {
+        console.log('📋 Deposit sample:', depositData[0])
+        console.log('📋 Deposit columns:', Object.keys(depositData[0]))
+      }
 
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan SEMUA officer (termasuk SYSTEM)
+      // Inisialisasi dengan SEMUA officer
       officers.forEach(officer => {
         kpiMap[officer.panel_id] = {
           officer_id: officer.id,
@@ -203,44 +209,53 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Deposit (SYSTEM tetap diproses)
+      // 🔥 Proses Deposit - coba beberapa kemungkinan kolom handler
       depositData?.forEach((tx: any) => {
-        if (!tx.handler || typeof tx.handler !== 'string') return
+        // Coba cari field yang mungkin berisi nama officer
+        const possibleHandler = tx.handler || tx.created_by || tx.processed_by || tx.approved_by || tx.officer || tx.panel_id
         
+        if (!possibleHandler || typeof possibleHandler !== 'string') return
+        
+        // Cari officer yang match
         const officer = officers.find(o => 
-          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
+          o.panel_id?.toLowerCase() === possibleHandler.toLowerCase() ||
+          possibleHandler.toLowerCase().includes(o.panel_id?.toLowerCase()) ||
+          o.full_name?.toLowerCase().includes(possibleHandler.toLowerCase())
         )
-        if (!officer) return
-
-        const kpi = kpiMap[officer.panel_id]
+        
+        // Kalo gak ketemu, masukin ke SYSTEM
+        const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+        const kpi = kpiMap[targetPanelId]
+        
         kpi.dep_total++
 
-        if (tx.status?.toLowerCase() === 'approved') {
+        if (tx.status?.toLowerCase() === 'approved' || tx.status?.toLowerCase() === 'success') {
           kpi.dep_approved++
           kpi.dep_approve_count++
-          kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
+          kpi.dep_approve_minutes_sum += (tx.duration_minutes || tx.duration || 0)
           
-          if (tx.duration_minutes <= 3) {
+          if ((tx.duration_minutes || tx.duration || 0) <= 3) {
             kpi.dep_sop++
           } else {
             kpi.dep_non_sop++
           }
-        } else if (tx.status?.toLowerCase() === 'rejected') {
+        } else if (tx.status?.toLowerCase() === 'rejected' || tx.status?.toLowerCase() === 'failed') {
           kpi.dep_rejected++
           kpi.dep_reject_count++
-          kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
+          kpi.dep_reject_minutes_sum += (tx.duration_minutes || tx.duration || 0)
         }
 
         // Human error
-        if (tx.reason?.toLowerCase().includes('mistake') ||
-            tx.reason?.toLowerCase().includes('crossbank') ||
-            tx.reason?.toLowerCase().includes('cross asset') ||
-            tx.reason?.toLowerCase().includes('wrong process')) {
+        const reason = tx.reason || tx.remarks || tx.note || ''
+        if (reason.toLowerCase().includes('mistake') ||
+            reason.toLowerCase().includes('crossbank') ||
+            reason.toLowerCase().includes('cross asset') ||
+            reason.toLowerCase().includes('wrong process')) {
           kpi.human_error++
         }
       })
 
-      // Proses Withdrawal (SYSTEM tetap diproses)
+      // Proses Withdrawal
       withdrawalData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
