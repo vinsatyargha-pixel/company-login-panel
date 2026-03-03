@@ -202,55 +202,58 @@ export default function WDDataRawPage() {
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
-  if (!value) return null
+    if (!value) return null
 
-  try {
-    // Handle Excel serial number (angka desimal)
-    if (typeof value === 'number') {
-      const date = XLSX.SSF.parse_date_code(value)
-      if (!date) return null
+    try {
+      // Handle Excel serial number
+      if (typeof value === 'number') {
+        const date = XLSX.SSF.parse_date_code(value)
+        if (!date) return null
+        // Format: YYYY-MM-DD HH:MM:SS (tanpa T)
+        const hour = date.H?.toString().padStart(2, '0') || '00'
+        const minute = date.M?.toString().padStart(2, '0') || '00'
+        const second = date.S?.toString().padStart(2, '0') || '00'
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
+      }
+
+      // Handle string format: "31-Mar-2026 17:13:47"
+      const str = value.toString().trim()
       
-      // Return YYYY-MM-DD (PASTIKAN TANPA 'T')
-      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
-    }
-
-    // Handle string
-    const str = value.toString().trim()
-    
-    // Coba native JS Date
-    const nativeDate = new Date(str)
-    if (!isNaN(nativeDate.getTime())) {
-      // Pastikan return YYYY-MM-DD, bukan ISO string
-      const year = nativeDate.getFullYear()
-      const month = String(nativeDate.getMonth() + 1).padStart(2, '0')
-      const day = String(nativeDate.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
-    }
-
-    // Format: "31-Jan-2026 22:57:50, Platform :Web"
-    const cleanStr = str.split(',')[0].split('Platform')[0].trim()
-    const parts = cleanStr.split(' ')
-    
-    if (parts.length >= 2) {
-      const [datePart] = parts
-      const [day, month, year] = datePart.split('-')
-      
-      const monthMap: any = {
-        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-        'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-        'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      // Pisahkan date dan time
+      const parts = str.split(' ')
+      if (parts.length >= 2) {
+        const [datePart, timePart] = parts
+        const [day, month, year] = datePart.split('-')
+        
+        const monthMap: any = {
+          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+          'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+          'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+        }
+        
+        if (monthMap[month]) {
+          // Return dengan spasi, bukan T
+          return `${year}-${monthMap[month]}-${day.padStart(2, '0')} ${timePart}`
+        }
       }
       
-      if (monthMap[month]) {
-        return `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
+      // Fallback ke native Date
+      const nativeDate = new Date(str)
+      if (!isNaN(nativeDate.getTime())) {
+        const year = nativeDate.getFullYear()
+        const month = String(nativeDate.getMonth() + 1).padStart(2, '0')
+        const day = String(nativeDate.getDate()).padStart(2, '0')
+        const hour = String(nativeDate.getHours()).padStart(2, '0')
+        const minute = String(nativeDate.getMinutes()).padStart(2, '0')
+        const second = String(nativeDate.getSeconds()).padStart(2, '0')
+        return `${year}-${month}-${day} ${hour}:${minute}:${second}`
       }
+      
+      return null
+    } catch {
+      return null
     }
-    
-    return null
-  } catch {
-    return null
   }
-}
 
   // ===========================================
   // UPLOAD PROCESS
@@ -333,16 +336,7 @@ export default function WDDataRawPage() {
         // Skip GRAND TOTAL
         if (row[2]?.toString().includes('GRAND TOTAL')) continue
         
-        // Parse tanggal
-        const requestedDate = parseExcelDate(row[idx.requested])
-        let approvedDate = parseExcelDate(row[idx.approved])
-        
-        // 🔥 FIX: Kalo approved_date cuma DATE (tanpa jam) dan requestedDate ada jamnya
-        if (approvedDate && requestedDate && approvedDate.length === 10) {
-          // Ambil jam dari requested_date
-          const timePart = requestedDate.split('T')[1]
-          approvedDate = `${approvedDate}T${timePart}`
-        }
+        const approvedDate = parseExcelDate(row[idx.approved])
         
         if (!approvedDate) {
           console.log(`⛔ Skip baris ${i+1}: approved date null`, row[idx.approved])
@@ -357,7 +351,7 @@ export default function WDDataRawPage() {
           player_fee_amount: parseFloat(row[idx.playerFee]) || 0,
           agent_fee_amount: parseFloat(row[idx.agentFee]) || 0,
           nett_amount: parseFloat(row[idx.nett]) || 0,
-          requested_date: requestedDate,
+          requested_date: parseExcelDate(row[idx.requested]),
           approved_date: approvedDate,
           bank_statement_date: parseExcelDate(row[idx.bank]),
           user_name: row[idx.userName] || null,
@@ -387,11 +381,15 @@ export default function WDDataRawPage() {
 
       setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
       
+      // 🔥 INSERT BATCH
       const { error } = await supabase
         .from('withdrawal_transactions')
         .insert(validTransactions)
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Error insert:', error)
+        throw error
+      }
 
       // Insert ke withdrawal_uploads untuk tracking
       await supabase
