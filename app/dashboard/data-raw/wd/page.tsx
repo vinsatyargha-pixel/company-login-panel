@@ -117,52 +117,42 @@ export default function WDDataRawPage() {
   }
 
   const fetchUploads = async () => {
-  try {
-    setLoading(true)
-    
-    const monthIndex = months.indexOf(selectedMonth) + 1
-    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+    try {
+      setLoading(true)
+      
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-    console.log('🔍 Filter date range:', { startDate, endDate, selectedMonth, selectedYear })
+      console.log('🔍 Filter:', { selectedMonth, selectedYear, startDate, endDate })
 
-    // Ambil dari tabel withdrawal_uploads
-    let query = supabase
-      .from('withdrawal_uploads')
-      .select('*')
-      .gte('upload_date', startDate)
-      .lte('upload_date', endDate)
-      .order('upload_date', { ascending: true })
+      // Ambil dari tabel withdrawal_uploads
+      let query = supabase
+        .from('withdrawal_uploads')
+        .select('*')
+        .gte('upload_date', startDate)
+        .lte('upload_date', endDate)
+        .order('upload_date', { ascending: true })
 
-    if (selectedAsset !== 'all') {
-      const asset = assets.find(a => a.id === selectedAsset)
-      if (asset) {
-        query = query.eq('website', asset.asset_code)
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset)
+        if (asset) {
+          query = query.eq('website', asset.asset_code)
+        }
       }
-    }
 
-    const { data, error } = await query
-    if (error) {
-      console.error('❌ Error query:', error)
-      throw error
+      const { data, error } = await query
+      if (error) throw error
+      
+      console.log('📅 Data ditemukan:', data?.length || 0, 'baris')
+      setUploads(data || [])
+    } catch (error) {
+      console.error('Error fetching uploads:', error)
+    } finally {
+      setLoading(false)
     }
-    
-    console.log('📅 Data withdrawal_uploads:', data)
-    
-    // Format tanggal untuk display
-    const formatted = (data || []).map((item: any) => ({
-      ...item,
-      upload_date: item.upload_date // udah dalam format YYYY-MM-DD dari database
-    }))
-    
-    setUploads(formatted)
-  } catch (error) {
-    console.error('Error fetching uploads:', error)
-  } finally {
-    setLoading(false)
   }
-}
 
   // ===========================================
   // DRAG & DROP HANDLERS
@@ -318,7 +308,7 @@ export default function WDDataRawPage() {
       
       // Transform data
       const validTransactions: WithdrawalTransaction[] = []
-      const transactionDates = new Set<string>() // Untuk tracking tanggal unik
+      const transactionDates = new Set<string>()
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
@@ -333,7 +323,6 @@ export default function WDDataRawPage() {
           continue
         }
         
-        // Ambil tanggal saja (YYYY-MM-DD) untuk tracking
         const dateOnly = approvedDate.split(' ')[0]
         transactionDates.add(dateOnly)
         
@@ -386,10 +375,9 @@ export default function WDDataRawPage() {
         throw error
       }
 
-      // Insert ke withdrawal_uploads untuk tracking (SATU BARIS PER TANGGAL)
+      // Insert ke withdrawal_uploads (SATU BARIS PER TANGGAL)
       setUploadProgress('Menyimpan tracking upload...')
       
-      // Kelompokkan transaksi per tanggal
       const transactionsByDate: { [key: string]: WithdrawalTransaction[] } = {}
       validTransactions.forEach(t => {
         const date = t.approved_date?.split(' ')[0]
@@ -400,7 +388,6 @@ export default function WDDataRawPage() {
         transactionsByDate[date].push(t)
       })
 
-      // Insert per tanggal
       for (const [date, transactions] of Object.entries(transactionsByDate)) {
         const { error: uploadError } = await supabase
           .from('withdrawal_uploads')
@@ -541,11 +528,14 @@ export default function WDDataRawPage() {
             {uploads.length > 0 ? (
               uploads.map((item) => {
                 const day = getDayFromDate(item.upload_date)
+                const month = new Date(item.upload_date).getMonth()
+                const monthName = months[month]
+                const year = new Date(item.upload_date).getFullYear()
                 
                 return (
                   <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                     <td className="px-4 py-3">
-                      {day} {selectedMonth} {selectedYear}
+                      {day} {monthName} {year}
                     </td>
                     <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                     <td className="px-4 py-3">{item.total_rows} data</td>
@@ -577,7 +567,6 @@ export default function WDDataRawPage() {
               Geser file Excel ke area di bawah, atau klik untuk memilih
             </p>
             
-            {/* DRAG & DROP AREA */}
             <div
               className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer transition-colors
                 ${dragActive 
@@ -615,14 +604,12 @@ export default function WDDataRawPage() {
               )}
             </div>
             
-            {/* PROGRESS */}
             {uploadProgress && (
               <div className="mb-4 text-sm text-[#A7D8FF] text-center">
                 {uploadProgress}
               </div>
             )}
             
-            {/* ACTION BUTTONS */}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
