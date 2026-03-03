@@ -15,11 +15,13 @@ type Asset = {
   asset_code: string
 }
 
-type GroupedUpload = {
+type DepositUpload = {
+  id: string
   upload_date: string
   file_name: string
   total_rows: number
   status: string
+  website?: string
 }
 
 type DepositTransaction = {
@@ -57,7 +59,7 @@ type DepositTransaction = {
 
 export default function DPDataRawPage() {
   // Data states
-  const [uploads, setUploads] = useState<GroupedUpload[]>([])
+  const [uploads, setUploads] = useState<DepositUpload[]>([])
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   
@@ -123,10 +125,10 @@ export default function DPDataRawPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      // Ambil dari tabel deposit_uploads
+      // Ambil dari deposit_uploads
       let query = supabase
         .from('deposit_uploads')
-        .select('upload_date, file_name, total_rows, status')
+        .select('*')
         .gte('upload_date', startDate)
         .lte('upload_date', endDate)
         .order('upload_date', { ascending: true })
@@ -141,15 +143,8 @@ export default function DPDataRawPage() {
       const { data, error } = await query
       if (error) throw error
       
-      // Format data untuk tabel
-      const formatted = (data || []).map((item: any) => ({
-        upload_date: item.upload_date,
-        file_name: item.file_name,
-        total_rows: item.total_rows || 0,
-        status: item.status
-      }))
-      
-      setUploads(formatted)
+      console.log('📅 Data uploads:', data)
+      setUploads(data || [])
     } catch (error) {
       console.error('Error fetching uploads:', error)
     } finally {
@@ -192,7 +187,7 @@ export default function DPDataRawPage() {
   }, [])
 
   // ===========================================
-  // HELPER FUNCTION PARSE TANGGAL
+  // PARSE TANGGAL EXCEL
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
@@ -203,14 +198,13 @@ export default function DPDataRawPage() {
       if (typeof value === 'number') {
         const date = XLSX.SSF.parse_date_code(value)
         if (!date) return null
-        // Format: YYYY-MM-DD HH:MM:SS (tanpa T)
         const hour = date.H?.toString().padStart(2, '0') || '00'
         const minute = date.M?.toString().padStart(2, '0') || '00'
         const second = date.S?.toString().padStart(2, '0') || '00'
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
 
-      // Handle string format: "01-Mar-2026 17:13:47, Platform: (Web)"
+      // Handle string format: "01-Mar-2026 17:13:47"
       const str = value.toString().trim()
       const cleanStr = str.split(',')[0].split('Platform')[0].trim()
       const parts = cleanStr.split(' ')
@@ -420,7 +414,8 @@ export default function DPDataRawPage() {
 
   const getDayFromDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).getDate()
+      const date = new Date(dateStr)
+      return date.getDate()
     } catch {
       return 1
     }
@@ -521,20 +516,24 @@ export default function DPDataRawPage() {
           </thead>
           <tbody>
             {uploads.length > 0 ? (
-              uploads.map((item, idx) => (
-                <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                  <td className="px-4 py-3">
-                    {getDayFromDate(item.upload_date)} {selectedMonth} {selectedYear}
-                  </td>
-                  <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                  <td className="px-4 py-3">{item.total_rows} data</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                </tr>
-              ))
+              uploads.map((item) => {
+                const day = getDayFromDate(item.upload_date)
+                
+                return (
+                  <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                    <td className="px-4 py-3">
+                      {day} {selectedMonth} {selectedYear}
+                    </td>
+                    <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                    <td className="px-4 py-3">{item.total_rows} data</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
+                        {item.status}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })
             ) : (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
