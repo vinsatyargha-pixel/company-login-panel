@@ -316,6 +316,7 @@ export default function DPDataRawPage() {
       
       // Transform data
       const validTransactions: DepositTransaction[] = []
+      const transactionDates = new Set<string>() // Untuk tracking tanggal unik
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
@@ -334,6 +335,10 @@ export default function DPDataRawPage() {
         // PARSE TANGGAL
         const approvedDate = parseExcelDate(row[idx.approved])
         if (!approvedDate) continue
+        
+        // Ambil tanggal saja (YYYY-MM-DD) untuk tracking
+        const dateOnly = approvedDate.split(' ')[0]
+        transactionDates.add(dateOnly)
         
         validTransactions.push({
           nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
@@ -366,6 +371,7 @@ export default function DPDataRawPage() {
       }
 
       console.log('✅ Data valid:', validTransactions.length)
+      console.log('📅 Tanggal dalam file:', Array.from(transactionDates))
       
       if (validTransactions.length === 0) {
         throw new Error('Tidak ada data valid dalam file')
@@ -383,17 +389,37 @@ export default function DPDataRawPage() {
         throw error
       }
 
-      // Insert ke deposit_uploads untuk tracking
-      await supabase
-        .from('deposit_uploads')
-        .insert({
-          upload_date: new Date().toISOString().split('T')[0],
-          file_name: selectedFile.name,
-          total_rows: validTransactions.length,
-          status: 'completed'
-        })
+      // Insert ke deposit_uploads untuk tracking (SATU BARIS PER TANGGAL)
+      setUploadProgress('Menyimpan tracking upload...')
+      
+      // Kelompokkan transaksi per tanggal
+      const transactionsByDate: { [key: string]: DepositTransaction[] } = {}
+      validTransactions.forEach(t => {
+        const date = t.approved_date?.split(' ')[0]
+        if (!date) return
+        if (!transactionsByDate[date]) {
+          transactionsByDate[date] = []
+        }
+        transactionsByDate[date].push(t)
+      })
 
-      alert(`✅ Berhasil! ${validTransactions.length} data transaksi`)
+      // Insert per tanggal
+      for (const [date, transactions] of Object.entries(transactionsByDate)) {
+        const { error: uploadError } = await supabase
+          .from('deposit_uploads')
+          .insert({
+            upload_date: date,
+            file_name: selectedFile.name,
+            total_rows: transactions.length,
+            status: 'completed'
+          })
+        
+        if (uploadError) {
+          console.error('❌ Error insert upload:', uploadError)
+        }
+      }
+
+      alert(`✅ Berhasil! ${validTransactions.length} data transaksi dari ${Object.keys(transactionsByDate).length} tanggal`)
       
       setShowModal(false)
       setSelectedFile(null)
