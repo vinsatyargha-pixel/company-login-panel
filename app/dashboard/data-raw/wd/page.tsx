@@ -124,13 +124,14 @@ export default function WDDataRawPage() {
     const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
     const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-    console.log('🔍 Filter aktif:', { 
+    console.log('🔍 FILTER:', { 
       selectedMonth, 
       selectedYear,
       startDate, 
       endDate 
     })
 
+    // 🔥 PAKAI QUERY YANG SAMA PERSIS DENGAN TEST
     const { data, error } = await supabase
       .from('withdrawal_uploads')
       .select('*')
@@ -138,9 +139,14 @@ export default function WDDataRawPage() {
       .lte('upload_date', endDate)
       .order('upload_date', { ascending: true })
 
-    if (error) throw error
+    if (error) {
+      console.error('❌ ERROR QUERY:', error)
+      throw error
+    }
     
-    console.log('📅 Data ditemukan:', data?.length || 0, 'baris')
+    console.log('📅 DATA DARI SUPABASE:', data)
+    console.log('📅 JUMLAH DATA:', data?.length || 0)
+    
     setUploads(data || [])
     
   } catch (error) {
