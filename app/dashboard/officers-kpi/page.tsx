@@ -79,8 +79,12 @@ const minutesToHHMMSS = (minutes: number): string => {
 
 export default function OfficersKPIPage() {
   // Filter states
+  const [filterType, setFilterType] = useState<'month' | 'yesterday' | 'custom'>('month')
   const [selectedMonth, setSelectedMonth] = useState('')
   const [selectedYear, setSelectedYear] = useState('')
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
+  
   const [loading, setLoading] = useState(true)
   const [kpiData, setKpiData] = useState<KPIData[]>([])
   const [officers, setOfficers] = useState<Officer[]>([])
@@ -100,14 +104,22 @@ export default function OfficersKPIPage() {
     const today = new Date()
     setSelectedMonth(months[today.getMonth()])
     setSelectedYear(today.getFullYear().toString())
+    
+    // Set default custom range (7 hari terakhir)
+    const end = new Date()
+    const start = new Date()
+    start.setDate(end.getDate() - 7)
+    setCustomStartDate(start.toISOString().split('T')[0])
+    setCustomEndDate(end.toISOString().split('T')[0])
+    
     fetchOfficers()
   }, [])
 
   useEffect(() => {
-    if (selectedMonth && selectedYear && officers.length > 0) {
+    if (officers.length > 0) {
       fetchKPI()
     }
-  }, [selectedMonth, selectedYear, officers])
+  }, [filterType, selectedMonth, selectedYear, customStartDate, customEndDate, officers])
 
   // ===========================================
   // FETCH OFFICERS
@@ -147,6 +159,37 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
+  // GET DATE RANGE BASED ON FILTER
+  // ===========================================
+  const getDateRange = () => {
+    let startDate = ''
+    let endDate = ''
+    let periodText = ''
+
+    if (filterType === 'month') {
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+      periodText = `${selectedMonth} ${selectedYear}`
+    } 
+    else if (filterType === 'yesterday') {
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      startDate = yesterday.toISOString().split('T')[0]
+      endDate = yesterday.toISOString().split('T')[0]
+      periodText = `Yesterday (${startDate})`
+    } 
+    else if (filterType === 'custom') {
+      startDate = customStartDate
+      endDate = customEndDate
+      periodText = `${startDate} s/d ${endDate}`
+    }
+
+    return { startDate, endDate, periodText }
+  }
+
+  // ===========================================
   // FETCH KPI
   // ===========================================
 
@@ -155,12 +198,8 @@ export default function OfficersKPIPage() {
       setLoading(true)
       setError(null)
       
-      const monthIndex = months.indexOf(selectedMonth) + 1
-      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
-
-      console.log('🔍 Filter:', { selectedMonth, selectedYear, startDate, endDate })
+      const { startDate, endDate, periodText } = getDateRange()
+      console.log('🔍 Filter:', { filterType, startDate, endDate, periodText })
 
       // Ambil data deposit
       const { data: depositData, error: depositError } = await supabase
@@ -228,16 +267,14 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // 🔥 FIX: Proses Deposit - Semua handler gak dikenal masuk SYSTEM
+      // Proses Deposit - Semua handler gak dikenal masuk SYSTEM
       depositData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
-        // Cari officer yang match
         const officer = officers.find(o => 
           o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
         )
         
-        // Kalo gak ketemu, masukin ke SYSTEM
         const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
         const kpi = kpiMap[targetPanelId]
         
@@ -274,16 +311,14 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // 🔥 FIX: Proses Withdrawal - Semua handler gak dikenal masuk SYSTEM
+      // Proses Withdrawal - Semua handler gak dikenal masuk SYSTEM
       withdrawalData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
-        // Cari officer yang match
         const officer = officers.find(o => 
           o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
         )
         
-        // Kalo gak ketemu, masukin ke SYSTEM
         const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
         const kpi = kpiMap[targetPanelId]
         
@@ -451,6 +486,8 @@ export default function OfficersKPIPage() {
   const totalRejected = kpiData.reduce((sum, item) => sum + item.total_rejected, 0)
   const totalFailed = kpiData.reduce((sum, item) => sum + item.total_failed, 0)
 
+  const { periodText } = getDateRange()
+
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
       {/* Header */}
@@ -463,31 +500,66 @@ export default function OfficersKPIPage() {
         <p className="text-[#A7D8FF] mt-2">Performance monitoring all officers (including SYSTEM)</p>
       </div>
 
-      {/* FILTER BULAN & TAHUN */}
+      {/* FILTER SECTION */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
-        <div className="flex gap-4 items-center">
+        <div className="flex gap-4 items-center flex-wrap">
+          {/* Filter Type */}
           <select 
-            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as any)}
           >
-            {months.map(month => (
-              <option key={month} value={month}>{month}</option>
-            ))}
-          </select>
-          
-          <select 
-            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-          >
-            {years.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
+            <option value="month">Bulanan</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="custom">Custom Range</option>
           </select>
 
+          {/* Month Filter */}
+          {filterType === 'month' && (
+            <>
+              <select 
+                className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                {months.map(month => (
+                  <option key={month} value={month}>{month}</option>
+                ))}
+              </select>
+              
+              <select 
+                className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+              >
+                {years.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </>
+          )}
+
+          {/* Custom Range Filter */}
+          {filterType === 'custom' && (
+            <>
+              <input
+                type="date"
+                className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+              />
+              <span className="text-[#A7D8FF]">s/d</span>
+              <input
+                type="date"
+                className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+              />
+            </>
+          )}
+
           <div className="ml-auto text-[#A7D8FF]">
-            Periode: {selectedMonth} {selectedYear}
+            Periode: {periodText}
           </div>
         </div>
       </div>
@@ -497,35 +569,62 @@ export default function OfficersKPIPage() {
         <table className="w-full text-xs">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
-              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">No</th>
-              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Panel ID</th>
-              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Officer</th>
-              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Dept</th>
-              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Status</th>
+              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">No</th>
+              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">Panel ID</th>
+              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">Officer</th>
+              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">Dept</th>
+              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">Status</th>
               
-              <th colSpan={10} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">DEPOSIT</th>
-              <th colSpan={10} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">WITHDRAWAL</th>
-              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Human Error</th>
+              {/* DEPOSIT HEADER */}
+              <th colSpan={10} className="px-2 py-2 text-center text-[#FFD700] bg-blue-900/30 border-x border-[#FFD700]/30">
+                DEPOSIT
+              </th>
+              
+              {/* WITHDRAWAL HEADER */}
+              <th colSpan={10} className="px-2 py-2 text-center text-[#FFD700] bg-green-900/30 border-x border-[#FFD700]/30">
+                WITHDRAWAL
+              </th>
+              
+              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-l border-[#FFD700]/30">Human Error</th>
             </tr>
+            
+            {/* SUB HEADER - Labels */}
             <tr className="border-b border-[#FFD700]/30">
-              {/* Deposit */}
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
+              {/* Deposit Sub Header */}
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-blue-900/20" colSpan={2}>Counts</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-blue-900/20" colSpan={3}>Rates (%)</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-blue-900/20" colSpan={3}>Avg Duration</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-blue-900/20" colSpan={2}>SOP</th>
+              
+              {/* Withdrawal Sub Header */}
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-green-900/20" colSpan={2}>Counts</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-green-900/20" colSpan={3}>Rates (%)</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-green-900/20" colSpan={3}>Avg Duration</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-green-900/20" colSpan={2}>SOP</th>
+            </tr>
+            
+            {/* DETAIL HEADER */}
+            <tr className="border-b border-[#FFD700]/30">
+              {/* Deposit Details */}
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej%</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail%</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Fail</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
               
-              {/* Withdrawal */}
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
+              {/* Withdrawal Details */}
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej%</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail%</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Fail</th>
@@ -542,11 +641,11 @@ export default function OfficersKPIPage() {
                     item.panel_id === 'SYSTEM' ? 'bg-purple-900/20' : ''
                   }`}
                 >
-                  <td className="px-2 py-2">{idx + 1}</td>
-                  <td className="px-2 py-2 text-[#FFD700]">{item.panel_id}</td>
-                  <td className="px-2 py-2">{item.officer_name}</td>
-                  <td className="px-2 py-2">{item.department}</td>
-                  <td className="px-2 py-2">
+                  <td className="px-2 py-2 border-r border-[#FFD700]/10">{idx + 1}</td>
+                  <td className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/10">{item.panel_id}</td>
+                  <td className="px-2 py-2 border-r border-[#FFD700]/10">{item.officer_name}</td>
+                  <td className="px-2 py-2 border-r border-[#FFD700]/10">{item.department}</td>
+                  <td className="px-2 py-2 border-r border-[#FFD700]/10">
                     <span className={`px-1 py-0.5 rounded text-[10px] ${
                       item.panel_id === 'SYSTEM' 
                         ? 'bg-purple-500/20 text-purple-400' 
@@ -556,24 +655,26 @@ export default function OfficersKPIPage() {
                     </span>
                   </td>
                   
-                  {/* Deposit */}
-                  <td className="px-2 py-2">{item.dep_total}</td>
+                  {/* Deposit Data */}
                   <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
                   <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
                   <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
                   <td className="px-2 py-2">{item.dep_approve_rate}%</td>
+                  <td className="px-2 py-2">{item.dep_reject_rate}%</td>
+                  <td className="px-2 py-2">{item.dep_fail_rate}%</td>
                   <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
                   <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
                   <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
                   <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
                   <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
                   
-                  {/* Withdrawal */}
-                  <td className="px-2 py-2">{item.wd_total}</td>
+                  {/* Withdrawal Data */}
                   <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
                   <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
                   <td className="px-2 py-2 text-orange-400">{item.wd_failed}</td>
                   <td className="px-2 py-2">{item.wd_approve_rate}%</td>
+                  <td className="px-2 py-2">{item.wd_reject_rate}%</td>
+                  <td className="px-2 py-2">{item.wd_fail_rate}%</td>
                   <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
                   <td className="px-2 py-2 text-red-400 font-mono">{item.wd_avg_reject}</td>
                   <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_fail}</td>
@@ -581,15 +682,15 @@ export default function OfficersKPIPage() {
                   <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
                   
                   {/* Human Error */}
-                  <td className="px-2 py-2 text-red-400">{item.human_error}</td>
+                  <td className="px-2 py-2 text-red-400 border-l border-[#FFD700]/10">{item.human_error}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={25} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={26} className="px-4 py-12 text-center text-gray-400">
                   <div className="text-4xl mb-2">📊</div>
-                  <p className="text-lg mb-1">Belum ada data untuk {selectedMonth} {selectedYear}</p>
-                  <p className="text-sm">Upload data terlebih dahulu di halaman DP/WD</p>
+                  <p className="text-lg mb-1">Belum ada data untuk {periodText}</p>
+                  <p className="text-sm">Pilih periode lain atau upload data terlebih dahulu</p>
                 </td>
               </tr>
             )}
