@@ -202,52 +202,51 @@ export default function WDDataRawPage() {
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
-    if (!value) return null
+  if (!value) return null
 
-    try {
-      // Handle Excel serial number
-      if (typeof value === 'number') {
-        const date = XLSX.SSF.parse_date_code(value)
-        if (!date) return null
-        const hour = date.H?.toString().padStart(2, '0') || '00'
-        const minute = date.M?.toString().padStart(2, '0') || '00'
-        const second = date.S?.toString().padStart(2, '0') || '00'
-        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}T${hour}:${minute}:${second}`
-      }
-
-      // Handle string
-      const str = value.toString().trim()
-      
-      // Format: "31-Jan-2026 22:57:50, Platform :Web"
-      const cleanStr = str.split(',')[0].split('Platform')[0].trim()
-      const parts = cleanStr.split(' ')
-      
-      if (parts.length >= 2) {
-        const [datePart, timePart] = parts
-        const [day, month, year] = datePart.split('-')
-        
-        const monthMap: any = {
-          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-          'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-          'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-        }
-        
-        if (monthMap[month]) {
-          return `${year}-${monthMap[month]}-${day.padStart(2, '0')}T${timePart}`
-        }
-      }
-      
-      // Fallback: kalo cuma date tanpa jam
-      const dateOnly = new Date(str)
-      if (!isNaN(dateOnly.getTime())) {
-        return dateOnly.toISOString().split('T')[0] // Return YYYY-MM-DD aja
-      }
-      
-      return null
-    } catch {
-      return null
+  try {
+    // Handle Excel serial number
+    if (typeof value === 'number') {
+      const date = XLSX.SSF.parse_date_code(value)
+      if (!date) return null
+      const hour = date.H?.toString().padStart(2, '0') || '00'
+      const minute = date.M?.toString().padStart(2, '0') || '00'
+      const second = date.S?.toString().padStart(2, '0') || '00'
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}T${hour}:${minute}:${second}`
     }
+
+    // Handle string format: "01-Mar-2026 17:13:47"
+    const str = value.toString().trim()
+    
+    // Split date and time
+    const parts = str.split(' ')
+    if (parts.length >= 2) {
+      const [datePart, timePart] = parts
+      const [day, month, year] = datePart.split('-')
+      
+      const monthMap: any = {
+        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+        'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+        'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      }
+      
+      if (monthMap[month]) {
+        // Return dengan jam dari file
+        return `${year}-${monthMap[month]}-${day.padStart(2, '0')}T${timePart}`
+      }
+    }
+    
+    // Fallback ke native Date
+    const nativeDate = new Date(str)
+    if (!isNaN(nativeDate.getTime())) {
+      return nativeDate.toISOString()
+    }
+    
+    return null
+  } catch {
+    return null
   }
+}
 
   // ===========================================
   // UPLOAD PROCESS
