@@ -228,16 +228,19 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Deposit
+      // 🔥 FIX: Proses Deposit - Semua handler gak dikenal masuk SYSTEM
       depositData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
+        // Cari officer yang match
         const officer = officers.find(o => 
           o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
         )
-        if (!officer) return
-
-        const kpi = kpiMap[officer.panel_id]
+        
+        // Kalo gak ketemu, masukin ke SYSTEM
+        const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+        const kpi = kpiMap[targetPanelId]
+        
         kpi.dep_total++
 
         const status = tx.status?.toLowerCase()
@@ -256,7 +259,7 @@ export default function OfficersKPIPage() {
           kpi.dep_rejected++
           kpi.dep_reject_count++
           kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
-        } else if (status?.includes('fail')) {  // 🔥 FIX: case insensitive untuk FAIL
+        } else if (status?.includes('fail')) {
           kpi.dep_failed++
           kpi.dep_fail_count++
           kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
@@ -271,16 +274,19 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Withdrawal
+      // 🔥 FIX: Proses Withdrawal - Semua handler gak dikenal masuk SYSTEM
       withdrawalData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
+        // Cari officer yang match
         const officer = officers.find(o => 
           o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
         )
-        if (!officer) return
-
-        const kpi = kpiMap[officer.panel_id]
+        
+        // Kalo gak ketemu, masukin ke SYSTEM
+        const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+        const kpi = kpiMap[targetPanelId]
+        
         kpi.wd_total++
 
         const status = tx.status?.toLowerCase()
@@ -299,7 +305,7 @@ export default function OfficersKPIPage() {
           kpi.wd_rejected++
           kpi.wd_reject_count++
           kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
-        } else if (status?.includes('fail')) {  // 🔥 FIX: case insensitive untuk FAIL
+        } else if (status?.includes('fail')) {
           kpi.wd_failed++
           kpi.wd_fail_count++
           kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
