@@ -10,12 +10,15 @@ import Link from 'next/link'
 
 type Officer = {
   id: string
+  panel_id: string
   full_name: string
   department: string
+  status: string
 }
 
 type KPIData = {
   officer_id: string
+  panel_id: string
   officer_name: string
   department: string
   status: string
@@ -45,7 +48,6 @@ export default function OfficersKPIPage() {
   const [kpiData, setKpiData] = useState<KPIData[]>([])
   const [officers, setOfficers] = useState<Officer[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [matchDebug, setMatchDebug] = useState<any[]>([])
 
   const months = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -71,24 +73,24 @@ export default function OfficersKPIPage() {
   }, [selectedMonth, selectedYear, officers])
 
   // ===========================================
-  // FETCH OFFICERS
+  // FETCH OFFICERS dari tabel officers
   // ===========================================
 
   const fetchOfficers = async () => {
     try {
       setError(null)
-      console.log('🔍 Fetching officers...')
+      console.log('🔍 Fetching officers from officers table...')
       
       const { data, error } = await supabase
-        .from('users')
-        .select('id, full_name, department')
-        .eq('department', 'CS DP WD')
+        .from('officers')
+        .select('id, panel_id, full_name, department, status')
+        .in('department', ['CS DP WD', 'CAPTAIN'])
         .order('full_name')
 
       if (error) throw error
       
       console.log('📊 Officers found:', data?.length || 0)
-      console.log('👤 Officer IDs:', data?.map(o => ({ id: o.id, name: o.full_name })))
+      console.log('👤 Panel IDs:', data?.map(o => ({ panel: o.panel_id, name: o.full_name })))
       
       setOfficers(data || [])
       
@@ -106,7 +108,6 @@ export default function OfficersKPIPage() {
     try {
       setLoading(true)
       setError(null)
-      setMatchDebug([])
       
       const monthIndex = months.indexOf(selectedMonth) + 1
       const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
@@ -151,22 +152,17 @@ export default function OfficersKPIPage() {
       console.log('📊 Deposit data:', depositData?.length || 0)
       console.log('📊 Withdrawal data:', withdrawalData?.length || 0)
 
-      // Debug: Lihat handler yang ada di transaksi
-      const depositHandlers = [...new Set(depositData?.map((t: any) => t.handler) || [])]
-      const withdrawalHandlers = [...new Set(withdrawalData?.map((t: any) => t.handler) || [])]
-      console.log('👤 Deposit handlers:', depositHandlers)
-      console.log('👤 Withdrawal handlers:', withdrawalHandlers)
-
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan data officer
+      // Inisialisasi dengan data officer (pake panel_id sebagai key)
       officers.forEach(officer => {
-        kpiMap[officer.id] = {
+        kpiMap[officer.panel_id] = {
           officer_id: officer.id,
+          panel_id: officer.panel_id,
           officer_name: officer.full_name,
           department: officer.department,
-          status: 'REGULAR',
+          status: officer.status || 'REGULAR',
           total_transactions: 0,
           total_approved: 0,
           total_rejected: 0,
@@ -182,28 +178,18 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Debug match
-      const matches: any[] = []
-
       // Proses deposit
       depositData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
-        // Cari officer dengan ID yang match (case insensitive)
+        // Cari officer berdasarkan panel_id (case insensitive)
         const officer = officers.find(o => 
-          String(o.id).toLowerCase() === tx.handler.toLowerCase()
+          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
         )
         
-        // Debug
-        matches.push({
-          type: 'deposit',
-          handler: tx.handler,
-          match: officer ? officer.full_name : 'NO MATCH'
-        })
-
         if (!officer) return
 
-        const kpi = kpiMap[officer.id]
+        const kpi = kpiMap[officer.panel_id]
         kpi.total_transactions++
 
         if (tx.status?.toLowerCase() === 'approved') {
@@ -236,19 +222,12 @@ export default function OfficersKPIPage() {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
         const officer = officers.find(o => 
-          String(o.id).toLowerCase() === tx.handler.toLowerCase()
+          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
         )
         
-        // Debug
-        matches.push({
-          type: 'withdrawal',
-          handler: tx.handler,
-          match: officer ? officer.full_name : 'NO MATCH'
-        })
-
         if (!officer) return
 
-        const kpi = kpiMap[officer.id]
+        const kpi = kpiMap[officer.panel_id]
         kpi.total_transactions++
 
         if (tx.status?.toLowerCase() === 'approved') {
@@ -276,8 +255,6 @@ export default function OfficersKPIPage() {
         }
       })
 
-      setMatchDebug(matches)
-
       // Hitung rate dan rata-rata
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
         const approve_rate = kpi.total_transactions > 0 
@@ -298,6 +275,7 @@ export default function OfficersKPIPage() {
 
         return {
           officer_id: kpi.officer_id,
+          panel_id: kpi.panel_id,
           officer_name: kpi.officer_name,
           department: kpi.department,
           status: kpi.status,
@@ -317,8 +295,6 @@ export default function OfficersKPIPage() {
       })
 
       console.log('✅ KPI Data:', formattedData)
-      console.log('🔍 Match Debug:', matches.slice(0, 20)) // 20 sample pertama
-      
       setKpiData(formattedData)
       
     } catch (error: any) {
@@ -361,6 +337,9 @@ export default function OfficersKPIPage() {
   const totalTransactions = kpiData.reduce((sum, item) => sum + item.total_transactions, 0)
   const totalApproved = kpiData.reduce((sum, item) => sum + item.total_approved, 0)
   const totalRejected = kpiData.reduce((sum, item) => sum + item.total_rejected, 0)
+
+  // Filter hanya CS DP WD (kalo mau)
+  const filteredKpiData = kpiData.filter(item => item.department === 'CS DP WD')
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
@@ -409,6 +388,7 @@ export default function OfficersKPIPage() {
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th className="px-3 py-3 text-left text-[#FFD700]">No</th>
+              <th className="px-3 py-3 text-left text-[#FFD700]">Panel ID</th>
               <th className="px-3 py-3 text-left text-[#FFD700]">Officer</th>
               <th className="px-3 py-3 text-left text-[#FFD700]">Dept</th>
               <th className="px-3 py-3 text-left text-[#FFD700]">Status</th>
@@ -427,15 +407,16 @@ export default function OfficersKPIPage() {
             </tr>
           </thead>
           <tbody>
-            {kpiData.length > 0 ? (
-              kpiData.map((item, idx) => (
-                <tr key={item.officer_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+            {filteredKpiData.length > 0 ? (
+              filteredKpiData.map((item, idx) => (
+                <tr key={item.panel_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                   <td className="px-3 py-3">{idx + 1}</td>
-                  <td className="px-3 py-3 font-medium text-[#FFD700]">{item.officer_name}</td>
+                  <td className="px-3 py-3 text-[#FFD700]">{item.panel_id}</td>
+                  <td className="px-3 py-3">{item.officer_name}</td>
                   <td className="px-3 py-3">{item.department}</td>
                   <td className="px-3 py-3">
                     <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
-                      REGULAR
+                      {item.status}
                     </span>
                   </td>
                   <td className="px-3 py-3">{item.total_transactions}</td>
@@ -454,7 +435,7 @@ export default function OfficersKPIPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={17} className="px-4 py-12 text-center text-gray-400">
                   <div className="text-4xl mb-2">📊</div>
                   <p className="text-lg mb-1">Belum ada data untuk {selectedMonth} {selectedYear}</p>
                   <p className="text-sm">Upload data terlebih dahulu di halaman DP/WD</p>
@@ -468,19 +449,12 @@ export default function OfficersKPIPage() {
       {/* Summary */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-sm text-[#A7D8FF]">
         <div className="flex justify-between items-center">
-          <span>Total Officers: {officers.length}</span>
+          <span>Total Officers: {filteredKpiData.length}</span>
           <span>Total Transactions: {totalTransactions}</span>
           <span className="text-green-400">Approved: {totalApproved}</span>
           <span className="text-red-400">Rejected: {totalRejected}</span>
         </div>
       </div>
-
-      {/* Debug Info (Hanya Muncul di Console) */}
-      {matchDebug.length > 0 && (
-        <div className="mt-4 p-3 bg-gray-800/50 rounded-lg text-xs text-gray-400">
-          <p>🔍 Debug: {matchDebug.length} transaksi diproses. Cek console untuk detail match.</p>
-        </div>
-      )}
     </div>
   )
 }
