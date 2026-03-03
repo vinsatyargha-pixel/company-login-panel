@@ -12,7 +12,6 @@ type Officer = {
   id: string
   full_name: string
   department: string
-  status: string
 }
 
 type KPIData = {
@@ -23,10 +22,10 @@ type KPIData = {
   total_transactions: number
   total_approved: number
   total_rejected: number
-  approve_rate: number
-  reject_rate: number
-  avg_approve_minutes: number
-  avg_reject_minutes: number
+  approve_rate: string
+  reject_rate: string
+  avg_approve_minutes: string
+  avg_reject_minutes: string
   sop_deposit: number
   non_sop_deposit: number
   sop_withdrawal: number
@@ -40,12 +39,11 @@ type KPIData = {
 
 export default function OfficersKPIPage() {
   // Filter states
-  const [selectedFilter, setSelectedFilter] = useState('yesterday')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [selectedFilter, setSelectedFilter] = useState('period1') // Default ke Jan-Jun 2026
   const [loading, setLoading] = useState(true)
   const [kpiData, setKpiData] = useState<KPIData[]>([])
   const [officers, setOfficers] = useState<Officer[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   // Filter options
   const filterOptions = [
@@ -117,31 +115,39 @@ export default function OfficersKPIPage() {
   }, [])
 
   useEffect(() => {
-    if (selectedFilter) {
+    if (selectedFilter && officers.length > 0) {
       fetchKPI()
     }
-  }, [selectedFilter])
+  }, [selectedFilter, officers])
 
   const fetchOfficers = async () => {
     try {
+      setError(null)
+      console.log('🔍 Fetching officers...')
+      
       const { data, error } = await supabase
         .from('users')
-        .select('id, full_name, department, status')
+        .select('id, full_name, department')
         .in('department', ['CS DP WD', 'CAPTAIN'])
         .order('full_name')
 
       if (error) throw error
+      
+      console.log('📊 Officers found:', data?.length || 0)
       setOfficers(data || [])
-    } catch (error) {
-      console.error('Error fetching officers:', error)
+      
+    } catch (error: any) {
+      console.error('❌ Error fetching officers:', error)
+      setError(error.message)
     }
   }
 
   const fetchKPI = async () => {
     try {
       setLoading(true)
+      setError(null)
+      
       const range = getDateRange(selectedFilter)
-
       console.log('🔍 Filter:', { selectedFilter, range })
 
       // Ambil data deposit
@@ -172,8 +178,8 @@ export default function OfficersKPIPage() {
 
       if (withdrawalError) throw withdrawalError
 
-      console.log('📊 Deposit data:', depositData?.length)
-      console.log('📊 Withdrawal data:', withdrawalData?.length)
+      console.log('📊 Deposit data:', depositData?.length || 0)
+      console.log('📊 Withdrawal data:', withdrawalData?.length || 0)
 
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
@@ -184,14 +190,10 @@ export default function OfficersKPIPage() {
           officer_id: officer.id,
           officer_name: officer.full_name,
           department: officer.department,
-          status: officer.status,
+          status: 'REGULAR', // Default status
           total_transactions: 0,
           total_approved: 0,
           total_rejected: 0,
-          approve_rate: 0,
-          reject_rate: 0,
-          avg_approve_minutes: 0,
-          avg_reject_minutes: 0,
           sop_deposit: 0,
           non_sop_deposit: 0,
           sop_withdrawal: 0,
@@ -214,7 +216,7 @@ export default function OfficersKPIPage() {
         const kpi = kpiMap[officer.id]
         kpi.total_transactions++
 
-        if (tx.status === 'Approved') {
+        if (tx.status?.toLowerCase() === 'approved') {
           kpi.total_approved++
           kpi.approve_count++
           kpi.approve_minutes_sum += (tx.duration_minutes || 0)
@@ -224,7 +226,7 @@ export default function OfficersKPIPage() {
           } else {
             kpi.non_sop_deposit++
           }
-        } else if (tx.status === 'Rejected') {
+        } else if (tx.status?.toLowerCase() === 'rejected') {
           kpi.total_rejected++
           kpi.reject_count++
           kpi.reject_minutes_sum += (tx.duration_minutes || 0)
@@ -249,7 +251,7 @@ export default function OfficersKPIPage() {
         const kpi = kpiMap[officer.id]
         kpi.total_transactions++
 
-        if (tx.status === 'Approved') {
+        if (tx.status?.toLowerCase() === 'approved') {
           kpi.total_approved++
           kpi.approve_count++
           kpi.approve_minutes_sum += (tx.duration_minutes || 0)
@@ -259,7 +261,7 @@ export default function OfficersKPIPage() {
           } else {
             kpi.non_sop_withdrawal++
           }
-        } else if (tx.status === 'Rejected') {
+        } else if (tx.status?.toLowerCase() === 'rejected') {
           kpi.total_rejected++
           kpi.reject_count++
           kpi.reject_minutes_sum += (tx.duration_minutes || 0)
@@ -275,31 +277,49 @@ export default function OfficersKPIPage() {
       })
 
       // Hitung rate dan rata-rata
-      Object.values(kpiMap).forEach((kpi: any) => {
-        if (kpi.total_transactions > 0) {
-          kpi.approve_rate = (kpi.total_approved / kpi.total_transactions * 100).toFixed(2)
-          kpi.reject_rate = (kpi.total_rejected / kpi.total_transactions * 100).toFixed(2)
-        }
+      const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
+        const approve_rate = kpi.total_transactions > 0 
+          ? ((kpi.total_approved / kpi.total_transactions) * 100).toFixed(2) 
+          : '0.00'
         
-        if (kpi.approve_count > 0) {
-          kpi.avg_approve_minutes = (kpi.approve_minutes_sum / kpi.approve_count).toFixed(2)
-        }
+        const reject_rate = kpi.total_transactions > 0 
+          ? ((kpi.total_rejected / kpi.total_transactions) * 100).toFixed(2) 
+          : '0.00'
         
-        if (kpi.reject_count > 0) {
-          kpi.avg_reject_minutes = (kpi.reject_minutes_sum / kpi.reject_count).toFixed(2)
-        }
+        const avg_approve = kpi.approve_count > 0 
+          ? (kpi.approve_minutes_sum / kpi.approve_count).toFixed(2) 
+          : '-'
+        
+        const avg_reject = kpi.reject_count > 0 
+          ? (kpi.reject_minutes_sum / kpi.reject_count).toFixed(2) 
+          : '-'
 
-        // Hapus properti temporary
-        delete kpi.approve_minutes_sum
-        delete kpi.reject_minutes_sum
-        delete kpi.approve_count
-        delete kpi.reject_count
+        return {
+          officer_id: kpi.officer_id,
+          officer_name: kpi.officer_name,
+          department: kpi.department,
+          status: kpi.status,
+          total_transactions: kpi.total_transactions,
+          total_approved: kpi.total_approved,
+          total_rejected: kpi.total_rejected,
+          approve_rate,
+          reject_rate,
+          avg_approve_minutes: avg_approve,
+          avg_reject_minutes: avg_reject,
+          sop_deposit: kpi.sop_deposit,
+          non_sop_deposit: kpi.non_sop_deposit,
+          sop_withdrawal: kpi.sop_withdrawal,
+          non_sop_withdrawal: kpi.non_sop_withdrawal,
+          human_error: kpi.human_error
+        }
       })
 
-      setKpiData(Object.values(kpiMap))
+      console.log('✅ KPI Data:', formattedData)
+      setKpiData(formattedData)
       
-    } catch (error) {
-      console.error('Error fetching KPI:', error)
+    } catch (error: any) {
+      console.error('❌ Error fetching KPI:', error)
+      setError(error.message)
     } finally {
       setLoading(false)
     }
@@ -312,10 +332,31 @@ export default function OfficersKPIPage() {
   if (loading) {
     return (
       <div className="p-6 min-h-screen bg-[#0B1A33] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700] mx-auto"></div>
+          <p className="mt-4 text-[#FFD700]">Loading KPI data...</p>
+        </div>
       </div>
     )
   }
+
+  if (error) {
+    return (
+      <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
+        <Link href="/dashboard" className="text-[#FFD700] hover:underline inline-block mb-4">
+          ← BACK TO DASHBOARD
+        </Link>
+        <div className="bg-red-900/50 border border-red-500 p-4 rounded-lg">
+          <h2 className="text-xl font-bold text-red-400 mb-2">Error</h2>
+          <p className="text-white">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const totalTransactions = kpiData.reduce((sum, item) => sum + item.total_transactions, 0)
+  const totalApproved = kpiData.reduce((sum, item) => sum + item.total_approved, 0)
+  const totalRejected = kpiData.reduce((sum, item) => sum + item.total_rejected, 0)
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
@@ -372,32 +413,40 @@ export default function OfficersKPIPage() {
             </tr>
           </thead>
           <tbody>
-            {kpiData.map((item, idx) => (
-              <tr key={item.officer_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                <td className="px-3 py-3">{idx + 1}</td>
-                <td className="px-3 py-3 font-medium text-[#FFD700]">{item.officer_name}</td>
-                <td className="px-3 py-3">{item.department}</td>
-                <td className="px-3 py-3">
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    item.status === 'REGULAR' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                  }`}>
-                    {item.status}
-                  </span>
+            {kpiData.length > 0 ? (
+              kpiData.map((item, idx) => (
+                <tr key={item.officer_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                  <td className="px-3 py-3">{idx + 1}</td>
+                  <td className="px-3 py-3 font-medium text-[#FFD700]">{item.officer_name}</td>
+                  <td className="px-3 py-3">{item.department}</td>
+                  <td className="px-3 py-3">
+                    <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
+                      REGULAR
+                    </span>
+                  </td>
+                  <td className="px-3 py-3">{item.total_transactions}</td>
+                  <td className="px-3 py-3 text-green-400">{item.total_approved}</td>
+                  <td className="px-3 py-3 text-red-400">{item.total_rejected}</td>
+                  <td className="px-3 py-3">{item.approve_rate}%</td>
+                  <td className="px-3 py-3">{item.reject_rate}%</td>
+                  <td className="px-3 py-3">{item.avg_approve_minutes}</td>
+                  <td className="px-3 py-3">{item.avg_reject_minutes}</td>
+                  <td className="px-3 py-3 text-green-400">{item.sop_deposit}</td>
+                  <td className="px-3 py-3 text-yellow-400">{item.non_sop_deposit}</td>
+                  <td className="px-3 py-3 text-green-400">{item.sop_withdrawal}</td>
+                  <td className="px-3 py-3 text-yellow-400">{item.non_sop_withdrawal}</td>
+                  <td className="px-3 py-3 text-red-400">{item.human_error}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
+                  <div className="text-4xl mb-2">📊</div>
+                  <p className="text-lg mb-1">Belum ada data untuk periode ini</p>
+                  <p className="text-sm">Coba pilih periode lain atau upload data terlebih dahulu</p>
                 </td>
-                <td className="px-3 py-3">{item.total_transactions}</td>
-                <td className="px-3 py-3 text-green-400">{item.total_approved}</td>
-                <td className="px-3 py-3 text-red-400">{item.total_rejected}</td>
-                <td className="px-3 py-3">{item.approve_rate}%</td>
-                <td className="px-3 py-3">{item.reject_rate}%</td>
-                <td className="px-3 py-3">{item.avg_approve_minutes || '-'}</td>
-                <td className="px-3 py-3">{item.avg_reject_minutes || '-'}</td>
-                <td className="px-3 py-3 text-green-400">{item.sop_deposit}</td>
-                <td className="px-3 py-3 text-yellow-400">{item.non_sop_deposit}</td>
-                <td className="px-3 py-3 text-green-400">{item.sop_withdrawal}</td>
-                <td className="px-3 py-3 text-yellow-400">{item.non_sop_withdrawal}</td>
-                <td className="px-3 py-3 text-red-400">{item.human_error}</td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
@@ -405,10 +454,10 @@ export default function OfficersKPIPage() {
       {/* Summary */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-sm text-[#A7D8FF]">
         <div className="flex justify-between items-center">
-          <span>Total Officers: {kpiData.length}</span>
-          <span>Total Transactions: {kpiData.reduce((sum, item) => sum + item.total_transactions, 0)}</span>
-          <span className="text-green-400">Approved: {kpiData.reduce((sum, item) => sum + item.total_approved, 0)}</span>
-          <span className="text-red-400">Rejected: {kpiData.reduce((sum, item) => sum + item.total_rejected, 0)}</span>
+          <span>Total Officers: {officers.length}</span>
+          <span>Total Transactions: {totalTransactions}</span>
+          <span className="text-green-400">Approved: {totalApproved}</span>
+          <span className="text-red-400">Rejected: {totalRejected}</span>
         </div>
       </div>
     </div>
