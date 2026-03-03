@@ -201,49 +201,36 @@ export default function WDDataRawPage() {
   // PARSE TANGGAL (RETURN TIMESTAMP LENGKAP)
   // ===========================================
 
-  const parseExcelDate = (value: any): string | null => {
-  if (!value) return null
-
+  const parseExcelDate = (dateStr: any): string | null => {
+  if (!dateStr || typeof dateStr !== 'string') return null
+  
   try {
-    // Handle Excel serial number
-    if (typeof value === 'number') {
-      const date = XLSX.SSF.parse_date_code(value)
-      if (!date) return null
-      const hour = date.H?.toString().padStart(2, '0') || '00'
-      const minute = date.M?.toString().padStart(2, '0') || '00'
-      const second = date.S?.toString().padStart(2, '0') || '00'
-      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}T${hour}:${minute}:${second}`
-    }
-
-    // Handle string format: "01-Mar-2026 17:13:47"
-    const str = value.toString().trim()
+    // Bersihin dari "Platform: (Web)" dan koma (kalo ada)
+    const cleanStr = dateStr.split(',')[0].split('Platform')[0].trim()
+    const parts = cleanStr.split('-')
     
-    // Split date and time
-    const parts = str.split(' ')
-    if (parts.length >= 2) {
-      const [datePart, timePart] = parts
-      const [day, month, year] = datePart.split('-')
-      
-      const monthMap: any = {
-        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-        'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-        'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-      }
-      
-      if (monthMap[month]) {
-        // Return dengan jam dari file
-        return `${year}-${monthMap[month]}-${day.padStart(2, '0')}T${timePart}`
-      }
+    if (parts.length < 3) return null
+    
+    const day = parts[0].padStart(2, '0')
+    const month = parts[1]
+    const yearTime = parts[2]
+    const timeParts = yearTime.split(' ')
+    
+    if (timeParts.length < 1) return null
+    
+    const year = timeParts[0]
+    const time = timeParts[1] || '00:00:00'
+    
+    const monthMap: {[key: string]: string} = {
+      'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+      'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
     }
     
-    // Fallback ke native Date
-    const nativeDate = new Date(str)
-    if (!isNaN(nativeDate.getTime())) {
-      return nativeDate.toISOString()
-    }
+    if (!monthMap[month]) return null
     
-    return null
-  } catch {
+    // Return format ISO untuk timestamp
+    return `${year}-${monthMap[month]}-${day}T${time}`
+  } catch (e) {
     return null
   }
 }
