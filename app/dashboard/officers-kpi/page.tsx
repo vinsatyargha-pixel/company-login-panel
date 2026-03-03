@@ -90,7 +90,7 @@ export default function OfficersKPIPage() {
   }, [selectedMonth, selectedYear, officers])
 
   // ===========================================
-  // FETCH OFFICERS
+  // FETCH OFFICERS (dengan SYSTEM)
   // ===========================================
 
   const fetchOfficers = async () => {
@@ -105,10 +105,20 @@ export default function OfficersKPIPage() {
 
       if (error) throw error
       
-      console.log('📊 Officers found:', data?.length || 0)
-      console.log('👥 Panel IDs:', data?.map(o => ({ panel: o.panel_id, name: o.full_name })))
+      // Tambah SYSTEM di paling akhir
+      const allOfficers = [
+        ...(data || []),
+        {
+          id: 'system',
+          panel_id: 'SYSTEM',
+          full_name: 'SYSTEM (AUTO)',
+          department: 'AUTOMATION',
+          status: 'SYSTEM'
+        }
+      ]
       
-      setOfficers(data || [])
+      console.log('📊 Officers found:', allOfficers.length)
+      setOfficers(allOfficers)
       
     } catch (error: any) {
       console.error('❌ Error fetching officers:', error)
@@ -156,7 +166,7 @@ export default function OfficersKPIPage() {
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan SEMUA officer
+      // Inisialisasi dengan SEMUA officer (termasuk SYSTEM)
       officers.forEach(officer => {
         kpiMap[officer.panel_id] = {
           officer_id: officer.id,
@@ -192,9 +202,8 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Deposit (skip SYSTEM)
+      // Proses Deposit (SYSTEM tetap diproses)
       depositData?.forEach((tx: any) => {
-        if (tx.handler === 'SYSTEM' || tx.handler?.toLowerCase() === 'system') return
         if (!tx.handler || typeof tx.handler !== 'string') return
         
         const officer = officers.find(o => 
@@ -230,9 +239,8 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Withdrawal (skip SYSTEM)
+      // Proses Withdrawal (SYSTEM tetap diproses)
       withdrawalData?.forEach((tx: any) => {
-        if (tx.handler === 'SYSTEM' || tx.handler?.toLowerCase() === 'system') return
         if (!tx.handler || typeof tx.handler !== 'string') return
         
         const officer = officers.find(o => 
@@ -333,8 +341,14 @@ export default function OfficersKPIPage() {
         }
       })
 
-      console.log('✅ KPI Data:', formattedData)
-      setKpiData(formattedData)
+      // Urutkan: officer biasa dulu, SYSTEM di paling bawah
+      const sortedData = [
+        ...formattedData.filter(item => item.panel_id !== 'SYSTEM'),
+        ...formattedData.filter(item => item.panel_id === 'SYSTEM')
+      ]
+      
+      console.log('✅ KPI Data:', sortedData)
+      setKpiData(sortedData)
       
     } catch (error: any) {
       console.error('❌ Error:', error)
@@ -383,7 +397,7 @@ export default function OfficersKPIPage() {
         </Link>
         
         <h1 className="text-3xl font-bold text-[#FFD700]">KPI LIVE OFFICERS</h1>
-        <p className="text-[#A7D8FF] mt-2">Performance monitoring all officers</p>
+        <p className="text-[#A7D8FF] mt-2">Performance monitoring all officers (including SYSTEM)</p>
       </div>
 
       {/* FILTER BULAN & TAHUN */}
@@ -451,13 +465,22 @@ export default function OfficersKPIPage() {
           <tbody>
             {kpiData.length > 0 ? (
               kpiData.map((item, idx) => (
-                <tr key={item.panel_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                <tr 
+                  key={item.panel_id} 
+                  className={`border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 ${
+                    item.panel_id === 'SYSTEM' ? 'bg-purple-900/20' : ''
+                  }`}
+                >
                   <td className="px-2 py-2">{idx + 1}</td>
                   <td className="px-2 py-2 text-[#FFD700]">{item.panel_id}</td>
                   <td className="px-2 py-2">{item.officer_name}</td>
                   <td className="px-2 py-2">{item.department}</td>
                   <td className="px-2 py-2">
-                    <span className="px-1 py-0.5 rounded text-[10px] bg-green-500/20 text-green-400">
+                    <span className={`px-1 py-0.5 rounded text-[10px] ${
+                      item.panel_id === 'SYSTEM' 
+                        ? 'bg-purple-500/20 text-purple-400' 
+                        : 'bg-green-500/20 text-green-400'
+                    }`}>
                       {item.status}
                     </span>
                   </td>
@@ -498,7 +521,7 @@ export default function OfficersKPIPage() {
       {/* Summary */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF]">
         <div className="flex justify-between">
-          <span>Total Officers: {kpiData.length}</span>
+          <span>Total Officers: {kpiData.length - 1} + SYSTEM</span>
           <span>Total Transactions: {totalTransactions}</span>
           <span className="text-green-400">Approved: {totalApproved}</span>
           <span className="text-red-400">Rejected: {totalRejected}</span>
