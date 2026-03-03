@@ -94,37 +94,38 @@ export default function OfficersKPIPage() {
   // ===========================================
 
   const fetchOfficers = async () => {
-    try {
-      setError(null)
-      console.log('🔍 Fetching officers...')
-      
-      const { data, error } = await supabase
-        .from('officers')
-        .select('id, panel_id, full_name, department, status')
-        .order('full_name')
+  try {
+    setError(null)
+    console.log('🔍 Fetching officers...')
+    
+    const { data, error } = await supabase
+      .from('officers')
+      .select('id, panel_id, full_name, department, status')
+      .eq('department', 'CS DP WD')  // HANYA CS DP WD
+      .order('full_name')
 
-      if (error) throw error
-      
-      // Tambah SYSTEM di paling akhir
-      const allOfficers = [
-        ...(data || []),
-        {
-          id: 'system',
-          panel_id: 'SYSTEM',
-          full_name: 'SYSTEM (AUTO)',
-          department: 'AUTOMATION',
-          status: 'SYSTEM'
-        }
-      ]
-      
-      console.log('📊 Officers found:', allOfficers.length)
-      setOfficers(allOfficers)
-      
-    } catch (error: any) {
-      console.error('❌ Error fetching officers:', error)
-      setError(error.message)
-    }
+    if (error) throw error
+    
+    // Tambah SYSTEM di paling akhir
+    const allOfficers = [
+      ...(data || []),
+      {
+        id: 'system',
+        panel_id: 'SYSTEM',
+        full_name: 'SYSTEM (AUTO)',
+        department: 'AUTOMATION',
+        status: 'SYSTEM'
+      }
+    ]
+    
+    console.log('📊 Officers found:', allOfficers.length)
+    setOfficers(allOfficers)
+    
+  } catch (error: any) {
+    console.error('❌ Error fetching officers:', error)
+    setError(error.message)
   }
+}
 
   // ===========================================
   // FETCH KPI
