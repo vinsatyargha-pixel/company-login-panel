@@ -198,55 +198,55 @@ export default function WDDataRawPage() {
   }, [])
 
   // ===========================================
-  // PARSE TANGGAL (RETURN YYYY-MM-DD)
-  // ===========================================
+// PARSE TANGGAL (RETURN TIMESTAMP LENGKAP)
+// ===========================================
 
-  const parseExcelDate = (value: any): string | null => {
-    if (!value) return null
+const parseExcelDate = (value: any): string | null => {
+  if (!value) return null
 
-    try {
-      // Handle Excel serial number
-      if (typeof value === 'number') {
-        const date = XLSX.SSF.parse_date_code(value)
-        if (!date) return null
-        // Return YYYY-MM-DD (tanpa jam)
-        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
-      }
-
-      // Handle string
-      const str = value.toString().trim()
-      
-      // Coba native JS Date
-      const nativeDate = new Date(str)
-      if (!isNaN(nativeDate.getTime())) {
-        return nativeDate.toISOString().split('T')[0]
-      }
-
-      // Format: "31-Jan-2026 22:57:50, Platform :Web"
-      const cleanStr = str.split(',')[0].split('Platform')[0].trim()
-      const parts = cleanStr.split(' ')
-      
-      if (parts.length >= 2) {
-        const [datePart, timePart] = parts
-        const [day, month, year] = datePart.split('-')
-        
-        const monthMap: any = {
-          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-          'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-          'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-        }
-        
-        if (monthMap[month]) {
-          // Return YYYY-MM-DD (ignore time)
-          return `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
-        }
-      }
-      
-      return null
-    } catch {
-      return null
+  try {
+    // Handle Excel serial number
+    if (typeof value === 'number') {
+      const date = XLSX.SSF.parse_date_code(value)
+      if (!date) return null
+      // Return dengan jam (asumsi 00:00:00)
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}T00:00:00`
     }
+
+    // Handle string
+    const str = value.toString().trim()
+    
+    // Format: "31-Jan-2026 22:57:50, Platform :Web"
+    const cleanStr = str.split(',')[0].split('Platform')[0].trim()
+    const parts = cleanStr.split(' ')
+    
+    if (parts.length >= 2) {
+      const [datePart, timePart] = parts
+      const [day, month, year] = datePart.split('-')
+      
+      const monthMap: any = {
+        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+        'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+        'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      }
+      
+      if (monthMap[month]) {
+        // Return dengan jam dari file
+        return `${year}-${monthMap[month]}-${day.padStart(2, '0')}T${timePart}`
+      }
+    }
+    
+    // Fallback ke native Date
+    const nativeDate = new Date(str)
+    if (!isNaN(nativeDate.getTime())) {
+      return nativeDate.toISOString()
+    }
+    
+    return null
+  } catch {
+    return null
   }
+}
 
   // ===========================================
   // UPLOAD PROCESS
