@@ -119,28 +119,38 @@ export default function WDDataRawPage() {
   try {
     setLoading(true)
     
-    // TEST 1: Ambil semua data tanpa filter
-    const { data: allData, error: allError } = await supabase
+    const monthIndex = months.indexOf(selectedMonth) + 1
+    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+
+    console.log('🔍 FILTER:', { 
+      selectedMonth, 
+      selectedYear,
+      startDate, 
+      endDate 
+    })
+
+    // 🔥 FILTER PAKAI SUPABASE
+    const { data, error } = await supabase
       .from('withdrawal_uploads')
       .select('*')
+      .gte('upload_date', startDate)
+      .lte('upload_date', endDate)
       .order('upload_date', { ascending: true })
 
-    if (allError) throw allError
-    console.log('📦 SEMUA DATA (tanpa filter):', allData)
-    console.log('📦 TOTAL SEMUA:', allData?.length)
-
-    // TEST 2: Filter manual pake JavaScript
-    const filtered = allData?.filter(item => {
-      return item.upload_date >= '2026-02-01' && item.upload_date <= '2026-02-28'
-    })
-    console.log('📅 FILTER MANUAL (Feb 2026):', filtered)
-    console.log('📅 TOTAL FILTER MANUAL:', filtered?.length)
-
-    // PAKAI YANG FILTER MANUAL DULU
-    setUploads(filtered || [])
+    if (error) {
+      console.error('❌ ERROR SUPABASE:', error)
+      throw error
+    }
+    
+    console.log('📅 DATA DITEMUKAN:', data?.length || 0, 'baris')
+    console.log('📅 ISI DATA:', data)
+    
+    setUploads(data || [])
     
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error fetching uploads:', error)
   } finally {
     setLoading(false)
   }
