@@ -94,38 +94,38 @@ export default function OfficersKPIPage() {
   // ===========================================
 
   const fetchOfficers = async () => {
-  try {
-    setError(null)
-    console.log('🔍 Fetching officers...')
-    
-    const { data, error } = await supabase
-      .from('officers')
-      .select('id, panel_id, full_name, department, status')
-      .eq('department', 'CS DP WD')  // HANYA CS DP WD
-      .order('full_name')
+    try {
+      setError(null)
+      console.log('🔍 Fetching officers...')
+      
+      const { data, error } = await supabase
+        .from('officers')
+        .select('id, panel_id, full_name, department, status')
+        .eq('department', 'CS DP WD')  // HANYA CS DP WD
+        .order('full_name')
 
-    if (error) throw error
-    
-    // Tambah SYSTEM di paling akhir
-    const allOfficers = [
-      ...(data || []),
-      {
-        id: 'system',
-        panel_id: 'SYSTEM',
-        full_name: 'SYSTEM (AUTO)',
-        department: 'AUTOMATION',
-        status: 'SYSTEM'
-      }
-    ]
-    
-    console.log('📊 Officers found:', allOfficers.length)
-    setOfficers(allOfficers)
-    
-  } catch (error: any) {
-    console.error('❌ Error fetching officers:', error)
-    setError(error.message)
+      if (error) throw error
+      
+      // Tambah SYSTEM di paling akhir
+      const allOfficers = [
+        ...(data || []),
+        {
+          id: 'system',
+          panel_id: 'SYSTEM',
+          full_name: 'SYSTEM (AUTO)',
+          department: 'AUTOMATION',
+          status: 'SYSTEM'
+        }
+      ]
+      
+      console.log('📊 Officers found:', allOfficers.length)
+      setOfficers(allOfficers)
+      
+    } catch (error: any) {
+      console.error('❌ Error fetching officers:', error)
+      setError(error.message)
+    }
   }
-}
 
   // ===========================================
   // FETCH KPI
@@ -143,21 +143,21 @@ export default function OfficersKPIPage() {
 
       console.log('🔍 Filter:', { selectedMonth, selectedYear, startDate, endDate })
 
-      // Ambil data deposit
+      // 🔥 FIX: Ambil data deposit dengan ::date
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
         .select('handler, status, duration_minutes, reason')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
+        .gte('approved_date::date', startDate)  // TAMBAH ::date
+        .lte('approved_date::date', endDate)    // TAMBAH ::date
 
       if (depositError) throw depositError
 
-      // Ambil data withdrawal
+      // 🔥 FIX: Ambil data withdrawal dengan ::date
       const { data: withdrawalData, error: withdrawalError } = await supabase
         .from('withdrawal_transactions')
         .select('handler, status, duration_minutes, reason')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
+        .gte('approved_date::date', startDate)  // TAMBAH ::date
+        .lte('approved_date::date', endDate)    // TAMBAH ::date
 
       if (withdrawalError) throw withdrawalError
 
