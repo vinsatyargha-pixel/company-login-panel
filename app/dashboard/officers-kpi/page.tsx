@@ -191,77 +191,91 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Deposit
-      depositData?.forEach((tx: any) => {
-        if (!tx.handler) return
-        const officer = officers.find(o => 
-          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
-        )
-        if (!officer) return
+      // Proses deposit
+depositData?.forEach((tx: any) => {
+  // SKIP SYSTEM
+  if (tx.handler === 'SYSTEM' || tx.handler?.toLowerCase() === 'system') {
+    return // Lewati, bukan officer
+  }
+  
+  if (!tx.handler || typeof tx.handler !== 'string') return
+  
+  const officer = officers.find(o => 
+    o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
+  )
+  
+  if (!officer) return
 
-        const kpi = kpiMap[officer.panel_id]
-        kpi.dep_total++
+  const kpi = kpiMap[officer.panel_id]
+  kpi.dep_total++
 
-        if (tx.status?.toLowerCase() === 'approved') {
-          kpi.dep_approved++
-          kpi.dep_approve_count++
-          kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
-          
-          if (tx.duration_minutes <= 3) {
-            kpi.dep_sop++
-          } else {
-            kpi.dep_non_sop++
-          }
-        } else if (tx.status?.toLowerCase() === 'rejected') {
-          kpi.dep_rejected++
-          kpi.dep_reject_count++
-          kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
-        }
+  if (tx.status?.toLowerCase() === 'approved') {
+    kpi.dep_approved++
+    kpi.dep_approve_count++
+    kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
+    
+    if (tx.duration_minutes <= 3) {
+      kpi.dep_sop++
+    } else {
+      kpi.dep_non_sop++
+    }
+  } else if (tx.status?.toLowerCase() === 'rejected') {
+    kpi.dep_rejected++
+    kpi.dep_reject_count++
+    kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
+  }
 
-        // Human error
-        if (tx.reason?.toLowerCase().includes('mistake') ||
-            tx.reason?.toLowerCase().includes('crossbank') ||
-            tx.reason?.toLowerCase().includes('cross asset') ||
-            tx.reason?.toLowerCase().includes('wrong process')) {
-          kpi.human_error++
-        }
-      })
+  // Human error
+  if (tx.reason?.toLowerCase().includes('mistake') ||
+      tx.reason?.toLowerCase().includes('crossbank') ||
+      tx.reason?.toLowerCase().includes('cross asset') ||
+      tx.reason?.toLowerCase().includes('wrong process')) {
+    kpi.human_error++
+  }
+})
 
-      // Proses Withdrawal
-      withdrawalData?.forEach((tx: any) => {
-        if (!tx.handler) return
-        const officer = officers.find(o => 
-          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
-        )
-        if (!officer) return
+// Proses withdrawal (sama)
+withdrawalData?.forEach((tx: any) => {
+  // SKIP SYSTEM
+  if (tx.handler === 'SYSTEM' || tx.handler?.toLowerCase() === 'system') {
+    return
+  }
+  
+  if (!tx.handler || typeof tx.handler !== 'string') return
+  
+  const officer = officers.find(o => 
+    o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
+  )
+  
+  if (!officer) return
 
-        const kpi = kpiMap[officer.panel_id]
-        kpi.wd_total++
+  const kpi = kpiMap[officer.panel_id]
+  kpi.wd_total++
 
-        if (tx.status?.toLowerCase() === 'approved') {
-          kpi.wd_approved++
-          kpi.wd_approve_count++
-          kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
-          
-          if (tx.duration_minutes <= 5) {
-            kpi.wd_sop++
-          } else {
-            kpi.wd_non_sop++
-          }
-        } else if (tx.status?.toLowerCase() === 'rejected') {
-          kpi.wd_rejected++
-          kpi.wd_reject_count++
-          kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
-        }
+  if (tx.status?.toLowerCase() === 'approved') {
+    kpi.wd_approved++
+    kpi.wd_approve_count++
+    kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
+    
+    if (tx.duration_minutes <= 5) {
+      kpi.wd_sop++
+    } else {
+      kpi.wd_non_sop++
+    }
+  } else if (tx.status?.toLowerCase() === 'rejected') {
+    kpi.wd_rejected++
+    kpi.wd_reject_count++
+    kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
+  }
 
-        // Human error (sama, gabung)
-        if (tx.reason?.toLowerCase().includes('mistake') ||
-            tx.reason?.toLowerCase().includes('crossbank') ||
-            tx.reason?.toLowerCase().includes('cross asset') ||
-            tx.reason?.toLowerCase().includes('wrong process')) {
-          kpi.human_error++
-        }
-      })
+  // Human error
+  if (tx.reason?.toLowerCase().includes('mistake') ||
+      tx.reason?.toLowerCase().includes('crossbank') ||
+      tx.reason?.toLowerCase().includes('cross asset') ||
+      tx.reason?.toLowerCase().includes('wrong process')) {
+    kpi.human_error++
+  }
+})
 
       // Format data
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
