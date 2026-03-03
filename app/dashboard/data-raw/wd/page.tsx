@@ -207,12 +207,10 @@ export default function WDDataRawPage() {
   try {
     // Handle Excel serial number (angka desimal)
     if (typeof value === 'number') {
-      // Excel serial number: 1 Jan 1900 = 1
-      // 46053.9568308218 = 11 Feb 2026, jam 22:57
       const date = XLSX.SSF.parse_date_code(value)
       if (!date) return null
       
-      // Return YYYY-MM-DD
+      // Return YYYY-MM-DD (PASTIKAN TANPA 'T')
       return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
     }
 
@@ -222,7 +220,11 @@ export default function WDDataRawPage() {
     // Coba native JS Date
     const nativeDate = new Date(str)
     if (!isNaN(nativeDate.getTime())) {
-      return nativeDate.toISOString().split('T')[0]
+      // Pastikan return YYYY-MM-DD, bukan ISO string
+      const year = nativeDate.getFullYear()
+      const month = String(nativeDate.getMonth() + 1).padStart(2, '0')
+      const day = String(nativeDate.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
     }
 
     // Format: "31-Jan-2026 22:57:50, Platform :Web"
@@ -230,7 +232,7 @@ export default function WDDataRawPage() {
     const parts = cleanStr.split(' ')
     
     if (parts.length >= 2) {
-      const [datePart, timePart] = parts
+      const [datePart] = parts
       const [day, month, year] = datePart.split('-')
       
       const monthMap: any = {
