@@ -125,23 +125,33 @@ export default function WDDataRawPage() {
     const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
     const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-    console.log('🔍 Filter:', { startDate, endDate })
+    console.log('🔍 Filter:', { 
+      selectedMonth, 
+      selectedYear,
+      startDate, 
+      endDate 
+    })
 
-    // Query langsung pake select semua kolom
+    // AMBIL SEMUA DATA DULU TANPA FILTER
     const { data, error } = await supabase
       .from('withdrawal_uploads')
       .select('*')
-      .gte('upload_date', startDate)
-      .lte('upload_date', endDate)
       .order('upload_date', { ascending: true })
 
-    if (error) {
-      console.error('❌ Error query:', error)
-      throw error
-    }
+    if (error) throw error
     
-    console.log('📅 Data dari Supabase:', data)
-    setUploads(data || [])
+    console.log('📅 SEMUA DATA:', data)
+    console.log('📅 TOTAL SEMUA:', data?.length || 0)
+    
+    // FILTER MANUAL PAKE JAVASCRIPT
+    const filtered = data?.filter(item => {
+      return item.upload_date >= startDate && item.upload_date <= endDate
+    }) || []
+    
+    console.log('📅 DATA FILTERED:', filtered)
+    console.log('📅 TOTAL FILTERED:', filtered.length)
+    
+    setUploads(filtered)
   } catch (error) {
     console.error('Error fetching uploads:', error)
   } finally {
