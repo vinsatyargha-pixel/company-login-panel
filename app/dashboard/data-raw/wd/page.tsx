@@ -15,39 +15,41 @@ type Asset = {
   asset_code: string
 }
 
-type GroupedUpload = {
+type WithdrawalUpload = {
+  id: string
   upload_date: string
   file_name: string
   total_rows: number
   status: string
+  website?: string
 }
 
-type DepositTransaction = {
+type WithdrawalTransaction = {
   nomor: number | null
   brand: string | null
   ticket_number: string | null
+  withdrawal_amount: number
+  player_fee_amount: number
+  agent_fee_amount: number
+  nett_amount: number
   requested_date: string | null
   approved_date: string | null
   bank_statement_date: string | null
   user_name: string | null
   player_group: string | null
   full_name: string | null
-  payment_type: string | null
-  deposit_amount: number
-  admin_fee: number
-  agent_fee: number
-  player_fee: number
-  nett_amount: number
   player_bank: string | null
   bank_title: string | null
   remarks: string | null
-  reference: string | null
   status: string | null
   reason: string | null
   handler: string | null
   handler_ip: string | null
   creator: string | null
   website: string
+  referral_code: string | null
+  own_referral_code: string | null
+  last_balance: number | null
   file_name: string
 }
 
@@ -55,9 +57,9 @@ type DepositTransaction = {
 // MAIN COMPONENT
 // ===========================================
 
-export default function DPDataRawPage() {
+export default function WDDataRawPage() {
   // Data states
-  const [uploads, setUploads] = useState<GroupedUpload[]>([])
+  const [uploads, setUploads] = useState<WithdrawalUpload[]>([])
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   
@@ -123,10 +125,10 @@ export default function DPDataRawPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      // Ambil dari tabel deposit_uploads
+      // Ambil dari tabel withdrawal_uploads
       let query = supabase
-        .from('deposit_uploads')
-        .select('upload_date, file_name, total_rows, status')
+        .from('withdrawal_uploads')
+        .select('*')
         .gte('upload_date', startDate)
         .lte('upload_date', endDate)
         .order('upload_date', { ascending: true })
@@ -141,15 +143,8 @@ export default function DPDataRawPage() {
       const { data, error } = await query
       if (error) throw error
       
-      // Format data untuk tabel
-      const formatted = (data || []).map((item: any) => ({
-        upload_date: item.upload_date,
-        file_name: item.file_name,
-        total_rows: item.total_rows || 0,
-        status: item.status
-      }))
-      
-      setUploads(formatted)
+      console.log('📅 Data uploads WD:', data)
+      setUploads(data || [])
     } catch (error) {
       console.error('Error fetching uploads:', error)
     } finally {
@@ -192,7 +187,7 @@ export default function DPDataRawPage() {
   }, [])
 
   // ===========================================
-  // HELPER FUNCTION PARSE TANGGAL
+  // PARSE TANGGAL EXCEL
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
@@ -203,14 +198,13 @@ export default function DPDataRawPage() {
       if (typeof value === 'number') {
         const date = XLSX.SSF.parse_date_code(value)
         if (!date) return null
-        // Format: YYYY-MM-DD HH:MM:SS (tanpa T)
         const hour = date.H?.toString().padStart(2, '0') || '00'
         const minute = date.M?.toString().padStart(2, '0') || '00'
         const second = date.S?.toString().padStart(2, '0') || '00'
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
 
-      // Handle string format: "01-Mar-2026 17:13:47, Platform: (Web)"
+      // Handle string format: "01-Mar-2026 17:13:47"
       const str = value.toString().trim()
       const cleanStr = str.split(',')[0].split('Platform')[0].trim()
       const parts = cleanStr.split(' ')
@@ -279,99 +273,90 @@ export default function DPDataRawPage() {
       
       console.log('📊 Jumlah baris data:', dataRows.length)
       
-      // Cari index kolom yang diperlukan
-      const findIndex = (keyword: string) => {
-        return headers.findIndex((h: string) => 
-          h && h.toString().toLowerCase().includes(keyword.toLowerCase())
-        )
-      }
-      
+      // INDEX KOLOM TETAP UNTUK WITHDRAWAL
       const idx = {
         no: 0,
-        brand: findIndex('brand'),
-        ticket: findIndex('ticket'),
-        requested: findIndex('requested'),
-        approved: findIndex('approved date'),
-        bank: findIndex('bank statement'),
-        userName: findIndex('user name'),
-        playerGroup: findIndex('player group'),
-        fullName: findIndex('full name'),
-        paymentType: findIndex('payment type'),
-        amount: findIndex('deposit amount'),
-        adminFee: findIndex('admin fee'),
-        agentFee: findIndex('agent fee'),
-        playerFee: findIndex('player fee'),
-        nett: findIndex('nett amount'),
-        playerBank: findIndex('player bank'),
-        bankTitle: findIndex('bank title'),
-        remarks: findIndex('remarks'),
-        reference: findIndex('reference'),
-        status: findIndex('status'),
-        reason: findIndex('reason'),
-        handler: findIndex('handler'),
-        handlerIp: findIndex('handlerip'),
-        creator: findIndex('creator'),
-        website: findIndex('website')
-      }
-      
-      if (idx.approved === -1) {
-        throw new Error('Kolom Approved Date tidak ditemukan')
+        brand: 1,
+        ticket: 2,
+        withdrawalAmount: 3,
+        playerFee: 4,
+        agentFee: 5,
+        nett: 6,
+        requested: 7,
+        approved: 8,
+        bank: 9,
+        userName: 10,
+        playerGroup: 11,
+        fullName: 12,
+        playerBank: 13,
+        bankTitle: 14,
+        remarks: 15,
+        status: 16,
+        reason: 17,
+        handler: 18,
+        handlerIp: 19,
+        creator: 20,
+        website: 21,
+        referralCode: 22,
+        ownReferralCode: 23,
+        lastBalance: 24
       }
       
       setUploadProgress('Memvalidasi data...')
       
       // Transform data
-      const validTransactions: DepositTransaction[] = []
+      const validTransactions: WithdrawalTransaction[] = []
+      const transactionDates = new Set<string>() // Untuk tracking tanggal unik
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
         if (!row || row.length === 0) continue
         
         // Skip GRAND TOTAL
-        let isGrandTotal = false
-        for (let j = 0; j < row.length; j++) {
-          if (row[j] && row[j].toString().includes('GRAND TOTAL')) {
-            isGrandTotal = true
-            break
-          }
-        }
-        if (isGrandTotal) continue
+        if (row[2]?.toString().includes('GRAND TOTAL')) continue
         
-        // PARSE TANGGAL
         const approvedDate = parseExcelDate(row[idx.approved])
-        if (!approvedDate) continue
+        if (!approvedDate) {
+          console.log(`⛔ Skip baris ${i+1}: approved date null`, row[idx.approved])
+          continue
+        }
+        
+        // Ambil tanggal saja (YYYY-MM-DD) untuk tracking
+        const dateOnly = approvedDate.split(' ')[0]
+        transactionDates.add(dateOnly)
         
         validTransactions.push({
           nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
           brand: row[idx.brand] || null,
           ticket_number: row[idx.ticket] || null,
+          withdrawal_amount: parseFloat(row[idx.withdrawalAmount]) || 0,
+          player_fee_amount: parseFloat(row[idx.playerFee]) || 0,
+          agent_fee_amount: parseFloat(row[idx.agentFee]) || 0,
+          nett_amount: parseFloat(row[idx.nett]) || 0,
           requested_date: parseExcelDate(row[idx.requested]),
           approved_date: approvedDate,
           bank_statement_date: parseExcelDate(row[idx.bank]),
           user_name: row[idx.userName] || null,
           player_group: row[idx.playerGroup] || null,
           full_name: row[idx.fullName] || null,
-          payment_type: row[idx.paymentType] || null,
-          deposit_amount: row[idx.amount] ? parseFloat(row[idx.amount]) || 0 : 0,
-          admin_fee: row[idx.adminFee] ? parseFloat(row[idx.adminFee]) || 0 : 0,
-          agent_fee: row[idx.agentFee] ? parseFloat(row[idx.agentFee]) || 0 : 0,
-          player_fee: row[idx.playerFee] ? parseFloat(row[idx.playerFee]) || 0 : 0,
-          nett_amount: row[idx.nett] ? parseFloat(row[idx.nett]) || 0 : 0,
           player_bank: row[idx.playerBank] || null,
           bank_title: row[idx.bankTitle] || null,
           remarks: row[idx.remarks] || null,
-          reference: row[idx.reference] || null,
           status: row[idx.status] || null,
           reason: row[idx.reason] || null,
           handler: row[idx.handler] || null,
           handler_ip: row[idx.handlerIp] || null,
           creator: row[idx.creator] || null,
           website: row[idx.website] || 'XLY',
+          referral_code: row[idx.referralCode] || null,
+          own_referral_code: row[idx.ownReferralCode] || null,
+          last_balance: row[idx.lastBalance] ? parseFloat(row[idx.lastBalance]) || null : null,
           file_name: selectedFile.name
         })
       }
 
-      console.log('✅ Data valid:', validTransactions.length)
+      console.log('✅ Data valid WD:', validTransactions.length)
+      console.log('📅 Tanggal dalam file:', Array.from(transactionDates))
       
       if (validTransactions.length === 0) {
         throw new Error('Tidak ada data valid dalam file')
@@ -379,9 +364,9 @@ export default function DPDataRawPage() {
 
       setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
       
-      // Insert ke deposit_transactions
+      // Insert ke withdrawal_transactions
       const { error } = await supabase
-        .from('deposit_transactions')
+        .from('withdrawal_transactions')
         .insert(validTransactions)
 
       if (error) {
@@ -389,17 +374,37 @@ export default function DPDataRawPage() {
         throw error
       }
 
-      // Insert ke deposit_uploads untuk tracking
-      await supabase
-        .from('deposit_uploads')
-        .insert({
-          upload_date: new Date().toISOString().split('T')[0],
-          file_name: selectedFile.name,
-          total_rows: validTransactions.length,
-          status: 'completed'
-        })
+      // Insert ke withdrawal_uploads untuk tracking (SATU BARIS PER TANGGAL)
+      setUploadProgress('Menyimpan tracking upload...')
+      
+      // Kelompokkan transaksi per tanggal
+      const transactionsByDate: { [key: string]: WithdrawalTransaction[] } = {}
+      validTransactions.forEach(t => {
+        const date = t.approved_date?.split(' ')[0]
+        if (!date) return
+        if (!transactionsByDate[date]) {
+          transactionsByDate[date] = []
+        }
+        transactionsByDate[date].push(t)
+      })
 
-      alert(`✅ Berhasil! ${validTransactions.length} data transaksi`)
+      // Insert per tanggal
+      for (const [date, transactions] of Object.entries(transactionsByDate)) {
+        const { error: uploadError } = await supabase
+          .from('withdrawal_uploads')
+          .insert({
+            upload_date: date,
+            file_name: selectedFile.name,
+            total_rows: transactions.length,
+            status: 'completed'
+          })
+        
+        if (uploadError) {
+          console.error('❌ Error insert upload:', uploadError)
+        }
+      }
+
+      alert(`✅ Berhasil! ${validTransactions.length} data transaksi withdrawal dari ${Object.keys(transactionsByDate).length} tanggal`)
       
       setShowModal(false)
       setSelectedFile(null)
@@ -420,7 +425,8 @@ export default function DPDataRawPage() {
 
   const getDayFromDate = (dateStr: string) => {
     try {
-      return new Date(dateStr).getDate()
+      const date = new Date(dateStr)
+      return date.getDate()
     } catch {
       return 1
     }
@@ -466,7 +472,7 @@ export default function DPDataRawPage() {
         </button>
       </div>
 
-      <h1 className="text-3xl font-bold text-[#FFD700] mb-6">DEPOSIT DATA RAW</h1>
+      <h1 className="text-3xl font-bold text-[#FFD700] mb-6">WITHDRAWAL DATA RAW</h1>
 
       {/* FILTERS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
@@ -521,20 +527,24 @@ export default function DPDataRawPage() {
           </thead>
           <tbody>
             {uploads.length > 0 ? (
-              uploads.map((item, idx) => (
-                <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                  <td className="px-4 py-3">
-                    {getDayFromDate(item.upload_date)} {selectedMonth} {selectedYear}
-                  </td>
-                  <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                  <td className="px-4 py-3">{item.total_rows} data</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                </tr>
-              ))
+              uploads.map((item) => {
+                const day = getDayFromDate(item.upload_date)
+                
+                return (
+                  <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                    <td className="px-4 py-3">
+                      {day} {selectedMonth} {selectedYear}
+                    </td>
+                    <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                    <td className="px-4 py-3">{item.total_rows} data</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
+                        {item.status}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })
             ) : (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
@@ -550,7 +560,7 @@ export default function DPDataRawPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
-            <h2 className="text-xl font-bold text-[#FFD700] mb-4">Upload File Deposit</h2>
+            <h2 className="text-xl font-bold text-[#FFD700] mb-4">Upload File Withdrawal</h2>
             <p className="text-sm text-[#A7D8FF] mb-4">
               Geser file Excel ke area di bawah, atau klik untuk memilih
             </p>
