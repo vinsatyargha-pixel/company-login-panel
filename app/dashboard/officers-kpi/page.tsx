@@ -39,7 +39,7 @@ type KPIData = {
 
 export default function OfficersKPIPage() {
   // Filter states
-  const [selectedFilter, setSelectedFilter] = useState('period1') // Default ke Jan-Jun 2026
+  const [selectedFilter, setSelectedFilter] = useState('period1')
   const [loading, setLoading] = useState(true)
   const [kpiData, setKpiData] = useState<KPIData[]>([])
   const [officers, setOfficers] = useState<Officer[]>([])
@@ -190,7 +190,7 @@ export default function OfficersKPIPage() {
           officer_id: officer.id,
           officer_name: officer.full_name,
           department: officer.department,
-          status: 'REGULAR', // Default status
+          status: 'REGULAR',
           total_transactions: 0,
           total_approved: 0,
           total_rejected: 0,
@@ -208,8 +208,11 @@ export default function OfficersKPIPage() {
 
       // Proses deposit
       depositData?.forEach((tx: any) => {
+        // Pastikan handler ada dan string
+        if (!tx.handler || typeof tx.handler !== 'string') return
+        
         const officer = officers.find(o => 
-          o.id?.toLowerCase() === tx.handler?.toLowerCase()
+          o.id?.toLowerCase() === tx.handler.toLowerCase()
         )
         if (!officer) return
 
@@ -243,8 +246,11 @@ export default function OfficersKPIPage() {
 
       // Proses withdrawal
       withdrawalData?.forEach((tx: any) => {
+        // Pastikan handler ada dan string
+        if (!tx.handler || typeof tx.handler !== 'string') return
+        
         const officer = officers.find(o => 
-          o.id?.toLowerCase() === tx.handler?.toLowerCase()
+          o.id?.toLowerCase() === tx.handler.toLowerCase()
         )
         if (!officer) return
 
