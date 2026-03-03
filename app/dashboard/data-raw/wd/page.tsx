@@ -344,7 +344,7 @@ const parseExcelDate = (value: any): string | null => {
           agent_fee_amount: parseFloat(row[idx.agentFee]) || 0,
           nett_amount: parseFloat(row[idx.nett]) || 0,
           requested_date: parseExcelDate(row[idx.requested]),
-          approved_date: approvedDate,
+          approved_date: approvedDate.split('T')[0], // Ambil YYYY-MM-DD doang
           bank_statement_date: parseExcelDate(row[idx.bank]),
           user_name: row[idx.userName] || null,
           player_group: row[idx.playerGroup] || null,
