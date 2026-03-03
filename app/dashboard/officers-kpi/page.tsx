@@ -40,6 +40,8 @@ type KPIData = {
 export default function OfficersKPIPage() {
   // Filter states
   const [selectedFilter, setSelectedFilter] = useState('period1')
+  const [customStartDate, setCustomStartDate] = useState('')
+  const [customEndDate, setCustomEndDate] = useState('')
   const [loading, setLoading] = useState(true)
   const [kpiData, setKpiData] = useState<KPIData[]>([])
   const [officers, setOfficers] = useState<Officer[]>([])
@@ -52,6 +54,7 @@ export default function OfficersKPIPage() {
     { value: 'monthly', label: 'Monthly' },
     { value: 'period1', label: 'Jan-Jun 2026' },
     { value: 'period2', label: 'Jul-Dec 2026' },
+    { value: 'custom', label: 'Custom Range' },
   ]
 
   // ===========================================
@@ -97,6 +100,12 @@ export default function OfficersKPIPage() {
           start: '2026-07-01',
           end: '2026-12-31'
         }
+
+      case 'custom':
+        return {
+          start: customStartDate,
+          end: customEndDate
+        }
       
       default:
         return {
@@ -115,10 +124,14 @@ export default function OfficersKPIPage() {
   }, [])
 
   useEffect(() => {
-    if (selectedFilter && officers.length > 0) {
+    if (selectedFilter === 'custom') {
+      if (customStartDate && customEndDate) {
+        fetchKPI()
+      }
+    } else if (selectedFilter && officers.length > 0) {
       fetchKPI()
     }
-  }, [selectedFilter, officers])
+  }, [selectedFilter, officers, customStartDate, customEndDate])
 
   const fetchOfficers = async () => {
     try {
@@ -128,7 +141,7 @@ export default function OfficersKPIPage() {
       const { data, error } = await supabase
         .from('users')
         .select('id, full_name, department')
-        .in('department', ['CS DP WD', 'CAPTAIN'])
+        .eq('department', 'CS DP WD')  // Hanya CS DP WD
         .order('full_name')
 
       if (error) throw error
@@ -148,6 +161,11 @@ export default function OfficersKPIPage() {
       setError(null)
       
       const range = getDateRange(selectedFilter)
+      if (!range.start || !range.end) {
+        setLoading(false)
+        return
+      }
+
       console.log('🔍 Filter:', { selectedFilter, range })
 
       // Ambil data deposit
@@ -208,10 +226,8 @@ export default function OfficersKPIPage() {
 
       // Proses deposit
       depositData?.forEach((tx: any) => {
-        // Pastikan handler ada dan string
         if (!tx.handler || typeof tx.handler !== 'string') return
         
-        // Cari officer dengan ID yang match (case insensitive)
         const officer = officers.find(o => 
           String(o.id).toLowerCase() === tx.handler.toLowerCase()
         )
@@ -247,10 +263,8 @@ export default function OfficersKPIPage() {
 
       // Proses withdrawal
       withdrawalData?.forEach((tx: any) => {
-        // Pastikan handler ada dan string
         if (!tx.handler || typeof tx.handler !== 'string') return
         
-        // Cari officer dengan ID yang match (case insensitive)
         const officer = officers.find(o => 
           String(o.id).toLowerCase() === tx.handler.toLowerCase()
         )
@@ -375,12 +389,12 @@ export default function OfficersKPIPage() {
         </Link>
         
         <h1 className="text-3xl font-bold text-[#FFD700]">KPI LIVE OFFICERS</h1>
-        <p className="text-[#A7D8FF] mt-2">Performance monitoring per officer</p>
+        <p className="text-[#A7D8FF] mt-2">Performance monitoring CS DP WD</p>
       </div>
 
       {/* FILTER */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 mb-4">
           {filterOptions.map(option => (
             <button
               key={option.value}
@@ -395,6 +409,25 @@ export default function OfficersKPIPage() {
             </button>
           ))}
         </div>
+
+        {/* Custom Range Input */}
+        {selectedFilter === 'custom' && (
+          <div className="flex gap-4 items-center border-t border-[#FFD700]/20 pt-4">
+            <input
+              type="date"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-4 py-2 text-white"
+            />
+            <span className="text-[#A7D8FF]">to</span>
+            <input
+              type="date"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-4 py-2 text-white"
+            />
+          </div>
+        )}
       </div>
 
       {/* TABLE */}
