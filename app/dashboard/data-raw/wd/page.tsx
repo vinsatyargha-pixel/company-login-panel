@@ -116,45 +116,39 @@ export default function WDDataRawPage() {
   }
 
   const fetchUploads = async () => {
-    try {
-      setLoading(true)
-      
-      const monthIndex = months.indexOf(selectedMonth) + 1
-      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+  try {
+    setLoading(true)
+    
+    const monthIndex = months.indexOf(selectedMonth) + 1
+    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      console.log('🔍 Filter:', { 
-        selectedMonth, 
-        selectedYear,
-        monthIndex,
-        startDate, 
-        endDate 
-      })
+    console.log('🔍 Filter aktif:', { 
+      selectedMonth, 
+      selectedYear,
+      startDate, 
+      endDate 
+    })
 
-      // 🔥 FILTER LANGSUNG PAKAI SUPABASE
-      const { data, error } = await supabase
-        .from('withdrawal_uploads')
-        .select('*')
-        .gte('upload_date', startDate)
-        .lte('upload_date', endDate)
-        .order('upload_date', { ascending: true })
+    const { data, error } = await supabase
+      .from('withdrawal_uploads')
+      .select('*')
+      .gte('upload_date', startDate)
+      .lte('upload_date', endDate)
+      .order('upload_date', { ascending: true })
 
-      if (error) {
-        console.error('❌ Error Supabase:', error)
-        throw error
-      }
-      
-      console.log('📅 Data dari Supabase:', data)
-      console.log('📅 Jumlah data:', data?.length || 0)
-      
-      setUploads(data || [])
-    } catch (error) {
-      console.error('Error fetching uploads:', error)
-    } finally {
-      setLoading(false)
-    }
+    if (error) throw error
+    
+    console.log('📅 Data ditemukan:', data?.length || 0, 'baris')
+    setUploads(data || [])
+    
+  } catch (error) {
+    console.error('Error fetching uploads:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
   // ===========================================
   // DRAG & DROP HANDLERS
