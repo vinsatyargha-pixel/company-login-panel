@@ -27,10 +27,13 @@ type KPIData = {
   dep_total: number
   dep_approved: number
   dep_rejected: number
+  dep_failed: number        // ⭐ TAMBAHAN UNTUK SYSTEM
   dep_approve_rate: string
   dep_reject_rate: string
-  dep_avg_approve: string  // HH:MM:SS
-  dep_avg_reject: string    // HH:MM:SS
+  dep_fail_rate: string      // ⭐ TAMBAHAN
+  dep_avg_approve: string
+  dep_avg_reject: string
+  dep_avg_fail: string        // ⭐ TAMBAHAN
   dep_sop: number
   dep_non_sop: number
   
@@ -38,10 +41,13 @@ type KPIData = {
   wd_total: number
   wd_approved: number
   wd_rejected: number
+  wd_failed: number           // ⭐ TAMBAHAN UNTUK SYSTEM
   wd_approve_rate: string
   wd_reject_rate: string
-  wd_avg_approve: string    // HH:MM:SS
-  wd_avg_reject: string      // HH:MM:SS
+  wd_fail_rate: string         // ⭐ TAMBAHAN
+  wd_avg_approve: string
+  wd_avg_reject: string
+  wd_avg_fail: string           // ⭐ TAMBAHAN
   wd_sop: number
   wd_non_sop: number
   
@@ -49,6 +55,7 @@ type KPIData = {
   total_transactions: number
   total_approved: number
   total_rejected: number
+  total_failed: number          // ⭐ TAMBAHAN
   
   human_error: number
 }
@@ -192,10 +199,13 @@ export default function OfficersKPIPage() {
           dep_total: 0,
           dep_approved: 0,
           dep_rejected: 0,
+          dep_failed: 0,                          // ⭐ TAMBAHAN
           dep_approve_minutes_sum: 0,
           dep_reject_minutes_sum: 0,
+          dep_fail_minutes_sum: 0,                  // ⭐ TAMBAHAN
           dep_approve_count: 0,
           dep_reject_count: 0,
+          dep_fail_count: 0,                        // ⭐ TAMBAHAN
           dep_sop: 0,
           dep_non_sop: 0,
           
@@ -203,10 +213,13 @@ export default function OfficersKPIPage() {
           wd_total: 0,
           wd_approved: 0,
           wd_rejected: 0,
+          wd_failed: 0,                            // ⭐ TAMBAHAN
           wd_approve_minutes_sum: 0,
           wd_reject_minutes_sum: 0,
+          wd_fail_minutes_sum: 0,                    // ⭐ TAMBAHAN
           wd_approve_count: 0,
           wd_reject_count: 0,
+          wd_fail_count: 0,                          // ⭐ TAMBAHAN
           wd_sop: 0,
           wd_non_sop: 0,
           
@@ -227,7 +240,9 @@ export default function OfficersKPIPage() {
         const kpi = kpiMap[officer.panel_id]
         kpi.dep_total++
 
-        if (tx.status?.toLowerCase() === 'approved') {
+        const status = tx.status?.toLowerCase()
+        
+        if (status === 'approved') {
           kpi.dep_approved++
           kpi.dep_approve_count++
           kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
@@ -237,10 +252,14 @@ export default function OfficersKPIPage() {
           } else {
             kpi.dep_non_sop++
           }
-        } else if (tx.status?.toLowerCase() === 'rejected') {
+        } else if (status === 'rejected') {
           kpi.dep_rejected++
           kpi.dep_reject_count++
           kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
+        } else if (status === 'fail' || status === 'failed') {  // ⭐ TAMBAHAN UNTUK FAIL
+          kpi.dep_failed++
+          kpi.dep_fail_count++
+          kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
         }
 
         // Human error
@@ -264,7 +283,9 @@ export default function OfficersKPIPage() {
         const kpi = kpiMap[officer.panel_id]
         kpi.wd_total++
 
-        if (tx.status?.toLowerCase() === 'approved') {
+        const status = tx.status?.toLowerCase()
+        
+        if (status === 'approved') {
           kpi.wd_approved++
           kpi.wd_approve_count++
           kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
@@ -274,10 +295,14 @@ export default function OfficersKPIPage() {
           } else {
             kpi.wd_non_sop++
           }
-        } else if (tx.status?.toLowerCase() === 'rejected') {
+        } else if (status === 'rejected') {
           kpi.wd_rejected++
           kpi.wd_reject_count++
           kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
+        } else if (status === 'fail' || status === 'failed') {  // ⭐ TAMBAHAN UNTUK FAIL
+          kpi.wd_failed++
+          kpi.wd_fail_count++
+          kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
         }
 
         // Human error
@@ -291,34 +316,41 @@ export default function OfficersKPIPage() {
 
       // Format data untuk tabel
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
-        // Deposit rates
+        // Deposit rates & intervals
         const dep_approve_rate = kpi.dep_total > 0 
           ? ((kpi.dep_approved / kpi.dep_total) * 100).toFixed(2) : '0.00'
         const dep_reject_rate = kpi.dep_total > 0 
           ? ((kpi.dep_rejected / kpi.dep_total) * 100).toFixed(2) : '0.00'
+        const dep_fail_rate = kpi.dep_total > 0                       // ⭐ TAMBAHAN
+          ? ((kpi.dep_failed / kpi.dep_total) * 100).toFixed(2) : '0.00'
         
-        // 🔥 RATA-RATA DURASI DEPOSIT dalam HH:MM:SS
         const dep_avg_approve = kpi.dep_approve_count > 0 
           ? minutesToHHMMSS(kpi.dep_approve_minutes_sum / kpi.dep_approve_count) : '-'
         const dep_avg_reject = kpi.dep_reject_count > 0 
           ? minutesToHHMMSS(kpi.dep_reject_minutes_sum / kpi.dep_reject_count) : '-'
+        const dep_avg_fail = kpi.dep_fail_count > 0                   // ⭐ TAMBAHAN
+          ? minutesToHHMMSS(kpi.dep_fail_minutes_sum / kpi.dep_fail_count) : '-'
 
-        // Withdrawal rates
+        // Withdrawal rates & intervals
         const wd_approve_rate = kpi.wd_total > 0 
           ? ((kpi.wd_approved / kpi.wd_total) * 100).toFixed(2) : '0.00'
         const wd_reject_rate = kpi.wd_total > 0 
           ? ((kpi.wd_rejected / kpi.wd_total) * 100).toFixed(2) : '0.00'
+        const wd_fail_rate = kpi.wd_total > 0                         // ⭐ TAMBAHAN
+          ? ((kpi.wd_failed / kpi.wd_total) * 100).toFixed(2) : '0.00'
         
-        // 🔥 RATA-RATA DURASI WITHDRAWAL dalam HH:MM:SS
         const wd_avg_approve = kpi.wd_approve_count > 0 
           ? minutesToHHMMSS(kpi.wd_approve_minutes_sum / kpi.wd_approve_count) : '-'
         const wd_avg_reject = kpi.wd_reject_count > 0 
           ? minutesToHHMMSS(kpi.wd_reject_minutes_sum / kpi.wd_reject_count) : '-'
+        const wd_avg_fail = kpi.wd_fail_count > 0                     // ⭐ TAMBAHAN
+          ? minutesToHHMMSS(kpi.wd_fail_minutes_sum / kpi.wd_fail_count) : '-'
 
         // Total gabungan
         const total_trans = kpi.dep_total + kpi.wd_total
         const total_app = kpi.dep_approved + kpi.wd_approved
         const total_rej = kpi.dep_rejected + kpi.wd_rejected
+        const total_fail = kpi.dep_failed + kpi.wd_failed              // ⭐ TAMBAHAN
 
         return {
           officer_id: kpi.officer_id,
@@ -331,10 +363,13 @@ export default function OfficersKPIPage() {
           dep_total: kpi.dep_total,
           dep_approved: kpi.dep_approved,
           dep_rejected: kpi.dep_rejected,
+          dep_failed: kpi.dep_failed,
           dep_approve_rate,
           dep_reject_rate,
+          dep_fail_rate,
           dep_avg_approve,
           dep_avg_reject,
+          dep_avg_fail,
           dep_sop: kpi.dep_sop,
           dep_non_sop: kpi.dep_non_sop,
           
@@ -342,10 +377,13 @@ export default function OfficersKPIPage() {
           wd_total: kpi.wd_total,
           wd_approved: kpi.wd_approved,
           wd_rejected: kpi.wd_rejected,
+          wd_failed: kpi.wd_failed,
           wd_approve_rate,
           wd_reject_rate,
+          wd_fail_rate,
           wd_avg_approve,
           wd_avg_reject,
+          wd_avg_fail,
           wd_sop: kpi.wd_sop,
           wd_non_sop: kpi.wd_non_sop,
           
@@ -353,6 +391,7 @@ export default function OfficersKPIPage() {
           total_transactions: total_trans,
           total_approved: total_app,
           total_rejected: total_rej,
+          total_failed: total_fail,
           
           human_error: kpi.human_error
         }
@@ -404,6 +443,7 @@ export default function OfficersKPIPage() {
   const totalTransactions = kpiData.reduce((sum, item) => sum + item.total_transactions, 0)
   const totalApproved = kpiData.reduce((sum, item) => sum + item.total_approved, 0)
   const totalRejected = kpiData.reduce((sum, item) => sum + item.total_rejected, 0)
+  const totalFailed = kpiData.reduce((sum, item) => sum + item.total_failed, 0)
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
@@ -457,8 +497,8 @@ export default function OfficersKPIPage() {
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Dept</th>
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Status</th>
               
-              <th colSpan={8} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">DEPOSIT</th>
-              <th colSpan={8} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">WITHDRAWAL</th>
+              <th colSpan={10} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">DEPOSIT</th>
+              <th colSpan={10} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">WITHDRAWAL</th>
               <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Human Error</th>
             </tr>
             <tr className="border-b border-[#FFD700]/30">
@@ -466,9 +506,11 @@ export default function OfficersKPIPage() {
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Fail</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
               
@@ -476,9 +518,11 @@ export default function OfficersKPIPage() {
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Fail</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
               <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
             </tr>
@@ -510,9 +554,11 @@ export default function OfficersKPIPage() {
                   <td className="px-2 py-2">{item.dep_total}</td>
                   <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
                   <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
+                  <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
                   <td className="px-2 py-2">{item.dep_approve_rate}%</td>
                   <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
-                  <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_reject}</td>
+                  <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
+                  <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
                   <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
                   <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
                   
@@ -520,9 +566,11 @@ export default function OfficersKPIPage() {
                   <td className="px-2 py-2">{item.wd_total}</td>
                   <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
                   <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
+                  <td className="px-2 py-2 text-orange-400">{item.wd_failed}</td>
                   <td className="px-2 py-2">{item.wd_approve_rate}%</td>
                   <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
-                  <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_reject}</td>
+                  <td className="px-2 py-2 text-red-400 font-mono">{item.wd_avg_reject}</td>
+                  <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_fail}</td>
                   <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
                   <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
                   
@@ -532,7 +580,7 @@ export default function OfficersKPIPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={21} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={25} className="px-4 py-12 text-center text-gray-400">
                   <div className="text-4xl mb-2">📊</div>
                   <p className="text-lg mb-1">Belum ada data untuk {selectedMonth} {selectedYear}</p>
                   <p className="text-sm">Upload data terlebih dahulu di halaman DP/WD</p>
@@ -550,6 +598,7 @@ export default function OfficersKPIPage() {
           <span>Total Transactions: {totalTransactions}</span>
           <span className="text-green-400">Approved: {totalApproved}</span>
           <span className="text-red-400">Rejected: {totalRejected}</span>
+          <span className="text-orange-400">Failed: {totalFailed}</span>
         </div>
       </div>
     </div>
