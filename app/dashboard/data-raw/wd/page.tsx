@@ -476,34 +476,33 @@ export default function WDDataRawPage() {
             </tr>
           </thead>
           <tbody>
-            {uploads.length > 0 ? (
-              uploads.map((item) => {
-                const date = new Date(item.upload_date)
-                const day = date.getDate()
-                const monthName = months[date.getMonth()]
-                const year = date.getFullYear()
-                
-                return (
-                  <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                    <td className="px-4 py-3">{day} {monthName} {year}</td>
-                    <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                    <td className="px-4 py-3">{item.total_rows} data</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
-                        {item.status}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })
-            ) : (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
-                  Tidak ada data untuk periode ini
-                </td>
-              </tr>
-            )}
-          </tbody>
+  {uploads.length > 0 ? (
+    uploads.map((item) => {
+      const day = new Date(item.upload_date).getDate()
+      
+      return (
+        <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+          <td className="px-4 py-3">
+            {day} {selectedMonth} {selectedYear}
+          </td>
+          <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+          <td className="px-4 py-3">{item.total_rows} data</td>
+          <td className="px-4 py-3">
+            <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
+              {item.status}
+            </span>
+          </td>
+        </tr>
+      )
+    })
+  ) : (
+    <tr>
+      <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+        Tidak ada data untuk periode ini
+      </td>
+    </tr>
+  )}
+</tbody>
         </table>
       </div>
 
