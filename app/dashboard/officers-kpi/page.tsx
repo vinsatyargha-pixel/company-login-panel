@@ -39,99 +39,40 @@ type KPIData = {
 
 export default function OfficersKPIPage() {
   // Filter states
-  const [selectedFilter, setSelectedFilter] = useState('period1')
-  const [customStartDate, setCustomStartDate] = useState('')
-  const [customEndDate, setCustomEndDate] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
   const [loading, setLoading] = useState(true)
   const [kpiData, setKpiData] = useState<KPIData[]>([])
   const [officers, setOfficers] = useState<Officer[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [matchDebug, setMatchDebug] = useState<any[]>([])
 
-  // Filter options
-  const filterOptions = [
-    { value: 'yesterday', label: 'Yesterday' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
-    { value: 'period1', label: 'Jan-Jun 2026' },
-    { value: 'period2', label: 'Jul-Dec 2026' },
-    { value: 'custom', label: 'Custom Range' },
+  const months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ]
+  const years = ['2025', '2026', '2027']
 
   // ===========================================
-  // GET DATE RANGE
-  // ===========================================
-
-  const getDateRange = (filter: string) => {
-    const today = new Date()
-    const yesterday = new Date(today)
-    yesterday.setDate(today.getDate() - 1)
-
-    switch(filter) {
-      case 'yesterday':
-        return {
-          start: yesterday.toISOString().split('T')[0],
-          end: yesterday.toISOString().split('T')[0]
-        }
-      
-      case 'weekly':
-        const weekAgo = new Date(today)
-        weekAgo.setDate(today.getDate() - 7)
-        return {
-          start: weekAgo.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        }
-      
-      case 'monthly':
-        const monthAgo = new Date(today)
-        monthAgo.setMonth(today.getMonth() - 1)
-        return {
-          start: monthAgo.toISOString().split('T')[0],
-          end: today.toISOString().split('T')[0]
-        }
-      
-      case 'period1':
-        return {
-          start: '2026-01-01',
-          end: '2026-06-30'
-        }
-      
-      case 'period2':
-        return {
-          start: '2026-07-01',
-          end: '2026-12-31'
-        }
-
-      case 'custom':
-        return {
-          start: customStartDate,
-          end: customEndDate
-        }
-      
-      default:
-        return {
-          start: yesterday.toISOString().split('T')[0],
-          end: yesterday.toISOString().split('T')[0]
-        }
-    }
-  }
-
-  // ===========================================
-  // FETCH DATA
+  // INITIAL DATA
   // ===========================================
 
   useEffect(() => {
+    const today = new Date()
+    setSelectedMonth(months[today.getMonth()])
+    setSelectedYear(today.getFullYear().toString())
     fetchOfficers()
   }, [])
 
   useEffect(() => {
-    if (selectedFilter === 'custom') {
-      if (customStartDate && customEndDate) {
-        fetchKPI()
-      }
-    } else if (selectedFilter && officers.length > 0) {
+    if (selectedMonth && selectedYear && officers.length > 0) {
       fetchKPI()
     }
-  }, [selectedFilter, officers, customStartDate, customEndDate])
+  }, [selectedMonth, selectedYear, officers])
+
+  // ===========================================
+  // FETCH OFFICERS
+  // ===========================================
 
   const fetchOfficers = async () => {
     try {
@@ -141,12 +82,14 @@ export default function OfficersKPIPage() {
       const { data, error } = await supabase
         .from('users')
         .select('id, full_name, department')
-        .eq('department', 'CS DP WD')  // Hanya CS DP WD
+        .eq('department', 'CS DP WD')
         .order('full_name')
 
       if (error) throw error
       
       console.log('📊 Officers found:', data?.length || 0)
+      console.log('👤 Officer IDs:', data?.map(o => ({ id: o.id, name: o.full_name })))
+      
       setOfficers(data || [])
       
     } catch (error: any) {
@@ -155,18 +98,27 @@ export default function OfficersKPIPage() {
     }
   }
 
+  // ===========================================
+  // FETCH KPI
+  // ===========================================
+
   const fetchKPI = async () => {
     try {
       setLoading(true)
       setError(null)
+      setMatchDebug([])
       
-      const range = getDateRange(selectedFilter)
-      if (!range.start || !range.end) {
-        setLoading(false)
-        return
-      }
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      console.log('🔍 Filter:', { selectedFilter, range })
+      console.log('🔍 Filter Bulan:', { 
+        selectedMonth, 
+        selectedYear,
+        startDate, 
+        endDate 
+      })
 
       // Ambil data deposit
       const { data: depositData, error: depositError } = await supabase
@@ -177,8 +129,8 @@ export default function OfficersKPIPage() {
           duration_minutes,
           reason
         `)
-        .gte('approved_date', range.start)
-        .lte('approved_date', range.end)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate)
 
       if (depositError) throw depositError
 
@@ -191,13 +143,19 @@ export default function OfficersKPIPage() {
           duration_minutes,
           reason
         `)
-        .gte('approved_date', range.start)
-        .lte('approved_date', range.end)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate)
 
       if (withdrawalError) throw withdrawalError
 
       console.log('📊 Deposit data:', depositData?.length || 0)
       console.log('📊 Withdrawal data:', withdrawalData?.length || 0)
+
+      // Debug: Lihat handler yang ada di transaksi
+      const depositHandlers = [...new Set(depositData?.map((t: any) => t.handler) || [])]
+      const withdrawalHandlers = [...new Set(withdrawalData?.map((t: any) => t.handler) || [])]
+      console.log('👤 Deposit handlers:', depositHandlers)
+      console.log('👤 Withdrawal handlers:', withdrawalHandlers)
 
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
@@ -224,13 +182,25 @@ export default function OfficersKPIPage() {
         }
       })
 
+      // Debug match
+      const matches: any[] = []
+
       // Proses deposit
       depositData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
+        // Cari officer dengan ID yang match (case insensitive)
         const officer = officers.find(o => 
           String(o.id).toLowerCase() === tx.handler.toLowerCase()
         )
+        
+        // Debug
+        matches.push({
+          type: 'deposit',
+          handler: tx.handler,
+          match: officer ? officer.full_name : 'NO MATCH'
+        })
+
         if (!officer) return
 
         const kpi = kpiMap[officer.id]
@@ -268,6 +238,14 @@ export default function OfficersKPIPage() {
         const officer = officers.find(o => 
           String(o.id).toLowerCase() === tx.handler.toLowerCase()
         )
+        
+        // Debug
+        matches.push({
+          type: 'withdrawal',
+          handler: tx.handler,
+          match: officer ? officer.full_name : 'NO MATCH'
+        })
+
         if (!officer) return
 
         const kpi = kpiMap[officer.id]
@@ -297,6 +275,8 @@ export default function OfficersKPIPage() {
           kpi.human_error++
         }
       })
+
+      setMatchDebug(matches)
 
       // Hitung rate dan rata-rata
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
@@ -337,6 +317,8 @@ export default function OfficersKPIPage() {
       })
 
       console.log('✅ KPI Data:', formattedData)
+      console.log('🔍 Match Debug:', matches.slice(0, 20)) // 20 sample pertama
+      
       setKpiData(formattedData)
       
     } catch (error: any) {
@@ -392,42 +374,33 @@ export default function OfficersKPIPage() {
         <p className="text-[#A7D8FF] mt-2">Performance monitoring CS DP WD</p>
       </div>
 
-      {/* FILTER */}
+      {/* FILTER BULAN & TAHUN */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
-        <div className="flex flex-wrap gap-2 mb-4">
-          {filterOptions.map(option => (
-            <button
-              key={option.value}
-              onClick={() => setSelectedFilter(option.value)}
-              className={`px-4 py-2 rounded font-medium transition-colors ${
-                selectedFilter === option.value
-                  ? 'bg-[#FFD700] text-[#0B1A33]'
-                  : 'bg-[#0B1A33] text-[#A7D8FF] hover:bg-[#2A3F5A]'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <div className="flex gap-4 items-center">
+          <select 
+            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+          >
+            {months.map(month => (
+              <option key={month} value={month}>{month}</option>
+            ))}
+          </select>
+          
+          <select 
+            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+          >
+            {years.map(year => (
+              <option key={year} value={year}>{year}</option>
+            ))}
+          </select>
 
-        {/* Custom Range Input */}
-        {selectedFilter === 'custom' && (
-          <div className="flex gap-4 items-center border-t border-[#FFD700]/20 pt-4">
-            <input
-              type="date"
-              value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
-              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-4 py-2 text-white"
-            />
-            <span className="text-[#A7D8FF]">to</span>
-            <input
-              type="date"
-              value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
-              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-4 py-2 text-white"
-            />
+          <div className="ml-auto text-[#A7D8FF]">
+            Periode: {selectedMonth} {selectedYear}
           </div>
-        )}
+        </div>
       </div>
 
       {/* TABLE */}
@@ -483,8 +456,8 @@ export default function OfficersKPIPage() {
               <tr>
                 <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
                   <div className="text-4xl mb-2">📊</div>
-                  <p className="text-lg mb-1">Belum ada data untuk periode ini</p>
-                  <p className="text-sm">Coba pilih periode lain atau upload data terlebih dahulu</p>
+                  <p className="text-lg mb-1">Belum ada data untuk {selectedMonth} {selectedYear}</p>
+                  <p className="text-sm">Upload data terlebih dahulu di halaman DP/WD</p>
                 </td>
               </tr>
             )}
@@ -501,6 +474,13 @@ export default function OfficersKPIPage() {
           <span className="text-red-400">Rejected: {totalRejected}</span>
         </div>
       </div>
+
+      {/* Debug Info (Hanya Muncul di Console) */}
+      {matchDebug.length > 0 && (
+        <div className="mt-4 p-3 bg-gray-800/50 rounded-lg text-xs text-gray-400">
+          <p>🔍 Debug: {matchDebug.length} transaksi diproses. Cek console untuk detail match.</p>
+        </div>
+      )}
     </div>
   )
 }
