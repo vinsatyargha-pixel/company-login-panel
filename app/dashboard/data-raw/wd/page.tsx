@@ -52,7 +52,7 @@ type WithdrawalTransaction = {
 
 // ===========================================
 // MAIN COMPONENT
-//============================================
+// ===========================================
 
 export default function WDDataRawPage() {
   // Data states
@@ -198,39 +198,52 @@ export default function WDDataRawPage() {
   }, [])
 
   // ===========================================
-  // HELPER FUNCTION PARSE TANGGAL (SAMA DENGAN DP)
+  // PARSE TANGGAL (RETURN YYYY-MM-DD)
   // ===========================================
 
-  const parseExcelDate = (dateStr: any): string | null => {
-    if (!dateStr || typeof dateStr !== 'string') return null
-    
+  const parseExcelDate = (value: any): string | null => {
+    if (!value) return null
+
     try {
-      // Bersihin dari "Platform: (Web)" dan koma
-      const cleanStr = dateStr.split(',')[0].split('Platform')[0].trim()
-      const parts = cleanStr.split('-')
+      // Handle Excel serial number
+      if (typeof value === 'number') {
+        const date = XLSX.SSF.parse_date_code(value)
+        if (!date) return null
+        // Return YYYY-MM-DD (tanpa jam)
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
+      }
+
+      // Handle string
+      const str = value.toString().trim()
       
-      if (parts.length < 3) return null
+      // Coba native JS Date
+      const nativeDate = new Date(str)
+      if (!isNaN(nativeDate.getTime())) {
+        return nativeDate.toISOString().split('T')[0]
+      }
+
+      // Format: "31-Jan-2026 22:57:50, Platform :Web"
+      const cleanStr = str.split(',')[0].split('Platform')[0].trim()
+      const parts = cleanStr.split(' ')
       
-      const day = parts[0].padStart(2, '0')
-      const month = parts[1]
-      const yearTime = parts[2]
-      const timeParts = yearTime.split(' ')
-      
-      if (timeParts.length < 1) return null
-      
-      const year = timeParts[0]
-      const time = timeParts[1] || '00:00:00'
-      
-      const monthMap: {[key: string]: string} = {
-        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-        'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      if (parts.length >= 2) {
+        const [datePart, timePart] = parts
+        const [day, month, year] = datePart.split('-')
+        
+        const monthMap: any = {
+          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+          'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+          'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+        }
+        
+        if (monthMap[month]) {
+          // Return YYYY-MM-DD (ignore time)
+          return `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
+        }
       }
       
-      if (!monthMap[month]) return null
-      
-      // Return format ISO untuk timestamp
-      return `${year}-${monthMap[month]}-${day}T${time}`
-    } catch (e) {
+      return null
+    } catch {
       return null
     }
   }
@@ -251,7 +264,6 @@ export default function WDDataRawPage() {
       const sheetName = workbook.SheetNames[0]
       const worksheet = workbook.Sheets[sheetName]
       
-      // Baca sebagai array per baris
       const rows = XLSX.utils.sheet_to_json(worksheet, { 
         header: 1,
         defval: '',
@@ -274,51 +286,40 @@ export default function WDDataRawPage() {
         throw new Error('Tidak menemukan baris header (No.)')
       }
       
-      const headers = rows[headerRowIndex]
       const dataRows = rows.slice(headerRowIndex + 1)
-      
       console.log('📊 Jumlah baris data:', dataRows.length)
       
-      // Cari index kolom yang diperlukan (sesuai format WD)
-      const findIndex = (keyword: string) => {
-        return headers.findIndex((h: string) => 
-          h && h.toString().toLowerCase().includes(keyword.toLowerCase())
-        )
-      }
-      
+      // INDEX KOLOM TETAP (berdasarkan file WD)
       const idx = {
         no: 0,
-        brand: findIndex('brand'),
-        ticket: findIndex('ticket'),
-        withdrawalAmount: findIndex('withdrawal amount') !== -1 ? findIndex('withdrawal amount') : 3,
-        playerFee: findIndex('player fee') !== -1 ? findIndex('player fee') : 4,
-        agentFee: findIndex('agent fee') !== -1 ? findIndex('agent fee') : 5,
-        nett: findIndex('nett amount') !== -1 ? findIndex('nett amount') : 6,
-        requested: findIndex('requested date'),
-        approved: findIndex('approved date'),
-        bank: findIndex('bank statement'),
-        userName: findIndex('user name'),
-        playerGroup: findIndex('player group'),
-        fullName: findIndex('full name'),
-        playerBank: findIndex('player bank'),
-        bankTitle: findIndex('bank title'),
-        remarks: findIndex('remarks'),
-        status: findIndex('status'),
-        reason: findIndex('reason'),
-        handler: findIndex('handler'),
-        handlerIp: findIndex('handlerip'),
-        creator: findIndex('creator'),
-        website: findIndex('website'),
-        lastBalance: findIndex('last balance') !== -1 ? findIndex('last balance') : 24
-      }
-      
-      if (idx.approved === -1) {
-        throw new Error('Kolom Approved Date tidak ditemukan')
+        brand: 1,
+        ticket: 2,
+        withdrawalAmount: 3,
+        playerFee: 4,
+        agentFee: 5,
+        nett: 6,
+        requested: 7,
+        approved: 8,
+        bank: 9,
+        userName: 10,
+        playerGroup: 11,
+        fullName: 12,
+        playerBank: 13,
+        bankTitle: 14,
+        remarks: 15,
+        status: 16,
+        reason: 17,
+        handler: 18,
+        handlerIp: 19,
+        creator: 20,
+        website: 21,
+        referralCode: 22,
+        ownReferralCode: 23,
+        lastBalance: 24
       }
       
       setUploadProgress('Memvalidasi data...')
       
-      // Transform data
       const validTransactions: WithdrawalTransaction[] = []
       
       for (let i = 0; i < dataRows.length; i++) {
@@ -326,23 +327,11 @@ export default function WDDataRawPage() {
         if (!row || row.length === 0) continue
         
         // Skip GRAND TOTAL
-        let isGrandTotal = false
-        for (let j = 0; j < row.length; j++) {
-          if (row[j] && row[j].toString().includes('GRAND TOTAL')) {
-            isGrandTotal = true
-            break
-          }
-        }
-        if (isGrandTotal) continue
+        if (row[2]?.toString().includes('GRAND TOTAL')) continue
         
-        // 🔥 PARSE SEMUA KOLOM TANGGAL dengan helper function (sama dengan DP)
-        const requestedDate = parseExcelDate(row[idx.requested])
         const approvedDate = parseExcelDate(row[idx.approved])
-        const bankDate = parseExcelDate(row[idx.bank])
-        
-        // Minimal approved date harus ada
         if (!approvedDate) {
-          console.log('⛔ Skip baris', i+1, 'approved date null:', row[idx.approved])
+          console.log(`⛔ Skip baris ${i+1}: approved date null`, row[idx.approved])
           continue
         }
         
@@ -350,13 +339,13 @@ export default function WDDataRawPage() {
           nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
           brand: row[idx.brand] || null,
           ticket_number: row[idx.ticket] || null,
-          withdrawal_amount: row[idx.withdrawalAmount] ? parseFloat(row[idx.withdrawalAmount]) || 0 : 0,
-          player_fee_amount: row[idx.playerFee] ? parseFloat(row[idx.playerFee]) || 0 : 0,
-          agent_fee_amount: row[idx.agentFee] ? parseFloat(row[idx.agentFee]) || 0 : 0,
-          nett_amount: row[idx.nett] ? parseFloat(row[idx.nett]) || 0 : 0,
-          requested_date: requestedDate,
+          withdrawal_amount: parseFloat(row[idx.withdrawalAmount]) || 0,
+          player_fee_amount: parseFloat(row[idx.playerFee]) || 0,
+          agent_fee_amount: parseFloat(row[idx.agentFee]) || 0,
+          nett_amount: parseFloat(row[idx.nett]) || 0,
+          requested_date: parseExcelDate(row[idx.requested]),
           approved_date: approvedDate,
-          bank_statement_date: bankDate,
+          bank_statement_date: parseExcelDate(row[idx.bank]),
           user_name: row[idx.userName] || null,
           player_group: row[idx.playerGroup] || null,
           full_name: row[idx.fullName] || null,
@@ -369,8 +358,8 @@ export default function WDDataRawPage() {
           handler_ip: row[idx.handlerIp] || null,
           creator: row[idx.creator] || null,
           website: row[idx.website] || 'XLY',
-          referral_code: null,
-          own_referral_code: null,
+          referral_code: row[idx.referralCode] || null,
+          own_referral_code: row[idx.ownReferralCode] || null,
           last_balance: row[idx.lastBalance] ? parseFloat(row[idx.lastBalance]) || null : null,
           file_name: selectedFile.name
         })
@@ -384,17 +373,13 @@ export default function WDDataRawPage() {
 
       setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
       
-      // Insert ke database
       const { error } = await supabase
         .from('withdrawal_transactions')
         .insert(validTransactions)
 
-      if (error) {
-        console.error('❌ Error detail:', error)
-        throw error
-      }
+      if (error) throw error
 
-      // Insert ke withdrawal_uploads buat tracking
+      // Insert ke withdrawal_uploads untuk tracking
       await supabase
         .from('withdrawal_uploads')
         .insert({
@@ -445,7 +430,6 @@ export default function WDDataRawPage() {
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-      {/* Header */}
       <div className="mb-6 flex justify-between items-center">
         <Link href="/dashboard/data-raw" className="text-[#FFD700] hover:underline">
           ← BACK TO DATA RAW
@@ -545,7 +529,6 @@ export default function WDDataRawPage() {
               Geser file Excel ke area di bawah, atau klik untuk memilih
             </p>
             
-            {/* DRAG & DROP AREA */}
             <div
               className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer transition-colors
                 ${dragActive 
@@ -583,14 +566,12 @@ export default function WDDataRawPage() {
               )}
             </div>
             
-            {/* PROGRESS */}
             {uploadProgress && (
               <div className="mb-4 text-sm text-[#A7D8FF] text-center">
                 {uploadProgress}
               </div>
             )}
             
-            {/* ACTION BUTTONS */}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
