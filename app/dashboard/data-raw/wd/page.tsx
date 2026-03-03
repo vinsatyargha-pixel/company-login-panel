@@ -198,7 +198,7 @@ export default function WDDataRawPage() {
   }, [])
 
   // ===========================================
-  // HELPER FUNCTION PARSE TANGGAL
+  // PARSE TANGGAL (RETURN YYYY-MM-DD)
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
@@ -209,8 +209,8 @@ export default function WDDataRawPage() {
       if (typeof value === 'number') {
         const date = XLSX.SSF.parse_date_code(value)
         if (!date) return null
-        const jsDate = new Date(date.y, date.m - 1, date.d, date.H || 0, date.M || 0, date.S || 0)
-        return jsDate.toISOString()
+        // Return YYYY-MM-DD (tanpa jam)
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`
       }
 
       // Handle string
@@ -219,7 +219,7 @@ export default function WDDataRawPage() {
       // Coba native JS Date
       const nativeDate = new Date(str)
       if (!isNaN(nativeDate.getTime())) {
-        return nativeDate.toISOString()
+        return nativeDate.toISOString().split('T')[0]
       }
 
       // Format: "31-Jan-2026 22:57:50, Platform :Web"
@@ -237,7 +237,8 @@ export default function WDDataRawPage() {
         }
         
         if (monthMap[month]) {
-          return `${year}-${monthMap[month]}-${day.padStart(2, '0')}T${timePart}`
+          // Return YYYY-MM-DD (ignore time)
+          return `${year}-${monthMap[month]}-${day.padStart(2, '0')}`
         }
       }
       
@@ -328,21 +329,9 @@ export default function WDDataRawPage() {
         // Skip GRAND TOTAL
         if (row[2]?.toString().includes('GRAND TOTAL')) continue
         
-        // 🔍 DEBUG 3 baris pertama
-        if (i < 3) {
-          console.log(`🔍 BARIS ${i+1}:`, {
-            no: row[0],
-            ticket: row[2],
-            approved_raw: row[8],
-            approved_type: typeof row[8],
-            requested_raw: row[7],
-            bank_raw: row[9]
-          })
-        }
-        
         const approvedDate = parseExcelDate(row[idx.approved])
         if (!approvedDate) {
-          console.log(`⛔ Skip baris ${i+1}: approved date null`)
+          console.log(`⛔ Skip baris ${i+1}: approved date null`, row[idx.approved])
           continue
         }
         
@@ -390,6 +379,7 @@ export default function WDDataRawPage() {
 
       if (error) throw error
 
+      // Insert ke withdrawal_uploads untuk tracking
       await supabase
         .from('withdrawal_uploads')
         .insert({
