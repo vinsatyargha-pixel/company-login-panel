@@ -117,40 +117,52 @@ export default function WDDataRawPage() {
   }
 
   const fetchUploads = async () => {
-    try {
-      setLoading(true)
-      
-      const monthIndex = months.indexOf(selectedMonth) + 1
-      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+  try {
+    setLoading(true)
+    
+    const monthIndex = months.indexOf(selectedMonth) + 1
+    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      // Ambil dari tabel withdrawal_uploads
-      let query = supabase
-        .from('withdrawal_uploads')
-        .select('*')
-        .gte('upload_date', startDate)
-        .lte('upload_date', endDate)
-        .order('upload_date', { ascending: true })
+    console.log('🔍 Filter date range:', { startDate, endDate, selectedMonth, selectedYear })
 
-      if (selectedAsset !== 'all') {
-        const asset = assets.find(a => a.id === selectedAsset)
-        if (asset) {
-          query = query.eq('website', asset.asset_code)
-        }
+    // Ambil dari tabel withdrawal_uploads
+    let query = supabase
+      .from('withdrawal_uploads')
+      .select('*')
+      .gte('upload_date', startDate)
+      .lte('upload_date', endDate)
+      .order('upload_date', { ascending: true })
+
+    if (selectedAsset !== 'all') {
+      const asset = assets.find(a => a.id === selectedAsset)
+      if (asset) {
+        query = query.eq('website', asset.asset_code)
       }
-
-      const { data, error } = await query
-      if (error) throw error
-      
-      console.log('📅 Data uploads WD:', data)
-      setUploads(data || [])
-    } catch (error) {
-      console.error('Error fetching uploads:', error)
-    } finally {
-      setLoading(false)
     }
+
+    const { data, error } = await query
+    if (error) {
+      console.error('❌ Error query:', error)
+      throw error
+    }
+    
+    console.log('📅 Data withdrawal_uploads:', data)
+    
+    // Format tanggal untuk display
+    const formatted = (data || []).map((item: any) => ({
+      ...item,
+      upload_date: item.upload_date // udah dalam format YYYY-MM-DD dari database
+    }))
+    
+    setUploads(formatted)
+  } catch (error) {
+    console.error('Error fetching uploads:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
   // ===========================================
   // DRAG & DROP HANDLERS
