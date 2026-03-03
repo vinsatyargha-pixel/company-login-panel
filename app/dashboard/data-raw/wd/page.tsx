@@ -201,6 +201,10 @@ export default function WDDataRawPage() {
 // PARSE TANGGAL (RETURN TIMESTAMP LENGKAP)
 // ===========================================
 
+// ===========================================
+// PARSE TANGGAL (RETURN TIMESTAMP LENGKAP)
+// ===========================================
+
 const parseExcelDate = (value: any): string | null => {
   if (!value) return null
 
@@ -209,8 +213,11 @@ const parseExcelDate = (value: any): string | null => {
     if (typeof value === 'number') {
       const date = XLSX.SSF.parse_date_code(value)
       if (!date) return null
-      // Return dengan jam (asumsi 00:00:00)
-      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}T00:00:00`
+      // Return dengan jam (dari Excel)
+      const hour = date.H?.toString().padStart(2, '0') || '00'
+      const minute = date.M?.toString().padStart(2, '0') || '00'
+      const second = date.S?.toString().padStart(2, '0') || '00'
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}T${hour}:${minute}:${second}`
     }
 
     // Handle string
@@ -330,10 +337,12 @@ const parseExcelDate = (value: any): string | null => {
         if (row[2]?.toString().includes('GRAND TOTAL')) continue
         
         const approvedDate = parseExcelDate(row[idx.approved])
-        if (!approvedDate) {
-          console.log(`⛔ Skip baris ${i+1}: approved date null`, row[idx.approved])
-          continue
-        }
+if (!approvedDate) {
+  console.log(`⛔ Skip baris ${i+1}: approved date null`, row[idx.approved])
+  continue
+}
+
+// approvedDate sekarang format: "2026-03-01T11:57:37"
         
         validTransactions.push({
           nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
