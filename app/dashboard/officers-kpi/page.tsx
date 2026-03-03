@@ -211,8 +211,9 @@ export default function OfficersKPIPage() {
         // Pastikan handler ada dan string
         if (!tx.handler || typeof tx.handler !== 'string') return
         
+        // Cari officer dengan ID yang match (case insensitive)
         const officer = officers.find(o => 
-          o.id?.toLowerCase() === tx.handler.toLowerCase()
+          String(o.id).toLowerCase() === tx.handler.toLowerCase()
         )
         if (!officer) return
 
@@ -249,8 +250,9 @@ export default function OfficersKPIPage() {
         // Pastikan handler ada dan string
         if (!tx.handler || typeof tx.handler !== 'string') return
         
+        // Cari officer dengan ID yang match (case insensitive)
         const officer = officers.find(o => 
-          o.id?.toLowerCase() === tx.handler.toLowerCase()
+          String(o.id).toLowerCase() === tx.handler.toLowerCase()
         )
         if (!officer) return
 
