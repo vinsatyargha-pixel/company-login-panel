@@ -22,17 +22,34 @@ type KPIData = {
   officer_name: string
   department: string
   status: string
+  
+  // DEPOSIT
+  dep_total: number
+  dep_approved: number
+  dep_rejected: number
+  dep_approve_rate: string
+  dep_reject_rate: string
+  dep_avg_approve: string
+  dep_avg_reject: string
+  dep_sop: number
+  dep_non_sop: number
+  
+  // WITHDRAWAL
+  wd_total: number
+  wd_approved: number
+  wd_rejected: number
+  wd_approve_rate: string
+  wd_reject_rate: string
+  wd_avg_approve: string
+  wd_avg_reject: string
+  wd_sop: number
+  wd_non_sop: number
+  
+  // TOTAL GABUNGAN
   total_transactions: number
   total_approved: number
   total_rejected: number
-  approve_rate: string
-  reject_rate: string
-  avg_approve_minutes: string
-  avg_reject_minutes: string
-  sop_deposit: number
-  non_sop_deposit: number
-  sop_withdrawal: number
-  non_sop_withdrawal: number
+  
   human_error: number
 }
 
@@ -73,13 +90,13 @@ export default function OfficersKPIPage() {
   }, [selectedMonth, selectedYear, officers])
 
   // ===========================================
-  // FETCH OFFICERS dari tabel officers
+  // FETCH OFFICERS
   // ===========================================
 
   const fetchOfficers = async () => {
     try {
       setError(null)
-      console.log('🔍 Fetching officers from officers table...')
+      console.log('🔍 Fetching officers...')
       
       const { data, error } = await supabase
         .from('officers')
@@ -90,8 +107,6 @@ export default function OfficersKPIPage() {
       if (error) throw error
       
       console.log('📊 Officers found:', data?.length || 0)
-      console.log('👤 Panel IDs:', data?.map(o => ({ panel: o.panel_id, name: o.full_name })))
-      
       setOfficers(data || [])
       
     } catch (error: any) {
@@ -114,22 +129,12 @@ export default function OfficersKPIPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      console.log('🔍 Filter Bulan:', { 
-        selectedMonth, 
-        selectedYear,
-        startDate, 
-        endDate 
-      })
+      console.log('🔍 Filter:', { selectedMonth, selectedYear, startDate, endDate })
 
       // Ambil data deposit
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
-        .select(`
-          handler,
-          status,
-          duration_minutes,
-          reason
-        `)
+        .select('handler, status, duration_minutes, reason')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate)
 
@@ -138,24 +143,19 @@ export default function OfficersKPIPage() {
       // Ambil data withdrawal
       const { data: withdrawalData, error: withdrawalError } = await supabase
         .from('withdrawal_transactions')
-        .select(`
-          handler,
-          status,
-          duration_minutes,
-          reason
-        `)
+        .select('handler, status, duration_minutes, reason')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate)
 
       if (withdrawalError) throw withdrawalError
 
-      console.log('📊 Deposit data:', depositData?.length || 0)
-      console.log('📊 Withdrawal data:', withdrawalData?.length || 0)
+      console.log('📊 Deposit:', depositData?.length || 0)
+      console.log('📊 Withdrawal:', withdrawalData?.length || 0)
 
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan data officer (pake panel_id sebagai key)
+      // Inisialisasi
       officers.forEach(officer => {
         kpiMap[officer.panel_id] = {
           officer_id: officer.id,
@@ -163,49 +163,59 @@ export default function OfficersKPIPage() {
           officer_name: officer.full_name,
           department: officer.department,
           status: officer.status || 'REGULAR',
-          total_transactions: 0,
-          total_approved: 0,
-          total_rejected: 0,
-          sop_deposit: 0,
-          non_sop_deposit: 0,
-          sop_withdrawal: 0,
-          non_sop_withdrawal: 0,
-          human_error: 0,
-          approve_minutes_sum: 0,
-          reject_minutes_sum: 0,
-          approve_count: 0,
-          reject_count: 0
+          
+          // Deposit
+          dep_total: 0,
+          dep_approved: 0,
+          dep_rejected: 0,
+          dep_approve_minutes_sum: 0,
+          dep_reject_minutes_sum: 0,
+          dep_approve_count: 0,
+          dep_reject_count: 0,
+          dep_sop: 0,
+          dep_non_sop: 0,
+          
+          // Withdrawal
+          wd_total: 0,
+          wd_approved: 0,
+          wd_rejected: 0,
+          wd_approve_minutes_sum: 0,
+          wd_reject_minutes_sum: 0,
+          wd_approve_count: 0,
+          wd_reject_count: 0,
+          wd_sop: 0,
+          wd_non_sop: 0,
+          
+          // Human error
+          human_error: 0
         }
       })
 
-      // Proses deposit
+      // Proses Deposit
       depositData?.forEach((tx: any) => {
-        if (!tx.handler || typeof tx.handler !== 'string') return
-        
-        // Cari officer berdasarkan panel_id (case insensitive)
+        if (!tx.handler) return
         const officer = officers.find(o => 
           o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
         )
-        
         if (!officer) return
 
         const kpi = kpiMap[officer.panel_id]
-        kpi.total_transactions++
+        kpi.dep_total++
 
         if (tx.status?.toLowerCase() === 'approved') {
-          kpi.total_approved++
-          kpi.approve_count++
-          kpi.approve_minutes_sum += (tx.duration_minutes || 0)
+          kpi.dep_approved++
+          kpi.dep_approve_count++
+          kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
           
           if (tx.duration_minutes <= 3) {
-            kpi.sop_deposit++
+            kpi.dep_sop++
           } else {
-            kpi.non_sop_deposit++
+            kpi.dep_non_sop++
           }
         } else if (tx.status?.toLowerCase() === 'rejected') {
-          kpi.total_rejected++
-          kpi.reject_count++
-          kpi.reject_minutes_sum += (tx.duration_minutes || 0)
+          kpi.dep_rejected++
+          kpi.dep_reject_count++
+          kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
         }
 
         // Human error
@@ -217,36 +227,34 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses withdrawal
+      // Proses Withdrawal
       withdrawalData?.forEach((tx: any) => {
-        if (!tx.handler || typeof tx.handler !== 'string') return
-        
+        if (!tx.handler) return
         const officer = officers.find(o => 
           o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
         )
-        
         if (!officer) return
 
         const kpi = kpiMap[officer.panel_id]
-        kpi.total_transactions++
+        kpi.wd_total++
 
         if (tx.status?.toLowerCase() === 'approved') {
-          kpi.total_approved++
-          kpi.approve_count++
-          kpi.approve_minutes_sum += (tx.duration_minutes || 0)
+          kpi.wd_approved++
+          kpi.wd_approve_count++
+          kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
           
           if (tx.duration_minutes <= 5) {
-            kpi.sop_withdrawal++
+            kpi.wd_sop++
           } else {
-            kpi.non_sop_withdrawal++
+            kpi.wd_non_sop++
           }
         } else if (tx.status?.toLowerCase() === 'rejected') {
-          kpi.total_rejected++
-          kpi.reject_count++
-          kpi.reject_minutes_sum += (tx.duration_minutes || 0)
+          kpi.wd_rejected++
+          kpi.wd_reject_count++
+          kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
         }
 
-        // Human error
+        // Human error (sama, gabung)
         if (tx.reason?.toLowerCase().includes('mistake') ||
             tx.reason?.toLowerCase().includes('crossbank') ||
             tx.reason?.toLowerCase().includes('cross asset') ||
@@ -255,23 +263,32 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Hitung rate dan rata-rata
+      // Format data
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
-        const approve_rate = kpi.total_transactions > 0 
-          ? ((kpi.total_approved / kpi.total_transactions) * 100).toFixed(2) 
-          : '0.00'
-        
-        const reject_rate = kpi.total_transactions > 0 
-          ? ((kpi.total_rejected / kpi.total_transactions) * 100).toFixed(2) 
-          : '0.00'
-        
-        const avg_approve = kpi.approve_count > 0 
-          ? (kpi.approve_minutes_sum / kpi.approve_count).toFixed(2) 
-          : '-'
-        
-        const avg_reject = kpi.reject_count > 0 
-          ? (kpi.reject_minutes_sum / kpi.reject_count).toFixed(2) 
-          : '-'
+        // Deposit rates
+        const dep_approve_rate = kpi.dep_total > 0 
+          ? ((kpi.dep_approved / kpi.dep_total) * 100).toFixed(2) : '0.00'
+        const dep_reject_rate = kpi.dep_total > 0 
+          ? ((kpi.dep_rejected / kpi.dep_total) * 100).toFixed(2) : '0.00'
+        const dep_avg_approve = kpi.dep_approve_count > 0 
+          ? (kpi.dep_approve_minutes_sum / kpi.dep_approve_count).toFixed(2) : '-'
+        const dep_avg_reject = kpi.dep_reject_count > 0 
+          ? (kpi.dep_reject_minutes_sum / kpi.dep_reject_count).toFixed(2) : '-'
+
+        // Withdrawal rates
+        const wd_approve_rate = kpi.wd_total > 0 
+          ? ((kpi.wd_approved / kpi.wd_total) * 100).toFixed(2) : '0.00'
+        const wd_reject_rate = kpi.wd_total > 0 
+          ? ((kpi.wd_rejected / kpi.wd_total) * 100).toFixed(2) : '0.00'
+        const wd_avg_approve = kpi.wd_approve_count > 0 
+          ? (kpi.wd_approve_minutes_sum / kpi.wd_approve_count).toFixed(2) : '-'
+        const wd_avg_reject = kpi.wd_reject_count > 0 
+          ? (kpi.wd_reject_minutes_sum / kpi.wd_reject_count).toFixed(2) : '-'
+
+        // Total gabungan
+        const total_trans = kpi.dep_total + kpi.wd_total
+        const total_app = kpi.dep_approved + kpi.wd_approved
+        const total_rej = kpi.dep_rejected + kpi.wd_rejected
 
         return {
           officer_id: kpi.officer_id,
@@ -279,17 +296,34 @@ export default function OfficersKPIPage() {
           officer_name: kpi.officer_name,
           department: kpi.department,
           status: kpi.status,
-          total_transactions: kpi.total_transactions,
-          total_approved: kpi.total_approved,
-          total_rejected: kpi.total_rejected,
-          approve_rate,
-          reject_rate,
-          avg_approve_minutes: avg_approve,
-          avg_reject_minutes: avg_reject,
-          sop_deposit: kpi.sop_deposit,
-          non_sop_deposit: kpi.non_sop_deposit,
-          sop_withdrawal: kpi.sop_withdrawal,
-          non_sop_withdrawal: kpi.non_sop_withdrawal,
+          
+          // Deposit
+          dep_total: kpi.dep_total,
+          dep_approved: kpi.dep_approved,
+          dep_rejected: kpi.dep_rejected,
+          dep_approve_rate,
+          dep_reject_rate,
+          dep_avg_approve,
+          dep_avg_reject,
+          dep_sop: kpi.dep_sop,
+          dep_non_sop: kpi.dep_non_sop,
+          
+          // Withdrawal
+          wd_total: kpi.wd_total,
+          wd_approved: kpi.wd_approved,
+          wd_rejected: kpi.wd_rejected,
+          wd_approve_rate,
+          wd_reject_rate,
+          wd_avg_approve,
+          wd_avg_reject,
+          wd_sop: kpi.wd_sop,
+          wd_non_sop: kpi.wd_non_sop,
+          
+          // Total
+          total_transactions: total_trans,
+          total_approved: total_app,
+          total_rejected: total_rej,
+          
           human_error: kpi.human_error
         }
       })
@@ -298,7 +332,7 @@ export default function OfficersKPIPage() {
       setKpiData(formattedData)
       
     } catch (error: any) {
-      console.error('❌ Error fetching KPI:', error)
+      console.error('❌ Error:', error)
       setError(error.message)
     } finally {
       setLoading(false)
@@ -312,147 +346,121 @@ export default function OfficersKPIPage() {
   if (loading) {
     return (
       <div className="p-6 min-h-screen bg-[#0B1A33] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700] mx-auto"></div>
-          <p className="mt-4 text-[#FFD700]">Loading KPI data...</p>
-        </div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-        <Link href="/dashboard" className="text-[#FFD700] hover:underline inline-block mb-4">
-          ← BACK TO DASHBOARD
-        </Link>
-        <div className="bg-red-900/50 border border-red-500 p-4 rounded-lg">
-          <h2 className="text-xl font-bold text-red-400 mb-2">Error</h2>
-          <p className="text-white">{error}</p>
-        </div>
-      </div>
-    )
-  }
-
-  const totalTransactions = kpiData.reduce((sum, item) => sum + item.total_transactions, 0)
-  const totalApproved = kpiData.reduce((sum, item) => sum + item.total_approved, 0)
-  const totalRejected = kpiData.reduce((sum, item) => sum + item.total_rejected, 0)
-
-  // Filter hanya CS DP WD (kalo mau)
   const filteredKpiData = kpiData.filter(item => item.department === 'CS DP WD')
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-      {/* Header */}
       <div className="mb-6">
         <Link href="/dashboard" className="text-[#FFD700] hover:underline inline-block mb-4">
           ← BACK TO DASHBOARD
         </Link>
-        
         <h1 className="text-3xl font-bold text-[#FFD700]">KPI LIVE OFFICERS</h1>
-        <p className="text-[#A7D8FF] mt-2">Performance monitoring CS DP WD</p>
+        <p className="text-[#A7D8FF] mt-2">Deposit & Withdrawal Performance</p>
       </div>
 
-      {/* FILTER BULAN & TAHUN */}
+      {/* FILTER */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex gap-4 items-center">
           <select 
-            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
           >
-            {months.map(month => (
-              <option key={month} value={month}>{month}</option>
-            ))}
+            {months.map(m => <option key={m}>{m}</option>)}
           </select>
-          
           <select 
-            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
+            className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
           >
-            {years.map(year => (
-              <option key={year} value={year}>{year}</option>
-            ))}
+            {years.map(y => <option key={y}>{y}</option>)}
           </select>
-
           <div className="ml-auto text-[#A7D8FF]">
-            Periode: {selectedMonth} {selectedYear}
+            {selectedMonth} {selectedYear}
           </div>
         </div>
       </div>
 
       {/* TABLE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-xs">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
-              <th className="px-3 py-3 text-left text-[#FFD700]">No</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Panel ID</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Officer</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Dept</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Status</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Total</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">App</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Rej</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">App%</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Rej%</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Avg App (m)</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Avg Rej (m)</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">SOP Depo</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Non SOP</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">SOP WD</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Non SOP</th>
-              <th className="px-3 py-3 text-left text-[#FFD700]">Human Error</th>
+              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">No</th>
+              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Panel ID</th>
+              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Officer</th>
+              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Status</th>
+              
+              <th colSpan={6} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">DEPOSIT</th>
+              <th colSpan={6} className="px-2 py-1 text-center text-[#FFD700] border-x border-[#FFD700]/30">WITHDRAWAL</th>
+              <th rowSpan={2} className="px-2 py-2 text-[#FFD700]">Human Error</th>
+            </tr>
+            <tr className="border-b border-[#FFD700]/30">
+              {/* Deposit */}
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
+              
+              {/* Withdrawal */}
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
+              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
             </tr>
           </thead>
           <tbody>
-            {filteredKpiData.length > 0 ? (
-              filteredKpiData.map((item, idx) => (
-                <tr key={item.panel_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                  <td className="px-3 py-3">{idx + 1}</td>
-                  <td className="px-3 py-3 text-[#FFD700]">{item.panel_id}</td>
-                  <td className="px-3 py-3">{item.officer_name}</td>
-                  <td className="px-3 py-3">{item.department}</td>
-                  <td className="px-3 py-3">
-                    <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3">{item.total_transactions}</td>
-                  <td className="px-3 py-3 text-green-400">{item.total_approved}</td>
-                  <td className="px-3 py-3 text-red-400">{item.total_rejected}</td>
-                  <td className="px-3 py-3">{item.approve_rate}%</td>
-                  <td className="px-3 py-3">{item.reject_rate}%</td>
-                  <td className="px-3 py-3">{item.avg_approve_minutes}</td>
-                  <td className="px-3 py-3">{item.avg_reject_minutes}</td>
-                  <td className="px-3 py-3 text-green-400">{item.sop_deposit}</td>
-                  <td className="px-3 py-3 text-yellow-400">{item.non_sop_deposit}</td>
-                  <td className="px-3 py-3 text-green-400">{item.sop_withdrawal}</td>
-                  <td className="px-3 py-3 text-yellow-400">{item.non_sop_withdrawal}</td>
-                  <td className="px-3 py-3 text-red-400">{item.human_error}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={17} className="px-4 py-12 text-center text-gray-400">
-                  <div className="text-4xl mb-2">📊</div>
-                  <p className="text-lg mb-1">Belum ada data untuk {selectedMonth} {selectedYear}</p>
-                  <p className="text-sm">Upload data terlebih dahulu di halaman DP/WD</p>
+            {filteredKpiData.map((item, idx) => (
+              <tr key={item.panel_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                <td className="px-2 py-2">{idx + 1}</td>
+                <td className="px-2 py-2 text-[#FFD700]">{item.panel_id}</td>
+                <td className="px-2 py-2">{item.officer_name}</td>
+                <td className="px-2 py-2">
+                  <span className="px-1 py-0.5 rounded text-[10px] bg-green-500/20 text-green-400">
+                    {item.status}
+                  </span>
                 </td>
+                
+                {/* Deposit */}
+                <td className="px-2 py-2">{item.dep_total}</td>
+                <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
+                <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
+                <td className="px-2 py-2">{item.dep_approve_rate}%</td>
+                <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
+                <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
+                
+                {/* Withdrawal */}
+                <td className="px-2 py-2">{item.wd_total}</td>
+                <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
+                <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
+                <td className="px-2 py-2">{item.wd_approve_rate}%</td>
+                <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
+                <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
+                
+                {/* Human Error */}
+                <td className="px-2 py-2 text-red-400">{item.human_error}</td>
               </tr>
-            )}
+            ))}
           </tbody>
         </table>
       </div>
 
       {/* Summary */}
-      <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-sm text-[#A7D8FF]">
-        <div className="flex justify-between items-center">
-          <span>Total Officers: {filteredKpiData.length}</span>
-          <span>Total Transactions: {totalTransactions}</span>
-          <span className="text-green-400">Approved: {totalApproved}</span>
-          <span className="text-red-400">Rejected: {totalRejected}</span>
+      <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF]">
+        <div className="flex justify-between">
+          <span>Officers: {filteredKpiData.length}</span>
+          <span>Total Trans: {filteredKpiData.reduce((s,i) => s + i.total_transactions,0)}</span>
+          <span className="text-green-400">Approved: {filteredKpiData.reduce((s,i) => s + i.total_approved,0)}</span>
+          <span className="text-red-400">Rejected: {filteredKpiData.reduce((s,i) => s + i.total_rejected,0)}</span>
         </div>
       </div>
     </div>
