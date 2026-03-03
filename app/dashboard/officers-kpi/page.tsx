@@ -27,13 +27,13 @@ type KPIData = {
   dep_total: number
   dep_approved: number
   dep_rejected: number
-  dep_failed: number        // ⭐ TAMBAHAN UNTUK SYSTEM
+  dep_failed: number
   dep_approve_rate: string
   dep_reject_rate: string
-  dep_fail_rate: string      // ⭐ TAMBAHAN
+  dep_fail_rate: string
   dep_avg_approve: string
   dep_avg_reject: string
-  dep_avg_fail: string        // ⭐ TAMBAHAN
+  dep_avg_fail: string
   dep_sop: number
   dep_non_sop: number
   
@@ -41,13 +41,13 @@ type KPIData = {
   wd_total: number
   wd_approved: number
   wd_rejected: number
-  wd_failed: number           // ⭐ TAMBAHAN UNTUK SYSTEM
+  wd_failed: number
   wd_approve_rate: string
   wd_reject_rate: string
-  wd_fail_rate: string         // ⭐ TAMBAHAN
+  wd_fail_rate: string
   wd_avg_approve: string
   wd_avg_reject: string
-  wd_avg_fail: string           // ⭐ TAMBAHAN
+  wd_avg_fail: string
   wd_sop: number
   wd_non_sop: number
   
@@ -55,7 +55,7 @@ type KPIData = {
   total_transactions: number
   total_approved: number
   total_rejected: number
-  total_failed: number          // ⭐ TAMBAHAN
+  total_failed: number
   
   human_error: number
 }
@@ -199,13 +199,13 @@ export default function OfficersKPIPage() {
           dep_total: 0,
           dep_approved: 0,
           dep_rejected: 0,
-          dep_failed: 0,                          // ⭐ TAMBAHAN
+          dep_failed: 0,
           dep_approve_minutes_sum: 0,
           dep_reject_minutes_sum: 0,
-          dep_fail_minutes_sum: 0,                  // ⭐ TAMBAHAN
+          dep_fail_minutes_sum: 0,
           dep_approve_count: 0,
           dep_reject_count: 0,
-          dep_fail_count: 0,                        // ⭐ TAMBAHAN
+          dep_fail_count: 0,
           dep_sop: 0,
           dep_non_sop: 0,
           
@@ -213,13 +213,13 @@ export default function OfficersKPIPage() {
           wd_total: 0,
           wd_approved: 0,
           wd_rejected: 0,
-          wd_failed: 0,                            // ⭐ TAMBAHAN
+          wd_failed: 0,
           wd_approve_minutes_sum: 0,
           wd_reject_minutes_sum: 0,
-          wd_fail_minutes_sum: 0,                    // ⭐ TAMBAHAN
+          wd_fail_minutes_sum: 0,
           wd_approve_count: 0,
           wd_reject_count: 0,
-          wd_fail_count: 0,                          // ⭐ TAMBAHAN
+          wd_fail_count: 0,
           wd_sop: 0,
           wd_non_sop: 0,
           
@@ -256,7 +256,7 @@ export default function OfficersKPIPage() {
           kpi.dep_rejected++
           kpi.dep_reject_count++
           kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
-        } else if (status === 'fail' || status === 'failed') {  // ⭐ TAMBAHAN UNTUK FAIL
+        } else if (status?.includes('fail')) {  // 🔥 FIX: case insensitive untuk FAIL
           kpi.dep_failed++
           kpi.dep_fail_count++
           kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
@@ -299,7 +299,7 @@ export default function OfficersKPIPage() {
           kpi.wd_rejected++
           kpi.wd_reject_count++
           kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
-        } else if (status === 'fail' || status === 'failed') {  // ⭐ TAMBAHAN UNTUK FAIL
+        } else if (status?.includes('fail')) {  // 🔥 FIX: case insensitive untuk FAIL
           kpi.wd_failed++
           kpi.wd_fail_count++
           kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
@@ -321,14 +321,14 @@ export default function OfficersKPIPage() {
           ? ((kpi.dep_approved / kpi.dep_total) * 100).toFixed(2) : '0.00'
         const dep_reject_rate = kpi.dep_total > 0 
           ? ((kpi.dep_rejected / kpi.dep_total) * 100).toFixed(2) : '0.00'
-        const dep_fail_rate = kpi.dep_total > 0                       // ⭐ TAMBAHAN
+        const dep_fail_rate = kpi.dep_total > 0
           ? ((kpi.dep_failed / kpi.dep_total) * 100).toFixed(2) : '0.00'
         
         const dep_avg_approve = kpi.dep_approve_count > 0 
           ? minutesToHHMMSS(kpi.dep_approve_minutes_sum / kpi.dep_approve_count) : '-'
         const dep_avg_reject = kpi.dep_reject_count > 0 
           ? minutesToHHMMSS(kpi.dep_reject_minutes_sum / kpi.dep_reject_count) : '-'
-        const dep_avg_fail = kpi.dep_fail_count > 0                   // ⭐ TAMBAHAN
+        const dep_avg_fail = kpi.dep_fail_count > 0
           ? minutesToHHMMSS(kpi.dep_fail_minutes_sum / kpi.dep_fail_count) : '-'
 
         // Withdrawal rates & intervals
@@ -336,21 +336,21 @@ export default function OfficersKPIPage() {
           ? ((kpi.wd_approved / kpi.wd_total) * 100).toFixed(2) : '0.00'
         const wd_reject_rate = kpi.wd_total > 0 
           ? ((kpi.wd_rejected / kpi.wd_total) * 100).toFixed(2) : '0.00'
-        const wd_fail_rate = kpi.wd_total > 0                         // ⭐ TAMBAHAN
+        const wd_fail_rate = kpi.wd_total > 0
           ? ((kpi.wd_failed / kpi.wd_total) * 100).toFixed(2) : '0.00'
         
         const wd_avg_approve = kpi.wd_approve_count > 0 
           ? minutesToHHMMSS(kpi.wd_approve_minutes_sum / kpi.wd_approve_count) : '-'
         const wd_avg_reject = kpi.wd_reject_count > 0 
           ? minutesToHHMMSS(kpi.wd_reject_minutes_sum / kpi.wd_reject_count) : '-'
-        const wd_avg_fail = kpi.wd_fail_count > 0                     // ⭐ TAMBAHAN
+        const wd_avg_fail = kpi.wd_fail_count > 0
           ? minutesToHHMMSS(kpi.wd_fail_minutes_sum / kpi.wd_fail_count) : '-'
 
         // Total gabungan
         const total_trans = kpi.dep_total + kpi.wd_total
         const total_app = kpi.dep_approved + kpi.wd_approved
         const total_rej = kpi.dep_rejected + kpi.wd_rejected
-        const total_fail = kpi.dep_failed + kpi.wd_failed              // ⭐ TAMBAHAN
+        const total_fail = kpi.dep_failed + kpi.wd_failed
 
         return {
           officer_id: kpi.officer_id,
@@ -453,7 +453,7 @@ export default function OfficersKPIPage() {
           ← BACK TO DASHBOARD
         </Link>
         
-        <h1 className="text-3xl font-bold text-[#FFD700]">KPI SUMMARY OFFICERS</h1>
+        <h1 className="text-3xl font-bold text-[#FFD700]">KPI LIVE OFFICERS</h1>
         <p className="text-[#A7D8FF] mt-2">Performance monitoring all officers (including SYSTEM)</p>
       </div>
 
