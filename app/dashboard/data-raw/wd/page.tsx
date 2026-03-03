@@ -478,12 +478,15 @@ export default function WDDataRawPage() {
           <tbody>
   {uploads.length > 0 ? (
     uploads.map((item) => {
-      const day = new Date(item.upload_date).getDate()
+      const date = new Date(item.upload_date)
+      const day = date.getDate()
+      const month = months[date.getMonth()] // Ambil dari data, bukan filter
+      const year = date.getFullYear()
       
       return (
         <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
           <td className="px-4 py-3">
-            {day} {selectedMonth} {selectedYear}
+            {day} {month} {year}
           </td>
           <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
           <td className="px-4 py-3">{item.total_rows} data</td>
