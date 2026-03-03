@@ -21,7 +21,6 @@ type WithdrawalUpload = {
   file_name: string
   total_rows: number
   status: string
-  website?: string
 }
 
 type WithdrawalTransaction = {
@@ -117,47 +116,55 @@ export default function WDDataRawPage() {
   }
 
   const fetchUploads = async () => {
-  try {
-    setLoading(true)
-    
-    const monthIndex = months.indexOf(selectedMonth) + 1
-    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+    try {
+      setLoading(true)
+      
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-    console.log('🔍 Filter:', { 
-      selectedMonth, 
-      selectedYear,
-      startDate, 
-      endDate 
-    })
+      console.log('🔍 Filter Supabase:', { 
+        table: 'withdrawal_uploads',
+        startDate, 
+        endDate,
+        selectedMonth,
+        selectedYear
+      })
 
-    // AMBIL SEMUA DATA DULU TANPA FILTER
-    const { data, error } = await supabase
-      .from('withdrawal_uploads')
-      .select('*')
-      .order('upload_date', { ascending: true })
+      // 🔥 FILTER LANGSUNG DI SUPABASE (PALING AMAN)
+      let query = supabase
+        .from('withdrawal_uploads')
+        .select('*')
+        .gte('upload_date', startDate)
+        .lte('upload_date', endDate)
+        .order('upload_date', { ascending: true })
 
-    if (error) throw error
-    
-    console.log('📅 SEMUA DATA:', data)
-    console.log('📅 TOTAL SEMUA:', data?.length || 0)
-    
-    // FILTER MANUAL PAKE JAVASCRIPT
-    const filtered = data?.filter(item => {
-      return item.upload_date >= startDate && item.upload_date <= endDate
-    }) || []
-    
-    console.log('📅 DATA FILTERED:', filtered)
-    console.log('📅 TOTAL FILTERED:', filtered.length)
-    
-    setUploads(filtered)
-  } catch (error) {
-    console.error('Error fetching uploads:', error)
-  } finally {
-    setLoading(false)
+      // Tambah filter asset kalo diperlukan
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset)
+        if (asset) {
+          query = query.eq('website', asset.asset_code)
+        }
+      }
+
+      const { data, error } = await query
+      
+      if (error) {
+        console.error('❌ Error Supabase:', error)
+        throw error
+      }
+      
+      console.log('📅 Data dari Supabase:', data)
+      console.log('📅 Jumlah data:', data?.length || 0)
+      
+      setUploads(data || [])
+    } catch (error) {
+      console.error('Error fetching uploads:', error)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   // ===========================================
   // DRAG & DROP HANDLERS
@@ -532,15 +539,15 @@ export default function WDDataRawPage() {
           <tbody>
             {uploads.length > 0 ? (
               uploads.map((item) => {
-                const day = getDayFromDate(item.upload_date)
-                const month = new Date(item.upload_date).getMonth()
-                const monthName = months[month]
-                const year = new Date(item.upload_date).getFullYear()
+                const date = new Date(item.upload_date)
+                const day = date.getDate()
+                const month = months[date.getMonth()]
+                const year = date.getFullYear()
                 
                 return (
                   <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                     <td className="px-4 py-3">
-                      {day} {monthName} {year}
+                      {day} {month} {year}
                     </td>
                     <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                     <td className="px-4 py-3">{item.total_rows} data</td>
