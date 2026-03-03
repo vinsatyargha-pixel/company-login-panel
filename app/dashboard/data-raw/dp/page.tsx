@@ -15,10 +15,11 @@ type Asset = {
   asset_code: string
 }
 
-type GroupedTransaction = {
-  approved_date: string
+type GroupedUpload = {
+  upload_date: string
   file_name: string
-  count: number
+  total_rows: number
+  status: string
 }
 
 type DepositTransaction = {
@@ -56,7 +57,7 @@ type DepositTransaction = {
 
 export default function DPDataRawPage() {
   // Data states
-  const [transactions, setTransactions] = useState<GroupedTransaction[]>([])
+  const [uploads, setUploads] = useState<GroupedUpload[]>([])
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   
@@ -91,7 +92,7 @@ export default function DPDataRawPage() {
 
   useEffect(() => {
     if (selectedMonth && selectedYear) {
-      fetchTransactions()
+      fetchUploads()
     }
   }, [selectedMonth, selectedYear, selectedAsset])
 
@@ -113,7 +114,7 @@ export default function DPDataRawPage() {
     }
   }
 
-  const fetchTransactions = async () => {
+  const fetchUploads = async () => {
     try {
       setLoading(true)
       
@@ -122,12 +123,13 @@ export default function DPDataRawPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
+      // Ambil dari tabel deposit_uploads
       let query = supabase
-        .from('deposit_transactions')
-        .select('approved_date, file_name, website')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
-        .order('approved_date', { ascending: true })
+        .from('deposit_uploads')
+        .select('upload_date, file_name, total_rows, status')
+        .gte('upload_date', startDate)
+        .lte('upload_date', endDate)
+        .order('upload_date', { ascending: true })
 
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset)
@@ -139,25 +141,17 @@ export default function DPDataRawPage() {
       const { data, error } = await query
       if (error) throw error
       
-      // Group by date
-      const grouped: { [key: string]: GroupedTransaction } = {}
+      // Format data untuk tabel
+      const formatted = (data || []).map((item: any) => ({
+        upload_date: item.upload_date,
+        file_name: item.file_name,
+        total_rows: item.total_rows || 0,
+        status: item.status
+      }))
       
-      data?.forEach((item: any) => {
-        const date = item.approved_date
-        if (date && !grouped[date]) {
-          grouped[date] = {
-            approved_date: date,
-            file_name: item.file_name,
-            count: 1
-          }
-        } else if (date) {
-          grouped[date].count += 1
-        }
-      })
-      
-      setTransactions(Object.values(grouped))
+      setUploads(formatted)
     } catch (error) {
-      console.error('Error fetching transactions:', error)
+      console.error('Error fetching uploads:', error)
     } finally {
       setLoading(false)
     }
@@ -201,36 +195,43 @@ export default function DPDataRawPage() {
   // HELPER FUNCTION PARSE TANGGAL
   // ===========================================
 
-  const parseExcelDate = (dateStr: any): string | null => {
-    if (!dateStr || typeof dateStr !== 'string') return null
-    
+  const parseExcelDate = (value: any): string | null => {
+    if (!value) return null
+
     try {
-      // Bersihin dari "Platform: (Web)" dan koma
-      const cleanStr = dateStr.split(',')[0].split('Platform')[0].trim()
-      const parts = cleanStr.split('-')
+      // Handle Excel serial number
+      if (typeof value === 'number') {
+        const date = XLSX.SSF.parse_date_code(value)
+        if (!date) return null
+        // Format: YYYY-MM-DD HH:MM:SS (tanpa T)
+        const hour = date.H?.toString().padStart(2, '0') || '00'
+        const minute = date.M?.toString().padStart(2, '0') || '00'
+        const second = date.S?.toString().padStart(2, '0') || '00'
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
+      }
+
+      // Handle string format: "01-Mar-2026 17:13:47, Platform: (Web)"
+      const str = value.toString().trim()
+      const cleanStr = str.split(',')[0].split('Platform')[0].trim()
+      const parts = cleanStr.split(' ')
       
-      if (parts.length < 3) return null
-      
-      const day = parts[0].padStart(2, '0')
-      const month = parts[1]
-      const yearTime = parts[2]
-      const timeParts = yearTime.split(' ')
-      
-      if (timeParts.length < 1) return null
-      
-      const year = timeParts[0]
-      const time = timeParts[1] || '00:00:00'
-      
-      const monthMap: {[key: string]: string} = {
-        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
-        'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      if (parts.length >= 2) {
+        const [datePart, timePart] = parts
+        const [day, month, year] = datePart.split('-')
+        
+        const monthMap: any = {
+          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+          'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+          'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+        }
+        
+        if (monthMap[month]) {
+          return `${year}-${monthMap[month]}-${day.padStart(2, '0')} ${timePart}`
+        }
       }
       
-      if (!monthMap[month]) return null
-      
-      // Return format ISO untuk timestamp
-      return `${year}-${monthMap[month]}-${day}T${time}`
-    } catch (e) {
+      return null
+    } catch {
       return null
     }
   }
@@ -251,7 +252,6 @@ export default function DPDataRawPage() {
       const sheetName = workbook.SheetNames[0]
       const worksheet = workbook.Sheets[sheetName]
       
-      // Baca sebagai array per baris
       const rows = XLSX.utils.sheet_to_json(worksheet, { 
         header: 1,
         defval: '',
@@ -337,21 +337,17 @@ export default function DPDataRawPage() {
         }
         if (isGrandTotal) continue
         
-        // 🔥 PARSE SEMUA KOLOM TANGGAL dengan helper function
-        const requestedDate = parseExcelDate(row[idx.requested])
+        // PARSE TANGGAL
         const approvedDate = parseExcelDate(row[idx.approved])
-        const bankDate = parseExcelDate(row[idx.bank])
-        
-        // Minimal approved date harus ada
         if (!approvedDate) continue
         
         validTransactions.push({
           nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
           brand: row[idx.brand] || null,
           ticket_number: row[idx.ticket] || null,
-          requested_date: requestedDate,
+          requested_date: parseExcelDate(row[idx.requested]),
           approved_date: approvedDate,
-          bank_statement_date: bankDate,
+          bank_statement_date: parseExcelDate(row[idx.bank]),
           user_name: row[idx.userName] || null,
           player_group: row[idx.playerGroup] || null,
           full_name: row[idx.fullName] || null,
@@ -383,7 +379,7 @@ export default function DPDataRawPage() {
 
       setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
       
-      // Insert ke database
+      // Insert ke deposit_transactions
       const { error } = await supabase
         .from('deposit_transactions')
         .insert(validTransactions)
@@ -393,7 +389,7 @@ export default function DPDataRawPage() {
         throw error
       }
 
-      // Insert ke deposit_uploads buat tracking
+      // Insert ke deposit_uploads untuk tracking
       await supabase
         .from('deposit_uploads')
         .insert({
@@ -407,7 +403,7 @@ export default function DPDataRawPage() {
       
       setShowModal(false)
       setSelectedFile(null)
-      fetchTransactions()
+      fetchUploads()
       
     } catch (error: any) {
       console.error('❌ Error:', error)
@@ -427,6 +423,15 @@ export default function DPDataRawPage() {
       return new Date(dateStr).getDate()
     } catch {
       return 1
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch(status?.toLowerCase()) {
+      case 'completed': return 'bg-green-500/20 text-green-400'
+      case 'processing': return 'bg-yellow-500/20 text-yellow-400'
+      case 'failed': return 'bg-red-500/20 text-red-400'
+      default: return 'bg-gray-500/20 text-gray-400'
     }
   }
 
@@ -499,7 +504,7 @@ export default function DPDataRawPage() {
         </select>
 
         <div className="ml-auto text-[#A7D8FF]">
-          Total: <span className="text-[#FFD700] font-bold">{transactions.length}</span> tanggal
+          Total: <span className="text-[#FFD700] font-bold">{uploads.length}</span> file
         </div>
       </div>
 
@@ -511,22 +516,28 @@ export default function DPDataRawPage() {
               <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
             </tr>
           </thead>
           <tbody>
-            {transactions.length > 0 ? (
-              transactions.map((item, idx) => (
+            {uploads.length > 0 ? (
+              uploads.map((item, idx) => (
                 <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                   <td className="px-4 py-3">
-                    {getDayFromDate(item.approved_date)} {selectedMonth} {selectedYear}
+                    {getDayFromDate(item.upload_date)} {selectedMonth} {selectedYear}
                   </td>
                   <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                  <td className="px-4 py-3">{item.count} data</td>
+                  <td className="px-4 py-3">{item.total_rows} data</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
+                      {item.status}
+                    </span>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
                   Tidak ada data untuk periode ini
                 </td>
               </tr>
