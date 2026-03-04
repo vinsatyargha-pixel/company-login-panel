@@ -177,6 +177,9 @@ export default function AssetPerformancePage() {
         chat: chatTrans,
         deposit: depositTrans,
         withdrawal: withdrawalTrans,
+        chatVolume: chatTrans * 50000, // Volume chat (estimasi)
+        depositVolume: depositVolume,
+        withdrawalVolume: withdrawalVolume,
         depositApproved: depositApproved,
         depositRejected: depositRejected,
         depositFailed: depositFailed,
@@ -246,9 +249,12 @@ export default function AssetPerformancePage() {
         (withdrawalFailed * failedMultiplier);
       
       const totalTrans = chatTrans + depositTrans + withdrawalTrans;
+      
+      // Volume dalam IDR
+      const chatVolume = chatTrans * 50000;
       const depositVolume = depositTrans * 250000;
       const withdrawalVolume = withdrawalTrans * 180000;
-      const totalVolume = depositVolume + withdrawalVolume;
+      const totalVolume = chatVolume + depositVolume + withdrawalVolume;
       
       data.push({
         label: `${monthName} ${day}`,
@@ -258,6 +264,9 @@ export default function AssetPerformancePage() {
         chat: chatTrans,
         deposit: depositTrans,
         withdrawal: withdrawalTrans,
+        chatVolume: chatVolume,
+        depositVolume: depositVolume,
+        withdrawalVolume: withdrawalVolume,
         depositApproved: depositApproved,
         depositRejected: depositRejected,
         depositFailed: depositFailed,
@@ -340,9 +349,12 @@ export default function AssetPerformancePage() {
         (withdrawalFailed * failedMultiplier);
       
       const totalTrans = chatTrans + depositTrans + withdrawalTrans;
+      
+      // Volume dalam IDR
+      const chatVolume = chatTrans * 50000;
       const depositVolume = depositTrans * 250000;
       const withdrawalVolume = withdrawalTrans * 180000;
-      const totalVolume = depositVolume + withdrawalVolume;
+      const totalVolume = chatVolume + depositVolume + withdrawalVolume;
       
       data.push({
         label: months[i],
@@ -351,6 +363,9 @@ export default function AssetPerformancePage() {
         chat: chatTrans,
         deposit: depositTrans,
         withdrawal: withdrawalTrans,
+        chatVolume: chatVolume,
+        depositVolume: depositVolume,
+        withdrawalVolume: withdrawalVolume,
         depositApproved: depositApproved,
         depositRejected: depositRejected,
         depositFailed: depositFailed,
@@ -460,20 +475,22 @@ export default function AssetPerformancePage() {
     return yesterday.toISOString().split('T')[0];
   };
 
-  const getDisplayTitle = () => {
+  const getDisplayTitle = (type = 'transaction') => {
     const assetName = selectedAsset === 'all' ? 'All Assets' : selectedAsset;
     const statusName = statusOptions.find(s => s.value === selectedStatus)?.label || 'All Status';
+    
+    const typeText = type === 'transaction' ? 'By Transaction' : 'By Value (IDR)';
     
     switch (filterType) {
       case 'hourly':
         const date = new Date(selectedDate);
-        return `Hourly Performance (24 Hours) - ${date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} | ${assetName} | ${statusName}`;
+        return `Hourly Performance (${typeText}) - ${date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} | ${assetName} | ${statusName}`;
       case 'daily':
         const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
-        return `Daily Performance - ${fullMonths[selectedMonth - 1]} ${selectedYear} (${daysInMonth} days) | ${assetName} | ${statusName}`;
+        return `Daily Performance (${typeText}) - ${fullMonths[selectedMonth - 1]} ${selectedYear} (${daysInMonth} days) | ${assetName} | ${statusName}`;
       case 'monthly':
         const periodLabel = selectedPeriod === 'jan-jun' ? 'January - June' : 'July - December';
-        return `Monthly Performance - ${periodLabel} ${selectedYear} (6 months) | ${assetName} | ${statusName}`;
+        return `Monthly Performance (${typeText}) - ${periodLabel} ${selectedYear} (6 months) | ${assetName} | ${statusName}`;
       default:
         return 'Performance Data';
     }
@@ -689,85 +706,167 @@ export default function AssetPerformancePage() {
         </div>
       </div>
 
-      {/* Chart with 3 Lines and Dots */}
-<div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
-  <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle()}</h2>
-  
-  <div className="h-96">
-    <ResponsiveContainer width="100%" height="100%">
-      {selectedChartType === 'line' ? (
-        <LineChart data={performanceData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-          <XAxis 
-            dataKey="label" 
-            stroke="#A7D8FF" 
-            interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
-          />
-          <YAxis yAxisId="left" stroke="#A7D8FF" />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-            labelStyle={{ color: '#FFD700' }}
-          />
-          <Legend />
-          
-          {/* CS Line - Kuning dengan titik */}
-          <Line 
-            yAxisId="left" 
-            type="monotone" 
-            dataKey="chat" 
-            stroke="#FFD700" 
-            name="CS" 
-            strokeWidth={2} 
-            dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
-            activeDot={{ r: 6, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
-          />
-          
-          {/* Deposit Line - Biru dengan titik */}
-          <Line 
-            yAxisId="left" 
-            type="monotone" 
-            dataKey="deposit" 
-            stroke="#3b82f6" 
-            name="Deposit" 
-            strokeWidth={2} 
-            dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
-            activeDot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
-          />
-          
-          {/* Withdrawal Line - Merah dengan titik */}
-          <Line 
-            yAxisId="left" 
-            type="monotone" 
-            dataKey="withdrawal" 
-            stroke="#ef4444" 
-            name="Withdrawal" 
-            strokeWidth={2} 
-            dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
-            activeDot={{ r: 6, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
-          />
-        </LineChart>
-      ) : (
-        <BarChart data={performanceData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-          <XAxis 
-            dataKey="label" 
-            stroke="#A7D8FF" 
-            interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
-          />
-          <YAxis yAxisId="left" stroke="#A7D8FF" />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-            labelStyle={{ color: '#FFD700' }}
-          />
-          <Legend />
-          <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
-          <Bar yAxisId="left" dataKey="deposit" fill="#3b82f6" name="Deposit" />
-          <Bar yAxisId="left" dataKey="withdrawal" fill="#ef4444" name="Withdrawal" />
-        </BarChart>
-      )}
-    </ResponsiveContainer>
-  </div>
-</div>
+      {/* FIRST CHART - By Transaction */}
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle('transaction')}</h2>
+        
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            {selectedChartType === 'line' ? (
+              <LineChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                <XAxis 
+                  dataKey="label" 
+                  stroke="#A7D8FF" 
+                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+                />
+                <YAxis yAxisId="left" stroke="#A7D8FF" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                  labelStyle={{ color: '#FFD700' }}
+                />
+                <Legend />
+                
+                {/* CS Line - Kuning dengan titik */}
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="chat" 
+                  stroke="#FFD700" 
+                  name="CS" 
+                  strokeWidth={2} 
+                  dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
+                  activeDot={{ r: 6, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
+                />
+                
+                {/* Deposit Line - Biru dengan titik */}
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="deposit" 
+                  stroke="#3b82f6" 
+                  name="Deposit" 
+                  strokeWidth={2} 
+                  dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
+                  activeDot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
+                />
+                
+                {/* Withdrawal Line - Merah dengan titik */}
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="withdrawal" 
+                  stroke="#ef4444" 
+                  name="Withdrawal" 
+                  strokeWidth={2} 
+                  dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
+                  activeDot={{ r: 6, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
+                />
+              </LineChart>
+            ) : (
+              <BarChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                <XAxis 
+                  dataKey="label" 
+                  stroke="#A7D8FF" 
+                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+                />
+                <YAxis yAxisId="left" stroke="#A7D8FF" />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                  labelStyle={{ color: '#FFD700' }}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
+                <Bar yAxisId="left" dataKey="deposit" fill="#3b82f6" name="Deposit" />
+                <Bar yAxisId="left" dataKey="withdrawal" fill="#ef4444" name="Withdrawal" />
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* SECOND CHART - By Value (IDR) */}
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle('value')}</h2>
+        
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            {selectedChartType === 'line' ? (
+              <LineChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                <XAxis 
+                  dataKey="label" 
+                  stroke="#A7D8FF" 
+                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+                />
+                <YAxis yAxisId="left" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                  labelStyle={{ color: '#FFD700' }}
+                  formatter={(value) => formatIDR(value)}
+                />
+                <Legend />
+                
+                {/* CS Volume Line - Kuning dengan titik */}
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="chatVolume" 
+                  stroke="#FFD700" 
+                  name="CS Volume" 
+                  strokeWidth={2} 
+                  dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
+                  activeDot={{ r: 6, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
+                />
+                
+                {/* Deposit Volume Line - Biru dengan titik */}
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="depositVolume" 
+                  stroke="#3b82f6" 
+                  name="Deposit Volume" 
+                  strokeWidth={2} 
+                  dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
+                  activeDot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
+                />
+                
+                {/* Withdrawal Volume Line - Merah dengan titik */}
+                <Line 
+                  yAxisId="left" 
+                  type="monotone" 
+                  dataKey="withdrawalVolume" 
+                  stroke="#ef4444" 
+                  name="Withdrawal Volume" 
+                  strokeWidth={2} 
+                  dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
+                  activeDot={{ r: 6, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
+                />
+              </LineChart>
+            ) : (
+              <BarChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                <XAxis 
+                  dataKey="label" 
+                  stroke="#A7D8FF" 
+                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+                />
+                <YAxis yAxisId="left" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                  labelStyle={{ color: '#FFD700' }}
+                  formatter={(value) => formatIDR(value)}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="chatVolume" fill="#FFD700" name="CS Volume" />
+                <Bar yAxisId="left" dataKey="depositVolume" fill="#3b82f6" name="Deposit Volume" />
+                <Bar yAxisId="left" dataKey="withdrawalVolume" fill="#ef4444" name="Withdrawal Volume" />
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </div>
+      </div>
 
       {/* CHAT PERFORMANCE TABLE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
@@ -820,13 +919,12 @@ export default function AssetPerformancePage() {
             </thead>
             <tbody>
               {performanceData.map((item, idx) => {
-                const depositVolume = item.deposit * 250000;
                 return (
                   <tr key={`deposit-${idx}`} className="border-b border-[#FFD700]/10">
                     <td className="px-4 py-2 text-white">{item.label}</td>
                     <td className="px-4 py-2 text-right text-blue-400">{item.deposit}</td>
-                    <td className="px-4 py-2 text-right text-blue-400">{formatIDR(depositVolume)}</td>
-                    <td className="px-4 py-2 text-right text-blue-400">{formatIDR(depositVolume / item.deposit)}</td>
+                    <td className="px-4 py-2 text-right text-blue-400">{formatIDR(item.depositVolume)}</td>
+                    <td className="px-4 py-2 text-right text-blue-400">{formatIDR(item.depositVolume / item.deposit)}</td>
                     <td className="px-4 py-2 text-right text-[#A7D8FF]">
                       {Math.round((item.deposit / item.transactions) * 100)}%
                     </td>
@@ -858,13 +956,12 @@ export default function AssetPerformancePage() {
             </thead>
             <tbody>
               {performanceData.map((item, idx) => {
-                const withdrawalVolume = item.withdrawal * 180000;
                 return (
                   <tr key={`withdrawal-${idx}`} className="border-b border-[#FFD700]/10">
                     <td className="px-4 py-2 text-white">{item.label}</td>
                     <td className="px-4 py-2 text-right text-red-400">{item.withdrawal}</td>
-                    <td className="px-4 py-2 text-right text-red-400">{formatIDR(withdrawalVolume)}</td>
-                    <td className="px-4 py-2 text-right text-red-400">{formatIDR(withdrawalVolume / item.withdrawal)}</td>
+                    <td className="px-4 py-2 text-right text-red-400">{formatIDR(item.withdrawalVolume)}</td>
+                    <td className="px-4 py-2 text-right text-red-400">{formatIDR(item.withdrawalVolume / item.withdrawal)}</td>
                     <td className="px-4 py-2 text-right text-[#A7D8FF]">
                       {Math.round((item.withdrawal / item.transactions) * 100)}%
                     </td>
