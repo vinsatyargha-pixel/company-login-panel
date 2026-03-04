@@ -433,7 +433,7 @@ export default function AssetPerformancePage() {
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
-      {/* Header with Back Button */}
+      {/* Header - ASSET PERFORMANCE (BUKAN TOTAL TRANSACTIONS) */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link 
@@ -596,7 +596,8 @@ export default function AssetPerformancePage() {
 
       {/* SUMMARY CARDS - TOTAL TRANSACTIONS BISA DI KLIK */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <Link href="/dashboard/total-transactions" className="block group">
+        {/* CARD TOTAL TRANSACTIONS - LINK KE HALAMAN BARU */}
+        <Link href="/dashboard/asset-performance/total-transactions" className="block group">
           <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all duration-300 cursor-pointer">
             <div className="flex items-center justify-between">
               <div className="text-[#A7D8FF] text-sm">Total Transactions</div>
@@ -615,11 +616,13 @@ export default function AssetPerformancePage() {
           </div>
         </Link>
         
+        {/* CARD TOTAL VOLUME */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total Volume</div>
           <div className="text-2xl font-bold text-green-400">{formatIDR(summaryData.totalVolume)}</div>
         </div>
         
+        {/* CARD STATUS BREAKDOWN */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Status Breakdown</div>
           <div className="flex justify-between text-xs mt-2">
@@ -629,6 +632,7 @@ export default function AssetPerformancePage() {
           </div>
         </div>
         
+        {/* CARD PEAK */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Peak {filterType === 'hourly' ? 'Hour' : filterType === 'daily' ? 'Day' : 'Month'}</div>
           <div className="text-lg font-bold text-purple-400">{summaryData.peakHour}</div>
