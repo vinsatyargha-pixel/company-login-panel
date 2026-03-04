@@ -418,6 +418,11 @@ export default function ReviewBreakdownTransactionPage() {
     );
   }
 
+  // Hitung nilai tertinggi untuk stabilo
+  const maxChat = Math.max(...traficData.map(item => item.chat));
+  const maxDeposit = Math.max(...traficData.map(item => item.deposit));
+  const maxWithdrawal = Math.max(...traficData.map(item => item.withdrawal));
+
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       {/* Header */}
@@ -645,24 +650,35 @@ export default function ReviewBreakdownTransactionPage() {
                 const depositPercentage = totalDeposit > 0 ? (item.deposit / totalDeposit) * 100 : 0;
                 const withdrawalPercentage = totalWithdrawal > 0 ? (item.withdrawal / totalWithdrawal) * 100 : 0;
                 
+                // Cek apakah nilai tertinggi
+                const isMaxChat = item.chat === maxChat;
+                const isMaxDeposit = item.deposit === maxDeposit;
+                const isMaxWithdrawal = item.withdrawal === maxWithdrawal;
+                
                 return (
                   <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
                     <td className="px-4 py-3 text-white font-medium border-r border-[#FFD700]/10">{item.period}</td>
                     
                     {/* CHAT DATA */}
-                    <td className="px-4 py-3 text-right text-yellow-400 border-r border-[#FFD700]/10">{Math.round(item.chat)}</td>
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxChat ? 'bg-yellow-300 text-black font-bold' : 'text-yellow-400'}`}>
+                      {Math.round(item.chat)}
+                    </td>
                     <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{chatPercentage.toFixed(2)}%</td>
                     
                     {/* DEPOSIT DATA */}
-                    <td className="px-4 py-3 text-right text-blue-400 border-r border-[#FFD700]/10">{Math.round(item.deposit)}</td>
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDeposit ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
+                      {Math.round(item.deposit)}
+                    </td>
                     <td className="px-4 py-3 text-right text-blue-400 border-r border-[#FFD700]/10">{formatIDR(item.depositVolume)}</td>
-                    <td className="px-4 py-3 text-right font-bold bg-yellow-300 text-black border-r border-[#FFD700]/10">{formatIDR(item.depositHighest)}</td>
+                    <td className="px-4 py-3 text-right text-blue-400 border-r border-[#FFD700]/10">{formatIDR(item.depositHighest)}</td>
                     <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{depositPercentage.toFixed(2)}%</td>
                     
                     {/* WITHDRAWAL DATA */}
-                    <td className="px-4 py-3 text-right text-red-400 border-r border-[#FFD700]/10">{Math.round(item.withdrawal)}</td>
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawal ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
+                      {Math.round(item.withdrawal)}
+                    </td>
                     <td className="px-4 py-3 text-right text-red-400 border-r border-[#FFD700]/10">{formatIDR(item.withdrawalVolume)}</td>
-                    <td className="px-4 py-3 text-right font-bold bg-yellow-300 text-black border-r border-[#FFD700]/10">{formatIDR(item.withdrawalHighest)}</td>
+                    <td className="px-4 py-3 text-right text-red-400 border-r border-[#FFD700]/10">{formatIDR(item.withdrawalHighest)}</td>
                     <td className="px-4 py-3 text-right text-[#A7D8FF]">{withdrawalPercentage.toFixed(2)}%</td>
                   </tr>
                 );
