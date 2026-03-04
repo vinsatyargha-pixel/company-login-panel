@@ -86,7 +86,7 @@ export default function DashboardContent() {
   // ===========================================
   // STATE UNTUK PERFORMANCE METRICS
   // ===========================================
-  // ASSET PERFORMANCE - DATA HARIAN 1 BULAN
+  // ASSET PERFORMANCE - DATA HARIAN 1 BULAN (3 LINES)
   const [assetPerformance, setAssetPerformance] = useState([]);
 
   const [officerPerformance, setOfficerPerformance] = useState([
@@ -102,12 +102,12 @@ export default function DashboardContent() {
   const { user, userJobRole, isAdmin } = useAuth();
 
   // ===========================================
-  // GENERATE DAILY ASSET PERFORMANCE DATA
+  // GENERATE DAILY ASSET PERFORMANCE DATA (3 LINES)
   // ===========================================
   const generateDailyAssetData = () => {
     const today = new Date();
     const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1; // 1-12
+    const currentMonth = today.getMonth() + 1;
     const currentDate = today.getDate();
     
     // Hitung jumlah hari dalam bulan ini
@@ -120,16 +120,23 @@ export default function DashboardContent() {
       const isPastDate = day <= currentDate;
       
       // Generate data untuk tanggal yang sudah lewat
-      let value = null;
+      let chat = null;
+      let deposit = null;
+      let withdrawal = null;
+      
       if (isPastDate) {
-        // Random value antara 20-100 untuk tanggal yang sudah lewat
-        value = Math.floor(Math.random() * 80) + 20;
+        // Random value dengan pola yang berbeda untuk setiap line
+        chat = Math.floor(Math.random() * 30) + 10;      // 10-40
+        deposit = Math.floor(Math.random() * 50) + 30;   // 30-80
+        withdrawal = Math.floor(Math.random() * 40) + 20; // 20-60
       }
       
       data.push({
         name: `${day}`,
         day: day,
-        value: value,
+        chat: chat,
+        deposit: deposit,
+        withdrawal: withdrawal,
         isPastDate: isPastDate,
         fullDate: `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
       });
@@ -253,7 +260,7 @@ export default function DashboardContent() {
     fetchPaymentData();
     fetchPerformanceData();
     fetchBankAccounts();
-    generateDailyAssetData(); // GENERATE DATA HARIAN
+    generateDailyAssetData(); // GENERATE DATA HARIAN 3 LINES
   }, [chartFilter, chartYear]);
 
   // LOAD LAST READ TIMESTAMP DARI LOCALSTORAGE
@@ -867,7 +874,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: ASSET PERFORMANCE - DAILY CHART (1 BULAN) */}
+        {/* KOLOM 2: ASSET PERFORMANCE - DAILY CHART (1 BULAN) DENGAN 3 LINES */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <a href="/dashboard/asset-performance" className="block group cursor-pointer">
             <div className="flex items-center justify-between mb-2">
@@ -898,19 +905,47 @@ export default function DashboardContent() {
                     contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
                     labelStyle={{ color: '#FFD700' }}
                     formatter={(value, name) => {
-                      if (value === null) return ['No Data', 'Value'];
-                      return [value, 'Transactions'];
+                      if (value === null) return ['No Data', name];
+                      return [value, name];
                     }}
                     labelFormatter={(label) => `Date: ${label}`}
                   />
+                  <Legend />
+                  
+                  {/* CS Line - Kuning */}
                   <Line 
                     type="monotone" 
-                    dataKey="value" 
+                    dataKey="chat" 
                     stroke="#FFD700" 
+                    name="CS" 
                     strokeWidth={2} 
                     dot={{ r: 3, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
                     activeDot={{ r: 5, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
-                    connectNulls={false} // Jangan hubungkan data null
+                    connectNulls={false}
+                  />
+                  
+                  {/* Deposit Line - Biru */}
+                  <Line 
+                    type="monotone" 
+                    dataKey="deposit" 
+                    stroke="#3b82f6" 
+                    name="Deposit" 
+                    strokeWidth={2} 
+                    dot={{ r: 3, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
+                    activeDot={{ r: 5, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
+                    connectNulls={false}
+                  />
+                  
+                  {/* Withdrawal Line - Merah */}
+                  <Line 
+                    type="monotone" 
+                    dataKey="withdrawal" 
+                    stroke="#ef4444" 
+                    name="Withdrawal" 
+                    strokeWidth={2} 
+                    dot={{ r: 3, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
+                    activeDot={{ r: 5, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
+                    connectNulls={false}
                   />
                 </LineChart>
               </ResponsiveContainer>
