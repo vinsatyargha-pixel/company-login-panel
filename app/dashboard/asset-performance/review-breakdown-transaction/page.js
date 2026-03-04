@@ -25,14 +25,28 @@ export default function ReviewBreakdownTransactionPage() {
   // DATA
   const [traficData, setTraficData] = useState([]);
   const [summaryData, setSummaryData] = useState({
-    totalTransactions: 0,
-    totalVolume: 0,
+    // Chat
     chatTotal: 0,
-    depositTotal: 0,
-    withdrawalTotal: 0,
-    approvedTotal: 0,
-    rejectedTotal: 0,
-    failedTotal: 0
+    
+    // Deposit
+    depositApproved: 0,
+    depositRejected: 0,
+    depositFailed: 0,
+    depositApprovedAmount: 0,
+    depositRejectedAmount: 0,
+    depositFailedAmount: 0,
+    
+    // Withdrawal
+    withdrawalApproved: 0,
+    withdrawalRejected: 0,
+    withdrawalFailed: 0,
+    withdrawalApprovedAmount: 0,
+    withdrawalRejectedAmount: 0,
+    withdrawalFailedAmount: 0,
+    
+    // Total
+    totalTransactions: 0,
+    totalVolume: 0
   });
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -102,6 +116,7 @@ export default function ReviewBreakdownTransactionPage() {
         chatBase = 3; depositBase = 12; withdrawalBase = 8;
       }
       
+      // Filter status mempengaruhi distribusi
       let approvedMultiplier = 0.7;
       let rejectedMultiplier = 0.2;
       let failedMultiplier = 0.1;
@@ -115,27 +130,56 @@ export default function ReviewBreakdownTransactionPage() {
       }
       
       const chatTrans = Math.floor(Math.random() * 10) + chatBase;
+      
+      // Deposit dengan status
       const depositApproved = Math.floor(Math.random() * 15) + depositBase;
       const depositRejected = Math.floor(Math.random() * 5);
       const depositFailed = Math.floor(Math.random() * 3);
+      
+      // Withdrawal dengan status
       const withdrawalApproved = Math.floor(Math.random() * 12) + withdrawalBase;
       const withdrawalRejected = Math.floor(Math.random() * 4);
       const withdrawalFailed = Math.floor(Math.random() * 2);
       
-      const depositTrans = Math.round((depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier));
-      const withdrawalTrans = Math.round((withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier));
+      // Apply status filter
+      const filteredDepositApproved = Math.round(depositApproved * approvedMultiplier);
+      const filteredDepositRejected = Math.round(depositRejected * rejectedMultiplier);
+      const filteredDepositFailed = Math.round(depositFailed * failedMultiplier);
       
-      // Deposit Volume & Highest (highest tidak melebihi volume)
-      const avgDepositValue = 250000;
-      const depositVolume = depositTrans * avgDepositValue;
+      const filteredWithdrawalApproved = Math.round(withdrawalApproved * approvedMultiplier);
+      const filteredWithdrawalRejected = Math.round(withdrawalRejected * rejectedMultiplier);
+      const filteredWithdrawalFailed = Math.round(withdrawalFailed * failedMultiplier);
+      
+      // Hitung volume berdasarkan status (dengan nilai random per transaksi)
+      const avgApprovedDeposit = 280000;
+      const avgRejectedDeposit = 150000;
+      const avgFailedDeposit = 100000;
+      
+      const avgApprovedWithdrawal = 200000;
+      const avgRejectedWithdrawal = 120000;
+      const avgFailedWithdrawal = 80000;
+      
+      const depositApprovedAmount = filteredDepositApproved * avgApprovedDeposit;
+      const depositRejectedAmount = filteredDepositRejected * avgRejectedDeposit;
+      const depositFailedAmount = filteredDepositFailed * avgFailedDeposit;
+      
+      const withdrawalApprovedAmount = filteredWithdrawalApproved * avgApprovedWithdrawal;
+      const withdrawalRejectedAmount = filteredWithdrawalRejected * avgRejectedWithdrawal;
+      const withdrawalFailedAmount = filteredWithdrawalFailed * avgFailedWithdrawal;
+      
+      // Total deposit & withdrawal
+      const depositTrans = filteredDepositApproved + filteredDepositRejected + filteredDepositFailed;
+      const withdrawalTrans = filteredWithdrawalApproved + filteredWithdrawalRejected + filteredWithdrawalFailed;
+      
+      // Total volume
+      const depositVolume = depositApprovedAmount + depositRejectedAmount + depositFailedAmount;
+      const withdrawalVolume = withdrawalApprovedAmount + withdrawalRejectedAmount + withdrawalFailedAmount;
+      
+      // Highest values (simulasi) - tidak melebihi volume
       const depositHighest = Math.min(
         Math.floor(Math.random() * 5000000) + 1000000,
         depositVolume
       );
-      
-      // Withdrawal Volume & Highest (highest tidak melebihi volume)
-      const avgWithdrawalValue = 180000;
-      const withdrawalVolume = withdrawalTrans * avgWithdrawalValue;
       const withdrawalHighest = Math.min(
         Math.floor(Math.random() * 4000000) + 800000,
         withdrawalVolume
@@ -145,20 +189,32 @@ export default function ReviewBreakdownTransactionPage() {
         period: `${hourStr}:00`,
         type: 'hour',
         chat: Math.round(chatTrans),
-        deposit: Math.round(depositTrans),
-        depositVolume,
-        depositHighest,
-        withdrawal: Math.round(withdrawalTrans),
-        withdrawalVolume,
-        withdrawalHighest,
-        depositApproved: Math.round(depositApproved),
-        depositRejected: Math.round(depositRejected),
-        depositFailed: Math.round(depositFailed),
-        withdrawalApproved: Math.round(withdrawalApproved),
-        withdrawalRejected: Math.round(withdrawalRejected),
-        withdrawalFailed: Math.round(withdrawalFailed),
+        
+        // Deposit details
+        depositApproved: filteredDepositApproved,
+        depositRejected: filteredDepositRejected,
+        depositFailed: filteredDepositFailed,
+        depositApprovedAmount: Math.round(depositApprovedAmount),
+        depositRejectedAmount: Math.round(depositRejectedAmount),
+        depositFailedAmount: Math.round(depositFailedAmount),
+        depositVolume: Math.round(depositVolume),
+        depositHighest: Math.round(depositHighest),
+        depositTotal: Math.round(depositTrans),
+        
+        // Withdrawal details
+        withdrawalApproved: filteredWithdrawalApproved,
+        withdrawalRejected: filteredWithdrawalRejected,
+        withdrawalFailed: filteredWithdrawalFailed,
+        withdrawalApprovedAmount: Math.round(withdrawalApprovedAmount),
+        withdrawalRejectedAmount: Math.round(withdrawalRejectedAmount),
+        withdrawalFailedAmount: Math.round(withdrawalFailedAmount),
+        withdrawalVolume: Math.round(withdrawalVolume),
+        withdrawalHighest: Math.round(withdrawalHighest),
+        withdrawalTotal: Math.round(withdrawalTrans),
+        
         total: Math.round(chatTrans + depositTrans + withdrawalTrans),
-        totalVolume: depositVolume + withdrawalVolume,
+        totalVolume: Math.round(depositVolume + withdrawalVolume),
+        asset: asset
       });
     }
     return data;
@@ -190,27 +246,56 @@ export default function ReviewBreakdownTransactionPage() {
       }
       
       const chatTrans = Math.floor(Math.random() * 30) + chatBase;
+      
+      // Deposit dengan status
       const depositApproved = Math.floor(Math.random() * 50) + depositBase;
       const depositRejected = Math.floor(Math.random() * 15);
       const depositFailed = Math.floor(Math.random() * 8);
+      
+      // Withdrawal dengan status
       const withdrawalApproved = Math.floor(Math.random() * 40) + withdrawalBase;
       const withdrawalRejected = Math.floor(Math.random() * 12);
       const withdrawalFailed = Math.floor(Math.random() * 6);
       
-      const depositTrans = Math.round((depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier));
-      const withdrawalTrans = Math.round((withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier));
+      // Apply status filter
+      const filteredDepositApproved = Math.round(depositApproved * approvedMultiplier);
+      const filteredDepositRejected = Math.round(depositRejected * rejectedMultiplier);
+      const filteredDepositFailed = Math.round(depositFailed * failedMultiplier);
       
-      // Deposit Volume & Highest (highest tidak melebihi volume)
-      const avgDepositValue = 250000;
-      const depositVolume = depositTrans * avgDepositValue;
+      const filteredWithdrawalApproved = Math.round(withdrawalApproved * approvedMultiplier);
+      const filteredWithdrawalRejected = Math.round(withdrawalRejected * rejectedMultiplier);
+      const filteredWithdrawalFailed = Math.round(withdrawalFailed * failedMultiplier);
+      
+      // Hitung volume berdasarkan status
+      const avgApprovedDeposit = 280000;
+      const avgRejectedDeposit = 150000;
+      const avgFailedDeposit = 100000;
+      
+      const avgApprovedWithdrawal = 200000;
+      const avgRejectedWithdrawal = 120000;
+      const avgFailedWithdrawal = 80000;
+      
+      const depositApprovedAmount = filteredDepositApproved * avgApprovedDeposit;
+      const depositRejectedAmount = filteredDepositRejected * avgRejectedDeposit;
+      const depositFailedAmount = filteredDepositFailed * avgFailedDeposit;
+      
+      const withdrawalApprovedAmount = filteredWithdrawalApproved * avgApprovedWithdrawal;
+      const withdrawalRejectedAmount = filteredWithdrawalRejected * avgRejectedWithdrawal;
+      const withdrawalFailedAmount = filteredWithdrawalFailed * avgFailedWithdrawal;
+      
+      // Total deposit & withdrawal
+      const depositTrans = filteredDepositApproved + filteredDepositRejected + filteredDepositFailed;
+      const withdrawalTrans = filteredWithdrawalApproved + filteredWithdrawalRejected + filteredWithdrawalFailed;
+      
+      // Total volume
+      const depositVolume = depositApprovedAmount + depositRejectedAmount + depositFailedAmount;
+      const withdrawalVolume = withdrawalApprovedAmount + withdrawalRejectedAmount + withdrawalFailedAmount;
+      
+      // Highest values (simulasi)
       const depositHighest = Math.min(
         Math.floor(Math.random() * 15000000) + 3000000,
         depositVolume
       );
-      
-      // Withdrawal Volume & Highest (highest tidak melebihi volume)
-      const avgWithdrawalValue = 180000;
-      const withdrawalVolume = withdrawalTrans * avgWithdrawalValue;
       const withdrawalHighest = Math.min(
         Math.floor(Math.random() * 12000000) + 2500000,
         withdrawalVolume
@@ -220,20 +305,32 @@ export default function ReviewBreakdownTransactionPage() {
         period: `${monthName} ${day}`,
         type: 'day',
         chat: Math.round(chatTrans),
-        deposit: Math.round(depositTrans),
-        depositVolume,
-        depositHighest,
-        withdrawal: Math.round(withdrawalTrans),
-        withdrawalVolume,
-        withdrawalHighest,
-        depositApproved: Math.round(depositApproved),
-        depositRejected: Math.round(depositRejected),
-        depositFailed: Math.round(depositFailed),
-        withdrawalApproved: Math.round(withdrawalApproved),
-        withdrawalRejected: Math.round(withdrawalRejected),
-        withdrawalFailed: Math.round(withdrawalFailed),
+        
+        // Deposit details
+        depositApproved: filteredDepositApproved,
+        depositRejected: filteredDepositRejected,
+        depositFailed: filteredDepositFailed,
+        depositApprovedAmount: Math.round(depositApprovedAmount),
+        depositRejectedAmount: Math.round(depositRejectedAmount),
+        depositFailedAmount: Math.round(depositFailedAmount),
+        depositVolume: Math.round(depositVolume),
+        depositHighest: Math.round(depositHighest),
+        depositTotal: Math.round(depositTrans),
+        
+        // Withdrawal details
+        withdrawalApproved: filteredWithdrawalApproved,
+        withdrawalRejected: filteredWithdrawalRejected,
+        withdrawalFailed: filteredWithdrawalFailed,
+        withdrawalApprovedAmount: Math.round(withdrawalApprovedAmount),
+        withdrawalRejectedAmount: Math.round(withdrawalRejectedAmount),
+        withdrawalFailedAmount: Math.round(withdrawalFailedAmount),
+        withdrawalVolume: Math.round(withdrawalVolume),
+        withdrawalHighest: Math.round(withdrawalHighest),
+        withdrawalTotal: Math.round(withdrawalTrans),
+        
         total: Math.round(chatTrans + depositTrans + withdrawalTrans),
-        totalVolume: depositVolume + withdrawalVolume,
+        totalVolume: Math.round(depositVolume + withdrawalVolume),
+        asset: asset
       });
     }
     return data;
@@ -272,27 +369,56 @@ export default function ReviewBreakdownTransactionPage() {
       }
       
       const chatTrans = Math.floor(Math.random() * 200) + chatBase;
+      
+      // Deposit dengan status
       const depositApproved = Math.floor(Math.random() * 300) + depositBase;
       const depositRejected = Math.floor(Math.random() * 80);
       const depositFailed = Math.floor(Math.random() * 40);
+      
+      // Withdrawal dengan status
       const withdrawalApproved = Math.floor(Math.random() * 250) + withdrawalBase;
       const withdrawalRejected = Math.floor(Math.random() * 60);
       const withdrawalFailed = Math.floor(Math.random() * 30);
       
-      const depositTrans = Math.round((depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier));
-      const withdrawalTrans = Math.round((withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier));
+      // Apply status filter
+      const filteredDepositApproved = Math.round(depositApproved * approvedMultiplier);
+      const filteredDepositRejected = Math.round(depositRejected * rejectedMultiplier);
+      const filteredDepositFailed = Math.round(depositFailed * failedMultiplier);
       
-      // Deposit Volume & Highest (highest tidak melebihi volume)
-      const avgDepositValue = 250000;
-      const depositVolume = depositTrans * avgDepositValue;
+      const filteredWithdrawalApproved = Math.round(withdrawalApproved * approvedMultiplier);
+      const filteredWithdrawalRejected = Math.round(withdrawalRejected * rejectedMultiplier);
+      const filteredWithdrawalFailed = Math.round(withdrawalFailed * failedMultiplier);
+      
+      // Hitung volume berdasarkan status
+      const avgApprovedDeposit = 280000;
+      const avgRejectedDeposit = 150000;
+      const avgFailedDeposit = 100000;
+      
+      const avgApprovedWithdrawal = 200000;
+      const avgRejectedWithdrawal = 120000;
+      const avgFailedWithdrawal = 80000;
+      
+      const depositApprovedAmount = filteredDepositApproved * avgApprovedDeposit;
+      const depositRejectedAmount = filteredDepositRejected * avgRejectedDeposit;
+      const depositFailedAmount = filteredDepositFailed * avgFailedDeposit;
+      
+      const withdrawalApprovedAmount = filteredWithdrawalApproved * avgApprovedWithdrawal;
+      const withdrawalRejectedAmount = filteredWithdrawalRejected * avgRejectedWithdrawal;
+      const withdrawalFailedAmount = filteredWithdrawalFailed * avgFailedWithdrawal;
+      
+      // Total deposit & withdrawal
+      const depositTrans = filteredDepositApproved + filteredDepositRejected + filteredDepositFailed;
+      const withdrawalTrans = filteredWithdrawalApproved + filteredWithdrawalRejected + filteredWithdrawalFailed;
+      
+      // Total volume
+      const depositVolume = depositApprovedAmount + depositRejectedAmount + depositFailedAmount;
+      const withdrawalVolume = withdrawalApprovedAmount + withdrawalRejectedAmount + withdrawalFailedAmount;
+      
+      // Highest values (simulasi)
       const depositHighest = Math.min(
         Math.floor(Math.random() * 50000000) + 10000000,
         depositVolume
       );
-      
-      // Withdrawal Volume & Highest (highest tidak melebihi volume)
-      const avgWithdrawalValue = 180000;
-      const withdrawalVolume = withdrawalTrans * avgWithdrawalValue;
       const withdrawalHighest = Math.min(
         Math.floor(Math.random() * 40000000) + 8000000,
         withdrawalVolume
@@ -302,20 +428,32 @@ export default function ReviewBreakdownTransactionPage() {
         period: months[i],
         type: 'month',
         chat: Math.round(chatTrans),
-        deposit: Math.round(depositTrans),
-        depositVolume,
-        depositHighest,
-        withdrawal: Math.round(withdrawalTrans),
-        withdrawalVolume,
-        withdrawalHighest,
-        depositApproved: Math.round(depositApproved),
-        depositRejected: Math.round(depositRejected),
-        depositFailed: Math.round(depositFailed),
-        withdrawalApproved: Math.round(withdrawalApproved),
-        withdrawalRejected: Math.round(withdrawalRejected),
-        withdrawalFailed: Math.round(withdrawalFailed),
+        
+        // Deposit details
+        depositApproved: filteredDepositApproved,
+        depositRejected: filteredDepositRejected,
+        depositFailed: filteredDepositFailed,
+        depositApprovedAmount: Math.round(depositApprovedAmount),
+        depositRejectedAmount: Math.round(depositRejectedAmount),
+        depositFailedAmount: Math.round(depositFailedAmount),
+        depositVolume: Math.round(depositVolume),
+        depositHighest: Math.round(depositHighest),
+        depositTotal: Math.round(depositTrans),
+        
+        // Withdrawal details
+        withdrawalApproved: filteredWithdrawalApproved,
+        withdrawalRejected: filteredWithdrawalRejected,
+        withdrawalFailed: filteredWithdrawalFailed,
+        withdrawalApprovedAmount: Math.round(withdrawalApprovedAmount),
+        withdrawalRejectedAmount: Math.round(withdrawalRejectedAmount),
+        withdrawalFailedAmount: Math.round(withdrawalFailedAmount),
+        withdrawalVolume: Math.round(withdrawalVolume),
+        withdrawalHighest: Math.round(withdrawalHighest),
+        withdrawalTotal: Math.round(withdrawalTrans),
+        
         total: Math.round(chatTrans + depositTrans + withdrawalTrans),
-        totalVolume: depositVolume + withdrawalVolume,
+        totalVolume: Math.round(depositVolume + withdrawalVolume),
+        asset: asset
       });
     }
     return data;
@@ -347,31 +485,57 @@ export default function ReviewBreakdownTransactionPage() {
           break;
       }
       
+      // Filter by asset if not 'all'
+      if (selectedAsset !== 'all') {
+        data = data.filter(item => item.asset === selectedAsset);
+      }
+      
       setTraficData(data);
       
-      // Hitung summary
+      // Hitung summary berdasarkan data yang sudah difilter
       const chatTotal = data.reduce((sum, item) => sum + item.chat, 0);
-      const depositTotal = data.reduce((sum, item) => sum + item.deposit, 0);
-      const withdrawalTotal = data.reduce((sum, item) => sum + item.withdrawal, 0);
+      
+      // Deposit summary
+      const depositApproved = data.reduce((sum, item) => sum + item.depositApproved, 0);
+      const depositRejected = data.reduce((sum, item) => sum + item.depositRejected, 0);
+      const depositFailed = data.reduce((sum, item) => sum + item.depositFailed, 0);
+      
+      const depositApprovedAmount = data.reduce((sum, item) => sum + item.depositApprovedAmount, 0);
+      const depositRejectedAmount = data.reduce((sum, item) => sum + item.depositRejectedAmount, 0);
+      const depositFailedAmount = data.reduce((sum, item) => sum + item.depositFailedAmount, 0);
+      
+      // Withdrawal summary
+      const withdrawalApproved = data.reduce((sum, item) => sum + item.withdrawalApproved, 0);
+      const withdrawalRejected = data.reduce((sum, item) => sum + item.withdrawalRejected, 0);
+      const withdrawalFailed = data.reduce((sum, item) => sum + item.withdrawalFailed, 0);
+      
+      const withdrawalApprovedAmount = data.reduce((sum, item) => sum + item.withdrawalApprovedAmount, 0);
+      const withdrawalRejectedAmount = data.reduce((sum, item) => sum + item.withdrawalRejectedAmount, 0);
+      const withdrawalFailedAmount = data.reduce((sum, item) => sum + item.withdrawalFailedAmount, 0);
+      
+      // Total
       const totalTrans = data.reduce((sum, item) => sum + item.total, 0);
       const totalVol = data.reduce((sum, item) => sum + item.totalVolume, 0);
       
-      const approvedTotal = data.reduce((sum, item) => 
-        sum + (item.depositApproved || 0) + (item.withdrawalApproved || 0), 0);
-      const rejectedTotal = data.reduce((sum, item) => 
-        sum + (item.depositRejected || 0) + (item.withdrawalRejected || 0), 0);
-      const failedTotal = data.reduce((sum, item) => 
-        sum + (item.depositFailed || 0) + (item.withdrawalFailed || 0), 0);
-      
       setSummaryData({
-        totalTransactions: totalTrans,
-        totalVolume: totalVol,
         chatTotal,
-        depositTotal,
-        withdrawalTotal,
-        approvedTotal,
-        rejectedTotal,
-        failedTotal
+        
+        depositApproved,
+        depositRejected,
+        depositFailed,
+        depositApprovedAmount,
+        depositRejectedAmount,
+        depositFailedAmount,
+        
+        withdrawalApproved,
+        withdrawalRejected,
+        withdrawalFailed,
+        withdrawalApprovedAmount,
+        withdrawalRejectedAmount,
+        withdrawalFailedAmount,
+        
+        totalTransactions: totalTrans,
+        totalVolume: totalVol
       });
       
     } catch (error) {
@@ -400,13 +564,13 @@ export default function ReviewBreakdownTransactionPage() {
     switch (filterType) {
       case 'hourly':
         const date = new Date(selectedDate);
-        return `Hourly Trafic - ${date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} | ${assetName} | ${statusName}`;
+        return `Hourly Traffic - ${date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })} | ${assetName} | ${statusName}`;
       case 'daily':
         const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
-        return `Daily Trafic - ${fullMonths[selectedMonth - 1]} ${selectedYear} (${daysInMonth} days) | ${assetName} | ${statusName}`;
+        return `Daily Traffic - ${fullMonths[selectedMonth - 1]} ${selectedYear} (${daysInMonth} days) | ${assetName} | ${statusName}`;
       case 'monthly':
         const periodLabel = selectedPeriod === 'jan-jun' ? 'January - June' : 'July - December';
-        return `Monthly Trafic - ${periodLabel} ${selectedYear} (6 months) | ${assetName} | ${statusName}`;
+        return `Monthly Traffic - ${periodLabel} ${selectedYear} (6 months) | ${assetName} | ${statusName}`;
     }
   };
 
@@ -420,9 +584,9 @@ export default function ReviewBreakdownTransactionPage() {
 
   // Hitung nilai tertinggi untuk stabilo
   const maxChat = Math.max(...traficData.map(item => item.chat));
-  const maxDeposit = Math.max(...traficData.map(item => item.deposit));
+  const maxDeposit = Math.max(...traficData.map(item => item.depositTotal));
   const maxDepositVolume = Math.max(...traficData.map(item => item.depositVolume));
-  const maxWithdrawal = Math.max(...traficData.map(item => item.withdrawal));
+  const maxWithdrawal = Math.max(...traficData.map(item => item.withdrawalTotal));
   const maxWithdrawalVolume = Math.max(...traficData.map(item => item.withdrawalVolume));
 
   return (
@@ -569,34 +733,80 @@ export default function ReviewBreakdownTransactionPage() {
         </div>
       </div>
 
-      {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      {/* RESUME TOTAL CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* CS CHAT CARD */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total Trafic</div>
-          <div className="text-2xl font-bold text-[#FFD700]">{Math.round(summaryData.totalTransactions).toLocaleString()}</div>
-          <div className="flex justify-between text-xs mt-2">
-            <span className="text-yellow-400">CS: {Math.round(summaryData.chatTotal)}</span>
-            <span className="text-blue-400">DP: {Math.round(summaryData.depositTotal)}</span>
-            <span className="text-red-400">WD: {Math.round(summaryData.withdrawalTotal)}</span>
+          <div className="text-[#A7D8FF] text-sm font-semibold mb-2">💬 CS CHAT</div>
+          <div className="text-3xl font-bold text-yellow-400">{Math.round(summaryData.chatTotal).toLocaleString()}</div>
+          <div className="text-xs text-[#A7D8FF] mt-1">Total Chat Transactions</div>
+        </div>
+
+        {/* DEPOSIT CARD */}
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="text-[#A7D8FF] text-sm font-semibold mb-2">💰 DEPOSIT</div>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-green-400 text-sm">✓ Approved</span>
+              <div className="text-right">
+                <span className="text-white font-bold">{Math.round(summaryData.depositApproved).toLocaleString()} forms</span>
+                <span className="text-green-400 ml-2">{formatIDR(summaryData.depositApprovedAmount)}</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-red-400 text-sm">✗ Rejected</span>
+              <div className="text-right">
+                <span className="text-white font-bold">{Math.round(summaryData.depositRejected).toLocaleString()} forms</span>
+                <span className="text-red-400 ml-2">{formatIDR(summaryData.depositRejectedAmount)}</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-blue-400 text-sm">! Failed</span>
+              <div className="text-right">
+                <span className="text-white font-bold">{Math.round(summaryData.depositFailed).toLocaleString()} forms</span>
+                <span className="text-blue-400 ml-2">{formatIDR(summaryData.depositFailedAmount)}</span>
+              </div>
+            </div>
           </div>
         </div>
-        
+
+        {/* WITHDRAWAL CARD */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total Volume</div>
-          <div className="text-2xl font-bold text-green-400">{formatIDR(summaryData.totalVolume)}</div>
-        </div>
-        
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Status Breakdown</div>
-          <div className="flex justify-between text-xs mt-2">
-            <span className="text-green-400">✓ Approved: {Math.round(summaryData.approvedTotal)}</span>
-            <span className="text-red-400">✗ Rejected: {Math.round(summaryData.rejectedTotal)}</span>
-            <span className="text-blue-400">! Failed: {Math.round(summaryData.failedTotal)}</span>
+          <div className="text-[#A7D8FF] text-sm font-semibold mb-2">💸 WITHDRAWAL</div>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className="text-green-400 text-sm">✓ Approved</span>
+              <div className="text-right">
+                <span className="text-white font-bold">{Math.round(summaryData.withdrawalApproved).toLocaleString()} forms</span>
+                <span className="text-green-400 ml-2">{formatIDR(summaryData.withdrawalApprovedAmount)}</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-red-400 text-sm">✗ Rejected</span>
+              <div className="text-right">
+                <span className="text-white font-bold">{Math.round(summaryData.withdrawalRejected).toLocaleString()} forms</span>
+                <span className="text-red-400 ml-2">{formatIDR(summaryData.withdrawalRejectedAmount)}</span>
+              </div>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-blue-400 text-sm">! Failed</span>
+              <div className="text-right">
+                <span className="text-white font-bold">{Math.round(summaryData.withdrawalFailed).toLocaleString()} forms</span>
+                <span className="text-blue-400 ml-2">{formatIDR(summaryData.withdrawalFailedAmount)}</span>
+              </div>
+            </div>
           </div>
         </div>
-        
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Data Points</div>
+      </div>
+
+      {/* INFO ROW */}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30">
+          <div className="text-[#A7D8FF] text-xs">Total Volume</div>
+          <div className="text-xl font-bold text-green-400">{formatIDR(summaryData.totalVolume)}</div>
+        </div>
+        <div className="bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30">
+          <div className="text-[#A7D8FF] text-xs">Data Points</div>
           <div className="text-lg font-bold text-purple-400">{traficData.length} entries</div>
           <div className="text-xs text-[#A7D8FF]">{getDisplayTitle()}</div>
         </div>
@@ -605,7 +815,7 @@ export default function ReviewBreakdownTransactionPage() {
       {/* MAIN TABLE - ALL IN ONE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
         <div className="p-4 border-b border-[#FFD700]/30 bg-gradient-to-r from-[#FFD700]/10 to-transparent">
-          <h2 className="text-xl font-bold text-[#FFD700]">📋 TRAFIC BREAKDOWN TABLE</h2>
+          <h2 className="text-xl font-bold text-[#FFD700]">📋 TRAFFIC BREAKDOWN TABLE</h2>
           <p className="text-xs text-[#A7D8FF] mt-1">{getDisplayTitle()}</p>
         </div>
         
@@ -644,19 +854,19 @@ export default function ReviewBreakdownTransactionPage() {
               {traficData.map((item, idx) => {
                 // Hitung total untuk persentase
                 const totalChat = traficData.reduce((sum, i) => sum + i.chat, 0);
-                const totalDeposit = traficData.reduce((sum, i) => sum + i.deposit, 0);
-                const totalWithdrawal = traficData.reduce((sum, i) => sum + i.withdrawal, 0);
+                const totalDeposit = traficData.reduce((sum, i) => sum + i.depositTotal, 0);
+                const totalWithdrawal = traficData.reduce((sum, i) => sum + i.withdrawalTotal, 0);
                 
                 // Persentase dengan 2 desimal
                 const chatPercentage = totalChat > 0 ? (item.chat / totalChat) * 100 : 0;
-                const depositPercentage = totalDeposit > 0 ? (item.deposit / totalDeposit) * 100 : 0;
-                const withdrawalPercentage = totalWithdrawal > 0 ? (item.withdrawal / totalWithdrawal) * 100 : 0;
+                const depositPercentage = totalDeposit > 0 ? (item.depositTotal / totalDeposit) * 100 : 0;
+                const withdrawalPercentage = totalWithdrawal > 0 ? (item.withdrawalTotal / totalWithdrawal) * 100 : 0;
                 
                 // Cek apakah nilai tertinggi
                 const isMaxChat = item.chat === maxChat;
-                const isMaxDeposit = item.deposit === maxDeposit;
+                const isMaxDeposit = item.depositTotal === maxDeposit;
                 const isMaxDepositVolume = item.depositVolume === maxDepositVolume;
-                const isMaxWithdrawal = item.withdrawal === maxWithdrawal;
+                const isMaxWithdrawal = item.withdrawalTotal === maxWithdrawal;
                 const isMaxWithdrawalVolume = item.withdrawalVolume === maxWithdrawalVolume;
                 
                 return (
@@ -671,7 +881,7 @@ export default function ReviewBreakdownTransactionPage() {
                     
                     {/* DEPOSIT DATA */}
                     <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDeposit ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
-                      {Math.round(item.deposit)}
+                      {Math.round(item.depositTotal)}
                     </td>
                     <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositVolume ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
                       {formatIDR(item.depositVolume)}
@@ -681,7 +891,7 @@ export default function ReviewBreakdownTransactionPage() {
                     
                     {/* WITHDRAWAL DATA */}
                     <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawal ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
-                      {Math.round(item.withdrawal)}
+                      {Math.round(item.withdrawalTotal)}
                     </td>
                     <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalVolume ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
                       {formatIDR(item.withdrawalVolume)}
