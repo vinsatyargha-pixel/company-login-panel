@@ -36,6 +36,7 @@ type KPIData = {
   dep_avg_fail: string
   dep_sop: number
   dep_non_sop: number
+  dep_human_error: number  // HUMAN ERROR KHUSUS DEPOSIT
   
   // WITHDRAWAL
   wd_total: number
@@ -50,14 +51,14 @@ type KPIData = {
   wd_avg_fail: string
   wd_sop: number
   wd_non_sop: number
+  wd_human_error: number   // HUMAN ERROR KHUSUS WITHDRAWAL
   
-  // TOTAL GABUNGAN
+  // TOTAL GABUNGAN (untuk summary)
   total_transactions: number
   total_approved: number
   total_rejected: number
   total_failed: number
-  
-  human_error: number
+  total_human_error: number
 }
 
 // ===========================================
@@ -247,6 +248,7 @@ export default function OfficersKPIPage() {
           dep_fail_count: 0,
           dep_sop: 0,
           dep_non_sop: 0,
+          dep_human_error: 0,
           
           // Withdrawal
           wd_total: 0,
@@ -261,9 +263,7 @@ export default function OfficersKPIPage() {
           wd_fail_count: 0,
           wd_sop: 0,
           wd_non_sop: 0,
-          
-          // Human error
-          human_error: 0
+          wd_human_error: 0,
         }
       })
 
@@ -302,12 +302,12 @@ export default function OfficersKPIPage() {
           kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
         }
 
-        // Human error
+        // Human error DEPOSIT
         if (tx.reason?.toLowerCase().includes('mistake') ||
             tx.reason?.toLowerCase().includes('crossbank') ||
             tx.reason?.toLowerCase().includes('cross asset') ||
             tx.reason?.toLowerCase().includes('wrong process')) {
-          kpi.human_error++
+          kpi.dep_human_error++
         }
       })
 
@@ -346,12 +346,12 @@ export default function OfficersKPIPage() {
           kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
         }
 
-        // Human error
+        // Human error WITHDRAWAL
         if (tx.reason?.toLowerCase().includes('mistake') ||
             tx.reason?.toLowerCase().includes('crossbank') ||
             tx.reason?.toLowerCase().includes('cross asset') ||
             tx.reason?.toLowerCase().includes('wrong process')) {
-          kpi.human_error++
+          kpi.wd_human_error++
         }
       })
 
@@ -387,11 +387,12 @@ export default function OfficersKPIPage() {
         const wd_avg_fail = kpi.wd_fail_count > 0
           ? minutesToHHMMSS(kpi.wd_fail_minutes_sum / kpi.wd_fail_count) : '-'
 
-        // Total gabungan
+        // Total gabungan untuk summary
         const total_trans = kpi.dep_total + kpi.wd_total
         const total_app = kpi.dep_approved + kpi.wd_approved
         const total_rej = kpi.dep_rejected + kpi.wd_rejected
         const total_fail = kpi.dep_failed + kpi.wd_failed
+        const total_he = kpi.dep_human_error + kpi.wd_human_error
 
         return {
           officer_id: kpi.officer_id,
@@ -413,6 +414,7 @@ export default function OfficersKPIPage() {
           dep_avg_fail,
           dep_sop: kpi.dep_sop,
           dep_non_sop: kpi.dep_non_sop,
+          dep_human_error: kpi.dep_human_error,
           
           // Withdrawal
           wd_total: kpi.wd_total,
@@ -427,14 +429,14 @@ export default function OfficersKPIPage() {
           wd_avg_fail,
           wd_sop: kpi.wd_sop,
           wd_non_sop: kpi.wd_non_sop,
+          wd_human_error: kpi.wd_human_error,
           
           // Total
           total_transactions: total_trans,
           total_approved: total_app,
           total_rejected: total_rej,
           total_failed: total_fail,
-          
-          human_error: kpi.human_error
+          total_human_error: total_he,
         }
       })
 
@@ -485,6 +487,7 @@ export default function OfficersKPIPage() {
   const totalApproved = kpiData.reduce((sum, item) => sum + item.total_approved, 0)
   const totalRejected = kpiData.reduce((sum, item) => sum + item.total_rejected, 0)
   const totalFailed = kpiData.reduce((sum, item) => sum + item.total_failed, 0)
+  const totalHumanError = kpiData.reduce((sum, item) => sum + item.total_human_error, 0)
 
   const { periodText } = getDateRange()
 
@@ -564,138 +567,170 @@ export default function OfficersKPIPage() {
         </div>
       </div>
 
-      {/* TABLE */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
-            <tr>
-              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">No</th>
-              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">Panel ID</th>
-              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">Officer</th>
-              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">Dept</th>
-              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/30">Status</th>
-              
-              {/* DEPOSIT HEADER */}
-              <th colSpan={10} className="px-2 py-2 text-center text-[#FFD700] bg-blue-900/30 border-x border-[#FFD700]/30">
-                DEPOSIT
-              </th>
-              
-              {/* WITHDRAWAL HEADER */}
-              <th colSpan={10} className="px-2 py-2 text-center text-[#FFD700] bg-green-900/30 border-x border-[#FFD700]/30">
-                WITHDRAWAL
-              </th>
-              
-              <th rowSpan={3} className="px-2 py-2 text-[#FFD700] border-l border-[#FFD700]/30">Human Error</th>
-            </tr>
-            
-            {/* SUB HEADER - Labels */}
-            <tr className="border-b border-[#FFD700]/30">
-              {/* Deposit Sub Header */}
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-blue-900/20" colSpan={2}>Counts</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-blue-900/20" colSpan={3}>Rates (%)</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-blue-900/20" colSpan={3}>Avg Duration</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-blue-900/20" colSpan={2}>SOP</th>
-              
-              {/* Withdrawal Sub Header */}
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-green-900/20" colSpan={2}>Counts</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-green-900/20" colSpan={3}>Rates (%)</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-green-900/20" colSpan={3}>Avg Duration</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px] bg-green-900/20" colSpan={2}>SOP</th>
-            </tr>
-            
-            {/* DETAIL HEADER */}
-            <tr className="border-b border-[#FFD700]/30">
-              {/* Deposit Details */}
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej%</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail%</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Fail</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
-              
-              {/* Withdrawal Details */}
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej%</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail%</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Fail</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
-              <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
-            </tr>
-          </thead>
-          <tbody>
-            {kpiData.length > 0 ? (
-              kpiData.map((item, idx) => (
-                <tr 
-                  key={item.panel_id} 
-                  className={`border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 ${
-                    item.panel_id === 'SYSTEM' ? 'bg-purple-900/20' : ''
-                  }`}
-                >
-                  <td className="px-2 py-2 border-r border-[#FFD700]/10">{idx + 1}</td>
-                  <td className="px-2 py-2 text-[#FFD700] border-r border-[#FFD700]/10">{item.panel_id}</td>
-                  <td className="px-2 py-2 border-r border-[#FFD700]/10">{item.officer_name}</td>
-                  <td className="px-2 py-2 border-r border-[#FFD700]/10">{item.department}</td>
-                  <td className="px-2 py-2 border-r border-[#FFD700]/10">
-                    <span className={`px-1 py-0.5 rounded text-[10px] ${
-                      item.panel_id === 'SYSTEM' 
-                        ? 'bg-purple-500/20 text-purple-400' 
-                        : 'bg-green-500/20 text-green-400'
-                    }`}>
-                      {item.status}
-                    </span>
-                  </td>
-                  
-                  {/* Deposit Data */}
-                  <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
-                  <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
-                  <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
-                  <td className="px-2 py-2">{item.dep_approve_rate}%</td>
-                  <td className="px-2 py-2">{item.dep_reject_rate}%</td>
-                  <td className="px-2 py-2">{item.dep_fail_rate}%</td>
-                  <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
-                  <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
-                  <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
-                  <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
-                  <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
-                  
-                  {/* Withdrawal Data */}
-                  <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
-                  <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
-                  <td className="px-2 py-2 text-orange-400">{item.wd_failed}</td>
-                  <td className="px-2 py-2">{item.wd_approve_rate}%</td>
-                  <td className="px-2 py-2">{item.wd_reject_rate}%</td>
-                  <td className="px-2 py-2">{item.wd_fail_rate}%</td>
-                  <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
-                  <td className="px-2 py-2 text-red-400 font-mono">{item.wd_avg_reject}</td>
-                  <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_fail}</td>
-                  <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
-                  <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
-                  
-                  {/* Human Error */}
-                  <td className="px-2 py-2 text-red-400 border-l border-[#FFD700]/10">{item.human_error}</td>
-                </tr>
-              ))
-            ) : (
+      {/* TABEL DEPOSIT */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-blue-400 mb-2 flex items-center">
+          <span className="bg-blue-500 w-2 h-6 rounded-full mr-2"></span>
+          DEPOSIT TRANSACTIONS
+        </h2>
+        <div className="bg-[#1A2F4A] rounded-lg border border-blue-500/30 overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-[#0B1A33] border-b border-blue-500/30">
               <tr>
-                <td colSpan={26} className="px-4 py-12 text-center text-gray-400">
-                  <div className="text-4xl mb-2">📊</div>
-                  <p className="text-lg mb-1">Belum ada data untuk {periodText}</p>
-                  <p className="text-sm">Pilih periode lain atau upload data terlebih dahulu</p>
-                </td>
+                <th rowSpan={2} className="px-2 py-2 text-blue-400">No</th>
+                <th rowSpan={2} className="px-2 py-2 text-blue-400">Panel ID</th>
+                <th rowSpan={2} className="px-2 py-2 text-blue-400">Officer</th>
+                <th rowSpan={2} className="px-2 py-2 text-blue-400">Dept</th>
+                <th rowSpan={2} className="px-2 py-2 text-blue-400">Status</th>
+                <th colSpan={10} className="px-2 py-1 text-center text-blue-400 border-x border-blue-500/30">DEPOSIT</th>
+                <th rowSpan={2} className="px-2 py-2 text-blue-400">Human Error</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+              <tr className="border-b border-blue-500/30">
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Fail</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kpiData.length > 0 ? (
+                kpiData.map((item, idx) => (
+                  <tr 
+                    key={`dep-${item.panel_id}`} 
+                    className={`border-b border-blue-500/10 hover:bg-[#0B1A33]/50 ${
+                      item.panel_id === 'SYSTEM' ? 'bg-purple-900/20' : ''
+                    }`}
+                  >
+                    <td className="px-2 py-2">{idx + 1}</td>
+                    <td className="px-2 py-2 text-blue-400">{item.panel_id}</td>
+                    <td className="px-2 py-2">{item.officer_name}</td>
+                    <td className="px-2 py-2">{item.department}</td>
+                    <td className="px-2 py-2">
+                      <span className={`px-1 py-0.5 rounded text-[10px] ${
+                        item.panel_id === 'SYSTEM' 
+                          ? 'bg-purple-500/20 text-purple-400' 
+                          : 'bg-green-500/20 text-green-400'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    
+                    {/* Deposit Data */}
+                    <td className="px-2 py-2 font-bold text-blue-400">{item.dep_total}</td>
+                    <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
+                    <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
+                    <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
+                    <td className="px-2 py-2">{item.dep_approve_rate}%</td>
+                    <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
+                    <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
+                    <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
+                    <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
+                    <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
+                    
+                    {/* Human Error Deposit */}
+                    <td className="px-2 py-2 text-red-400">{item.dep_human_error}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
+                    <div className="text-4xl mb-2">📊</div>
+                    <p className="text-lg mb-1">Belum ada data deposit untuk {periodText}</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* TABEL WITHDRAWAL */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-green-400 mb-2 flex items-center">
+          <span className="bg-green-500 w-2 h-6 rounded-full mr-2"></span>
+          WITHDRAWAL TRANSACTIONS
+        </h2>
+        <div className="bg-[#1A2F4A] rounded-lg border border-green-500/30 overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="bg-[#0B1A33] border-b border-green-500/30">
+              <tr>
+                <th rowSpan={2} className="px-2 py-2 text-green-400">No</th>
+                <th rowSpan={2} className="px-2 py-2 text-green-400">Panel ID</th>
+                <th rowSpan={2} className="px-2 py-2 text-green-400">Officer</th>
+                <th rowSpan={2} className="px-2 py-2 text-green-400">Dept</th>
+                <th rowSpan={2} className="px-2 py-2 text-green-400">Status</th>
+                <th colSpan={10} className="px-2 py-1 text-center text-green-400 border-x border-green-500/30">WITHDRAWAL</th>
+                <th rowSpan={2} className="px-2 py-2 text-green-400">Human Error</th>
+              </tr>
+              <tr className="border-b border-green-500/30">
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Total</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Rej</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Fail</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">App%</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ App</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Rej</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">⏱️ Fail</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">SOP</th>
+                <th className="px-2 py-1 text-[#A7D8FF] text-[10px]">Non</th>
+              </tr>
+            </thead>
+            <tbody>
+              {kpiData.length > 0 ? (
+                kpiData.map((item, idx) => (
+                  <tr 
+                    key={`wd-${item.panel_id}`} 
+                    className={`border-b border-green-500/10 hover:bg-[#0B1A33]/50 ${
+                      item.panel_id === 'SYSTEM' ? 'bg-purple-900/20' : ''
+                    }`}
+                  >
+                    <td className="px-2 py-2">{idx + 1}</td>
+                    <td className="px-2 py-2 text-green-400">{item.panel_id}</td>
+                    <td className="px-2 py-2">{item.officer_name}</td>
+                    <td className="px-2 py-2">{item.department}</td>
+                    <td className="px-2 py-2">
+                      <span className={`px-1 py-0.5 rounded text-[10px] ${
+                        item.panel_id === 'SYSTEM' 
+                          ? 'bg-purple-500/20 text-purple-400' 
+                          : 'bg-green-500/20 text-green-400'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    
+                    {/* Withdrawal Data */}
+                    <td className="px-2 py-2 font-bold text-green-400">{item.wd_total}</td>
+                    <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
+                    <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
+                    <td className="px-2 py-2 text-orange-400">{item.wd_failed}</td>
+                    <td className="px-2 py-2">{item.wd_approve_rate}%</td>
+                    <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
+                    <td className="px-2 py-2 text-red-400 font-mono">{item.wd_avg_reject}</td>
+                    <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_fail}</td>
+                    <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
+                    <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
+                    
+                    {/* Human Error Withdrawal */}
+                    <td className="px-2 py-2 text-red-400">{item.wd_human_error}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
+                    <div className="text-4xl mb-2">📊</div>
+                    <p className="text-lg mb-1">Belum ada data withdrawal untuk {periodText}</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Summary */}
@@ -706,6 +741,7 @@ export default function OfficersKPIPage() {
           <span className="text-green-400">Approved: {totalApproved}</span>
           <span className="text-red-400">Rejected: {totalRejected}</span>
           <span className="text-orange-400">Failed: {totalFailed}</span>
+          <span className="text-red-400 font-bold">Human Error: {totalHumanError}</span>
         </div>
       </div>
     </div>
