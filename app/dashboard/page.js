@@ -835,7 +835,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: ASSET PERFORMANCE - BISA DIKLIK */}
+        {/* KOLOM 2: ASSET PERFORMANCE (Click to get detail) - BISA DIKLIK */}
 <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
   <a href="/dashboard/asset-performance" className="block group cursor-pointer">
     <div className="flex items-center justify-between mb-2">
