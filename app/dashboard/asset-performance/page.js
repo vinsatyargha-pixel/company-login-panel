@@ -14,7 +14,7 @@ export default function AssetPerformancePage() {
   const [refreshing, setRefreshing] = useState(false);
   
   // FILTER STATES
-  const [filterType, setFilterType] = useState('hourly'); // hourly, daily, monthly, period
+  const [filterType, setFilterType] = useState('hourly'); // hourly, daily, monthly
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -37,7 +37,7 @@ export default function AssetPerformancePage() {
   const years = ['2024', '2025', '2026', '2027'];
 
   // ===========================================
-  // GENERATE HOURLY DATA (24 JAM)
+  // GENERATE HOURLY DATA (00:00 - 23:00) - 24 JAM
   // ===========================================
   const generateHourlyData = (date) => {
     const data = [];
@@ -48,6 +48,7 @@ export default function AssetPerformancePage() {
       year: 'numeric' 
     });
     
+    // Loop dari jam 0 sampai 23 (24 jam)
     for (let hour = 0; hour < 24; hour++) {
       const hourStr = hour.toString().padStart(2, '0');
       
@@ -63,6 +64,7 @@ export default function AssetPerformancePage() {
       
       data.push({
         label: `${hourStr}:00`,
+        hour: hour,
         transactions: transactions,
         volume: volume,
         displayDate: displayDate
@@ -72,10 +74,11 @@ export default function AssetPerformancePage() {
   };
 
   // ===========================================
-  // GENERATE DAILY DATA (1 BULAN)
+  // GENERATE DAILY DATA (SESUAI JUMLAH HARI DALAM BULAN)
   // ===========================================
   const generateDailyData = (month, year) => {
     const data = [];
+    // Hitung jumlah hari dalam bulan yang dipilih
     const daysInMonth = new Date(year, month, 0).getDate();
     const monthName = months[month - 1];
     
@@ -91,6 +94,8 @@ export default function AssetPerformancePage() {
       data.push({
         label: `${monthName} ${day}`,
         day: day,
+        dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        isWeekend: isWeekend,
         transactions: transactions,
         volume: volume,
         fullDate: `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
@@ -100,13 +105,14 @@ export default function AssetPerformancePage() {
   };
 
   // ===========================================
-  // GENERATE MONTHLY DATA (1 PERIODE 6 BULAN)
+  // GENERATE MONTHLY DATA (6 BULAN - PERIODE)
   // ===========================================
   const generateMonthlyData = (period, year) => {
     const data = [];
     const startMonth = period === 'jan-jun' ? 0 : 6;
     const endMonth = period === 'jan-jun' ? 6 : 12;
     
+    // Loop sesuai periode yang dipilih (6 bulan)
     for (let i = startMonth; i < endMonth; i++) {
       // Pattern: bulan tertentu lebih ramai
       let transBase = 500;
@@ -120,6 +126,7 @@ export default function AssetPerformancePage() {
       data.push({
         label: months[i],
         month: months[i],
+        monthNum: i + 1,
         transactions: transactions,
         volume: volume,
         period: period,
@@ -151,7 +158,6 @@ export default function AssetPerformancePage() {
           data = generateDailyData(selectedMonth, selectedYear);
           break;
         case 'monthly':
-        case 'period':
           data = generateMonthlyData(selectedPeriod, selectedYear);
           break;
         default:
@@ -208,13 +214,13 @@ export default function AssetPerformancePage() {
     switch (filterType) {
       case 'hourly':
         const date = new Date(selectedDate);
-        return `Hourly Performance - ${date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+        return `Hourly Performance (24 Hours) - ${date.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
       case 'daily':
-        return `Daily Performance - ${fullMonths[selectedMonth - 1]} ${selectedYear}`;
+        const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
+        return `Daily Performance - ${fullMonths[selectedMonth - 1]} ${selectedYear} (${daysInMonth} days)`;
       case 'monthly':
-      case 'period':
         const periodLabel = selectedPeriod === 'jan-jun' ? 'January - June' : 'July - December';
-        return `Monthly Performance - ${periodLabel} ${selectedYear}`;
+        return `Monthly Performance - ${periodLabel} ${selectedYear} (6 months)`;
       default:
         return 'Performance Data';
     }
@@ -255,9 +261,9 @@ export default function AssetPerformancePage() {
             onChange={(e) => setFilterType(e.target.value)}
             className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-3 py-2 text-white text-sm"
           >
-            <option value="hourly">⏱️ Hourly (per jam)</option>
-            <option value="daily">📅 Daily (per hari)</option>
-            <option value="period">📊 Period (6 bulan)</option>
+            <option value="hourly">⏱️ Hourly (24 Jam)</option>
+            <option value="daily">📅 Daily (1 Bulan)</option>
+            <option value="monthly">📊 Monthly (6 Bulan)</option>
           </select>
 
           {/* Dynamic Filters */}
@@ -304,7 +310,7 @@ export default function AssetPerformancePage() {
             </>
           )}
 
-          {filterType === 'period' && (
+          {filterType === 'monthly' && (
             <>
               <div className="flex items-center gap-2">
                 <span className="text-[#A7D8FF] text-sm">Period:</span>
@@ -402,7 +408,7 @@ export default function AssetPerformancePage() {
                 <XAxis 
                   dataKey="label" 
                   stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
                 />
                 <YAxis yAxisId="left" stroke="#A7D8FF" />
                 <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" />
@@ -417,7 +423,7 @@ export default function AssetPerformancePage() {
                 <XAxis 
                   dataKey="label" 
                   stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
                 />
                 <YAxis yAxisId="left" stroke="#A7D8FF" />
                 <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" />
@@ -433,8 +439,13 @@ export default function AssetPerformancePage() {
 
       {/* Detailed Table */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
-        <div className="p-4 border-b border-[#FFD700]/30">
-          <h2 className="text-lg font-bold text-[#FFD700]">Hourly Details - {getDisplayTitle()}</h2>
+        <div className="p-4 border-b border-[#FFD700]/30 flex justify-between items-center">
+          <h2 className="text-lg font-bold text-[#FFD700]">
+            {filterType === 'hourly' ? 'Hourly Details (24 Hours)' : 
+             filterType === 'daily' ? `Daily Details (${performanceData.length} Days)` : 
+             'Monthly Details (6 Months)'}
+          </h2>
+          <span className="text-xs text-[#A7D8FF]">{performanceData.length} entries</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
