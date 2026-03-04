@@ -837,19 +837,36 @@ export default function DashboardContent() {
 
         {/* KOLOM 2: ASSET PERFORMANCE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📈 Asset Performance</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={assetPerformance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                <XAxis dataKey="name" stroke="#A7D8FF" />
-                <YAxis stroke="#A7D8FF" />
-                <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-                <Line type="monotone" dataKey="value" stroke="#FFD700" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+  <Link href="/dashboard/asset-performance" className="block group">
+    <div className="flex items-center justify-between mb-2">
+      <h3 className="text-lg font-bold text-[#FFD700]">📈 Asset Performance</h3>
+      <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </div>
+    
+    <div className="h-64 relative">
+      {/* Overlay transparan untuk memastikan seluruh area bisa diklik */}
+      <div className="absolute inset-0 cursor-pointer z-10"></div>
+      
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={assetPerformance}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+          <XAxis dataKey="name" stroke="#A7D8FF" />
+          <YAxis stroke="#A7D8FF" />
+          <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+          <Line type="monotone" dataKey="value" stroke="#FFD700" strokeWidth={2} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+    
+    <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
+      Click to see yesterday hourly detail →
+    </div>
+  </Link>
+</div>
 
         {/* KOLOM 3: OFFICER PERFORMANCE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
