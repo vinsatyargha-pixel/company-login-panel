@@ -267,93 +267,139 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Deposit - Semua handler gak dikenal masuk SYSTEM
-      depositData?.forEach((tx: any) => {
-        if (!tx.handler || typeof tx.handler !== 'string') return
-        
-        const officer = officers.find(o => 
-          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
-        )
-        
-        const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
-        const kpi = kpiMap[targetPanelId]
-        
-        kpi.dep_total++
+      // Proses Deposit
+depositData?.forEach((tx: any) => {
+  if (!tx.handler || typeof tx.handler !== 'string') return
+  
+  const officer = officers.find(o => 
+    o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
+  )
+  
+  const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+  const kpi = kpiMap[targetPanelId]
+  
+  kpi.dep_total++
 
-        const status = tx.status?.toLowerCase()
-        
-        if (status === 'approved') {
-          kpi.dep_approved++
-          kpi.dep_approve_count++
-          kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
-          
-          if (tx.duration_minutes <= 3) {
-            kpi.dep_sop++
-          } else {
-            kpi.dep_non_sop++
-          }
-        } else if (status === 'rejected') {
-          kpi.dep_rejected++
-          kpi.dep_reject_count++
-          kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
-        } else if (status?.includes('fail')) {
-          kpi.dep_failed++
-          kpi.dep_fail_count++
-          kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
-        }
+  const status = tx.status?.toLowerCase()
+  const isSystem = targetPanelId === 'SYSTEM'
+  
+  // 🔥 FIX: Kalo SYSTEM, semua yang bukan approved dianggap FAIL
+  if (isSystem) {
+    if (status === 'approved') {
+      kpi.dep_approved++
+      kpi.dep_approve_count++
+      kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
+      
+      if (tx.duration_minutes <= 3) {
+        kpi.dep_sop++
+      } else {
+        kpi.dep_non_sop++
+      }
+    } else {
+      // SYSTEM: rejected, failed, dll semua dianggap FAIL
+      kpi.dep_failed++
+      kpi.dep_fail_count++
+      kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
+    }
+  } else {
+    // Officer biasa: bedakan approved, rejected, fail
+    if (status === 'approved') {
+      kpi.dep_approved++
+      kpi.dep_approve_count++
+      kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
+      
+      if (tx.duration_minutes <= 3) {
+        kpi.dep_sop++
+      } else {
+        kpi.dep_non_sop++
+      }
+    } else if (status === 'rejected') {
+      kpi.dep_rejected++
+      kpi.dep_reject_count++
+      kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
+    } else if (status?.includes('fail')) {
+      kpi.dep_failed++
+      kpi.dep_fail_count++
+      kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
+    }
+  }
 
-        // Human error DEPOSIT
-        if (tx.reason?.toLowerCase().includes('mistake') ||
-            tx.reason?.toLowerCase().includes('crossbank') ||
-            tx.reason?.toLowerCase().includes('cross asset') ||
-            tx.reason?.toLowerCase().includes('wrong process')) {
-          kpi.dep_human_error++
-        }
-      })
+  // Human error DEPOSIT
+  if (tx.reason?.toLowerCase().includes('mistake') ||
+      tx.reason?.toLowerCase().includes('crossbank') ||
+      tx.reason?.toLowerCase().includes('cross asset') ||
+      tx.reason?.toLowerCase().includes('wrong process')) {
+    kpi.dep_human_error++
+  }
+})
 
-      // Proses Withdrawal - Semua handler gak dikenal masuk SYSTEM
-      withdrawalData?.forEach((tx: any) => {
-        if (!tx.handler || typeof tx.handler !== 'string') return
-        
-        const officer = officers.find(o => 
-          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
-        )
-        
-        const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
-        const kpi = kpiMap[targetPanelId]
-        
-        kpi.wd_total++
+// ===========================================
+// Proses Withdrawal (sama logicnya)
+// ===========================================
+withdrawalData?.forEach((tx: any) => {
+  if (!tx.handler || typeof tx.handler !== 'string') return
+  
+  const officer = officers.find(o => 
+    o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
+  )
+  
+  const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+  const kpi = kpiMap[targetPanelId]
+  
+  kpi.wd_total++
 
-        const status = tx.status?.toLowerCase()
-        
-        if (status === 'approved') {
-          kpi.wd_approved++
-          kpi.wd_approve_count++
-          kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
-          
-          if (tx.duration_minutes <= 5) {
-            kpi.wd_sop++
-          } else {
-            kpi.wd_non_sop++
-          }
-        } else if (status === 'rejected') {
-          kpi.wd_rejected++
-          kpi.wd_reject_count++
-          kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
-        } else if (status?.includes('fail')) {
-          kpi.wd_failed++
-          kpi.wd_fail_count++
-          kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
-        }
+  const status = tx.status?.toLowerCase()
+  const isSystem = targetPanelId === 'SYSTEM'
+  
+  // 🔥 FIX: Kalo SYSTEM, semua yang bukan approved dianggap FAIL
+  if (isSystem) {
+    if (status === 'approved') {
+      kpi.wd_approved++
+      kpi.wd_approve_count++
+      kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
+      
+      if (tx.duration_minutes <= 5) {
+        kpi.wd_sop++
+      } else {
+        kpi.wd_non_sop++
+      }
+    } else {
+      // SYSTEM: rejected, failed, dll semua dianggap FAIL
+      kpi.wd_failed++
+      kpi.wd_fail_count++
+      kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
+    }
+  } else {
+    // Officer biasa: bedakan approved, rejected, fail
+    if (status === 'approved') {
+      kpi.wd_approved++
+      kpi.wd_approve_count++
+      kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
+      
+      if (tx.duration_minutes <= 5) {
+        kpi.wd_sop++
+      } else {
+        kpi.wd_non_sop++
+      }
+    } else if (status === 'rejected') {
+      kpi.wd_rejected++
+      kpi.wd_reject_count++
+      kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
+    } else if (status?.includes('fail')) {
+      kpi.wd_failed++
+      kpi.wd_fail_count++
+      kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
+    }
+  }
 
-        // Human error WITHDRAWAL
-        if (tx.reason?.toLowerCase().includes('mistake') ||
-            tx.reason?.toLowerCase().includes('crossbank') ||
-            tx.reason?.toLowerCase().includes('cross asset') ||
-            tx.reason?.toLowerCase().includes('wrong process')) {
-          kpi.wd_human_error++
-        }
-      })
+  // Human error WITHDRAWAL
+  if (tx.reason?.toLowerCase().includes('mistake') ||
+      tx.reason?.toLowerCase().includes('crossbank') ||
+      tx.reason?.toLowerCase().includes('cross asset') ||
+      tx.reason?.toLowerCase().includes('wrong process')) {
+    kpi.wd_human_error++
+  }
+})
 
       // Format data untuk tabel
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
