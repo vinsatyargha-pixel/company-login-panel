@@ -125,19 +125,24 @@ export default function ReviewBreakdownTransactionPage() {
       const depositTrans = (depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier);
       const withdrawalTrans = (withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier);
       
-      const chatVolume = chatTrans * 50000;
+      // Deposit Volume & Highest
       const depositVolume = depositTrans * 250000;
+      const depositHighest = Math.floor(Math.random() * 5000000) + 1000000;
+      
+      // Withdrawal Volume & Highest
       const withdrawalVolume = withdrawalTrans * 180000;
+      const withdrawalHighest = Math.floor(Math.random() * 4000000) + 800000;
       
       data.push({
         period: `${hourStr}:00`,
         type: 'hour',
-        chat: chatTrans,
-        chatVolume,
+        chat: chatTrans, // CHAT = KUANTITAS TRANSAKSI
         deposit: depositTrans,
         depositVolume,
+        depositHighest,
         withdrawal: withdrawalTrans,
         withdrawalVolume,
+        withdrawalHighest,
         depositApproved,
         depositRejected,
         depositFailed,
@@ -145,7 +150,7 @@ export default function ReviewBreakdownTransactionPage() {
         withdrawalRejected,
         withdrawalFailed,
         total: chatTrans + depositTrans + withdrawalTrans,
-        totalVolume: chatVolume + depositVolume + withdrawalVolume,
+        totalVolume: depositVolume + withdrawalVolume, // CHAT TIDAK MASUK VOLUME
       });
     }
     return data;
@@ -187,19 +192,24 @@ export default function ReviewBreakdownTransactionPage() {
       const depositTrans = (depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier);
       const withdrawalTrans = (withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier);
       
-      const chatVolume = chatTrans * 50000;
+      // Deposit Volume & Highest
       const depositVolume = depositTrans * 250000;
+      const depositHighest = Math.floor(Math.random() * 15000000) + 3000000;
+      
+      // Withdrawal Volume & Highest
       const withdrawalVolume = withdrawalTrans * 180000;
+      const withdrawalHighest = Math.floor(Math.random() * 12000000) + 2500000;
       
       data.push({
         period: `${monthName} ${day}`,
         type: 'day',
-        chat: chatTrans,
-        chatVolume,
+        chat: chatTrans, // CHAT = KUANTITAS TRANSAKSI
         deposit: depositTrans,
         depositVolume,
+        depositHighest,
         withdrawal: withdrawalTrans,
         withdrawalVolume,
+        withdrawalHighest,
         depositApproved,
         depositRejected,
         depositFailed,
@@ -207,7 +217,7 @@ export default function ReviewBreakdownTransactionPage() {
         withdrawalRejected,
         withdrawalFailed,
         total: chatTrans + depositTrans + withdrawalTrans,
-        totalVolume: chatVolume + depositVolume + withdrawalVolume,
+        totalVolume: depositVolume + withdrawalVolume, // CHAT TIDAK MASUK VOLUME
       });
     }
     return data;
@@ -256,19 +266,24 @@ export default function ReviewBreakdownTransactionPage() {
       const depositTrans = (depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier);
       const withdrawalTrans = (withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier);
       
-      const chatVolume = chatTrans * 50000;
+      // Deposit Volume & Highest
       const depositVolume = depositTrans * 250000;
+      const depositHighest = Math.floor(Math.random() * 50000000) + 10000000;
+      
+      // Withdrawal Volume & Highest
       const withdrawalVolume = withdrawalTrans * 180000;
+      const withdrawalHighest = Math.floor(Math.random() * 40000000) + 8000000;
       
       data.push({
         period: months[i],
         type: 'month',
-        chat: chatTrans,
-        chatVolume,
+        chat: chatTrans, // CHAT = KUANTITAS TRANSAKSI
         deposit: depositTrans,
         depositVolume,
+        depositHighest,
         withdrawal: withdrawalTrans,
         withdrawalVolume,
+        withdrawalHighest,
         depositApproved,
         depositRejected,
         depositFailed,
@@ -276,7 +291,7 @@ export default function ReviewBreakdownTransactionPage() {
         withdrawalRejected,
         withdrawalFailed,
         total: chatTrans + depositTrans + withdrawalTrans,
-        totalVolume: chatVolume + depositVolume + withdrawalVolume,
+        totalVolume: depositVolume + withdrawalVolume, // CHAT TIDAK MASUK VOLUME
       });
     }
     return data;
@@ -570,54 +585,56 @@ export default function ReviewBreakdownTransactionPage() {
                 <th className="px-4 py-3 text-left text-[#FFD700] border-r border-[#FFD700]/20">
                   {filterType === 'hourly' ? 'Hour' : filterType === 'daily' ? 'Date' : 'Month'}
                 </th>
-                <th colSpan="3" className="px-4 py-3 text-center text-[#FFD700] border-r border-[#FFD700]/20">CHAT</th>
+                <th colSpan="2" className="px-4 py-3 text-center text-[#FFD700] border-r border-[#FFD700]/20">CHAT</th>
                 <th colSpan="4" className="px-4 py-3 text-center text-[#FFD700] border-r border-[#FFD700]/20">DEPOSIT</th>
                 <th colSpan="4" className="px-4 py-3 text-center text-[#FFD700]">WITHDRAWAL</th>
               </tr>
               <tr className="border-b border-[#FFD700]/20">
                 <th className="px-4 py-2 text-left text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20"></th>
                 
-                {/* CHAT SUBHEADERS */}
+                {/* CHAT SUBHEADERS - Transaksi dan % */}
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Trans</th>
-                <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Volume</th>
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">%</th>
                 
-                {/* DEPOSIT SUBHEADERS */}
+                {/* DEPOSIT SUBHEADERS - Trans, Volume, Highest, % */}
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Trans</th>
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Volume</th>
-                <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Avg</th>
+                <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Highest</th>
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">%</th>
                 
-                {/* WITHDRAWAL SUBHEADERS */}
+                {/* WITHDRAWAL SUBHEADERS - Trans, Volume, Highest, % */}
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Trans</th>
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Volume</th>
-                <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Avg</th>
+                <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Highest</th>
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal">%</th>
               </tr>
             </thead>
             <tbody>
               {traficData.map((item, idx) => {
-                const total = item.chat + item.deposit + item.withdrawal;
+                const total = item.deposit + item.withdrawal;
+                const chatPercentage = (item.chat / (item.chat + total)) * 100;
+                const depositPercentage = (item.deposit / total) * 100;
+                const withdrawalPercentage = (item.withdrawal / total) * 100;
+                
                 return (
                   <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
                     <td className="px-4 py-3 text-white font-medium border-r border-[#FFD700]/10">{item.period}</td>
                     
-                    {/* CHAT DATA */}
+                    {/* CHAT DATA - Transaksi (kuantitas) */}
                     <td className="px-4 py-3 text-right text-yellow-400 border-r border-[#FFD700]/10">{item.chat}</td>
-                    <td className="px-4 py-3 text-right text-yellow-400/80 border-r border-[#FFD700]/10">{formatIDR(item.chatVolume)}</td>
-                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{Math.round((item.chat / total) * 100)}%</td>
+                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{Math.round(chatPercentage)}%</td>
                     
-                    {/* DEPOSIT DATA */}
+                    {/* DEPOSIT DATA - Trans, Volume, Highest, % */}
                     <td className="px-4 py-3 text-right text-blue-400 border-r border-[#FFD700]/10">{item.deposit}</td>
                     <td className="px-4 py-3 text-right text-blue-400 border-r border-[#FFD700]/10">{formatIDR(item.depositVolume)}</td>
-                    <td className="px-4 py-3 text-right text-blue-400 border-r border-[#FFD700]/10">{formatIDR(item.depositVolume / item.deposit)}</td>
-                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{Math.round((item.deposit / total) * 100)}%</td>
+                    <td className="px-4 py-3 text-right text-blue-400 border-r border-[#FFD700]/10">{formatIDR(item.depositHighest)}</td>
+                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{Math.round(depositPercentage)}%</td>
                     
-                    {/* WITHDRAWAL DATA */}
+                    {/* WITHDRAWAL DATA - Trans, Volume, Highest, % */}
                     <td className="px-4 py-3 text-right text-red-400 border-r border-[#FFD700]/10">{item.withdrawal}</td>
                     <td className="px-4 py-3 text-right text-red-400 border-r border-[#FFD700]/10">{formatIDR(item.withdrawalVolume)}</td>
-                    <td className="px-4 py-3 text-right text-red-400 border-r border-[#FFD700]/10">{formatIDR(item.withdrawalVolume / item.withdrawal)}</td>
-                    <td className="px-4 py-3 text-right text-[#A7D8FF]">{Math.round((item.withdrawal / total) * 100)}%</td>
+                    <td className="px-4 py-3 text-right text-red-400 border-r border-[#FFD700]/10">{formatIDR(item.withdrawalHighest)}</td>
+                    <td className="px-4 py-3 text-right text-[#A7D8FF]">{Math.round(withdrawalPercentage)}%</td>
                   </tr>
                 );
               })}
