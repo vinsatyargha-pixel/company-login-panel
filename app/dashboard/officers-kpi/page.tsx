@@ -36,7 +36,7 @@ type KPIData = {
   dep_avg_fail: string
   dep_sop: number
   dep_non_sop: number
-  dep_human_error: number  // HUMAN ERROR KHUSUS DEPOSIT
+  dep_human_error: number
   
   // WITHDRAWAL
   wd_total: number
@@ -51,14 +51,7 @@ type KPIData = {
   wd_avg_fail: string
   wd_sop: number
   wd_non_sop: number
-  wd_human_error: number   // HUMAN ERROR KHUSUS WITHDRAWAL
-  
-  // TOTAL GABUNGAN (untuk summary)
-  total_transactions: number
-  total_approved: number
-  total_rejected: number
-  total_failed: number
-  total_human_error: number
+  wd_human_error: number
 }
 
 // ===========================================
@@ -267,139 +260,135 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Deposit
-depositData?.forEach((tx: any) => {
-  if (!tx.handler || typeof tx.handler !== 'string') return
-  
-  const officer = officers.find(o => 
-    o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
-  )
-  
-  const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
-  const kpi = kpiMap[targetPanelId]
-  
-  kpi.dep_total++
+      // 🔥 FIX: Proses Deposit - SYSTEM ga boleh reject
+      depositData?.forEach((tx: any) => {
+        if (!tx.handler || typeof tx.handler !== 'string') return
+        
+        const officer = officers.find(o => 
+          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
+        )
+        
+        const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+        const kpi = kpiMap[targetPanelId]
+        
+        kpi.dep_total++
 
-  const status = tx.status?.toLowerCase()
-  const isSystem = targetPanelId === 'SYSTEM'
-  
-  // 🔥 FIX: Kalo SYSTEM, semua yang bukan approved dianggap FAIL
-  if (isSystem) {
-    if (status === 'approved') {
-      kpi.dep_approved++
-      kpi.dep_approve_count++
-      kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
-      
-      if (tx.duration_minutes <= 3) {
-        kpi.dep_sop++
-      } else {
-        kpi.dep_non_sop++
-      }
-    } else {
-      // SYSTEM: rejected, failed, dll semua dianggap FAIL
-      kpi.dep_failed++
-      kpi.dep_fail_count++
-      kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
-    }
-  } else {
-    // Officer biasa: bedakan approved, rejected, fail
-    if (status === 'approved') {
-      kpi.dep_approved++
-      kpi.dep_approve_count++
-      kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
-      
-      if (tx.duration_minutes <= 3) {
-        kpi.dep_sop++
-      } else {
-        kpi.dep_non_sop++
-      }
-    } else if (status === 'rejected') {
-      kpi.dep_rejected++
-      kpi.dep_reject_count++
-      kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
-    } else if (status?.includes('fail')) {
-      kpi.dep_failed++
-      kpi.dep_fail_count++
-      kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
-    }
-  }
+        const status = tx.status?.toLowerCase()
+        const isSystem = targetPanelId === 'SYSTEM'
+        
+        if (isSystem) {
+          // SYSTEM: semua yang bukan approved dianggap FAIL
+          if (status === 'approved') {
+            kpi.dep_approved++
+            kpi.dep_approve_count++
+            kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
+            
+            if (tx.duration_minutes <= 3) {
+              kpi.dep_sop++
+            } else {
+              kpi.dep_non_sop++
+            }
+          } else {
+            kpi.dep_failed++
+            kpi.dep_fail_count++
+            kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
+          }
+        } else {
+          // Officer biasa: bedakan approved, rejected, fail
+          if (status === 'approved') {
+            kpi.dep_approved++
+            kpi.dep_approve_count++
+            kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
+            
+            if (tx.duration_minutes <= 3) {
+              kpi.dep_sop++
+            } else {
+              kpi.dep_non_sop++
+            }
+          } else if (status === 'rejected') {
+            kpi.dep_rejected++
+            kpi.dep_reject_count++
+            kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
+          } else if (status?.includes('fail')) {
+            kpi.dep_failed++
+            kpi.dep_fail_count++
+            kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
+          }
+        }
 
-  // Human error DEPOSIT
-  if (tx.reason?.toLowerCase().includes('mistake') ||
-      tx.reason?.toLowerCase().includes('crossbank') ||
-      tx.reason?.toLowerCase().includes('cross asset') ||
-      tx.reason?.toLowerCase().includes('wrong process')) {
-    kpi.dep_human_error++
-  }
-})
+        // Human error DEPOSIT
+        if (tx.reason?.toLowerCase().includes('mistake') ||
+            tx.reason?.toLowerCase().includes('crossbank') ||
+            tx.reason?.toLowerCase().includes('cross asset') ||
+            tx.reason?.toLowerCase().includes('wrong process')) {
+          kpi.dep_human_error++
+        }
+      })
 
-// ===========================================
-// Proses Withdrawal (sama logicnya)
-// ===========================================
-withdrawalData?.forEach((tx: any) => {
-  if (!tx.handler || typeof tx.handler !== 'string') return
-  
-  const officer = officers.find(o => 
-    o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
-  )
-  
-  const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
-  const kpi = kpiMap[targetPanelId]
-  
-  kpi.wd_total++
+      // 🔥 FIX: Proses Withdrawal - SYSTEM ga boleh reject
+      withdrawalData?.forEach((tx: any) => {
+        if (!tx.handler || typeof tx.handler !== 'string') return
+        
+        const officer = officers.find(o => 
+          o.panel_id?.toLowerCase() === tx.handler.toLowerCase()
+        )
+        
+        const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+        const kpi = kpiMap[targetPanelId]
+        
+        kpi.wd_total++
 
-  const status = tx.status?.toLowerCase()
-  const isSystem = targetPanelId === 'SYSTEM'
-  
-  // 🔥 FIX: Kalo SYSTEM, semua yang bukan approved dianggap FAIL
-  if (isSystem) {
-    if (status === 'approved') {
-      kpi.wd_approved++
-      kpi.wd_approve_count++
-      kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
-      
-      if (tx.duration_minutes <= 5) {
-        kpi.wd_sop++
-      } else {
-        kpi.wd_non_sop++
-      }
-    } else {
-      // SYSTEM: rejected, failed, dll semua dianggap FAIL
-      kpi.wd_failed++
-      kpi.wd_fail_count++
-      kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
-    }
-  } else {
-    // Officer biasa: bedakan approved, rejected, fail
-    if (status === 'approved') {
-      kpi.wd_approved++
-      kpi.wd_approve_count++
-      kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
-      
-      if (tx.duration_minutes <= 5) {
-        kpi.wd_sop++
-      } else {
-        kpi.wd_non_sop++
-      }
-    } else if (status === 'rejected') {
-      kpi.wd_rejected++
-      kpi.wd_reject_count++
-      kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
-    } else if (status?.includes('fail')) {
-      kpi.wd_failed++
-      kpi.wd_fail_count++
-      kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
-    }
-  }
+        const status = tx.status?.toLowerCase()
+        const isSystem = targetPanelId === 'SYSTEM'
+        
+        if (isSystem) {
+          // SYSTEM: semua yang bukan approved dianggap FAIL
+          if (status === 'approved') {
+            kpi.wd_approved++
+            kpi.wd_approve_count++
+            kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
+            
+            if (tx.duration_minutes <= 5) {
+              kpi.wd_sop++
+            } else {
+              kpi.wd_non_sop++
+            }
+          } else {
+            kpi.wd_failed++
+            kpi.wd_fail_count++
+            kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
+          }
+        } else {
+          // Officer biasa: bedakan approved, rejected, fail
+          if (status === 'approved') {
+            kpi.wd_approved++
+            kpi.wd_approve_count++
+            kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
+            
+            if (tx.duration_minutes <= 5) {
+              kpi.wd_sop++
+            } else {
+              kpi.wd_non_sop++
+            }
+          } else if (status === 'rejected') {
+            kpi.wd_rejected++
+            kpi.wd_reject_count++
+            kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
+          } else if (status?.includes('fail')) {
+            kpi.wd_failed++
+            kpi.wd_fail_count++
+            kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
+          }
+        }
 
-  // Human error WITHDRAWAL
-  if (tx.reason?.toLowerCase().includes('mistake') ||
-      tx.reason?.toLowerCase().includes('crossbank') ||
-      tx.reason?.toLowerCase().includes('cross asset') ||
-      tx.reason?.toLowerCase().includes('wrong process')) {
-    kpi.wd_human_error++
-  }
-})
+        // Human error WITHDRAWAL
+        if (tx.reason?.toLowerCase().includes('mistake') ||
+            tx.reason?.toLowerCase().includes('crossbank') ||
+            tx.reason?.toLowerCase().includes('cross asset') ||
+            tx.reason?.toLowerCase().includes('wrong process')) {
+          kpi.wd_human_error++
+        }
+      })
 
       // Format data untuk tabel
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
@@ -432,13 +421,6 @@ withdrawalData?.forEach((tx: any) => {
           ? minutesToHHMMSS(kpi.wd_reject_minutes_sum / kpi.wd_reject_count) : '-'
         const wd_avg_fail = kpi.wd_fail_count > 0
           ? minutesToHHMMSS(kpi.wd_fail_minutes_sum / kpi.wd_fail_count) : '-'
-
-        // Total gabungan untuk summary
-        const total_trans = kpi.dep_total + kpi.wd_total
-        const total_app = kpi.dep_approved + kpi.wd_approved
-        const total_rej = kpi.dep_rejected + kpi.wd_rejected
-        const total_fail = kpi.dep_failed + kpi.wd_failed
-        const total_he = kpi.dep_human_error + kpi.wd_human_error
 
         return {
           officer_id: kpi.officer_id,
@@ -476,13 +458,6 @@ withdrawalData?.forEach((tx: any) => {
           wd_sop: kpi.wd_sop,
           wd_non_sop: kpi.wd_non_sop,
           wd_human_error: kpi.wd_human_error,
-          
-          // Total
-          total_transactions: total_trans,
-          total_approved: total_app,
-          total_rejected: total_rej,
-          total_failed: total_fail,
-          total_human_error: total_he,
         }
       })
 
@@ -529,11 +504,26 @@ withdrawalData?.forEach((tx: any) => {
     )
   }
 
-  const totalTransactions = kpiData.reduce((sum, item) => sum + item.total_transactions, 0)
-  const totalApproved = kpiData.reduce((sum, item) => sum + item.total_approved, 0)
-  const totalRejected = kpiData.reduce((sum, item) => sum + item.total_rejected, 0)
-  const totalFailed = kpiData.reduce((sum, item) => sum + item.total_failed, 0)
-  const totalHumanError = kpiData.reduce((sum, item) => sum + item.total_human_error, 0)
+  // ===========================================
+  // SUMMARY PER TABEL
+  // ===========================================
+  const depTotal = kpiData.reduce((sum, item) => sum + item.dep_total, 0)
+  const depApproved = kpiData.reduce((sum, item) => sum + item.dep_approved, 0)
+  const depRejected = kpiData.reduce((sum, item) => sum + item.dep_rejected, 0)
+  const depFailed = kpiData.reduce((sum, item) => sum + item.dep_failed, 0)
+  const depHumanError = kpiData.reduce((sum, item) => sum + item.dep_human_error, 0)
+
+  const wdTotal = kpiData.reduce((sum, item) => sum + item.wd_total, 0)
+  const wdApproved = kpiData.reduce((sum, item) => sum + item.wd_approved, 0)
+  const wdRejected = kpiData.reduce((sum, item) => sum + item.wd_rejected, 0)
+  const wdFailed = kpiData.reduce((sum, item) => sum + item.wd_failed, 0)
+  const wdHumanError = kpiData.reduce((sum, item) => sum + item.wd_human_error, 0)
+
+  const totalTransactions = depTotal + wdTotal
+  const totalApproved = depApproved + wdApproved
+  const totalRejected = depRejected + wdRejected
+  const totalFailed = depFailed + wdFailed
+  const totalHumanError = depHumanError + wdHumanError
 
   const { periodText } = getDateRange()
 
@@ -615,10 +605,19 @@ withdrawalData?.forEach((tx: any) => {
 
       {/* TABEL DEPOSIT */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-blue-400 mb-2 flex items-center">
-          <span className="bg-blue-500 w-2 h-6 rounded-full mr-2"></span>
-          DEPOSIT TRANSACTIONS
-        </h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-xl font-bold text-blue-400 flex items-center">
+            <span className="bg-blue-500 w-2 h-6 rounded-full mr-2"></span>
+            DEPOSIT TRANSACTIONS
+          </h2>
+          <div className="text-xs bg-blue-900/30 px-3 py-1 rounded-full border border-blue-500/30">
+            <span className="text-blue-400">Total: {depTotal}</span>
+            <span className="text-green-400 ml-3">App: {depApproved}</span>
+            <span className="text-red-400 ml-3">Rej: {depRejected}</span>
+            <span className="text-orange-400 ml-3">Fail: {depFailed}</span>
+            <span className="text-red-400 ml-3 font-bold">HE: {depHumanError}</span>
+          </div>
+        </div>
         <div className="bg-[#1A2F4A] rounded-lg border border-blue-500/30 overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-[#0B1A33] border-b border-blue-500/30">
@@ -698,10 +697,19 @@ withdrawalData?.forEach((tx: any) => {
 
       {/* TABEL WITHDRAWAL */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-green-400 mb-2 flex items-center">
-          <span className="bg-green-500 w-2 h-6 rounded-full mr-2"></span>
-          WITHDRAWAL TRANSACTIONS
-        </h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-xl font-bold text-green-400 flex items-center">
+            <span className="bg-green-500 w-2 h-6 rounded-full mr-2"></span>
+            WITHDRAWAL TRANSACTIONS
+          </h2>
+          <div className="text-xs bg-green-900/30 px-3 py-1 rounded-full border border-green-500/30">
+            <span className="text-green-400">Total: {wdTotal}</span>
+            <span className="text-green-400 ml-3">App: {wdApproved}</span>
+            <span className="text-red-400 ml-3">Rej: {wdRejected}</span>
+            <span className="text-orange-400 ml-3">Fail: {wdFailed}</span>
+            <span className="text-red-400 ml-3 font-bold">HE: {wdHumanError}</span>
+          </div>
+        </div>
         <div className="bg-[#1A2F4A] rounded-lg border border-green-500/30 overflow-x-auto">
           <table className="w-full text-xs">
             <thead className="bg-[#0B1A33] border-b border-green-500/30">
@@ -779,7 +787,7 @@ withdrawalData?.forEach((tx: any) => {
         </div>
       </div>
 
-      {/* Summary */}
+      {/* SUMMARY GABUNGAN */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF]">
         <div className="flex justify-between">
           <span>Total Officers: {kpiData.length - 1} + SYSTEM</span>
