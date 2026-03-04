@@ -87,7 +87,7 @@ export default function AssetPerformancePage() {
   };
 
   // ===========================================
-  // GENERATE HOURLY DATA (00:00 - 23:00)
+  // GENERATE HOURLY DATA DENGAN RENTANG WAKTU
   // ===========================================
   const generateHourlyData = (date, asset, status) => {
     const data = [];
@@ -99,7 +99,10 @@ export default function AssetPerformancePage() {
     });
     
     for (let hour = 0; hour < 24; hour++) {
-      const hourStr = hour.toString().padStart(2, '0');
+      const startHour = hour.toString().padStart(2, '0');
+      const endHour = (hour + 1).toString().padStart(2, '0');
+      // Rentang waktu: 00:00 - 01:00, 01:00 - 02:00, ..., 23:00 - 00:00
+      const periodLabel = hour === 23 ? `${startHour}:00 - 00:00` : `${startHour}:00 - ${endHour}:00`;
       
       let chatBase = 5;
       let depositBase = 25;
@@ -135,9 +138,9 @@ export default function AssetPerformancePage() {
       const withdrawalRejected = Math.floor(Math.random() * 4);
       const withdrawalFailed = Math.floor(Math.random() * 2);
       
-      const depositTrans = (depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier);
-      const withdrawalTrans = (withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier);
-      const totalTrans = chatTrans + depositTrans + withdrawalTrans;
+      const depositTrans = Math.round((depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier));
+      const withdrawalTrans = Math.round((withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier));
+      const totalTrans = Math.round(chatTrans + depositTrans + withdrawalTrans);
       
       const chatVolume = chatTrans * 50000;
       const depositVolume = depositTrans * 250000;
@@ -145,22 +148,22 @@ export default function AssetPerformancePage() {
       const totalVolume = chatVolume + depositVolume + withdrawalVolume;
       
       data.push({
-        label: `${hourStr}:00`,
+        label: periodLabel,
         hour: hour,
-        chat: chatTrans,
-        deposit: depositTrans,
-        withdrawal: withdrawalTrans,
-        chatVolume: chatVolume,
-        depositVolume: depositVolume,
-        withdrawalVolume: withdrawalVolume,
-        depositApproved: depositApproved,
-        depositRejected: depositRejected,
-        depositFailed: depositFailed,
-        withdrawalApproved: withdrawalApproved,
-        withdrawalRejected: withdrawalRejected,
-        withdrawalFailed: withdrawalFailed,
+        chat: Math.round(chatTrans),
+        deposit: Math.round(depositTrans),
+        withdrawal: Math.round(withdrawalTrans),
+        chatVolume: Math.round(chatVolume),
+        depositVolume: Math.round(depositVolume),
+        withdrawalVolume: Math.round(withdrawalVolume),
+        depositApproved: Math.round(depositApproved),
+        depositRejected: Math.round(depositRejected),
+        depositFailed: Math.round(depositFailed),
+        withdrawalApproved: Math.round(withdrawalApproved),
+        withdrawalRejected: Math.round(withdrawalRejected),
+        withdrawalFailed: Math.round(withdrawalFailed),
         transactions: totalTrans,
-        volume: totalVolume,
+        volume: Math.round(totalVolume),
         displayDate: displayDate,
         asset: asset
       });
@@ -204,9 +207,9 @@ export default function AssetPerformancePage() {
       const withdrawalRejected = Math.floor(Math.random() * 12);
       const withdrawalFailed = Math.floor(Math.random() * 6);
       
-      const depositTrans = (depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier);
-      const withdrawalTrans = (withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier);
-      const totalTrans = chatTrans + depositTrans + withdrawalTrans;
+      const depositTrans = Math.round((depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier));
+      const withdrawalTrans = Math.round((withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier));
+      const totalTrans = Math.round(chatTrans + depositTrans + withdrawalTrans);
       
       const chatVolume = chatTrans * 50000;
       const depositVolume = depositTrans * 250000;
@@ -218,20 +221,20 @@ export default function AssetPerformancePage() {
         day: day,
         dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
         isWeekend: isWeekend,
-        chat: chatTrans,
-        deposit: depositTrans,
-        withdrawal: withdrawalTrans,
-        chatVolume: chatVolume,
-        depositVolume: depositVolume,
-        withdrawalVolume: withdrawalVolume,
-        depositApproved: depositApproved,
-        depositRejected: depositRejected,
-        depositFailed: depositFailed,
-        withdrawalApproved: withdrawalApproved,
-        withdrawalRejected: withdrawalRejected,
-        withdrawalFailed: withdrawalFailed,
+        chat: Math.round(chatTrans),
+        deposit: Math.round(depositTrans),
+        withdrawal: Math.round(withdrawalTrans),
+        chatVolume: Math.round(chatVolume),
+        depositVolume: Math.round(depositVolume),
+        withdrawalVolume: Math.round(withdrawalVolume),
+        depositApproved: Math.round(depositApproved),
+        depositRejected: Math.round(depositRejected),
+        depositFailed: Math.round(depositFailed),
+        withdrawalApproved: Math.round(withdrawalApproved),
+        withdrawalRejected: Math.round(withdrawalRejected),
+        withdrawalFailed: Math.round(withdrawalFailed),
         transactions: totalTrans,
-        volume: totalVolume,
+        volume: Math.round(totalVolume),
         fullDate: `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`,
         asset: asset
       });
@@ -282,9 +285,9 @@ export default function AssetPerformancePage() {
       const withdrawalRejected = Math.floor(Math.random() * 60);
       const withdrawalFailed = Math.floor(Math.random() * 30);
       
-      const depositTrans = (depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier);
-      const withdrawalTrans = (withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier);
-      const totalTrans = chatTrans + depositTrans + withdrawalTrans;
+      const depositTrans = Math.round((depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier));
+      const withdrawalTrans = Math.round((withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier));
+      const totalTrans = Math.round(chatTrans + depositTrans + withdrawalTrans);
       
       const chatVolume = chatTrans * 50000;
       const depositVolume = depositTrans * 250000;
@@ -295,20 +298,20 @@ export default function AssetPerformancePage() {
         label: months[i],
         month: months[i],
         monthNum: i + 1,
-        chat: chatTrans,
-        deposit: depositTrans,
-        withdrawal: withdrawalTrans,
-        chatVolume: chatVolume,
-        depositVolume: depositVolume,
-        withdrawalVolume: withdrawalVolume,
-        depositApproved: depositApproved,
-        depositRejected: depositRejected,
-        depositFailed: depositFailed,
-        withdrawalApproved: withdrawalApproved,
-        withdrawalRejected: withdrawalRejected,
-        withdrawalFailed: withdrawalFailed,
+        chat: Math.round(chatTrans),
+        deposit: Math.round(depositTrans),
+        withdrawal: Math.round(withdrawalTrans),
+        chatVolume: Math.round(chatVolume),
+        depositVolume: Math.round(depositVolume),
+        withdrawalVolume: Math.round(withdrawalVolume),
+        depositApproved: Math.round(depositApproved),
+        depositRejected: Math.round(depositRejected),
+        depositFailed: Math.round(depositFailed),
+        withdrawalApproved: Math.round(withdrawalApproved),
+        withdrawalRejected: Math.round(withdrawalRejected),
+        withdrawalFailed: Math.round(withdrawalFailed),
         transactions: totalTrans,
-        volume: totalVolume,
+        volume: Math.round(totalVolume),
         period: period,
         year: year,
         asset: asset
@@ -371,17 +374,17 @@ export default function AssetPerformancePage() {
       });
       
       setSummaryData({
-        totalTransactions: totalTrans,
-        totalVolume: totalVol,
+        totalTransactions: Math.round(totalTrans),
+        totalVolume: Math.round(totalVol),
         avgValue: Math.round(avgVal),
         peakHour: peakItem?.label || '-',
-        peakValue: peakValue,
-        chatTotal: chatTotal,
-        depositTotal: depositTotal,
-        withdrawalTotal: withdrawalTotal,
-        approvedTotal: approvedTotal,
-        rejectedTotal: rejectedTotal,
-        failedTotal: failedTotal
+        peakValue: Math.round(peakValue),
+        chatTotal: Math.round(chatTotal),
+        depositTotal: Math.round(depositTotal),
+        withdrawalTotal: Math.round(withdrawalTotal),
+        approvedTotal: Math.round(approvedTotal),
+        rejectedTotal: Math.round(rejectedTotal),
+        failedTotal: Math.round(failedTotal)
       });
       
     } catch (error) {
@@ -433,7 +436,7 @@ export default function AssetPerformancePage() {
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
-      {/* Header - ASSET PERFORMANCE (BUKAN TOTAL TRANSACTIONS) */}
+      {/* Header - ASSET PERFORMANCE */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link 
@@ -652,7 +655,10 @@ export default function AssetPerformancePage() {
                 <XAxis 
                   dataKey="label" 
                   stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+                  angle={filterType === 'hourly' ? -45 : 0}
+                  textAnchor="end"
+                  height={60}
                 />
                 <YAxis yAxisId="left" stroke="#A7D8FF" />
                 <Tooltip 
@@ -700,7 +706,10 @@ export default function AssetPerformancePage() {
                 <XAxis 
                   dataKey="label" 
                   stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+                  angle={filterType === 'hourly' ? -45 : 0}
+                  textAnchor="end"
+                  height={60}
                 />
                 <YAxis yAxisId="left" stroke="#A7D8FF" />
                 <Tooltip 
@@ -729,7 +738,10 @@ export default function AssetPerformancePage() {
                 <XAxis 
                   dataKey="label" 
                   stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+                  angle={filterType === 'hourly' ? -45 : 0}
+                  textAnchor="end"
+                  height={60}
                 />
                 <YAxis yAxisId="left" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
                 <Tooltip 
@@ -778,7 +790,10 @@ export default function AssetPerformancePage() {
                 <XAxis 
                   dataKey="label" 
                   stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+                  angle={filterType === 'hourly' ? -45 : 0}
+                  textAnchor="end"
+                  height={60}
                 />
                 <YAxis yAxisId="left" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
                 <Tooltip 
