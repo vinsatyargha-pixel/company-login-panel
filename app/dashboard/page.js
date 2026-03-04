@@ -11,6 +11,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
+import Link from 'next/link';
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
@@ -85,15 +86,8 @@ export default function DashboardContent() {
   // ===========================================
   // STATE UNTUK PERFORMANCE METRICS
   // ===========================================
-  const [assetPerformance, setAssetPerformance] = useState([
-    { name: 'Jan', value: 65 },
-    { name: 'Feb', value: 59 },
-    { name: 'Mar', value: 80 },
-    { name: 'Apr', value: 81 },
-    { name: 'May', value: 56 },
-    { name: 'Jun', value: 55 },
-    { name: 'Jul', value: 70 },
-  ]);
+  // ASSET PERFORMANCE - DATA HARIAN 1 BULAN
+  const [assetPerformance, setAssetPerformance] = useState([]);
 
   const [officerPerformance, setOfficerPerformance] = useState([
     { name: 'Jan', officers: 40 },
@@ -106,6 +100,43 @@ export default function DashboardContent() {
   ]);
 
   const { user, userJobRole, isAdmin } = useAuth();
+
+  // ===========================================
+  // GENERATE DAILY ASSET PERFORMANCE DATA
+  // ===========================================
+  const generateDailyAssetData = () => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1; // 1-12
+    const currentDate = today.getDate();
+    
+    // Hitung jumlah hari dalam bulan ini
+    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+    
+    const data = [];
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      // Cek apakah tanggal ini sudah lewat atau belum
+      const isPastDate = day <= currentDate;
+      
+      // Generate data untuk tanggal yang sudah lewat
+      let value = null;
+      if (isPastDate) {
+        // Random value antara 20-100 untuk tanggal yang sudah lewat
+        value = Math.floor(Math.random() * 80) + 20;
+      }
+      
+      data.push({
+        name: `${day}`,
+        day: day,
+        value: value,
+        isPastDate: isPastDate,
+        fullDate: `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
+      });
+    }
+    
+    setAssetPerformance(data);
+  };
 
   // ===========================================
   // FETCH BANK ACCOUNTS DARI SUPABASE
@@ -221,7 +252,8 @@ export default function DashboardContent() {
     fetchRecentActivities();
     fetchPaymentData();
     fetchPerformanceData();
-    fetchBankAccounts(); // AMBIL DATA BANK
+    fetchBankAccounts();
+    generateDailyAssetData(); // GENERATE DATA HARIAN
   }, [chartFilter, chartYear]);
 
   // LOAD LAST READ TIMESTAMP DARI LOCALSTORAGE
@@ -585,7 +617,7 @@ export default function DashboardContent() {
   />
 </div>
 
-      {/* SYNC BUTTON & STATUS - DILETAKKAN DI ATAS FILTER */}
+      {/* SYNC BUTTON & STATUS */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
@@ -835,35 +867,60 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: ASSET PERFORMANCE (Click to get detail) - BISA DIKLIK */}
-<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-  <a href="/dashboard/asset-performance" className="block group cursor-pointer">
-    <div className="flex items-center justify-between mb-2">
-      <h3 className="text-lg font-bold text-[#FFD700]">📈 Asset Performance</h3>
-      <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-        </svg>
-      </div>
-    </div>
-    
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={assetPerformance}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-          <XAxis dataKey="name" stroke="#A7D8FF" />
-          <YAxis stroke="#A7D8FF" />
-          <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-          <Line type="monotone" dataKey="value" stroke="#FFD700" strokeWidth={2} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-    
-    <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
-      Click to see yesterday hourly detail →
-    </div>
-  </a>
-</div>
+        {/* KOLOM 2: ASSET PERFORMANCE - DAILY CHART (1 BULAN) */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <a href="/dashboard/asset-performance" className="block group cursor-pointer">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-[#FFD700]">📈 Asset Performance</h3>
+              <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+            
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={assetPerformance} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#A7D8FF" 
+                    tick={{ fill: '#A7D8FF', fontSize: 10 }}
+                    interval={Math.floor(assetPerformance.length / 7)} // Tampilkan sekitar 7 label
+                  />
+                  <YAxis 
+                    stroke="#A7D8FF" 
+                    tick={{ fill: '#A7D8FF', fontSize: 10 }}
+                    domain={[0, 100]}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                    labelStyle={{ color: '#FFD700' }}
+                    formatter={(value, name) => {
+                      if (value === null) return ['No Data', 'Value'];
+                      return [value, 'Transactions'];
+                    }}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#FFD700" 
+                    strokeWidth={2} 
+                    dot={{ r: 3, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
+                    activeDot={{ r: 5, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
+                    connectNulls={false} // Jangan hubungkan data null
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
+              Click to see yesterday hourly detail →
+            </div>
+          </a>
+        </div>
 
         {/* KOLOM 3: OFFICER PERFORMANCE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
