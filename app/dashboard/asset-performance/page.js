@@ -597,7 +597,7 @@ export default function AssetPerformancePage() {
       {/* SUMMARY CARDS - TOTAL TRANSACTIONS BISA DI KLIK */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {/* CARD TOTAL TRANSACTIONS - LINK KE HALAMAN BARU */}
-        <Link href="/dashboard/asset-performance/total-transactions" className="block group">
+        <Link href="/dashboard/asset-performance/review-breakdown-transaction" className="block group">
           <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all duration-300 cursor-pointer">
             <div className="flex items-center justify-between">
               <div className="text-[#A7D8FF] text-sm">Total Transactions</div>
