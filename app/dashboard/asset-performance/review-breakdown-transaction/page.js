@@ -421,7 +421,9 @@ export default function ReviewBreakdownTransactionPage() {
   // Hitung nilai tertinggi untuk stabilo
   const maxChat = Math.max(...traficData.map(item => item.chat));
   const maxDeposit = Math.max(...traficData.map(item => item.deposit));
+  const maxDepositVolume = Math.max(...traficData.map(item => item.depositVolume));
   const maxWithdrawal = Math.max(...traficData.map(item => item.withdrawal));
+  const maxWithdrawalVolume = Math.max(...traficData.map(item => item.withdrawalVolume));
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
@@ -653,7 +655,9 @@ export default function ReviewBreakdownTransactionPage() {
                 // Cek apakah nilai tertinggi
                 const isMaxChat = item.chat === maxChat;
                 const isMaxDeposit = item.deposit === maxDeposit;
+                const isMaxDepositVolume = item.depositVolume === maxDepositVolume;
                 const isMaxWithdrawal = item.withdrawal === maxWithdrawal;
+                const isMaxWithdrawalVolume = item.withdrawalVolume === maxWithdrawalVolume;
                 
                 return (
                   <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
@@ -669,7 +673,9 @@ export default function ReviewBreakdownTransactionPage() {
                     <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDeposit ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
                       {Math.round(item.deposit)}
                     </td>
-                    <td className="px-4 py-3 text-right text-blue-400 border-r border-[#FFD700]/10">{formatIDR(item.depositVolume)}</td>
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositVolume ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
+                      {formatIDR(item.depositVolume)}
+                    </td>
                     <td className="px-4 py-3 text-right text-blue-400 border-r border-[#FFD700]/10">{formatIDR(item.depositHighest)}</td>
                     <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{depositPercentage.toFixed(2)}%</td>
                     
@@ -677,7 +683,9 @@ export default function ReviewBreakdownTransactionPage() {
                     <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawal ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
                       {Math.round(item.withdrawal)}
                     </td>
-                    <td className="px-4 py-3 text-right text-red-400 border-r border-[#FFD700]/10">{formatIDR(item.withdrawalVolume)}</td>
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalVolume ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
+                      {formatIDR(item.withdrawalVolume)}
+                    </td>
                     <td className="px-4 py-3 text-right text-red-400 border-r border-[#FFD700]/10">{formatIDR(item.withdrawalHighest)}</td>
                     <td className="px-4 py-3 text-right text-[#A7D8FF]">{withdrawalPercentage.toFixed(2)}%</td>
                   </tr>
