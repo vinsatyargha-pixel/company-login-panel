@@ -88,16 +88,10 @@ export default function DashboardContent() {
   // ===========================================
   // ASSET PERFORMANCE - DATA HARIAN 1 BULAN (3 LINES)
   const [assetPerformance, setAssetPerformance] = useState([]);
-
-  const [officerPerformance, setOfficerPerformance] = useState([
-    { name: 'Jan', officers: 40 },
-    { name: 'Feb', officers: 30 },
-    { name: 'Mar', officers: 45 },
-    { name: 'Apr', officers: 27 },
-    { name: 'May', officers: 38 },
-    { name: 'Jun', officers: 43 },
-    { name: 'Jul', officers: 34 },
-  ]);
+  
+  // OFFICER PERFORMANCE - DATA DARI KPI
+  const [officerPerformance, setOfficerPerformance] = useState([]);
+  const [loadingOfficerData, setLoadingOfficerData] = useState(true);
 
   const { user, userJobRole, isAdmin } = useAuth();
 
@@ -143,6 +137,92 @@ export default function DashboardContent() {
     }
     
     setAssetPerformance(data);
+  };
+
+  // ===========================================
+  // FETCH OFFICER PERFORMANCE DATA
+  // ===========================================
+  const fetchOfficerPerformance = async () => {
+    try {
+      setLoadingOfficerData(true);
+      
+      // Ambil data dari tabel officers (untuk mendapatkan nama officer)
+      const { data: officers, error: officersError } = await supabase
+        .from('officers')
+        .select('id, full_name')
+        .in('department', ['CS DP WD'])
+        .eq('status', 'REGULAR')
+        .order('full_name');
+
+      if (officersError) throw officersError;
+
+      // Ambil data transaksi deposit
+      const { data: depositData, error: depositError } = await supabase
+        .from('deposit_transactions')
+        .select('handler')
+        .gte('approved_date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString());
+
+      if (depositError) throw depositError;
+
+      // Ambil data transaksi withdrawal
+      const { data: withdrawalData, error: withdrawalError } = await supabase
+        .from('withdrawal_transactions')
+        .select('handler')
+        .gte('approved_date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString());
+
+      if (withdrawalError) throw withdrawalError;
+
+      // Hitung total transaksi per officer
+      const officerMap = new Map();
+      
+      officers?.forEach(officer => {
+        officerMap.set(officer.id, {
+          name: officer.full_name,
+          deposit: 0,
+          withdrawal: 0,
+          total: 0
+        });
+      });
+
+      // Hitung deposit
+      depositData?.forEach(tx => {
+        const officer = officers?.find(o => o.id === tx.handler);
+        if (officer && officerMap.has(officer.id)) {
+          const data = officerMap.get(officer.id);
+          data.deposit++;
+          data.total++;
+        }
+      });
+
+      // Hitung withdrawal
+      withdrawalData?.forEach(tx => {
+        const officer = officers?.find(o => o.id === tx.handler);
+        if (officer && officerMap.has(officer.id)) {
+          const data = officerMap.get(officer.id);
+          data.withdrawal++;
+          data.total++;
+        }
+      });
+
+      // Format untuk chart (ambil top 8 officer dengan total tertinggi)
+      const chartData = Array.from(officerMap.values())
+        .filter(item => item.total > 0)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 8)
+        .map(item => ({
+          name: item.name.length > 12 ? item.name.substring(0, 10) + '...' : item.name,
+          fullName: item.name,
+          deposit: item.deposit,
+          withdrawal: item.withdrawal,
+          total: item.total
+        }));
+
+      setOfficerPerformance(chartData);
+    } catch (error) {
+      console.error('Error fetching officer performance:', error);
+    } finally {
+      setLoadingOfficerData(false);
+    }
   };
 
   // ===========================================
@@ -260,7 +340,8 @@ export default function DashboardContent() {
     fetchPaymentData();
     fetchPerformanceData();
     fetchBankAccounts();
-    generateDailyAssetData(); // GENERATE DATA HARIAN 3 LINES
+    generateDailyAssetData();
+    fetchOfficerPerformance(); // AMBIL DATA OFFICER PERFORMANCE
   }, [chartFilter, chartYear]);
 
   // LOAD LAST READ TIMESTAMP DARI LOCALSTORAGE
@@ -577,52 +658,52 @@ export default function DashboardContent() {
       </header>
 
       {/* ROYAL GOLD CARDS */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-  <DashboardCard
-    title="Asset GROUP-X"
-    value={`${dashboardData.totalAssets} Assets`}
-    icon={<span className="text-6xl">💎</span>}
-    color="gold"
-    href="/dashboard/assets"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  <DashboardCard
-    title="Account Bank Management"
-    value="Manage Banks"
-    icon={<span className="text-6xl">🏦</span>}
-    color="gold"
-    href="/dashboard/data-bank"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  <DashboardCard
-    title="Data Officers GROUP-X"
-    value={`${dashboardData.activeOfficers} Officers`}
-    icon={<span className="text-6xl">👨‍💼</span>}
-    color="gold"
-    href="/dashboard/officers/active"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  <DashboardCard
-    title="Schedule Officers GROUP-X"
-    value="Calendar"
-    icon={<span className="text-6xl">📅</span>}
-    color="gold"
-    href="/dashboard/schedule"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-  
-  <DashboardCard
-    title="Financial Summary GROUP-X"
-    value="Management"
-    icon={<span className="text-6xl">💰</span>}
-    color="gold"
-    href="/dashboard/financial"
-    className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
-  />
-</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <DashboardCard
+          title="Asset GROUP-X"
+          value={`${dashboardData.totalAssets} Assets`}
+          icon={<span className="text-6xl">💎</span>}
+          color="gold"
+          href="/dashboard/assets"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Account Bank Management"
+          value="Manage Banks"
+          icon={<span className="text-6xl">🏦</span>}
+          color="gold"
+          href="/dashboard/data-bank"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Data Officers GROUP-X"
+          value={`${dashboardData.activeOfficers} Officers`}
+          icon={<span className="text-6xl">👨‍💼</span>}
+          color="gold"
+          href="/dashboard/officers/active"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Schedule Officers GROUP-X"
+          value="Calendar"
+          icon={<span className="text-6xl">📅</span>}
+          color="gold"
+          href="/dashboard/schedule"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+        
+        <DashboardCard
+          title="Financial Summary GROUP-X"
+          value="Management"
+          icon={<span className="text-6xl">💰</span>}
+          color="gold"
+          href="/dashboard/financial"
+          className="bg-gradient-to-br from-[#0B1A33] via-[#1A2F4A] to-[#0B1A33] border-2 border-[#FFD700] shadow-[0_0_30px_#FFD700,inset_0_0_30px_rgba(255,215,0,0.3)] hover:shadow-[0_0_50px_#FFD700,inset_0_0_50px_rgba(255,215,0,0.5)] transition-all duration-500 relative after:absolute after:inset-0 after:bg-gradient-to-r after:from-transparent after:via-white/20 after:to-transparent after:translate-x-[-100%] hover:after:translate-x-[100%] after:transition-transform after:duration-1000 overflow-hidden"
+        />
+      </div>
 
       {/* SYNC BUTTON & STATUS */}
       <div className="mb-4 flex items-center justify-between">
@@ -894,7 +975,7 @@ export default function DashboardContent() {
                     dataKey="name" 
                     stroke="#A7D8FF" 
                     tick={{ fill: '#A7D8FF', fontSize: 10 }}
-                    interval={Math.floor(assetPerformance.length / 7)} // Tampilkan sekitar 7 label
+                    interval={Math.floor(assetPerformance.length / 7)}
                   />
                   <YAxis 
                     stroke="#A7D8FF" 
@@ -957,20 +1038,69 @@ export default function DashboardContent() {
           </a>
         </div>
 
-        {/* KOLOM 3: OFFICER PERFORMANCE */}
+        {/* KOLOM 3: OFFICER PERFORMANCE - DARI DATA KPI */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Officer Performance</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={officerPerformance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                <XAxis dataKey="name" stroke="#A7D8FF" />
-                <YAxis stroke="#A7D8FF" />
-                <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-                <Bar dataKey="officers" fill="#FFD700" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <Link href="/dashboard/officers-kpi" className="block group">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance</h3>
+              <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+            
+            <div className="h-64">
+              {loadingOfficerData ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+                </div>
+              ) : officerPerformance.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={officerPerformance} margin={{ top: 10, right: 10, left: 0, bottom: 40 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="#A7D8FF" 
+                      tick={{ fill: '#A7D8FF', fontSize: 10 }}
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis 
+                      stroke="#A7D8FF" 
+                      tick={{ fill: '#A7D8FF', fontSize: 10 }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                      labelStyle={{ color: '#FFD700' }}
+                      formatter={(value, name) => {
+                        if (name === 'deposit') return [value, 'Deposit'];
+                        if (name === 'withdrawal') return [value, 'Withdrawal'];
+                        return [value, 'Total'];
+                      }}
+                      labelFormatter={(label) => {
+                        const item = officerPerformance.find(d => d.name === label);
+                        return item?.fullName || label;
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="deposit" stackId="a" fill="#3b82f6" name="Deposit" />
+                    <Bar dataKey="withdrawal" stackId="a" fill="#ef4444" name="Withdrawal" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-[#A7D8FF] text-sm">
+                  No transaction data available
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
+              Click to see detailed KPI →
+            </div>
+          </Link>
         </div>
       </div>
 
