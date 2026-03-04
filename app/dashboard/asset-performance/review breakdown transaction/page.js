@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
-export default function ReviewBreakdownTraficDataPage() {
+export default function ReviewBreakdownTransactionPage() {
   const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -393,7 +393,7 @@ export default function ReviewBreakdownTraficDataPage() {
             </svg>
             <span>Back to Asset Performance</span>
           </Link>
-          <h1 className="text-2xl font-bold text-[#FFD700]">📊 REVIEW BREAKDOWN TRAFIC DATA</h1>
+          <h1 className="text-2xl font-bold text-[#FFD700]">📊 REVIEW BREAKDOWN TRANSACTION</h1>
         </div>
       </div>
 
