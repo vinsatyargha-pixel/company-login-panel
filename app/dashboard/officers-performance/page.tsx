@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 
 // ===========================================
 // TYPES
@@ -67,6 +68,13 @@ const minutesToHHMMSS = (minutes: number): string => {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+// Warna untuk pie chart
+const COLORS = [
+  '#FFD700', '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
+  '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6b7280',
+  '#84cc16', '#06b6d4', '#d946ef', '#f43f5e', '#64748b'
+]
+
 // ===========================================
 // MAIN COMPONENT
 // ===========================================
@@ -83,6 +91,10 @@ export default function OfficersKPIPage() {
   const [kpiData, setKpiData] = useState<KPIData[]>([])
   const [officers, setOfficers] = useState<Officer[]>([])
   const [error, setError] = useState<string | null>(null)
+
+  // Data untuk pie chart
+  const [depositPieData, setDepositPieData] = useState<any[]>([])
+  const [withdrawalPieData, setWithdrawalPieData] = useState<any[]>([])
 
   const months = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -260,7 +272,7 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // 🔥 FIX: Proses Deposit - SYSTEM ga boleh reject
+      // Proses Deposit
       depositData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
@@ -277,7 +289,6 @@ export default function OfficersKPIPage() {
         const isSystem = targetPanelId === 'SYSTEM'
         
         if (isSystem) {
-          // SYSTEM: semua yang bukan approved dianggap FAIL
           if (status === 'approved') {
             kpi.dep_approved++
             kpi.dep_approve_count++
@@ -294,7 +305,6 @@ export default function OfficersKPIPage() {
             kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
           }
         } else {
-          // Officer biasa: bedakan approved, rejected, fail
           if (status === 'approved') {
             kpi.dep_approved++
             kpi.dep_approve_count++
@@ -316,7 +326,6 @@ export default function OfficersKPIPage() {
           }
         }
 
-        // Human error DEPOSIT
         if (tx.reason?.toLowerCase().includes('mistake') ||
             tx.reason?.toLowerCase().includes('crossbank') ||
             tx.reason?.toLowerCase().includes('cross asset') ||
@@ -325,7 +334,7 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // 🔥 FIX: Proses Withdrawal - SYSTEM ga boleh reject
+      // Proses Withdrawal
       withdrawalData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
@@ -342,7 +351,6 @@ export default function OfficersKPIPage() {
         const isSystem = targetPanelId === 'SYSTEM'
         
         if (isSystem) {
-          // SYSTEM: semua yang bukan approved dianggap FAIL
           if (status === 'approved') {
             kpi.wd_approved++
             kpi.wd_approve_count++
@@ -359,7 +367,6 @@ export default function OfficersKPIPage() {
             kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
           }
         } else {
-          // Officer biasa: bedakan approved, rejected, fail
           if (status === 'approved') {
             kpi.wd_approved++
             kpi.wd_approve_count++
@@ -381,7 +388,6 @@ export default function OfficersKPIPage() {
           }
         }
 
-        // Human error WITHDRAWAL
         if (tx.reason?.toLowerCase().includes('mistake') ||
             tx.reason?.toLowerCase().includes('crossbank') ||
             tx.reason?.toLowerCase().includes('cross asset') ||
@@ -392,7 +398,6 @@ export default function OfficersKPIPage() {
 
       // Format data untuk tabel
       const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
-        // Deposit rates & intervals
         const dep_approve_rate = kpi.dep_total > 0 
           ? ((kpi.dep_approved / kpi.dep_total) * 100).toFixed(2) : '0.00'
         const dep_reject_rate = kpi.dep_total > 0 
@@ -407,7 +412,6 @@ export default function OfficersKPIPage() {
         const dep_avg_fail = kpi.dep_fail_count > 0
           ? minutesToHHMMSS(kpi.dep_fail_minutes_sum / kpi.dep_fail_count) : '-'
 
-        // Withdrawal rates & intervals
         const wd_approve_rate = kpi.wd_total > 0 
           ? ((kpi.wd_approved / kpi.wd_total) * 100).toFixed(2) : '0.00'
         const wd_reject_rate = kpi.wd_total > 0 
@@ -429,7 +433,6 @@ export default function OfficersKPIPage() {
           department: kpi.department,
           status: kpi.status,
           
-          // Deposit
           dep_total: kpi.dep_total,
           dep_approved: kpi.dep_approved,
           dep_rejected: kpi.dep_rejected,
@@ -444,7 +447,6 @@ export default function OfficersKPIPage() {
           dep_non_sop: kpi.dep_non_sop,
           dep_human_error: kpi.dep_human_error,
           
-          // Withdrawal
           wd_total: kpi.wd_total,
           wd_approved: kpi.wd_approved,
           wd_rejected: kpi.wd_rejected,
@@ -469,6 +471,30 @@ export default function OfficersKPIPage() {
       
       console.log('✅ KPI Data:', sortedData)
       setKpiData(sortedData)
+
+      // Buat data untuk pie chart (hanya yang memiliki approved > 0)
+      const depositPie = sortedData
+        .filter(item => item.dep_approved > 0)
+        .map((item, index) => ({
+          name: item.panel_id === 'SYSTEM' ? 'SYSTEM' : item.panel_id,
+          fullName: item.officer_name,
+          value: item.dep_approved,
+          color: COLORS[index % COLORS.length]
+        }))
+        .sort((a, b) => b.value - a.value)
+
+      const withdrawalPie = sortedData
+        .filter(item => item.wd_approved > 0)
+        .map((item, index) => ({
+          name: item.panel_id === 'SYSTEM' ? 'SYSTEM' : item.panel_id,
+          fullName: item.officer_name,
+          value: item.wd_approved,
+          color: COLORS[index % COLORS.length]
+        }))
+        .sort((a, b) => b.value - a.value)
+
+      setDepositPieData(depositPie)
+      setWithdrawalPieData(withdrawalPie)
       
     } catch (error: any) {
       console.error('❌ Error:', error)
@@ -599,6 +625,95 @@ export default function OfficersKPIPage() {
 
           <div className="ml-auto text-[#A7D8FF]">
             Periode: {periodText}
+          </div>
+        </div>
+      </div>
+
+      {/* PIE CHARTS SECTION - TANPA LABEL (FIX ERROR) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Deposit Pie Chart */}
+        <div className="bg-[#1A2F4A] rounded-lg border border-blue-500/30 p-4">
+          <h3 className="text-lg font-bold text-blue-400 mb-4 text-center">
+            DEPOSIT APPROVED DISTRIBUTION
+          </h3>
+          {depositPieData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={depositPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    labelLine={false}
+                  >
+                    {depositPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                    formatter={(value: any, name: any, props: any) => {
+                      const item = depositPieData.find(d => d.name === props.payload.name);
+                      return [`${value} approved`, item?.fullName || props.payload.name];
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-[#A7D8FF]">
+              No deposit approved data
+            </div>
+          )}
+          <div className="mt-2 text-center text-xs text-[#A7D8FF]">
+            Total Approved: {depApproved}
+          </div>
+        </div>
+
+        {/* Withdrawal Pie Chart */}
+        <div className="bg-[#1A2F4A] rounded-lg border border-green-500/30 p-4">
+          <h3 className="text-lg font-bold text-green-400 mb-4 text-center">
+            WITHDRAWAL APPROVED DISTRIBUTION
+          </h3>
+          {withdrawalPieData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={withdrawalPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    labelLine={false}
+                  >
+                    {withdrawalPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                    formatter={(value: any, name: any, props: any) => {
+                      const item = withdrawalPieData.find(d => d.name === props.payload.name);
+                      return [`${value} approved`, item?.fullName || props.payload.name];
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-[#A7D8FF]">
+              No withdrawal approved data
+            </div>
+          )}
+          <div className="mt-2 text-center text-xs text-[#A7D8FF]">
+            Total Approved: {wdApproved}
           </div>
         </div>
       </div>
