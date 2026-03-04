@@ -535,7 +535,7 @@ export default function OfficersKPIPage() {
           ← BACK TO DASHBOARD
         </Link>
         
-        <h1 className="text-3xl font-bold text-[#FFD700]">KPI SUMARRY OFFICERS</h1>
+        <h1 className="text-3xl font-bold text-[#FFD700]">KPI SUMMARY OFFICERS</h1>
         <p className="text-[#A7D8FF] mt-2">Performance monitoring all officers (including SYSTEM)</p>
       </div>
 
