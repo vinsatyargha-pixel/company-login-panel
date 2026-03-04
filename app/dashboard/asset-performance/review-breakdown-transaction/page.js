@@ -100,7 +100,10 @@ export default function ReviewBreakdownTransactionPage() {
     const selectedDateObj = new Date(date);
     
     for (let hour = 0; hour < 24; hour++) {
-      const hourStr = hour.toString().padStart(2, '0');
+      const startHour = hour.toString().padStart(2, '0');
+      const endHour = (hour + 1).toString().padStart(2, '0');
+      // Rentang waktu: 00:00 - 01:00, 01:00 - 02:00, ..., 23:00 - 00:00
+      const period = hour === 23 ? `${startHour}:00 - 00:00` : `${startHour}:00 - ${endHour}:00`;
       
       let chatBase = 5;
       let depositBase = 25;
@@ -186,7 +189,7 @@ export default function ReviewBreakdownTransactionPage() {
       );
       
       data.push({
-        period: `${hourStr}:00`,
+        period: period, // RENTANG WAKTU: 00:00 - 01:00, dst
         type: 'hour',
         chat: Math.round(chatTrans),
         
