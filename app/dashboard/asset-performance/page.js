@@ -15,13 +15,13 @@ export default function AssetPerformancePage() {
   const [refreshing, setRefreshing] = useState(false);
   
   // FILTER STATES
-  const [filterType, setFilterType] = useState('hourly'); // hourly, daily, monthly
+  const [filterType, setFilterType] = useState('hourly');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedPeriod, setSelectedPeriod] = useState('jan-jun'); // jan-jun, jul-dec
-  const [selectedAsset, setSelectedAsset] = useState('all'); // Filter Asset
-  const [selectedStatus, setSelectedStatus] = useState('all'); // Filter Status: all, approved, rejected, failed
+  const [selectedPeriod, setSelectedPeriod] = useState('jan-jun');
+  const [selectedAsset, setSelectedAsset] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedChartType, setSelectedChartType] = useState('line');
   
   // ASSET LIST FROM SUPABASE
@@ -48,7 +48,6 @@ export default function AssetPerformancePage() {
                       'July', 'August', 'September', 'October', 'November', 'December'];
   const years = ['2024', '2025', '2026', '2027'];
 
-  // Status options
   const statusOptions = [
     { value: 'all', label: 'All Status', color: '#FFD700' },
     { value: 'approved', label: 'Approved', color: '#10b981' },
@@ -71,7 +70,6 @@ export default function AssetPerformancePage() {
         .order('asset_code', { ascending: true });
 
       if (error) throw error;
-      
       setAssetList(data || []);
     } catch (error) {
       console.error('Error fetching assets:', error);
@@ -89,7 +87,7 @@ export default function AssetPerformancePage() {
   };
 
   // ===========================================
-  // GENERATE HOURLY DATA (00:00 - 23:00) - 24 JAM
+  // GENERATE HOURLY DATA (00:00 - 23:00)
   // ===========================================
   const generateHourlyData = (date, asset, status) => {
     const data = [];
@@ -103,46 +101,30 @@ export default function AssetPerformancePage() {
     for (let hour = 0; hour < 24; hour++) {
       const hourStr = hour.toString().padStart(2, '0');
       
-      // Base pattern
       let chatBase = 5;
       let depositBase = 25;
       let withdrawalBase = 15;
       
       if (hour >= 8 && hour <= 11) {
-        chatBase = 15;
-        depositBase = 45;
-        withdrawalBase = 30;
+        chatBase = 15; depositBase = 45; withdrawalBase = 30;
       } else if (hour >= 13 && hour <= 16) {
-        chatBase = 20;
-        depositBase = 65;
-        withdrawalBase = 40;
+        chatBase = 20; depositBase = 65; withdrawalBase = 40;
       } else if (hour >= 19 && hour <= 22) {
-        chatBase = 25;
-        depositBase = 55;
-        withdrawalBase = 35;
+        chatBase = 25; depositBase = 55; withdrawalBase = 35;
       } else if (hour >= 23 || hour <= 4) {
-        chatBase = 3;
-        depositBase = 12;
-        withdrawalBase = 8;
+        chatBase = 3; depositBase = 12; withdrawalBase = 8;
       }
       
-      // Apply status multipliers
       let approvedMultiplier = 0.7;
       let rejectedMultiplier = 0.2;
       let failedMultiplier = 0.1;
       
       if (status === 'approved') {
-        approvedMultiplier = 1;
-        rejectedMultiplier = 0;
-        failedMultiplier = 0;
+        approvedMultiplier = 1; rejectedMultiplier = 0; failedMultiplier = 0;
       } else if (status === 'rejected') {
-        approvedMultiplier = 0;
-        rejectedMultiplier = 1;
-        failedMultiplier = 0;
+        approvedMultiplier = 0; rejectedMultiplier = 1; failedMultiplier = 0;
       } else if (status === 'failed') {
-        approvedMultiplier = 0;
-        rejectedMultiplier = 0;
-        failedMultiplier = 1;
+        approvedMultiplier = 0; rejectedMultiplier = 0; failedMultiplier = 1;
       }
       
       const chatTrans = Math.floor(Math.random() * 10) + chatBase;
@@ -153,23 +135,14 @@ export default function AssetPerformancePage() {
       const withdrawalRejected = Math.floor(Math.random() * 4);
       const withdrawalFailed = Math.floor(Math.random() * 2);
       
-      // Apply status filter
-      const depositTrans = 
-        (depositApproved * approvedMultiplier) + 
-        (depositRejected * rejectedMultiplier) + 
-        (depositFailed * failedMultiplier);
-      
-      const withdrawalTrans = 
-        (withdrawalApproved * approvedMultiplier) + 
-        (withdrawalRejected * rejectedMultiplier) + 
-        (withdrawalFailed * failedMultiplier);
-      
+      const depositTrans = (depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier);
+      const withdrawalTrans = (withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier);
       const totalTrans = chatTrans + depositTrans + withdrawalTrans;
       
-      // Volume dalam IDR
+      const chatVolume = chatTrans * 50000;
       const depositVolume = depositTrans * 250000;
       const withdrawalVolume = withdrawalTrans * 180000;
-      const totalVolume = depositVolume + withdrawalVolume;
+      const totalVolume = chatVolume + depositVolume + withdrawalVolume;
       
       data.push({
         label: `${hourStr}:00`,
@@ -177,7 +150,7 @@ export default function AssetPerformancePage() {
         chat: chatTrans,
         deposit: depositTrans,
         withdrawal: withdrawalTrans,
-        chatVolume: chatTrans * 50000, // Volume chat (estimasi)
+        chatVolume: chatVolume,
         depositVolume: depositVolume,
         withdrawalVolume: withdrawalVolume,
         depositApproved: depositApproved,
@@ -211,23 +184,16 @@ export default function AssetPerformancePage() {
       let depositBase = isWeekend ? 200 : 150;
       let withdrawalBase = isWeekend ? 150 : 100;
       
-      // Apply status multipliers
       let approvedMultiplier = 0.7;
       let rejectedMultiplier = 0.2;
       let failedMultiplier = 0.1;
       
       if (status === 'approved') {
-        approvedMultiplier = 1;
-        rejectedMultiplier = 0;
-        failedMultiplier = 0;
+        approvedMultiplier = 1; rejectedMultiplier = 0; failedMultiplier = 0;
       } else if (status === 'rejected') {
-        approvedMultiplier = 0;
-        rejectedMultiplier = 1;
-        failedMultiplier = 0;
+        approvedMultiplier = 0; rejectedMultiplier = 1; failedMultiplier = 0;
       } else if (status === 'failed') {
-        approvedMultiplier = 0;
-        rejectedMultiplier = 0;
-        failedMultiplier = 1;
+        approvedMultiplier = 0; rejectedMultiplier = 0; failedMultiplier = 1;
       }
       
       const chatTrans = Math.floor(Math.random() * 30) + chatBase;
@@ -238,19 +204,10 @@ export default function AssetPerformancePage() {
       const withdrawalRejected = Math.floor(Math.random() * 12);
       const withdrawalFailed = Math.floor(Math.random() * 6);
       
-      const depositTrans = 
-        (depositApproved * approvedMultiplier) + 
-        (depositRejected * rejectedMultiplier) + 
-        (depositFailed * failedMultiplier);
-      
-      const withdrawalTrans = 
-        (withdrawalApproved * approvedMultiplier) + 
-        (withdrawalRejected * rejectedMultiplier) + 
-        (withdrawalFailed * failedMultiplier);
-      
+      const depositTrans = (depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier);
+      const withdrawalTrans = (withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier);
       const totalTrans = chatTrans + depositTrans + withdrawalTrans;
       
-      // Volume dalam IDR
       const chatVolume = chatTrans * 50000;
       const depositVolume = depositTrans * 250000;
       const withdrawalVolume = withdrawalTrans * 180000;
@@ -296,38 +253,25 @@ export default function AssetPerformancePage() {
       let withdrawalBase = 600;
       
       if (i === 2 || i === 3) {
-        chatBase = 600;
-        depositBase = 1200;
-        withdrawalBase = 900;
+        chatBase = 600; depositBase = 1200; withdrawalBase = 900;
       }
       if (i === 8 || i === 9) {
-        chatBase = 550;
-        depositBase = 1100;
-        withdrawalBase = 850;
+        chatBase = 550; depositBase = 1100; withdrawalBase = 850;
       }
       if (i === 11) {
-        chatBase = 700;
-        depositBase = 1400;
-        withdrawalBase = 1100;
+        chatBase = 700; depositBase = 1400; withdrawalBase = 1100;
       }
       
-      // Apply status multipliers
       let approvedMultiplier = 0.7;
       let rejectedMultiplier = 0.2;
       let failedMultiplier = 0.1;
       
       if (status === 'approved') {
-        approvedMultiplier = 1;
-        rejectedMultiplier = 0;
-        failedMultiplier = 0;
+        approvedMultiplier = 1; rejectedMultiplier = 0; failedMultiplier = 0;
       } else if (status === 'rejected') {
-        approvedMultiplier = 0;
-        rejectedMultiplier = 1;
-        failedMultiplier = 0;
+        approvedMultiplier = 0; rejectedMultiplier = 1; failedMultiplier = 0;
       } else if (status === 'failed') {
-        approvedMultiplier = 0;
-        rejectedMultiplier = 0;
-        failedMultiplier = 1;
+        approvedMultiplier = 0; rejectedMultiplier = 0; failedMultiplier = 1;
       }
       
       const chatTrans = Math.floor(Math.random() * 200) + chatBase;
@@ -338,19 +282,10 @@ export default function AssetPerformancePage() {
       const withdrawalRejected = Math.floor(Math.random() * 60);
       const withdrawalFailed = Math.floor(Math.random() * 30);
       
-      const depositTrans = 
-        (depositApproved * approvedMultiplier) + 
-        (depositRejected * rejectedMultiplier) + 
-        (depositFailed * failedMultiplier);
-      
-      const withdrawalTrans = 
-        (withdrawalApproved * approvedMultiplier) + 
-        (withdrawalRejected * rejectedMultiplier) + 
-        (withdrawalFailed * failedMultiplier);
-      
+      const depositTrans = (depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier);
+      const withdrawalTrans = (withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier);
       const totalTrans = chatTrans + depositTrans + withdrawalTrans;
       
-      // Volume dalam IDR
       const chatVolume = chatTrans * 50000;
       const depositVolume = depositTrans * 250000;
       const withdrawalVolume = withdrawalTrans * 180000;
@@ -410,14 +345,8 @@ export default function AssetPerformancePage() {
           data = generateHourlyData(selectedDate, selectedAsset, selectedStatus);
       }
       
-      // Filter by asset if not 'all'
-      if (selectedAsset !== 'all') {
-        data = data.filter(item => item.asset === selectedAsset);
-      }
-      
       setPerformanceData(data);
       
-      // Calculate summary
       const totalTrans = data.reduce((sum, item) => sum + item.transactions, 0);
       const totalVol = data.reduce((sum, item) => sum + item.volume, 0);
       const avgVal = totalTrans > 0 ? totalVol / totalTrans : 0;
@@ -425,7 +354,6 @@ export default function AssetPerformancePage() {
       const depositTotal = data.reduce((sum, item) => sum + item.deposit, 0);
       const withdrawalTotal = data.reduce((sum, item) => sum + item.withdrawal, 0);
       
-      // Status totals
       const approvedTotal = data.reduce((sum, item) => 
         sum + (item.depositApproved || 0) + (item.withdrawalApproved || 0), 0);
       const rejectedTotal = data.reduce((sum, item) => 
@@ -478,7 +406,6 @@ export default function AssetPerformancePage() {
   const getDisplayTitle = (type = 'transaction') => {
     const assetName = selectedAsset === 'all' ? 'All Assets' : selectedAsset;
     const statusName = statusOptions.find(s => s.value === selectedStatus)?.label || 'All Status';
-    
     const typeText = type === 'transaction' ? 'By Transaction' : 'By Value (IDR)';
     
     switch (filterType) {
@@ -525,7 +452,6 @@ export default function AssetPerformancePage() {
       {/* FILTER SECTION */}
       <div className="mb-6 bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
         <div className="flex flex-wrap items-center gap-4">
-          {/* Filter Type */}
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
@@ -536,7 +462,6 @@ export default function AssetPerformancePage() {
             <option value="monthly">📊 Monthly (6 Bulan)</option>
           </select>
 
-          {/* Asset Filter */}
           <div className="flex items-center gap-2">
             <span className="text-[#A7D8FF] text-sm">Asset:</span>
             <select
@@ -553,7 +478,6 @@ export default function AssetPerformancePage() {
             </select>
           </div>
 
-          {/* Status Filter */}
           <div className="flex items-center gap-2">
             <span className="text-[#A7D8FF] text-sm">Status:</span>
             <select
@@ -567,7 +491,6 @@ export default function AssetPerformancePage() {
             </select>
           </div>
 
-          {/* Dynamic Date Filters */}
           {filterType === 'hourly' && (
             <div className="flex items-center gap-2">
               <span className="text-[#A7D8FF] text-sm">Date:</span>
@@ -639,7 +562,6 @@ export default function AssetPerformancePage() {
             </>
           )}
 
-          {/* Chart Type Toggle */}
           <div className="flex items-center gap-2 bg-[#0B1A33] rounded-lg border border-[#FFD700]/30 p-1 ml-auto">
             <button
               onClick={() => setSelectedChartType('line')}
@@ -659,7 +581,6 @@ export default function AssetPerformancePage() {
             </button>
           </div>
 
-          {/* Refresh Button */}
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -673,17 +594,26 @@ export default function AssetPerformancePage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* SUMMARY CARDS - TOTAL TRANSACTIONS BISA DI KLIK */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total Transactions</div>
-          <div className="text-2xl font-bold text-[#FFD700]">{summaryData.totalTransactions.toLocaleString()}</div>
-          <div className="flex justify-between text-xs mt-2">
-            <span className="text-yellow-400">CS: {summaryData.chatTotal}</span>
-            <span className="text-blue-400">DP: {summaryData.depositTotal}</span>
-            <span className="text-red-400">WD: {summaryData.withdrawalTotal}</span>
+        <Link href="/dashboard/total-transactions" className="block group">
+          <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all duration-300 cursor-pointer">
+            <div className="flex items-center justify-between">
+              <div className="text-[#A7D8FF] text-sm">Total Transactions</div>
+              <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-[#FFD700]">{summaryData.totalTransactions.toLocaleString()}</div>
+            <div className="flex justify-between text-xs mt-2">
+              <span className="text-yellow-400">CS: {summaryData.chatTotal}</span>
+              <span className="text-blue-400">DP: {summaryData.depositTotal}</span>
+              <span className="text-red-400">WD: {summaryData.withdrawalTotal}</span>
+            </div>
           </div>
-        </div>
+        </Link>
         
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total Volume</div>
@@ -727,7 +657,6 @@ export default function AssetPerformancePage() {
                 />
                 <Legend />
                 
-                {/* CS Line - Kuning dengan titik */}
                 <Line 
                   yAxisId="left" 
                   type="monotone" 
@@ -739,7 +668,6 @@ export default function AssetPerformancePage() {
                   activeDot={{ r: 6, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
                 />
                 
-                {/* Deposit Line - Biru dengan titik */}
                 <Line 
                   yAxisId="left" 
                   type="monotone" 
@@ -751,7 +679,6 @@ export default function AssetPerformancePage() {
                   activeDot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
                 />
                 
-                {/* Withdrawal Line - Merah dengan titik */}
                 <Line 
                   yAxisId="left" 
                   type="monotone" 
@@ -808,7 +735,6 @@ export default function AssetPerformancePage() {
                 />
                 <Legend />
                 
-                {/* CS Volume Line - Kuning dengan titik */}
                 <Line 
                   yAxisId="left" 
                   type="monotone" 
@@ -820,7 +746,6 @@ export default function AssetPerformancePage() {
                   activeDot={{ r: 6, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
                 />
                 
-                {/* Deposit Volume Line - Biru dengan titik */}
                 <Line 
                   yAxisId="left" 
                   type="monotone" 
@@ -832,7 +757,6 @@ export default function AssetPerformancePage() {
                   activeDot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
                 />
                 
-                {/* Withdrawal Volume Line - Merah dengan titik */}
                 <Line 
                   yAxisId="left" 
                   type="monotone" 
@@ -865,111 +789,6 @@ export default function AssetPerformancePage() {
               </BarChart>
             )}
           </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* CHAT PERFORMANCE TABLE */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
-        <div className="p-4 border-b border-[#FFD700]/30 bg-yellow-500/10">
-          <h2 className="text-lg font-bold text-yellow-400">💬 CHAT PERFORMANCE</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-[#0B1A33]">
-              <tr>
-                <th className="px-4 py-3 text-left text-[#FFD700]">
-                  {filterType === 'hourly' ? 'Hour' : filterType === 'daily' ? 'Date' : 'Month'}
-                </th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Chat Transactions</th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">% of Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {performanceData.map((item, idx) => (
-                <tr key={`chat-${idx}`} className="border-b border-[#FFD700]/10">
-                  <td className="px-4 py-2 text-white">{item.label}</td>
-                  <td className="px-4 py-2 text-right text-yellow-400">{item.chat}</td>
-                  <td className="px-4 py-2 text-right text-[#A7D8FF]">
-                    {Math.round((item.chat / item.transactions) * 100)}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* DEPOSIT PERFORMANCE TABLE */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
-        <div className="p-4 border-b border-[#FFD700]/30 bg-blue-500/10">
-          <h2 className="text-lg font-bold text-blue-400">💰 DEPOSIT PERFORMANCE</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-[#0B1A33]">
-              <tr>
-                <th className="px-4 py-3 text-left text-[#FFD700]">
-                  {filterType === 'hourly' ? 'Hour' : filterType === 'daily' ? 'Date' : 'Month'}
-                </th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Deposit Transactions</th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Volume (IDR)</th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Average Value</th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">% of Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {performanceData.map((item, idx) => {
-                return (
-                  <tr key={`deposit-${idx}`} className="border-b border-[#FFD700]/10">
-                    <td className="px-4 py-2 text-white">{item.label}</td>
-                    <td className="px-4 py-2 text-right text-blue-400">{item.deposit}</td>
-                    <td className="px-4 py-2 text-right text-blue-400">{formatIDR(item.depositVolume)}</td>
-                    <td className="px-4 py-2 text-right text-blue-400">{formatIDR(item.depositVolume / item.deposit)}</td>
-                    <td className="px-4 py-2 text-right text-[#A7D8FF]">
-                      {Math.round((item.deposit / item.transactions) * 100)}%
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* WITHDRAWAL PERFORMANCE TABLE */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
-        <div className="p-4 border-b border-[#FFD700]/30 bg-red-500/10">
-          <h2 className="text-lg font-bold text-red-400">💸 WITHDRAWAL PERFORMANCE</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-[#0B1A33]">
-              <tr>
-                <th className="px-4 py-3 text-left text-[#FFD700]">
-                  {filterType === 'hourly' ? 'Hour' : filterType === 'daily' ? 'Date' : 'Month'}
-                </th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Withdrawal Transactions</th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Volume (IDR)</th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Average Value</th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">% of Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {performanceData.map((item, idx) => {
-                return (
-                  <tr key={`withdrawal-${idx}`} className="border-b border-[#FFD700]/10">
-                    <td className="px-4 py-2 text-white">{item.label}</td>
-                    <td className="px-4 py-2 text-right text-red-400">{item.withdrawal}</td>
-                    <td className="px-4 py-2 text-right text-red-400">{formatIDR(item.withdrawalVolume)}</td>
-                    <td className="px-4 py-2 text-right text-red-400">{formatIDR(item.withdrawalVolume / item.withdrawal)}</td>
-                    <td className="px-4 py-2 text-right text-[#A7D8FF]">
-                      {Math.round((item.withdrawal / item.transactions) * 100)}%
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>
