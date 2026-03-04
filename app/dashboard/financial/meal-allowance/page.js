@@ -8,6 +8,7 @@ import Link from 'next/link';
 export default function MealAllowancePage() {
   const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [officers, setOfficers] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('February');
@@ -16,6 +17,7 @@ export default function MealAllowancePage() {
   const [scheduleData, setScheduleData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [availableDepartments, setAvailableDepartments] = useState(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
+  const [dataLoaded, setDataLoaded] = useState(false);
   
   const [editingOfficer, setEditingOfficer] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -51,13 +53,55 @@ export default function MealAllowancePage() {
         nextYear = currentYear + 1;
       }
       
-      setSelectedYear(nextYear.toString());
-      setSelectedMonth(months[nextMonthIndex]);
+      return {
+        month: months[nextMonthIndex],
+        year: nextYear.toString()
+      };
     } else {
-      setSelectedYear(currentYear.toString());
-      setSelectedMonth(months[currentMonthIndex]);
+      return {
+        month: months[currentMonthIndex],
+        year: currentYear.toString()
+      };
     }
   };
+
+  // ===========================================
+  // INITIAL SETUP
+  // ===========================================
+  useEffect(() => {
+    const { month, year } = getCurrentMonthByCutoff();
+    setSelectedMonth(month);
+    setSelectedYear(year);
+    setInitialLoad(false);
+  }, []);
+
+  // ===========================================
+  // SET DEPARTMENTS BERDASARKAN ROLE
+  // ===========================================
+  useEffect(() => {
+    if (!initialLoad) {
+      if (!isAdmin) {
+        setAvailableDepartments(['CS DP WD']);
+        setSelectedDept('CS DP WD');
+      } else {
+        setAvailableDepartments(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
+        setSelectedDept('All');
+      }
+    }
+  }, [isAdmin, initialLoad]);
+
+  // ===========================================
+  // FETCH DATA
+  // ===========================================
+  useEffect(() => {
+    if (!initialLoad) {
+      const timer = setTimeout(() => {
+        fetchData();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [selectedMonth, selectedYear, initialLoad]);
 
   // ===========================================
   // HITUNG MASA KERJA
@@ -187,30 +231,6 @@ export default function MealAllowancePage() {
     };
   };
 
-  // ===========================================
-  // DATA FETCHING
-  // ===========================================
-
-  useEffect(() => {
-    getCurrentMonthByCutoff();
-  }, []);
-
-  useEffect(() => {
-    if (!isAdmin) {
-      setAvailableDepartments(['CS DP WD']);
-      setSelectedDept('CS DP WD');
-    } else {
-      setAvailableDepartments(['All', 'AM', 'CAPTAIN', 'CS DP WD']);
-      setSelectedDept('All');
-    }
-  }, [isAdmin]);
-
-  useEffect(() => {
-    fetchData();
-    setEditingOfficer(null);
-    setEditForm({ kasbon: 0, cuti: 0, etc: 0, etc_note: '' });
-  }, [selectedMonth, selectedYear]);
-
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchData();
@@ -221,10 +241,15 @@ export default function MealAllowancePage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      setDataLoaded(false);
+      
+      // Tambahkan artificial delay untuk memastikan loading terlihat
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       if (selectedMonth === 'January') {
         setOfficers([]);
         setLoading(false);
+        setDataLoaded(true);
         return;
       }
       
@@ -331,6 +356,7 @@ export default function MealAllowancePage() {
         .filter(o => o.full_name?.toLowerCase().includes(searchTerm.toLowerCase()));
       
       setOfficers(withUmNet);
+      setDataLoaded(true);
       
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -500,15 +526,39 @@ export default function MealAllowancePage() {
   };
 
   // ===========================================
-  // RENDER
+  // RENDER LOADING STATE
   // ===========================================
+  if (loading && !refreshing && initialLoad) {
+    return (
+      <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#FFD700] border-t-transparent mb-4"></div>
+        <div className="text-[#FFD700] text-lg font-semibold animate-pulse">
+          Initializing Meal Allowance...
+        </div>
+        <div className="text-[#A7D8FF] text-sm mt-2">
+          Setting period: {selectedMonth} {selectedYear}
+        </div>
+        <div className="mt-4 flex gap-2">
+          <div className="w-2 h-2 bg-[#FFD700] rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+          <div className="w-2 h-2 bg-[#FFD700] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          <div className="w-2 h-2 bg-[#FFD700] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading && !refreshing) {
     return (
-      <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
-          <p className="mt-4 text-[#FFD700]">Loading data...</p>
+      <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#FFD700] border-t-transparent mb-4"></div>
+        <div className="text-[#FFD700] text-lg font-semibold animate-pulse">
+          Loading meal allowance data...
+        </div>
+        <div className="text-[#A7D8FF] text-sm mt-2">
+          {selectedMonth} {selectedYear}
+        </div>
+        <div className="mt-4 text-[#A7D8FF] text-sm">
+          Fetching officers and schedule...
         </div>
       </div>
     );
@@ -540,7 +590,7 @@ export default function MealAllowancePage() {
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       {/* Header */}
       <div className="mb-6 flex items-center gap-4 flex-wrap">
-        <Link href="/dashboard/financial" className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30">
+        <Link href="/dashboard/financial" className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30 transition-all duration-300 hover:scale-105">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
@@ -557,7 +607,7 @@ export default function MealAllowancePage() {
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-2 bg-[#1A2F4A] hover:bg-[#2A3F5A] text-[#FFD700] px-4 py-2 rounded-lg border border-[#FFD700]/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
         >
           <svg className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -565,6 +615,17 @@ export default function MealAllowancePage() {
           <span>{refreshing ? 'Syncing...' : 'Refresh & Sync'}</span>
         </button>
       </div>
+
+      {/* Loading Overlay untuk Refresh */}
+      {refreshing && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-[#0B1A33] p-6 rounded-lg border-2 border-[#FFD700]">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#FFD700] border-t-transparent mb-4 mx-auto"></div>
+            <p className="text-[#FFD700] font-semibold">Syncing data...</p>
+            <p className="text-[#A7D8FF] text-sm mt-2">Please wait</p>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 p-3 bg-[#0B1A33] rounded-lg border border-[#FFD700]/20 text-xs text-[#A7D8FF]">
         <div className="flex items-center gap-2 flex-wrap">
@@ -577,19 +638,35 @@ export default function MealAllowancePage() {
 
       {/* Filters Bar */}
       <div className="mb-6 flex flex-wrap gap-4 bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-        <select className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+        <select 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+          value={selectedMonth} 
+          onChange={(e) => setSelectedMonth(e.target.value)}
+        >
           {months.map(month => <option key={month} value={month}>{month}</option>)}
         </select>
-        <select className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+        
+        <select 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+          value={selectedYear} 
+          onChange={(e) => setSelectedYear(e.target.value)}
+        >
           {years.map(year => <option key={year} value={year}>{year}</option>)}
         </select>
-        <select className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} disabled={!isAdmin}>
+        
+        <select 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+          value={selectedDept} 
+          onChange={(e) => setSelectedDept(e.target.value)} 
+          disabled={!isAdmin}
+        >
           {availableDepartments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
         </select>
+        
         <input 
           type="text" 
           placeholder="Cari nama..." 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px]" 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white flex-1 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
           value={searchTerm} 
           onChange={(e) => setSearchTerm(e.target.value)} 
         />
@@ -597,23 +674,23 @@ export default function MealAllowancePage() {
         <div className="text-xs text-[#A7D8FF] flex items-center gap-2 ml-auto">
           <span>Last sync:</span>
           <span className="text-[#FFD700] font-medium">{lastSync.toLocaleTimeString()}</span>
-          <span className="text-green-400">✓</span>
+          {dataLoaded && <span className="text-green-400">✓</span>}
         </div>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 transform hover:scale-105 transition-all duration-300">
           <div className="text-[#A7D8FF] text-sm">Total Officer</div>
           <div className="text-2xl font-bold text-[#FFD700]">{officers.length}</div>
         </div>
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 transform hover:scale-105 transition-all duration-300">
           <div className="text-[#A7D8FF] text-sm">Total NET</div>
           <div className="text-2xl font-bold text-[#FFD700]">
             ${Math.round(officers.reduce((sum, o) => sum + (o.finalNet || 0), 0))}
           </div>
         </div>
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 transform hover:scale-105 transition-all duration-300">
           <div className="text-[#A7D8FF] text-sm">Paid / Unpaid</div>
           <div className="flex gap-3 text-lg font-bold">
             <span className="text-green-400">{officers.filter(o => o.is_paid).length}</span>
@@ -621,7 +698,7 @@ export default function MealAllowancePage() {
             <span className="text-red-400">{officers.filter(o => !o.is_paid).length}</span>
           </div>
         </div>
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 transform hover:scale-105 transition-all duration-300">
           <div className="text-[#A7D8FF] text-sm">Periode Data</div>
           <div className="text-sm font-medium text-white">
             {getPreviousMonthData(selectedMonth, selectedYear).month} {getPreviousMonthData(selectedMonth, selectedYear).year}
@@ -666,8 +743,12 @@ export default function MealAllowancePage() {
           </thead>
           
           <tbody>
-            {officers.map((officer) => (
-              <tr key={officer.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+            {officers.map((officer, index) => (
+              <tr 
+                key={officer.id} 
+                className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-all duration-300 animate-slideIn"
+                style={{ animationDelay: `${index * 30}ms` }}
+              >
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10">{officer.no}</td>
                 
                 <td className="px-3 py-2 border-r border-[#FFD700]/10">
@@ -676,7 +757,7 @@ export default function MealAllowancePage() {
                     
                     {/* Info prorate hanya untuk CS DP WD */}
                     {officer.department === 'CS DP WD' && officer.offRemaining > 0 && (
-                      <span className="text-[10px] text-green-400 mt-1">
+                      <span className="text-[10px] text-green-400 mt-1 animate-pulse">
                         +${officer.uangProrate} (prorate {officer.offRemaining} hari)
                       </span>
                     )}
@@ -688,7 +769,7 @@ export default function MealAllowancePage() {
                     {!officer.is_paid && isAdmin && (
                       <button
                         onClick={() => togglePaymentStatus(officer.id)}
-                        className="text-[10px] bg-gray-600 hover:bg-gray-700 text-white px-2 py-0.5 rounded mt-1 w-fit"
+                        className="text-[10px] bg-gray-600 hover:bg-gray-700 text-white px-2 py-0.5 rounded mt-1 w-fit transition-all duration-300 hover:scale-105"
                       >
                         Mark Paid
                       </button>
@@ -698,7 +779,7 @@ export default function MealAllowancePage() {
                       <button
                         onClick={() => handleEditClick(officer)}
                         disabled={officer.is_locked}
-                        className={`text-[10px] mt-1 px-2 py-0.5 rounded w-fit ${
+                        className={`text-[10px] mt-1 px-2 py-0.5 rounded w-fit transition-all duration-300 hover:scale-105 ${
                           officer.is_locked 
                             ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
                             : 'bg-[#FFD700] text-black hover:bg-[#FFD700]/80'
@@ -806,7 +887,7 @@ export default function MealAllowancePage() {
           <button 
             onClick={handleRefresh}
             disabled={refreshing}
-            className="text-[#FFD700] hover:underline flex items-center gap-1 disabled:opacity-50"
+            className="text-[#FFD700] hover:underline flex items-center gap-1 disabled:opacity-50 transition-all duration-300"
           >
             <svg className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -818,8 +899,8 @@ export default function MealAllowancePage() {
 
       {/* Edit Modal */}
       {editingOfficer && isAdmin && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full transform scale-100 transition-all duration-300">
             <h3 className="text-xl font-bold text-[#FFD700] mb-4">Edit {editingOfficer.full_name}</h3>
             
             <div className="space-y-4">
@@ -829,7 +910,7 @@ export default function MealAllowancePage() {
                   type="number" 
                   value={editForm.kasbon} 
                   onChange={(e) => setEditForm({...editForm, kasbon: parseInt(e.target.value) || 0})} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
                   min="0"
                 />
               </div>
@@ -840,7 +921,7 @@ export default function MealAllowancePage() {
                   type="number" 
                   value={editForm.cuti} 
                   onChange={(e) => setEditForm({...editForm, cuti: parseInt(e.target.value) || 0})} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
                   min="0"
                 />
                 <div className="flex gap-4 mt-1 text-[10px] text-[#A7D8FF]">
@@ -855,7 +936,7 @@ export default function MealAllowancePage() {
                   type="number" 
                   value={editForm.etc} 
                   onChange={(e) => setEditForm({...editForm, etc: parseInt(e.target.value) || 0})} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
                 />
               </div>
               
@@ -865,16 +946,22 @@ export default function MealAllowancePage() {
                   type="text" 
                   value={editForm.etc_note} 
                   onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white" 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
                   placeholder="Misal: Koreksi, Bonus, Denda"
                 />
               </div>
               
               <div className="flex gap-2 pt-4">
-                <button onClick={handleEditSave} className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80">
+                <button 
+                  onClick={handleEditSave} 
+                  className="flex-1 bg-[#FFD700] text-black px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/80 transition-all duration-300 hover:scale-105"
+                >
                   Simpan
                 </button>
-                <button onClick={() => setEditingOfficer(null)} className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600">
+                <button 
+                  onClick={() => setEditingOfficer(null)} 
+                  className="flex-1 bg-gray-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-600 transition-all duration-300 hover:scale-105"
+                >
                   Batal
                 </button>
               </div>
@@ -882,6 +969,37 @@ export default function MealAllowancePage() {
           </div>
         </div>
       )}
+
+      {/* Add animation styles */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+        
+        .animate-slideIn {
+          animation: slideIn 0.5s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
