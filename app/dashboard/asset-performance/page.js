@@ -36,6 +36,16 @@ export default function AssetPerformancePage() {
                       'July', 'August', 'September', 'October', 'November', 'December'];
   const years = ['2024', '2025', '2026', '2027'];
 
+  // Format IDR
+  const formatIDR = (amount) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
   // ===========================================
   // GENERATE HOURLY DATA (00:00 - 23:00) - 24 JAM
   // ===========================================
@@ -48,24 +58,29 @@ export default function AssetPerformancePage() {
       year: 'numeric' 
     });
     
-    // Loop dari jam 0 sampai 23 (24 jam)
     for (let hour = 0; hour < 24; hour++) {
       const hourStr = hour.toString().padStart(2, '0');
       
-      // Pattern realistic: pagi (08-11), siang (13-16), malam (19-22) ramai
       let transBase = 25;
       if (hour >= 8 && hour <= 11) transBase = 45;
       else if (hour >= 13 && hour <= 16) transBase = 65;
       else if (hour >= 19 && hour <= 22) transBase = 55;
       else if (hour >= 23 || hour <= 4) transBase = 12;
       
-      const transactions = Math.floor(Math.random() * 15) + transBase;
-      const volume = transactions * (Math.floor(Math.random() * 25) + 25);
+      const chatTrans = Math.floor(Math.random() * 10) + 5;
+      const depositTrans = Math.floor(Math.random() * 15) + transBase;
+      const withdrawalTrans = Math.floor(Math.random() * 12) + 8;
+      
+      const totalTrans = chatTrans + depositTrans + withdrawalTrans;
+      const volume = (depositTrans + withdrawalTrans) * (Math.floor(Math.random() * 25) + 25) * 15000; // Dalam IDR
       
       data.push({
         label: `${hourStr}:00`,
         hour: hour,
-        transactions: transactions,
+        chat: chatTrans,
+        deposit: depositTrans,
+        withdrawal: withdrawalTrans,
+        transactions: totalTrans,
         volume: volume,
         displayDate: displayDate
       });
@@ -78,25 +93,31 @@ export default function AssetPerformancePage() {
   // ===========================================
   const generateDailyData = (month, year) => {
     const data = [];
-    // Hitung jumlah hari dalam bulan yang dipilih
     const daysInMonth = new Date(year, month, 0).getDate();
     const monthName = months[month - 1];
     
     for (let day = 1; day <= daysInMonth; day++) {
-      // Pattern: akhir pekan lebih ramai
       const date = new Date(year, month - 1, day);
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       
       let transBase = isWeekend ? 150 : 100;
-      const transactions = Math.floor(Math.random() * 50) + transBase;
-      const volume = transactions * (Math.floor(Math.random() * 30) + 30);
+      
+      const chatTrans = Math.floor(Math.random() * 30) + 20;
+      const depositTrans = Math.floor(Math.random() * 50) + transBase;
+      const withdrawalTrans = Math.floor(Math.random() * 40) + 30;
+      
+      const totalTrans = chatTrans + depositTrans + withdrawalTrans;
+      const volume = (depositTrans + withdrawalTrans) * (Math.floor(Math.random() * 30) + 30) * 15000;
       
       data.push({
         label: `${monthName} ${day}`,
         day: day,
         dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
         isWeekend: isWeekend,
-        transactions: transactions,
+        chat: chatTrans,
+        deposit: depositTrans,
+        withdrawal: withdrawalTrans,
+        transactions: totalTrans,
         volume: volume,
         fullDate: `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
       });
@@ -112,22 +133,27 @@ export default function AssetPerformancePage() {
     const startMonth = period === 'jan-jun' ? 0 : 6;
     const endMonth = period === 'jan-jun' ? 6 : 12;
     
-    // Loop sesuai periode yang dipilih (6 bulan)
     for (let i = startMonth; i < endMonth; i++) {
-      // Pattern: bulan tertentu lebih ramai
       let transBase = 500;
-      if (i === 2 || i === 3) transBase = 800; // Mar-Apr ramai
-      if (i === 8 || i === 9) transBase = 750; // Sep-Oct ramai
-      if (i === 11) transBase = 900; // Dec ramai
+      if (i === 2 || i === 3) transBase = 800;
+      if (i === 8 || i === 9) transBase = 750;
+      if (i === 11) transBase = 900;
       
-      const transactions = Math.floor(Math.random() * 200) + transBase;
-      const volume = transactions * (Math.floor(Math.random() * 35) + 35);
+      const chatTrans = Math.floor(Math.random() * 200) + 150;
+      const depositTrans = Math.floor(Math.random() * 300) + transBase;
+      const withdrawalTrans = Math.floor(Math.random() * 250) + 200;
+      
+      const totalTrans = chatTrans + depositTrans + withdrawalTrans;
+      const volume = (depositTrans + withdrawalTrans) * (Math.floor(Math.random() * 35) + 35) * 15000;
       
       data.push({
         label: months[i],
         month: months[i],
         monthNum: i + 1,
-        transactions: transactions,
+        chat: chatTrans,
+        deposit: depositTrans,
+        withdrawal: withdrawalTrans,
+        transactions: totalTrans,
         volume: volume,
         period: period,
         year: year
@@ -166,12 +192,10 @@ export default function AssetPerformancePage() {
       
       setPerformanceData(data);
       
-      // Calculate summary
       const totalTrans = data.reduce((sum, item) => sum + item.transactions, 0);
       const totalVol = data.reduce((sum, item) => sum + item.volume, 0);
       const avgVal = totalTrans > 0 ? totalVol / totalTrans : 0;
       
-      // Find peak
       let peakItem = null;
       let peakValue = 0;
       data.forEach(item => {
@@ -202,14 +226,12 @@ export default function AssetPerformancePage() {
     setRefreshing(false);
   };
 
-  // Get max date for hourly filter (yesterday)
   const getMaxDate = () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     return yesterday.toISOString().split('T')[0];
   };
 
-  // Format display title
   const getDisplayTitle = () => {
     switch (filterType) {
       case 'hourly':
@@ -379,12 +401,12 @@ export default function AssetPerformancePage() {
           <div className="text-2xl font-bold text-[#FFD700]">{summaryData.totalTransactions.toLocaleString()}</div>
         </div>
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="text-[#A7D8FF] text-sm">Total Volume ($)</div>
-          <div className="text-2xl font-bold text-green-400">${summaryData.totalVolume.toLocaleString()}</div>
+          <div className="text-[#A7D8FF] text-sm">Total Volume</div>
+          <div className="text-2xl font-bold text-green-400">{formatIDR(summaryData.totalVolume)}</div>
         </div>
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Average Value</div>
-          <div className="text-2xl font-bold text-blue-400">${summaryData.avgValue.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-blue-400">{formatIDR(summaryData.avgValue)}</div>
         </div>
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Peak {filterType === 'hourly' ? 'Hour' : filterType === 'daily' ? 'Day' : 'Month'}</div>
@@ -412,10 +434,17 @@ export default function AssetPerformancePage() {
                 />
                 <YAxis yAxisId="left" stroke="#A7D8FF" />
                 <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" />
-                <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                  labelStyle={{ color: '#FFD700' }}
+                  formatter={(value, name) => {
+                    if (name === 'Volume (IDR)') return formatIDR(value);
+                    return value;
+                  }}
+                />
                 <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="transactions" stroke="#FFD700" name="Transactions" />
-                <Line yAxisId="right" type="monotone" dataKey="volume" stroke="#10b981" name="Volume ($)" />
+                <Line yAxisId="left" type="monotone" dataKey="transactions" stroke="#FFD700" name="Total Transactions" />
+                <Line yAxisId="right" type="monotone" dataKey="volume" stroke="#10b981" name="Volume (IDR)" />
               </LineChart>
             ) : (
               <BarChart data={performanceData}>
@@ -427,25 +456,27 @@ export default function AssetPerformancePage() {
                 />
                 <YAxis yAxisId="left" stroke="#A7D8FF" />
                 <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" />
-                <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                  labelStyle={{ color: '#FFD700' }}
+                  formatter={(value, name) => {
+                    if (name === 'Volume (IDR)') return formatIDR(value);
+                    return value;
+                  }}
+                />
                 <Legend />
-                <Bar yAxisId="left" dataKey="transactions" fill="#FFD700" name="Transactions" />
-                <Bar yAxisId="right" dataKey="volume" fill="#10b981" name="Volume ($)" />
+                <Bar yAxisId="left" dataKey="transactions" fill="#FFD700" name="Total Transactions" />
+                <Bar yAxisId="right" dataKey="volume" fill="#10b981" name="Volume (IDR)" />
               </BarChart>
             )}
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Detailed Table */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
-        <div className="p-4 border-b border-[#FFD700]/30 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-[#FFD700]">
-            {filterType === 'hourly' ? 'Hourly Details (24 Hours)' : 
-             filterType === 'daily' ? `Daily Details (${performanceData.length} Days)` : 
-             'Monthly Details (6 Months)'}
-          </h2>
-          <span className="text-xs text-[#A7D8FF]">{performanceData.length} entries</span>
+      {/* CHAT PERFORMANCE TABLE */}
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
+        <div className="p-4 border-b border-[#FFD700]/30 bg-red-500/10">
+          <h2 className="text-lg font-bold text-red-400">💬 CHAT PERFORMANCE</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -454,20 +485,96 @@ export default function AssetPerformancePage() {
                 <th className="px-4 py-3 text-left text-[#FFD700]">
                   {filterType === 'hourly' ? 'Hour' : filterType === 'daily' ? 'Date' : 'Month'}
                 </th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Transactions</th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Volume ($)</th>
-                <th className="px-4 py-3 text-right text-[#FFD700]">Average Value</th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">Chat Transactions</th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">% of Total</th>
               </tr>
             </thead>
             <tbody>
               {performanceData.map((item, idx) => (
-                <tr key={idx} className="border-b border-[#FFD700]/10">
+                <tr key={`chat-${idx}`} className="border-b border-[#FFD700]/10">
                   <td className="px-4 py-2 text-white">{item.label}</td>
-                  <td className="px-4 py-2 text-right text-[#FFD700]">{item.transactions}</td>
-                  <td className="px-4 py-2 text-right text-green-400">${item.volume}</td>
-                  <td className="px-4 py-2 text-right text-blue-400">${Math.round(item.volume / item.transactions)}</td>
+                  <td className="px-4 py-2 text-right text-red-400">{item.chat}</td>
+                  <td className="px-4 py-2 text-right text-[#A7D8FF]">
+                    {Math.round((item.chat / item.transactions) * 100)}%
+                  </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* DEPOSIT PERFORMANCE TABLE */}
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
+        <div className="p-4 border-b border-[#FFD700]/30 bg-green-500/10">
+          <h2 className="text-lg font-bold text-green-400">💰 DEPOSIT PERFORMANCE</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-[#0B1A33]">
+              <tr>
+                <th className="px-4 py-3 text-left text-[#FFD700]">
+                  {filterType === 'hourly' ? 'Hour' : filterType === 'daily' ? 'Date' : 'Month'}
+                </th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">Deposit Transactions</th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">Volume (IDR)</th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">Average Value</th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">% of Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {performanceData.map((item, idx) => {
+                const depositVolume = item.deposit * 250000; // Simulasi volume deposit
+                return (
+                  <tr key={`deposit-${idx}`} className="border-b border-[#FFD700]/10">
+                    <td className="px-4 py-2 text-white">{item.label}</td>
+                    <td className="px-4 py-2 text-right text-green-400">{item.deposit}</td>
+                    <td className="px-4 py-2 text-right text-green-400">{formatIDR(depositVolume)}</td>
+                    <td className="px-4 py-2 text-right text-blue-400">{formatIDR(depositVolume / item.deposit)}</td>
+                    <td className="px-4 py-2 text-right text-[#A7D8FF]">
+                      {Math.round((item.deposit / item.transactions) * 100)}%
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* WITHDRAWAL PERFORMANCE TABLE */}
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+        <div className="p-4 border-b border-[#FFD700]/30 bg-blue-500/10">
+          <h2 className="text-lg font-bold text-blue-400">💸 WITHDRAWAL PERFORMANCE</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-[#0B1A33]">
+              <tr>
+                <th className="px-4 py-3 text-left text-[#FFD700]">
+                  {filterType === 'hourly' ? 'Hour' : filterType === 'daily' ? 'Date' : 'Month'}
+                </th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">Withdrawal Transactions</th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">Volume (IDR)</th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">Average Value</th>
+                <th className="px-4 py-3 text-right text-[#FFD700]">% of Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {performanceData.map((item, idx) => {
+                const withdrawalVolume = item.withdrawal * 180000; // Simulasi volume withdrawal
+                return (
+                  <tr key={`withdrawal-${idx}`} className="border-b border-[#FFD700]/10">
+                    <td className="px-4 py-2 text-white">{item.label}</td>
+                    <td className="px-4 py-2 text-right text-blue-400">{item.withdrawal}</td>
+                    <td className="px-4 py-2 text-right text-blue-400">{formatIDR(withdrawalVolume)}</td>
+                    <td className="px-4 py-2 text-right text-blue-400">{formatIDR(withdrawalVolume / item.withdrawal)}</td>
+                    <td className="px-4 py-2 text-right text-[#A7D8FF]">
+                      {Math.round((item.withdrawal / item.transactions) * 100)}%
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
