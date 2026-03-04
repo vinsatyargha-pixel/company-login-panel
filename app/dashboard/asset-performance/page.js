@@ -689,52 +689,85 @@ export default function AssetPerformancePage() {
         </div>
       </div>
 
-      {/* Chart with 3 Lines */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle()}</h2>
-        
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            {selectedChartType === 'line' ? (
-              <LineChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                <XAxis 
-                  dataKey="label" 
-                  stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
-                />
-                <YAxis yAxisId="left" stroke="#A7D8FF" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                  labelStyle={{ color: '#FFD700' }}
-                />
-                <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={false} />
-                <Line yAxisId="left" type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={false} />
-                <Line yAxisId="left" type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={false} />
-              </LineChart>
-            ) : (
-              <BarChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                <XAxis 
-                  dataKey="label" 
-                  stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
-                />
-                <YAxis yAxisId="left" stroke="#A7D8FF" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                  labelStyle={{ color: '#FFD700' }}
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
-                <Bar yAxisId="left" dataKey="deposit" fill="#3b82f6" name="Deposit" />
-                <Bar yAxisId="left" dataKey="withdrawal" fill="#ef4444" name="Withdrawal" />
-              </BarChart>
-            )}
-          </ResponsiveContainer>
-        </div>
-      </div>
+      {/* Chart with 3 Lines and Dots */}
+<div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
+  <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle()}</h2>
+  
+  <div className="h-96">
+    <ResponsiveContainer width="100%" height="100%">
+      {selectedChartType === 'line' ? (
+        <LineChart data={performanceData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+          <XAxis 
+            dataKey="label" 
+            stroke="#A7D8FF" 
+            interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+          />
+          <YAxis yAxisId="left" stroke="#A7D8FF" />
+          <Tooltip 
+            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+            labelStyle={{ color: '#FFD700' }}
+          />
+          <Legend />
+          
+          {/* CS Line - Kuning dengan titik */}
+          <Line 
+            yAxisId="left" 
+            type="monotone" 
+            dataKey="chat" 
+            stroke="#FFD700" 
+            name="CS" 
+            strokeWidth={2} 
+            dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
+            activeDot={{ r: 6, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
+          />
+          
+          {/* Deposit Line - Biru dengan titik */}
+          <Line 
+            yAxisId="left" 
+            type="monotone" 
+            dataKey="deposit" 
+            stroke="#3b82f6" 
+            name="Deposit" 
+            strokeWidth={2} 
+            dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
+            activeDot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
+          />
+          
+          {/* Withdrawal Line - Merah dengan titik */}
+          <Line 
+            yAxisId="left" 
+            type="monotone" 
+            dataKey="withdrawal" 
+            stroke="#ef4444" 
+            name="Withdrawal" 
+            strokeWidth={2} 
+            dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
+            activeDot={{ r: 6, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
+          />
+        </LineChart>
+      ) : (
+        <BarChart data={performanceData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+          <XAxis 
+            dataKey="label" 
+            stroke="#A7D8FF" 
+            interval={filterType === 'hourly' ? 2 : filterType === 'daily' ? 5 : 0}
+          />
+          <YAxis yAxisId="left" stroke="#A7D8FF" />
+          <Tooltip 
+            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+            labelStyle={{ color: '#FFD700' }}
+          />
+          <Legend />
+          <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
+          <Bar yAxisId="left" dataKey="deposit" fill="#3b82f6" name="Deposit" />
+          <Bar yAxisId="left" dataKey="withdrawal" fill="#ef4444" name="Withdrawal" />
+        </BarChart>
+      )}
+    </ResponsiveContainer>
+  </div>
+</div>
 
       {/* CHAT PERFORMANCE TABLE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
