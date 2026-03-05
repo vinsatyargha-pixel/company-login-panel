@@ -84,24 +84,107 @@ export default function DashboardContent() {
   });
 
   // ===========================================
-  // STATE UNTUK PERFORMANCE METRICS - UPDATED
+  // STATE UNTUK PERFORMANCE METRICS
   // ===========================================
-  // ASSET PERFORMANCE - DATA REAL DARI SUPABASE
+  // ASSET PERFORMANCE
   const [assetPerformance, setAssetPerformance] = useState([]);
-  const [assetPerformanceFilter, setAssetPerformanceFilter] = useState('daily'); // 'daily' atau 'monthly'
+  const [assetPerformanceFilter, setAssetPerformanceFilter] = useState('daily');
   const [assetPerformanceYear, setAssetPerformanceYear] = useState('2026');
   const [assetPerformanceMonth, setAssetPerformanceMonth] = useState(new Date().getMonth() + 1);
   const [assetPerformancePeriod, setAssetPerformancePeriod] = useState('jan-jun');
   const [loadingAssetPerformance, setLoadingAssetPerformance] = useState(false);
   
-  // OFFICER PERFORMANCE - DATA DARI KPI
+  // OFFICER PIE CHARTS (PINDAHAN DARI OFFICERS-PERFORMANCE)
+  const [depositPieData, setDepositPieData] = useState([]);
+  const [withdrawalPieData, setWithdrawalPieData] = useState([]);
+  const [loadingPieData, setLoadingPieData] = useState(false);
+  
+  // OFFICER BAR CHART (TETAP ADA)
   const [officerPerformance, setOfficerPerformance] = useState([]);
   const [loadingOfficerData, setLoadingOfficerData] = useState(true);
 
   const { user, userJobRole, isAdmin } = useAuth();
 
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fullMonths = ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+  const years = ['2024', '2025', '2026', '2027', '2028'];
+
   // ===========================================
-  // FETCH ASSET PERFORMANCE DATA - REAL DARI SUPABASE
+  // FETCH OFFICER PIE DATA (PINDAHAN)
+  // ===========================================
+  const fetchOfficerPieData = async () => {
+    try {
+      setLoadingPieData(true);
+      
+      // Ambil officers
+      const { data: officers } = await supabase
+        .from('officers')
+        .select('panel_id, full_name')
+        .in('department', ['CS DP WD']);
+      
+      // Ambil deposit approved (7 hari terakhir)
+      const { data: depositData } = await supabase
+        .from('deposit_transactions')
+        .select('handler')
+        .eq('status', 'Approved')
+        .gte('approved_date', new Date(Date.now() - 7*24*60*60*1000).toISOString());
+      
+      // Ambil withdrawal approved (7 hari terakhir)
+      const { data: withdrawalData } = await supabase
+        .from('withdrawal_transactions')
+        .select('handler')
+        .eq('status', 'Approved')
+        .gte('approved_date', new Date(Date.now() - 7*24*60*60*1000).toISOString());
+      
+      // Hitung deposit
+      const depositMap = new Map();
+      depositData?.forEach(tx => {
+        const handler = tx.handler || 'SYSTEM';
+        depositMap.set(handler, (depositMap.get(handler) || 0) + 1);
+      });
+      
+      // Format deposit pie
+      const depositPie = [];
+      depositMap.forEach((value, key) => {
+        const officer = officers?.find(o => o.panel_id === key);
+        depositPie.push({
+          name: key === 'SYSTEM' ? 'SYSTEM' : key,
+          fullName: key === 'SYSTEM' ? 'SYSTEM (AUTO)' : (officer?.full_name || key),
+          value: value
+        });
+      });
+      
+      // Hitung withdrawal
+      const withdrawalMap = new Map();
+      withdrawalData?.forEach(tx => {
+        const handler = tx.handler || 'SYSTEM';
+        withdrawalMap.set(handler, (withdrawalMap.get(handler) || 0) + 1);
+      });
+      
+      // Format withdrawal pie
+      const withdrawalPie = [];
+      withdrawalMap.forEach((value, key) => {
+        const officer = officers?.find(o => o.panel_id === key);
+        withdrawalPie.push({
+          name: key === 'SYSTEM' ? 'SYSTEM' : key,
+          fullName: key === 'SYSTEM' ? 'SYSTEM (AUTO)' : (officer?.full_name || key),
+          value: value
+        });
+      });
+      
+      setDepositPieData(depositPie.sort((a, b) => b.value - a.value));
+      setWithdrawalPieData(withdrawalPie.sort((a, b) => b.value - a.value));
+      
+    } catch (error) {
+      console.error('Error fetching pie data:', error);
+    } finally {
+      setLoadingPieData(false);
+    }
+  };
+
+  // ===========================================
+  // FETCH ASSET PERFORMANCE DATA
   // ===========================================
   const fetchAssetPerformanceData = async () => {
     try {
@@ -112,62 +195,46 @@ export default function DashboardContent() {
       let data = [];
       
       if (assetPerformanceFilter === 'daily') {
-        // Daily - 1 bulan
         const startDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-01 00:00:00`;
         const endDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, assetPerformanceMonth, 0).getDate()} 23:59:59`;
         
-        // Fetch deposits
-        const { data: deposits, error: depositError } = await supabase
+        const { data: deposits } = await supabase
           .from('deposit_transactions')
-          .select('approved_date, brand')
+          .select('approved_date')
           .eq('brand', assetCode)
           .gte('approved_date', startDate)
           .lte('approved_date', endDate);
         
-        if (depositError) throw depositError;
-        
-        // Fetch withdrawals
-        const { data: withdrawals, error: withdrawalError } = await supabase
+        const { data: withdrawals } = await supabase
           .from('withdrawal_transactions')
-          .select('approved_date, brand')
+          .select('approved_date')
           .eq('brand', assetCode)
           .gte('approved_date', startDate)
           .lte('approved_date', endDate);
         
-        if (withdrawalError) throw withdrawalError;
-        
-        // Process daily data
         data = processDailyAssetData(deposits || [], withdrawals || [], assetPerformanceMonth, assetPerformanceYear);
         
       } else {
-        // Monthly - 6 bulan
         const startMonth = assetPerformancePeriod === 'jan-jun' ? 1 : 7;
         const endMonth = assetPerformancePeriod === 'jan-jun' ? 6 : 12;
         
         const startDate = `${assetPerformanceYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
         const endDate = `${assetPerformanceYear}-${String(endMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, endMonth, 0).getDate()} 23:59:59`;
         
-        // Fetch deposits
-        const { data: deposits, error: depositError } = await supabase
+        const { data: deposits } = await supabase
           .from('deposit_transactions')
-          .select('approved_date, brand')
+          .select('approved_date')
           .eq('brand', assetCode)
           .gte('approved_date', startDate)
           .lte('approved_date', endDate);
         
-        if (depositError) throw depositError;
-        
-        // Fetch withdrawals
-        const { data: withdrawals, error: withdrawalError } = await supabase
+        const { data: withdrawals } = await supabase
           .from('withdrawal_transactions')
-          .select('approved_date, brand')
+          .select('approved_date')
           .eq('brand', assetCode)
           .gte('approved_date', startDate)
           .lte('approved_date', endDate);
         
-        if (withdrawalError) throw withdrawalError;
-        
-        // Process monthly data
         data = processMonthlyAssetData(deposits || [], withdrawals || [], assetPerformancePeriod, assetPerformanceYear);
       }
       
@@ -187,7 +254,6 @@ export default function DashboardContent() {
     const currentMonth = today.getMonth() + 1;
     const currentYear = today.getFullYear();
     
-    // Inisialisasi array untuk setiap hari
     const days = Array.from({ length: daysInMonth }, (_, i) => {
       const day = i + 1;
       const isPastDate = (year < currentYear) || 
@@ -197,7 +263,7 @@ export default function DashboardContent() {
       return {
         name: `${day}`,
         day: day,
-        chat: isPastDate ? 0 : null, // CHAT KOSONG, kalo future date null
+        chat: isPastDate ? 0 : null,
         deposit: 0,
         withdrawal: 0,
         isPastDate: isPastDate,
@@ -205,35 +271,20 @@ export default function DashboardContent() {
       };
     });
     
-    // Proses deposits
     deposits.forEach(deposit => {
       const date = new Date(deposit.approved_date);
       const day = date.getDate() - 1;
-      const dayData = days[day];
-      
-      if (dayData) {
-        dayData.deposit++;
-      }
+      if (days[day]) days[day].deposit++;
     });
     
-    // Proses withdrawals
     withdrawals.forEach(withdrawal => {
       const date = new Date(withdrawal.approved_date);
       const day = date.getDate() - 1;
-      const dayData = days[day];
-      
-      if (dayData) {
-        dayData.withdrawal++;
-      }
+      if (days[day]) days[day].withdrawal++;
     });
     
     return days;
   };
-
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const fullMonths = ['January', 'February', 'March', 'April', 'May', 'June', 
-                      'July', 'August', 'September', 'October', 'November', 'December'];
-  const years = ['2024', '2025', '2026', '2027', '2028'];
 
   const processMonthlyAssetData = (deposits, withdrawals, period, year) => {
     const startMonth = period === 'jan-jun' ? 0 : 6;
@@ -249,30 +300,26 @@ export default function DashboardContent() {
         name: months[monthIndex],
         month: months[monthIndex],
         monthNum: monthIndex + 1,
-        chat: isPastDate ? 0 : null, // CHAT KOSONG
+        chat: isPastDate ? 0 : null,
         deposit: 0,
         withdrawal: 0,
         isPastDate: isPastDate
       };
     });
     
-    // Proses deposits
     deposits.forEach(deposit => {
       const date = new Date(deposit.approved_date);
       const month = date.getMonth();
       const monthIndex = month - startMonth;
-      
       if (monthIndex >= 0 && monthIndex < 6) {
         monthlyData[monthIndex].deposit++;
       }
     });
     
-    // Proses withdrawals
     withdrawals.forEach(withdrawal => {
       const date = new Date(withdrawal.approved_date);
       const month = date.getMonth();
       const monthIndex = month - startMonth;
-      
       if (monthIndex >= 0 && monthIndex < 6) {
         monthlyData[monthIndex].withdrawal++;
       }
@@ -282,39 +329,29 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FETCH OFFICER PERFORMANCE DATA
+  // FETCH OFFICER BAR CHART DATA
   // ===========================================
   const fetchOfficerPerformance = async () => {
     try {
       setLoadingOfficerData(true);
       
-      // Ambil data dari tabel officers (untuk mendapatkan nama officer)
-      const { data: officers, error: officersError } = await supabase
+      const { data: officers } = await supabase
         .from('officers')
         .select('id, full_name')
         .in('department', ['CS DP WD'])
         .eq('status', 'REGULAR')
         .order('full_name');
 
-      if (officersError) throw officersError;
-
-      // Ambil data transaksi deposit
-      const { data: depositData, error: depositError } = await supabase
+      const { data: depositData } = await supabase
         .from('deposit_transactions')
         .select('handler')
         .gte('approved_date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString());
 
-      if (depositError) throw depositError;
-
-      // Ambil data transaksi withdrawal
-      const { data: withdrawalData, error: withdrawalError } = await supabase
+      const { data: withdrawalData } = await supabase
         .from('withdrawal_transactions')
         .select('handler')
         .gte('approved_date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString());
 
-      if (withdrawalError) throw withdrawalError;
-
-      // Hitung total transaksi per officer
       const officerMap = new Map();
       
       officers?.forEach(officer => {
@@ -326,7 +363,6 @@ export default function DashboardContent() {
         });
       });
 
-      // Hitung deposit
       depositData?.forEach(tx => {
         const officer = officers?.find(o => o.id === tx.handler);
         if (officer && officerMap.has(officer.id)) {
@@ -336,7 +372,6 @@ export default function DashboardContent() {
         }
       });
 
-      // Hitung withdrawal
       withdrawalData?.forEach(tx => {
         const officer = officers?.find(o => o.id === tx.handler);
         if (officer && officerMap.has(officer.id)) {
@@ -346,7 +381,6 @@ export default function DashboardContent() {
         }
       });
 
-      // Format untuk chart (ambil top 8 officer dengan total tertinggi)
       const chartData = Array.from(officerMap.values())
         .filter(item => item.total > 0)
         .sort((a, b) => b.total - a.total)
@@ -368,7 +402,7 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FETCH BANK ACCOUNTS DARI SUPABASE
+  // FETCH BANK ACCOUNTS
   // ===========================================
   const fetchBankAccounts = async () => {
     try {
@@ -379,10 +413,8 @@ export default function DashboardContent() {
 
       if (error) throw error;
       
-      console.log('📊 Data dari Supabase:', data);
       setBankAccounts(data || []);
       
-      // AMBIL DAFTAR ASSET UNIK (hanya dari bank yang aktif & display YES)
       const activeBanks = data?.filter(b => 
         (b.role?.toUpperCase() === 'DEPOSIT' || b.role?.toUpperCase() === 'WITHDRAW') && 
         b.display_used === 'YES'
@@ -402,28 +434,21 @@ export default function DashboardContent() {
   // SYNC KE SUPABASE
   // ===========================================
   const syncToSupabase = async () => {
-    console.log('📤 START: Syncing to Supabase...');
     setSyncStatus('syncing');
     setSyncMessage('Menyinkronkan ke database...');
     
     try {
       const response = await fetch('/api/banks/sync', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       });
       
       const result = await response.json();
-      console.log('📥 Sync response:', result);
       
       if (result.success) {
         setSyncStatus('success');
         setSyncMessage(`✅ ${result.message}`);
-        
-        // Refresh data setelah sync
         fetchBankAccounts();
-        
         setTimeout(() => {
           setSyncStatus(null);
           setSyncMessage('');
@@ -433,120 +458,41 @@ export default function DashboardContent() {
         setSyncMessage(`❌ Gagal: ${result.error}`);
       }
     } catch (err) {
-      console.error('❌ Sync error:', err);
       setSyncStatus('error');
       setSyncMessage('❌ Gagal koneksi ke server');
     }
   };
 
-  // LOAD DARI LOCALSTORAGE (HANYA DI BROWSER)
-  useEffect(() => {
-    const savedDeposit = localStorage.getItem('depositMethods');
-    if (savedDeposit) {
-      setDepositMethods(JSON.parse(savedDeposit));
-    }
-    
-    const savedWithdrawal = localStorage.getItem('withdrawalMethods');
-    if (savedWithdrawal) {
-      setWithdrawalMethods(JSON.parse(savedWithdrawal));
-    }
-    
-    const savedSupport = localStorage.getItem('supportLines');
-    if (savedSupport) {
-      setSupportLines(JSON.parse(savedSupport));
-    }
-  }, []);
-
-  // SIMPAN KE LOCALSTORAGE SETIAP KALI STATE BERUBAH
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
-    }
-  }, [depositMethods]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
-    }
-  }, [withdrawalMethods]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('supportLines', JSON.stringify(supportLines));
-    }
-  }, [supportLines]);
-
-  useEffect(() => {
-    fetchDashboardData();
-    fetchRecentActivities();
-    fetchPaymentData();
-    fetchPerformanceData();
-    fetchBankAccounts();
-    fetchOfficerPerformance();
-    fetchAssetPerformanceData(); // TAMBAHKAN UNTUK ASSET PERFORMANCE
-  }, [chartFilter, chartYear, selectedAsset, assetPerformanceFilter, assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
-
-  // LOAD LAST READ TIMESTAMP DARI LOCALSTORAGE
-  useEffect(() => {
-    const saved = localStorage.getItem('lastReadActivity');
-    if (saved) {
-      setLastReadTimestamp(saved);
-    }
-  }, []);
-
-  // CEK APAKAH ADA AKTIVITAS BARU
-  useEffect(() => {
-    if (activities.length > 0) {
-      const latestActivity = new Date(activities[0].timestamp).getTime();
-      const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
-      
-      setHasNewActivity(latestActivity > lastRead);
-    }
-  }, [activities, lastReadTimestamp]);
-
-  // LISTEN EVENT DARI ACTIVITY LOG
-  useEffect(() => {
-    const handleActivityRead = () => {
-      const saved = localStorage.getItem('lastReadActivity');
-      if (saved) {
-        setLastReadTimestamp(saved);
-      }
-    };
-    window.addEventListener('activityRead', handleActivityRead);
-    return () => window.removeEventListener('activityRead', handleActivityRead);
-  }, []);
-
   // ===========================================
-  // FUNGSI TOGGLE SERVICE (ON/OFF)
+  // FETCH DASHBOARD DATA
   // ===========================================
-  const handleToggleService = async (type, serviceName, newStatus) => {
+  const fetchDashboardData = async () => {
     try {
-      if (type === 'deposit') {
-        setUpdatingStatus(prev => ({ ...prev, deposit: true }));
-        setDepositMethods(prev => ({ ...prev, [serviceName]: newStatus }));
-        
-      } else if (type === 'withdrawal') {
-        setUpdatingStatus(prev => ({ ...prev, withdrawal: true }));
-        setWithdrawalMethods(prev => ({ ...prev, [serviceName]: newStatus }));
-        
-      } else if (type === 'support') {
-        setUpdatingStatus(prev => ({ ...prev, support: true }));
-        setSupportLines(prev => ({ ...prev, [serviceName]: newStatus }));
-      }
-      
+      setLoading(true);
+
+      const { count: totalAssets } = await supabase
+        .from('assets')
+        .select('*', { count: 'exact' });
+
+      const { count: activeOfficers } = await supabase
+        .from('officers')
+        .select('*', { count: 'exact' })
+        .or('status.eq.TRAINING,status.eq.REGULAR,status.eq.regular,status.eq.training,status.eq.active');
+
+      setDashboardData({ totalAssets: totalAssets || 0, activeOfficers: activeOfficers || 0 });
+
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error('Error fetching dashboard data:', error);
     } finally {
-      setUpdatingStatus({ deposit: false, withdrawal: false, support: false });
+      setLoading(false);
     }
   };
 
   // ===========================================
-  // FETCH DATA
+  // FETCH PAYMENT DATA
   // ===========================================
   const fetchPaymentData = async () => {
     try {
-      // Data untuk Traffic Volume
       const { data: depositData } = await supabase
         .from('transactions')
         .select('amount')
@@ -576,36 +522,71 @@ export default function DashboardContent() {
     }
   };
 
-  const fetchPerformanceData = async () => {
-    try {
-      // TODO: Fetch real data
-    } catch (error) {
-      console.error('Error fetching performance data:', error);
+  // ===========================================
+  // USE EFFECTS
+  // ===========================================
+  useEffect(() => {
+    fetchDashboardData();
+    fetchPaymentData();
+    fetchBankAccounts();
+    fetchOfficerPerformance();
+    fetchAssetPerformanceData();
+    fetchOfficerPieData(); // PINDAHAN: ambil data pie chart
+  }, [chartFilter, chartYear, selectedAsset, assetPerformanceFilter, 
+      assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
+
+  // LOAD DARI LOCALSTORAGE
+  useEffect(() => {
+    const savedDeposit = localStorage.getItem('depositMethods');
+    if (savedDeposit) setDepositMethods(JSON.parse(savedDeposit));
+    
+    const savedWithdrawal = localStorage.getItem('withdrawalMethods');
+    if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
+    
+    const savedSupport = localStorage.getItem('supportLines');
+    if (savedSupport) setSupportLines(JSON.parse(savedSupport));
+    
+    const saved = localStorage.getItem('lastReadActivity');
+    if (saved) setLastReadTimestamp(saved);
+  }, []);
+
+  // SIMPAN KE LOCALSTORAGE
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
+      localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
+      localStorage.setItem('supportLines', JSON.stringify(supportLines));
     }
-  };
+  }, [depositMethods, withdrawalMethods, supportLines]);
 
-  const fetchDashboardData = async () => {
+  // CEK AKTIVITAS BARU
+  useEffect(() => {
+    if (activities.length > 0) {
+      const latestActivity = new Date(activities[0].timestamp).getTime();
+      const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
+      setHasNewActivity(latestActivity > lastRead);
+    }
+  }, [activities, lastReadTimestamp]);
+
+  // ===========================================
+  // FUNGSI TOGGLE SERVICE
+  // ===========================================
+  const handleToggleService = async (type, serviceName, newStatus) => {
     try {
-      setLoading(true);
-
-      const { count: totalAssets } = await supabase
-        .from('assets')
-        .select('*', { count: 'exact' });
-
-      const { count: activeOfficers } = await supabase
-        .from('officers')
-        .select('*', { count: 'exact' })
-        .or('status.eq.TRAINING,status.eq.REGULAR,status.eq.regular,status.eq.training,status.eq.active');
-
-      setDashboardData({
-        totalAssets: totalAssets || 0,
-        activeOfficers: activeOfficers || 0
-      });
-
+      if (type === 'deposit') {
+        setUpdatingStatus(prev => ({ ...prev, deposit: true }));
+        setDepositMethods(prev => ({ ...prev, [serviceName]: newStatus }));
+      } else if (type === 'withdrawal') {
+        setUpdatingStatus(prev => ({ ...prev, withdrawal: true }));
+        setWithdrawalMethods(prev => ({ ...prev, [serviceName]: newStatus }));
+      } else if (type === 'support') {
+        setUpdatingStatus(prev => ({ ...prev, support: true }));
+        setSupportLines(prev => ({ ...prev, [serviceName]: newStatus }));
+      }
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Error updating status:', error);
     } finally {
-      setLoading(false);
+      setUpdatingStatus({ deposit: false, withdrawal: false, support: false });
     }
   };
 
@@ -618,10 +599,7 @@ export default function DashboardContent() {
       
       const { data: auditData } = await supabase
         .from('audit_logs')
-        .select(`
-          *,
-          officers!changed_by (full_name, email)
-        `)
+        .select('*, officers!changed_by (full_name, email)')
         .order('changed_at', { ascending: false })
         .limit(20);
 
@@ -664,10 +642,10 @@ export default function DashboardContent() {
       adminOnly: false
     },
     {
-      title: '📈 OFFICERS KPI',
+      title: '📊 OFFICER KPI',
       description: 'Officers Key Performance Indicators',
-      href: '/dashboard/officers-kpi',
-      icon: '📈',
+      href: '/dashboard/officers-performance',
+      icon: '📊',
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
       adminOnly: false
@@ -691,15 +669,6 @@ export default function DashboardContent() {
       adminOnly: true
     }
   ];
-
-  const filterOptions = [
-    { value: 'daily', label: 'Daily' },
-    { value: 'weekly', label: 'Weekly' },
-    { value: 'monthly', label: 'Monthly' },
-    { value: 'yearly', label: 'Yearly' }
-  ];
-
-  const yearOptions = ['2024', '2025', '2026', '2027', '2028'];
 
   if (loading) return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
@@ -905,7 +874,7 @@ export default function DashboardContent() {
         )}
       </div>
 
-      {/* MAIN DASHBOARD GRID - 3 KOLOM */}
+      {/* ROW 1 - 3 KOLOM (TRAFFIC VOLUME, DEPOSIT METHOD, WITHDRAWAL METHOD) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
         {/* KOLOM 1: TRAFFIC VOLUME */}
@@ -1043,7 +1012,102 @@ export default function DashboardContent() {
         </div>
       </div>
 
-      {/* ROW 2 - GRID 3 KOLOM */}
+      {/* ROW 2 - 2 KOLOM (OFFICER PIE CHARTS) - PINDAHAN DARI OFFICERS-PERFORMANCE */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Deposit Pie Chart */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-blue-500/30 p-6">
+          <h3 className="text-lg font-bold text-blue-400 mb-4 text-center">
+            DEPOSIT APPROVED DISTRIBUTION
+          </h3>
+          {loadingPieData ? (
+            <div className="h-64 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+            </div>
+          ) : depositPieData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={depositPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    labelLine={false}
+                  >
+                    {depositPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 50%)`} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                    formatter={(value, name, props) => {
+                      return [`${value} approved`, props.payload.fullName];
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-[#A7D8FF]">
+              No deposit approved data
+            </div>
+          )}
+          <div className="mt-2 text-center text-xs text-[#A7D8FF]">
+            Total Approved: {depositPieData.reduce((sum, item) => sum + item.value, 0)}
+          </div>
+        </div>
+
+        {/* Withdrawal Pie Chart */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-green-500/30 p-6">
+          <h3 className="text-lg font-bold text-green-400 mb-4 text-center">
+            WITHDRAWAL APPROVED DISTRIBUTION
+          </h3>
+          {loadingPieData ? (
+            <div className="h-64 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+            </div>
+          ) : withdrawalPieData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={withdrawalPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    labelLine={false}
+                  >
+                    {withdrawalPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={`hsl(${index * 45}, 70%, 50%)`} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                    formatter={(value, name, props) => {
+                      return [`${value} approved`, props.payload.fullName];
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-[#A7D8FF]">
+              No withdrawal approved data
+            </div>
+          )}
+          <div className="mt-2 text-center text-xs text-[#A7D8FF]">
+            Total Approved: {withdrawalPieData.reduce((sum, item) => sum + item.value, 0)}
+          </div>
+        </div>
+      </div>
+
+      {/* ROW 3 - GRID 3 KOLOM (SUPPORT, ASSET PERFORMANCE, OFFICER BAR CHART) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
         {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
@@ -1097,7 +1161,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: ASSET PERFORMANCE - DENGAN FILTER */}
+        {/* KOLOM 2: ASSET PERFORMANCE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <Link href="/dashboard/asset-performance" className="block group cursor-pointer">
             <div className="flex items-center justify-between mb-2">
@@ -1194,7 +1258,6 @@ export default function DashboardContent() {
                     />
                     <Legend />
                     
-                    {/* CS Line - Kuning (KOSONG) */}
                     <Line 
                       type="monotone" 
                       dataKey="chat" 
@@ -1206,7 +1269,6 @@ export default function DashboardContent() {
                       connectNulls={false}
                     />
                     
-                    {/* Deposit Line - Biru */}
                     <Line 
                       type="monotone" 
                       dataKey="deposit" 
@@ -1218,7 +1280,6 @@ export default function DashboardContent() {
                       connectNulls={false}
                     />
                     
-                    {/* Withdrawal Line - Merah */}
                     <Line 
                       type="monotone" 
                       dataKey="withdrawal" 
@@ -1240,11 +1301,11 @@ export default function DashboardContent() {
           </Link>
         </div>
 
-        {/* KOLOM 3: OFFICER PERFORMANCE - DARI DATA KPI */}
+        {/* KOLOM 3: OFFICER PERFORMANCE BAR CHART (TETAP ADA) */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <Link href="/dashboard/officers-performance" className="block group">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance</h3>
+              <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance (30d)</h3>
               <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
