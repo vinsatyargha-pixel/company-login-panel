@@ -953,7 +953,7 @@ export default function DashboardContent() {
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <Link href="/dashboard/officers-performance" className="block group">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance (Bulan Ini)</h3>
+              <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance </h3>
               <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
