@@ -84,10 +84,15 @@ export default function DashboardContent() {
   });
 
   // ===========================================
-  // STATE UNTUK PERFORMANCE METRICS
+  // STATE UNTUK PERFORMANCE METRICS - UPDATED
   // ===========================================
-  // ASSET PERFORMANCE - DATA HARIAN 1 BULAN (3 LINES)
+  // ASSET PERFORMANCE - DATA REAL DARI SUPABASE
   const [assetPerformance, setAssetPerformance] = useState([]);
+  const [assetPerformanceFilter, setAssetPerformanceFilter] = useState('daily'); // 'daily' atau 'monthly'
+  const [assetPerformanceYear, setAssetPerformanceYear] = useState('2026');
+  const [assetPerformanceMonth, setAssetPerformanceMonth] = useState(new Date().getMonth() + 1);
+  const [assetPerformancePeriod, setAssetPerformancePeriod] = useState('jan-jun');
+  const [loadingAssetPerformance, setLoadingAssetPerformance] = useState(false);
   
   // OFFICER PERFORMANCE - DATA DARI KPI
   const [officerPerformance, setOfficerPerformance] = useState([]);
@@ -96,47 +101,184 @@ export default function DashboardContent() {
   const { user, userJobRole, isAdmin } = useAuth();
 
   // ===========================================
-  // GENERATE DAILY ASSET PERFORMANCE DATA (3 LINES)
+  // FETCH ASSET PERFORMANCE DATA - REAL DARI SUPABASE
   // ===========================================
-  const generateDailyAssetData = () => {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth() + 1;
-    const currentDate = today.getDate();
-    
-    // Hitung jumlah hari dalam bulan ini
-    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-    
-    const data = [];
-    
-    for (let day = 1; day <= daysInMonth; day++) {
-      // Cek apakah tanggal ini sudah lewat atau belum
-      const isPastDate = day <= currentDate;
+  const fetchAssetPerformanceData = async () => {
+    try {
+      setLoadingAssetPerformance(true);
       
-      // Generate data untuk tanggal yang sudah lewat
-      let chat = null;
-      let deposit = null;
-      let withdrawal = null;
+      const assetCode = selectedAsset === 'all' ? 'XLY' : selectedAsset;
       
-      if (isPastDate) {
-        // Random value dengan pola yang berbeda untuk setiap line
-        chat = Math.floor(Math.random() * 30) + 10;      // 10-40
-        deposit = Math.floor(Math.random() * 50) + 30;   // 30-80
-        withdrawal = Math.floor(Math.random() * 40) + 20; // 20-60
+      let data = [];
+      
+      if (assetPerformanceFilter === 'daily') {
+        // Daily - 1 bulan
+        const startDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-01 00:00:00`;
+        const endDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, assetPerformanceMonth, 0).getDate()} 23:59:59`;
+        
+        // Fetch deposits
+        const { data: deposits, error: depositError } = await supabase
+          .from('deposit_transactions')
+          .select('approved_date, brand')
+          .eq('brand', assetCode)
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate);
+        
+        if (depositError) throw depositError;
+        
+        // Fetch withdrawals
+        const { data: withdrawals, error: withdrawalError } = await supabase
+          .from('withdrawal_transactions')
+          .select('approved_date, brand')
+          .eq('brand', assetCode)
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate);
+        
+        if (withdrawalError) throw withdrawalError;
+        
+        // Process daily data
+        data = processDailyAssetData(deposits || [], withdrawals || [], assetPerformanceMonth, assetPerformanceYear);
+        
+      } else {
+        // Monthly - 6 bulan
+        const startMonth = assetPerformancePeriod === 'jan-jun' ? 1 : 7;
+        const endMonth = assetPerformancePeriod === 'jan-jun' ? 6 : 12;
+        
+        const startDate = `${assetPerformanceYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
+        const endDate = `${assetPerformanceYear}-${String(endMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, endMonth, 0).getDate()} 23:59:59`;
+        
+        // Fetch deposits
+        const { data: deposits, error: depositError } = await supabase
+          .from('deposit_transactions')
+          .select('approved_date, brand')
+          .eq('brand', assetCode)
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate);
+        
+        if (depositError) throw depositError;
+        
+        // Fetch withdrawals
+        const { data: withdrawals, error: withdrawalError } = await supabase
+          .from('withdrawal_transactions')
+          .select('approved_date, brand')
+          .eq('brand', assetCode)
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate);
+        
+        if (withdrawalError) throw withdrawalError;
+        
+        // Process monthly data
+        data = processMonthlyAssetData(deposits || [], withdrawals || [], assetPerformancePeriod, assetPerformanceYear);
       }
       
-      data.push({
+      setAssetPerformance(data);
+      
+    } catch (error) {
+      console.error('Error fetching asset performance:', error);
+    } finally {
+      setLoadingAssetPerformance(false);
+    }
+  };
+
+  const processDailyAssetData = (deposits, withdrawals, month, year) => {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const today = new Date();
+    const currentDate = today.getDate();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+    
+    // Inisialisasi array untuk setiap hari
+    const days = Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      const isPastDate = (year < currentYear) || 
+                        (year === currentYear && month < currentMonth) ||
+                        (year === currentYear && month === currentMonth && day <= currentDate);
+      
+      return {
         name: `${day}`,
         day: day,
-        chat: chat,
-        deposit: deposit,
-        withdrawal: withdrawal,
+        chat: isPastDate ? 0 : null, // CHAT KOSONG, kalo future date null
+        deposit: 0,
+        withdrawal: 0,
         isPastDate: isPastDate,
-        fullDate: `${currentYear}-${currentMonth.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`
-      });
-    }
+        fullDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      };
+    });
     
-    setAssetPerformance(data);
+    // Proses deposits
+    deposits.forEach(deposit => {
+      const date = new Date(deposit.approved_date);
+      const day = date.getDate() - 1;
+      const dayData = days[day];
+      
+      if (dayData) {
+        dayData.deposit++;
+      }
+    });
+    
+    // Proses withdrawals
+    withdrawals.forEach(withdrawal => {
+      const date = new Date(withdrawal.approved_date);
+      const day = date.getDate() - 1;
+      const dayData = days[day];
+      
+      if (dayData) {
+        dayData.withdrawal++;
+      }
+    });
+    
+    return days;
+  };
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fullMonths = ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December'];
+  const years = ['2024', '2025', '2026', '2027', '2028'];
+
+  const processMonthlyAssetData = (deposits, withdrawals, period, year) => {
+    const startMonth = period === 'jan-jun' ? 0 : 6;
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    
+    const monthlyData = Array.from({ length: 6 }, (_, i) => {
+      const monthIndex = startMonth + i;
+      const isPastDate = (year < currentYear) || (year === currentYear && monthIndex <= currentMonth);
+      
+      return {
+        name: months[monthIndex],
+        month: months[monthIndex],
+        monthNum: monthIndex + 1,
+        chat: isPastDate ? 0 : null, // CHAT KOSONG
+        deposit: 0,
+        withdrawal: 0,
+        isPastDate: isPastDate
+      };
+    });
+    
+    // Proses deposits
+    deposits.forEach(deposit => {
+      const date = new Date(deposit.approved_date);
+      const month = date.getMonth();
+      const monthIndex = month - startMonth;
+      
+      if (monthIndex >= 0 && monthIndex < 6) {
+        monthlyData[monthIndex].deposit++;
+      }
+    });
+    
+    // Proses withdrawals
+    withdrawals.forEach(withdrawal => {
+      const date = new Date(withdrawal.approved_date);
+      const month = date.getMonth();
+      const monthIndex = month - startMonth;
+      
+      if (monthIndex >= 0 && monthIndex < 6) {
+        monthlyData[monthIndex].withdrawal++;
+      }
+    });
+    
+    return monthlyData;
   };
 
   // ===========================================
@@ -340,9 +482,9 @@ export default function DashboardContent() {
     fetchPaymentData();
     fetchPerformanceData();
     fetchBankAccounts();
-    generateDailyAssetData();
-    fetchOfficerPerformance(); // AMBIL DATA OFFICER PERFORMANCE
-  }, [chartFilter, chartYear]);
+    fetchOfficerPerformance();
+    fetchAssetPerformanceData(); // TAMBAHKAN UNTUK ASSET PERFORMANCE
+  }, [chartFilter, chartYear, selectedAsset, assetPerformanceFilter, assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
 
   // LOAD LAST READ TIMESTAMP DARI LOCALSTORAGE
   useEffect(() => {
@@ -955,9 +1097,9 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: ASSET PERFORMANCE - DAILY CHART (1 BULAN) DENGAN 3 LINES */}
+        {/* KOLOM 2: ASSET PERFORMANCE - DENGAN FILTER */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <a href="/dashboard/asset-performance" className="block group cursor-pointer">
+          <Link href="/dashboard/asset-performance" className="block group cursor-pointer">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-bold text-[#FFD700]">📈 Asset Performance</h3>
               <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
@@ -967,75 +1109,135 @@ export default function DashboardContent() {
               </div>
             </div>
             
+            {/* FILTER ASSET PERFORMANCE */}
+            <div className="flex gap-2 mb-3" onClick={(e) => e.preventDefault()}>
+              <select
+                value={assetPerformanceFilter}
+                onChange={(e) => setAssetPerformanceFilter(e.target.value)}
+                className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+              >
+                <option value="daily">Daily (1 Bulan)</option>
+                <option value="monthly">Monthly (6 Bulan)</option>
+              </select>
+              
+              {assetPerformanceFilter === 'daily' ? (
+                <>
+                  <select
+                    value={assetPerformanceMonth}
+                    onChange={(e) => setAssetPerformanceMonth(parseInt(e.target.value))}
+                    className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                  >
+                    {fullMonths.map((month, index) => (
+                      <option key={month} value={index + 1}>{month}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={assetPerformanceYear}
+                    onChange={(e) => setAssetPerformanceYear(e.target.value)}
+                    className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                  >
+                    {years.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <>
+                  <select
+                    value={assetPerformancePeriod}
+                    onChange={(e) => setAssetPerformancePeriod(e.target.value)}
+                    className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                  >
+                    <option value="jan-jun">Jan-Jun</option>
+                    <option value="jul-dec">Jul-Dec</option>
+                  </select>
+                  <select
+                    value={assetPerformanceYear}
+                    onChange={(e) => setAssetPerformanceYear(e.target.value)}
+                    className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                  >
+                    {years.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+            </div>
+            
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={assetPerformance} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="#A7D8FF" 
-                    tick={{ fill: '#A7D8FF', fontSize: 10 }}
-                    interval={Math.floor(assetPerformance.length / 7)}
-                  />
-                  <YAxis 
-                    stroke="#A7D8FF" 
-                    tick={{ fill: '#A7D8FF', fontSize: 10 }}
-                    domain={[0, 100]}
-                  />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                    labelStyle={{ color: '#FFD700' }}
-                    formatter={(value, name) => {
-                      if (value === null) return ['No Data', name];
-                      return [value, name];
-                    }}
-                    labelFormatter={(label) => `Date: ${label}`}
-                  />
-                  <Legend />
-                  
-                  {/* CS Line - Kuning */}
-                  <Line 
-                    type="monotone" 
-                    dataKey="chat" 
-                    stroke="#FFD700" 
-                    name="CS" 
-                    strokeWidth={2} 
-                    dot={{ r: 3, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
-                    activeDot={{ r: 5, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
-                    connectNulls={false}
-                  />
-                  
-                  {/* Deposit Line - Biru */}
-                  <Line 
-                    type="monotone" 
-                    dataKey="deposit" 
-                    stroke="#3b82f6" 
-                    name="Deposit" 
-                    strokeWidth={2} 
-                    dot={{ r: 3, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
-                    activeDot={{ r: 5, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
-                    connectNulls={false}
-                  />
-                  
-                  {/* Withdrawal Line - Merah */}
-                  <Line 
-                    type="monotone" 
-                    dataKey="withdrawal" 
-                    stroke="#ef4444" 
-                    name="Withdrawal" 
-                    strokeWidth={2} 
-                    dot={{ r: 3, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
-                    activeDot={{ r: 5, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
-                    connectNulls={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {loadingAssetPerformance ? (
+                <div className="h-full flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={assetPerformance} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                    <XAxis 
+                      dataKey="name" 
+                      stroke="#A7D8FF" 
+                      tick={{ fill: '#A7D8FF', fontSize: 10 }}
+                      interval={assetPerformanceFilter === 'daily' ? Math.floor(assetPerformance.length / 7) : 0}
+                    />
+                    <YAxis 
+                      stroke="#A7D8FF" 
+                      tick={{ fill: '#A7D8FF', fontSize: 10 }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                      labelStyle={{ color: '#FFD700' }}
+                      formatter={(value, name) => {
+                        if (value === null) return ['No Data', name];
+                        return [value, name];
+                      }}
+                      labelFormatter={(label) => `${assetPerformanceFilter === 'daily' ? 'Date' : 'Month'}: ${label}`}
+                    />
+                    <Legend />
+                    
+                    {/* CS Line - Kuning (KOSONG) */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="chat" 
+                      stroke="#FFD700" 
+                      name="CS" 
+                      strokeWidth={2} 
+                      dot={{ r: 3, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
+                      activeDot={{ r: 5, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
+                      connectNulls={false}
+                    />
+                    
+                    {/* Deposit Line - Biru */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="deposit" 
+                      stroke="#3b82f6" 
+                      name="Deposit" 
+                      strokeWidth={2} 
+                      dot={{ r: 3, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
+                      activeDot={{ r: 5, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
+                      connectNulls={false}
+                    />
+                    
+                    {/* Withdrawal Line - Merah */}
+                    <Line 
+                      type="monotone" 
+                      dataKey="withdrawal" 
+                      stroke="#ef4444" 
+                      name="Withdrawal" 
+                      strokeWidth={2} 
+                      dot={{ r: 3, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
+                      activeDot={{ r: 5, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
+                      connectNulls={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
             
             <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
-              Click to see yesterday hourly detail →
+              Click to see detailed breakdown →
             </div>
-          </a>
+          </Link>
         </div>
 
         {/* KOLOM 3: OFFICER PERFORMANCE - DARI DATA KPI */}
