@@ -87,237 +87,407 @@ export default function AssetPerformancePage() {
   };
 
   // ===========================================
-  // GENERATE HOURLY DATA DENGAN RENTANG WAKTU
+  // FETCH HOURLY DATA (24 JAM) - REAL DATA
   // ===========================================
-  const generateHourlyData = (date, asset, status) => {
-    const data = [];
-    const selectedDateObj = new Date(date);
-    const displayDate = selectedDateObj.toLocaleDateString('id-ID', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric' 
+  const fetchHourlyData = async (date, asset, status) => {
+    try {
+      const startDate = `${date} 00:00:00`;
+      const endDate = `${date} 23:59:59`;
+      
+      const assetCode = asset === 'all' ? 'XLY' : asset;
+      
+      // Fetch deposits
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date, status, deposit_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all') {
+        const dbStatus = status === 'failed' ? 'Fail' : 
+                        status.charAt(0).toUpperCase() + status.slice(1);
+        depositQuery = depositQuery.eq('status', dbStatus);
+      }
+      
+      const { data: deposits, error: depositError } = await depositQuery;
+      if (depositError) throw depositError;
+      
+      // Fetch withdrawals
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date, status, withdrawal_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all' && status !== 'failed') {
+        const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
+        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+      } else if (status === 'failed') {
+        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
+      }
+      
+      const { data: withdrawals, error: withdrawalError } = await withdrawalQuery;
+      if (withdrawalError) throw withdrawalError;
+      
+      return processHourlyData(deposits || [], withdrawals || [], date);
+      
+    } catch (error) {
+      console.error('Error fetching hourly data:', error);
+      return [];
+    }
+  };
+
+  const processHourlyData = (deposits, withdrawals, date) => {
+    const hours = Array.from({ length: 24 }, (_, i) => {
+      const startHour = i.toString().padStart(2, '0');
+      const endHour = (i + 1).toString().padStart(2, '0');
+      const period = i === 23 ? `${startHour}:00 - 00:00` : `${startHour}:00 - ${endHour}:00`;
+      
+      return {
+        label: period,
+        hour: i,
+        chat: 0, // CHAT KOSONG
+        
+        deposit: 0,
+        withdrawal: 0,
+        chatVolume: 0,
+        depositVolume: 0,
+        withdrawalVolume: 0,
+        
+        depositApproved: 0,
+        depositRejected: 0,
+        depositFailed: 0,
+        withdrawalApproved: 0,
+        withdrawalRejected: 0,
+        withdrawalFailed: 0,
+        
+        transactions: 0,
+        volume: 0,
+        displayDate: new Date(date).toLocaleDateString('id-ID'),
+        asset: 'XLY'
+      };
     });
     
-    for (let hour = 0; hour < 24; hour++) {
-      const startHour = hour.toString().padStart(2, '0');
-      const endHour = (hour + 1).toString().padStart(2, '0');
-      // Rentang waktu: 00:00 - 01:00, 01:00 - 02:00, ..., 23:00 - 00:00
-      const periodLabel = hour === 23 ? `${startHour}:00 - 00:00` : `${startHour}:00 - ${endHour}:00`;
+    // Proses deposits
+    deposits.forEach(deposit => {
+      const hour = new Date(deposit.approved_date).getHours();
+      const hourData = hours[hour];
       
-      let chatBase = 5;
-      let depositBase = 25;
-      let withdrawalBase = 15;
+      hourData.deposit++;
+      hourData.depositVolume += deposit.deposit_amount || 0;
       
-      if (hour >= 8 && hour <= 11) {
-        chatBase = 15; depositBase = 45; withdrawalBase = 30;
-      } else if (hour >= 13 && hour <= 16) {
-        chatBase = 20; depositBase = 65; withdrawalBase = 40;
-      } else if (hour >= 19 && hour <= 22) {
-        chatBase = 25; depositBase = 55; withdrawalBase = 35;
-      } else if (hour >= 23 || hour <= 4) {
-        chatBase = 3; depositBase = 12; withdrawalBase = 8;
-      }
-      
-      let approvedMultiplier = 0.7;
-      let rejectedMultiplier = 0.2;
-      let failedMultiplier = 0.1;
-      
+      const status = deposit.status?.toLowerCase() || '';
       if (status === 'approved') {
-        approvedMultiplier = 1; rejectedMultiplier = 0; failedMultiplier = 0;
+        hourData.depositApproved++;
       } else if (status === 'rejected') {
-        approvedMultiplier = 0; rejectedMultiplier = 1; failedMultiplier = 0;
-      } else if (status === 'failed') {
-        approvedMultiplier = 0; rejectedMultiplier = 0; failedMultiplier = 1;
+        hourData.depositRejected++;
+      } else if (status === 'fail') {
+        hourData.depositFailed++;
       }
+    });
+    
+    // Proses withdrawals
+    withdrawals.forEach(withdrawal => {
+      const hour = new Date(withdrawal.approved_date).getHours();
+      const hourData = hours[hour];
       
-      const chatTrans = Math.floor(Math.random() * 10) + chatBase;
-      const depositApproved = Math.floor(Math.random() * 15) + depositBase;
-      const depositRejected = Math.floor(Math.random() * 5);
-      const depositFailed = Math.floor(Math.random() * 3);
-      const withdrawalApproved = Math.floor(Math.random() * 12) + withdrawalBase;
-      const withdrawalRejected = Math.floor(Math.random() * 4);
-      const withdrawalFailed = Math.floor(Math.random() * 2);
+      hourData.withdrawal++;
+      hourData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
       
-      const depositTrans = Math.round((depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier));
-      const withdrawalTrans = Math.round((withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier));
-      const totalTrans = Math.round(chatTrans + depositTrans + withdrawalTrans);
-      
-      const chatVolume = chatTrans * 50000;
-      const depositVolume = depositTrans * 250000;
-      const withdrawalVolume = withdrawalTrans * 180000;
-      const totalVolume = chatVolume + depositVolume + withdrawalVolume;
-      
-      data.push({
-        label: periodLabel,
-        hour: hour,
-        chat: Math.round(chatTrans),
-        deposit: Math.round(depositTrans),
-        withdrawal: Math.round(withdrawalTrans),
-        chatVolume: Math.round(chatVolume),
-        depositVolume: Math.round(depositVolume),
-        withdrawalVolume: Math.round(withdrawalVolume),
-        depositApproved: Math.round(depositApproved),
-        depositRejected: Math.round(depositRejected),
-        depositFailed: Math.round(depositFailed),
-        withdrawalApproved: Math.round(withdrawalApproved),
-        withdrawalRejected: Math.round(withdrawalRejected),
-        withdrawalFailed: Math.round(withdrawalFailed),
-        transactions: totalTrans,
-        volume: Math.round(totalVolume),
-        displayDate: displayDate,
-        asset: asset
-      });
-    }
-    return data;
+      const status = withdrawal.status?.toLowerCase() || '';
+      if (status === 'approved') {
+        hourData.withdrawalApproved++;
+      } else if (status === 'rejected') {
+        hourData.withdrawalRejected++;
+      }
+    });
+    
+    hours.forEach(hour => {
+      hour.transactions = hour.deposit + hour.withdrawal;
+      hour.volume = hour.depositVolume + hour.withdrawalVolume;
+    });
+    
+    return hours;
   };
 
   // ===========================================
-  // GENERATE DAILY DATA
+  // FETCH DAILY DATA (1 BULAN) - REAL DATA
   // ===========================================
-  const generateDailyData = (month, year, asset, status) => {
-    const data = [];
+  const fetchDailyData = async (month, year, asset, status) => {
+    try {
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()} 23:59:59`;
+      
+      const assetCode = asset === 'all' ? 'XLY' : asset;
+      
+      // Fetch deposits
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date, status, deposit_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all') {
+        const dbStatus = status === 'failed' ? 'Fail' : 
+                        status.charAt(0).toUpperCase() + status.slice(1);
+        depositQuery = depositQuery.eq('status', dbStatus);
+      }
+      
+      const { data: deposits, error: depositError } = await depositQuery;
+      if (depositError) throw depositError;
+      
+      // Fetch withdrawals
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date, status, withdrawal_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all' && status !== 'failed') {
+        const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
+        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+      } else if (status === 'failed') {
+        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
+      }
+      
+      const { data: withdrawals, error: withdrawalError } = await withdrawalQuery;
+      if (withdrawalError) throw withdrawalError;
+      
+      return processDailyData(deposits || [], withdrawals || [], month, year);
+      
+    } catch (error) {
+      console.error('Error fetching daily data:', error);
+      return [];
+    }
+  };
+
+  const processDailyData = (deposits, withdrawals, month, year) => {
     const daysInMonth = new Date(year, month, 0).getDate();
     const monthName = months[month - 1];
     
-    for (let day = 1; day <= daysInMonth; day++) {
+    const days = Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
       const date = new Date(year, month - 1, day);
       const isWeekend = date.getDay() === 0 || date.getDay() === 6;
       
-      let chatBase = isWeekend ? 50 : 30;
-      let depositBase = isWeekend ? 200 : 150;
-      let withdrawalBase = isWeekend ? 150 : 100;
-      
-      let approvedMultiplier = 0.7;
-      let rejectedMultiplier = 0.2;
-      let failedMultiplier = 0.1;
-      
-      if (status === 'approved') {
-        approvedMultiplier = 1; rejectedMultiplier = 0; failedMultiplier = 0;
-      } else if (status === 'rejected') {
-        approvedMultiplier = 0; rejectedMultiplier = 1; failedMultiplier = 0;
-      } else if (status === 'failed') {
-        approvedMultiplier = 0; rejectedMultiplier = 0; failedMultiplier = 1;
-      }
-      
-      const chatTrans = Math.floor(Math.random() * 30) + chatBase;
-      const depositApproved = Math.floor(Math.random() * 50) + depositBase;
-      const depositRejected = Math.floor(Math.random() * 15);
-      const depositFailed = Math.floor(Math.random() * 8);
-      const withdrawalApproved = Math.floor(Math.random() * 40) + withdrawalBase;
-      const withdrawalRejected = Math.floor(Math.random() * 12);
-      const withdrawalFailed = Math.floor(Math.random() * 6);
-      
-      const depositTrans = Math.round((depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier));
-      const withdrawalTrans = Math.round((withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier));
-      const totalTrans = Math.round(chatTrans + depositTrans + withdrawalTrans);
-      
-      const chatVolume = chatTrans * 50000;
-      const depositVolume = depositTrans * 250000;
-      const withdrawalVolume = withdrawalTrans * 180000;
-      const totalVolume = chatVolume + depositVolume + withdrawalVolume;
-      
-      data.push({
+      return {
         label: `${monthName} ${day}`,
         day: day,
         dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
         isWeekend: isWeekend,
-        chat: Math.round(chatTrans),
-        deposit: Math.round(depositTrans),
-        withdrawal: Math.round(withdrawalTrans),
-        chatVolume: Math.round(chatVolume),
-        depositVolume: Math.round(depositVolume),
-        withdrawalVolume: Math.round(withdrawalVolume),
-        depositApproved: Math.round(depositApproved),
-        depositRejected: Math.round(depositRejected),
-        depositFailed: Math.round(depositFailed),
-        withdrawalApproved: Math.round(withdrawalApproved),
-        withdrawalRejected: Math.round(withdrawalRejected),
-        withdrawalFailed: Math.round(withdrawalFailed),
-        transactions: totalTrans,
-        volume: Math.round(totalVolume),
-        fullDate: `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`,
-        asset: asset
-      });
-    }
-    return data;
+        chat: 0, // CHAT KOSONG
+        
+        deposit: 0,
+        withdrawal: 0,
+        chatVolume: 0,
+        depositVolume: 0,
+        withdrawalVolume: 0,
+        
+        depositApproved: 0,
+        depositRejected: 0,
+        depositFailed: 0,
+        withdrawalApproved: 0,
+        withdrawalRejected: 0,
+        withdrawalFailed: 0,
+        
+        transactions: 0,
+        volume: 0,
+        fullDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`,
+        asset: 'XLY'
+      };
+    });
+    
+    // Proses deposits
+    deposits.forEach(deposit => {
+      const date = new Date(deposit.approved_date);
+      const day = date.getDate() - 1;
+      const dayData = days[day];
+      
+      if (dayData) {
+        dayData.deposit++;
+        dayData.depositVolume += deposit.deposit_amount || 0;
+        
+        const status = deposit.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          dayData.depositApproved++;
+        } else if (status === 'rejected') {
+          dayData.depositRejected++;
+        } else if (status === 'fail') {
+          dayData.depositFailed++;
+        }
+      }
+    });
+    
+    // Proses withdrawals
+    withdrawals.forEach(withdrawal => {
+      const date = new Date(withdrawal.approved_date);
+      const day = date.getDate() - 1;
+      const dayData = days[day];
+      
+      if (dayData) {
+        dayData.withdrawal++;
+        dayData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
+        
+        const status = withdrawal.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          dayData.withdrawalApproved++;
+        } else if (status === 'rejected') {
+          dayData.withdrawalRejected++;
+        }
+      }
+    });
+    
+    days.forEach(day => {
+      day.transactions = day.deposit + day.withdrawal;
+      day.volume = day.depositVolume + day.withdrawalVolume;
+    });
+    
+    return days;
   };
 
   // ===========================================
-  // GENERATE MONTHLY DATA (6 BULAN)
+  // FETCH MONTHLY DATA (6 BULAN) - REAL DATA
   // ===========================================
-  const generateMonthlyData = (period, year, asset, status) => {
-    const data = [];
+  const fetchMonthlyData = async (period, year, asset, status) => {
+    try {
+      const startMonth = period === 'jan-jun' ? 1 : 7;
+      const endMonth = period === 'jan-jun' ? 6 : 12;
+      
+      const startDate = `${year}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${year}-${String(endMonth).padStart(2, '0')}-${new Date(year, endMonth, 0).getDate()} 23:59:59`;
+      
+      const assetCode = asset === 'all' ? 'XLY' : asset;
+      
+      // Fetch deposits
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date, status, deposit_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all') {
+        const dbStatus = status === 'failed' ? 'Fail' : 
+                        status.charAt(0).toUpperCase() + status.slice(1);
+        depositQuery = depositQuery.eq('status', dbStatus);
+      }
+      
+      const { data: deposits, error: depositError } = await depositQuery;
+      if (depositError) throw depositError;
+      
+      // Fetch withdrawals
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date, status, withdrawal_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all' && status !== 'failed') {
+        const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
+        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+      } else if (status === 'failed') {
+        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
+      }
+      
+      const { data: withdrawals, error: withdrawalError } = await withdrawalQuery;
+      if (withdrawalError) throw withdrawalError;
+      
+      return processMonthlyData(deposits || [], withdrawals || [], period, year);
+      
+    } catch (error) {
+      console.error('Error fetching monthly data:', error);
+      return [];
+    }
+  };
+
+  const processMonthlyData = (deposits, withdrawals, period, year) => {
     const startMonth = period === 'jan-jun' ? 0 : 6;
     const endMonth = period === 'jan-jun' ? 6 : 12;
     
-    for (let i = startMonth; i < endMonth; i++) {
-      let chatBase = 400;
-      let depositBase = 800;
-      let withdrawalBase = 600;
-      
-      if (i === 2 || i === 3) {
-        chatBase = 600; depositBase = 1200; withdrawalBase = 900;
-      }
-      if (i === 8 || i === 9) {
-        chatBase = 550; depositBase = 1100; withdrawalBase = 850;
-      }
-      if (i === 11) {
-        chatBase = 700; depositBase = 1400; withdrawalBase = 1100;
-      }
-      
-      let approvedMultiplier = 0.7;
-      let rejectedMultiplier = 0.2;
-      let failedMultiplier = 0.1;
-      
-      if (status === 'approved') {
-        approvedMultiplier = 1; rejectedMultiplier = 0; failedMultiplier = 0;
-      } else if (status === 'rejected') {
-        approvedMultiplier = 0; rejectedMultiplier = 1; failedMultiplier = 0;
-      } else if (status === 'failed') {
-        approvedMultiplier = 0; rejectedMultiplier = 0; failedMultiplier = 1;
-      }
-      
-      const chatTrans = Math.floor(Math.random() * 200) + chatBase;
-      const depositApproved = Math.floor(Math.random() * 300) + depositBase;
-      const depositRejected = Math.floor(Math.random() * 80);
-      const depositFailed = Math.floor(Math.random() * 40);
-      const withdrawalApproved = Math.floor(Math.random() * 250) + withdrawalBase;
-      const withdrawalRejected = Math.floor(Math.random() * 60);
-      const withdrawalFailed = Math.floor(Math.random() * 30);
-      
-      const depositTrans = Math.round((depositApproved * approvedMultiplier) + (depositRejected * rejectedMultiplier) + (depositFailed * failedMultiplier));
-      const withdrawalTrans = Math.round((withdrawalApproved * approvedMultiplier) + (withdrawalRejected * rejectedMultiplier) + (withdrawalFailed * failedMultiplier));
-      const totalTrans = Math.round(chatTrans + depositTrans + withdrawalTrans);
-      
-      const chatVolume = chatTrans * 50000;
-      const depositVolume = depositTrans * 250000;
-      const withdrawalVolume = withdrawalTrans * 180000;
-      const totalVolume = chatVolume + depositVolume + withdrawalVolume;
-      
-      data.push({
-        label: months[i],
-        month: months[i],
-        monthNum: i + 1,
-        chat: Math.round(chatTrans),
-        deposit: Math.round(depositTrans),
-        withdrawal: Math.round(withdrawalTrans),
-        chatVolume: Math.round(chatVolume),
-        depositVolume: Math.round(depositVolume),
-        withdrawalVolume: Math.round(withdrawalVolume),
-        depositApproved: Math.round(depositApproved),
-        depositRejected: Math.round(depositRejected),
-        depositFailed: Math.round(depositFailed),
-        withdrawalApproved: Math.round(withdrawalApproved),
-        withdrawalRejected: Math.round(withdrawalRejected),
-        withdrawalFailed: Math.round(withdrawalFailed),
-        transactions: totalTrans,
-        volume: Math.round(totalVolume),
+    const monthlyData = Array.from({ length: 6 }, (_, i) => {
+      const monthIndex = startMonth + i;
+      return {
+        label: months[monthIndex],
+        month: months[monthIndex],
+        monthNum: monthIndex + 1,
+        chat: 0, // CHAT KOSONG
+        
+        deposit: 0,
+        withdrawal: 0,
+        chatVolume: 0,
+        depositVolume: 0,
+        withdrawalVolume: 0,
+        
+        depositApproved: 0,
+        depositRejected: 0,
+        depositFailed: 0,
+        withdrawalApproved: 0,
+        withdrawalRejected: 0,
+        withdrawalFailed: 0,
+        
+        transactions: 0,
+        volume: 0,
         period: period,
         year: year,
-        asset: asset
-      });
-    }
-    return data;
+        asset: 'XLY'
+      };
+    });
+    
+    // Proses deposits
+    deposits.forEach(deposit => {
+      const date = new Date(deposit.approved_date);
+      const month = date.getMonth();
+      const monthIndex = month - startMonth;
+      
+      if (monthIndex >= 0 && monthIndex < 6) {
+        const monthData = monthlyData[monthIndex];
+        
+        monthData.deposit++;
+        monthData.depositVolume += deposit.deposit_amount || 0;
+        
+        const status = deposit.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          monthData.depositApproved++;
+        } else if (status === 'rejected') {
+          monthData.depositRejected++;
+        } else if (status === 'fail') {
+          monthData.depositFailed++;
+        }
+      }
+    });
+    
+    // Proses withdrawals
+    withdrawals.forEach(withdrawal => {
+      const date = new Date(withdrawal.approved_date);
+      const month = date.getMonth();
+      const monthIndex = month - startMonth;
+      
+      if (monthIndex >= 0 && monthIndex < 6) {
+        const monthData = monthlyData[monthIndex];
+        
+        monthData.withdrawal++;
+        monthData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
+        
+        const status = withdrawal.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          monthData.withdrawalApproved++;
+        } else if (status === 'rejected') {
+          monthData.withdrawalRejected++;
+        }
+      }
+    });
+    
+    monthlyData.forEach(month => {
+      month.transactions = month.deposit + month.withdrawal;
+      month.volume = month.depositVolume + month.withdrawalVolume;
+    });
+    
+    return monthlyData;
   };
 
   // ===========================================
@@ -330,30 +500,30 @@ export default function AssetPerformancePage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 600));
       
       let data = [];
       
       switch (filterType) {
         case 'hourly':
-          data = generateHourlyData(selectedDate, selectedAsset, selectedStatus);
+          data = await fetchHourlyData(selectedDate, selectedAsset, selectedStatus);
           break;
         case 'daily':
-          data = generateDailyData(selectedMonth, selectedYear, selectedAsset, selectedStatus);
+          data = await fetchDailyData(selectedMonth, selectedYear, selectedAsset, selectedStatus);
           break;
         case 'monthly':
-          data = generateMonthlyData(selectedPeriod, selectedYear, selectedAsset, selectedStatus);
+          data = await fetchMonthlyData(selectedPeriod, selectedYear, selectedAsset, selectedStatus);
           break;
         default:
-          data = generateHourlyData(selectedDate, selectedAsset, selectedStatus);
+          data = await fetchHourlyData(selectedDate, selectedAsset, selectedStatus);
       }
       
       setPerformanceData(data);
       
+      // Hitung summary
       const totalTrans = data.reduce((sum, item) => sum + item.transactions, 0);
       const totalVol = data.reduce((sum, item) => sum + item.volume, 0);
       const avgVal = totalTrans > 0 ? totalVol / totalTrans : 0;
-      const chatTotal = data.reduce((sum, item) => sum + item.chat, 0);
+      const chatTotal = 0; // CHAT KOSONG
       const depositTotal = data.reduce((sum, item) => sum + item.deposit, 0);
       const withdrawalTotal = data.reduce((sum, item) => sum + item.withdrawal, 0);
       
@@ -374,17 +544,17 @@ export default function AssetPerformancePage() {
       });
       
       setSummaryData({
-        totalTransactions: Math.round(totalTrans),
-        totalVolume: Math.round(totalVol),
-        avgValue: Math.round(avgVal),
+        totalTransactions: totalTrans,
+        totalVolume: totalVol,
+        avgValue: avgVal,
         peakHour: peakItem?.label || '-',
-        peakValue: Math.round(peakValue),
-        chatTotal: Math.round(chatTotal),
-        depositTotal: Math.round(depositTotal),
-        withdrawalTotal: Math.round(withdrawalTotal),
-        approvedTotal: Math.round(approvedTotal),
-        rejectedTotal: Math.round(rejectedTotal),
-        failedTotal: Math.round(failedTotal)
+        peakValue: peakValue,
+        chatTotal: chatTotal,
+        depositTotal: depositTotal,
+        withdrawalTotal: withdrawalTotal,
+        approvedTotal: approvedTotal,
+        rejectedTotal: rejectedTotal,
+        failedTotal: failedTotal
       });
       
     } catch (error) {
@@ -436,7 +606,7 @@ export default function AssetPerformancePage() {
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
-      {/* Header - ASSET PERFORMANCE */}
+      {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link 
@@ -597,9 +767,9 @@ export default function AssetPerformancePage() {
         </div>
       </div>
 
-      {/* SUMMARY CARDS - TOTAL TRANSACTIONS BISA DI KLIK */}
+      {/* SUMMARY CARDS */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        {/* CARD TOTAL TRANSACTIONS - LINK KE HALAMAN BARU */}
+        {/* CARD TOTAL TRANSACTIONS - LINK KE BREAKDOWN */}
         <Link href="/dashboard/asset-performance/review-breakdown-transaction" className="block group">
           <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] hover:shadow-[0_0_20px_#FFD700] transition-all duration-300 cursor-pointer">
             <div className="flex items-center justify-between">
@@ -612,7 +782,6 @@ export default function AssetPerformancePage() {
             </div>
             <div className="text-2xl font-bold text-[#FFD700]">{summaryData.totalTransactions.toLocaleString()}</div>
             <div className="flex justify-between text-xs mt-2">
-              <span className="text-yellow-400">CS: {summaryData.chatTotal}</span>
               <span className="text-blue-400">DP: {summaryData.depositTotal}</span>
               <span className="text-red-400">WD: {summaryData.withdrawalTotal}</span>
             </div>
@@ -623,15 +792,25 @@ export default function AssetPerformancePage() {
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Total Volume</div>
           <div className="text-2xl font-bold text-green-400">{formatIDR(summaryData.totalVolume)}</div>
+          <div className="text-xs text-[#A7D8FF] mt-2">Avg: {formatIDR(summaryData.avgValue)}/trans</div>
         </div>
         
         {/* CARD STATUS BREAKDOWN */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm">Status Breakdown</div>
-          <div className="flex justify-between text-xs mt-2">
-            <span className="text-green-400">✓ Approved: {summaryData.approvedTotal}</span>
-            <span className="text-red-400">✗ Rejected: {summaryData.rejectedTotal}</span>
-            <span className="text-blue-400">! Failed: {summaryData.failedTotal}</span>
+          <div className="flex flex-col gap-1 mt-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-green-400">✓ Approved</span>
+              <span className="text-white">{summaryData.approvedTotal}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-red-400">✗ Rejected</span>
+              <span className="text-white">{summaryData.rejectedTotal}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-blue-400">! Failed</span>
+              <span className="text-white">{summaryData.failedTotal}</span>
+            </div>
           </div>
         </div>
         
@@ -667,17 +846,7 @@ export default function AssetPerformancePage() {
                 />
                 <Legend />
                 
-                <Line 
-                  yAxisId="left" 
-                  type="monotone" 
-                  dataKey="chat" 
-                  stroke="#FFD700" 
-                  name="CS" 
-                  strokeWidth={2} 
-                  dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
-                  activeDot={{ r: 6, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
-                />
-                
+                {/* <Line yAxisId="left" type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 4 }} /> */}
                 <Line 
                   yAxisId="left" 
                   type="monotone" 
@@ -686,9 +855,7 @@ export default function AssetPerformancePage() {
                   name="Deposit" 
                   strokeWidth={2} 
                   dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
-                  activeDot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
                 />
-                
                 <Line 
                   yAxisId="left" 
                   type="monotone" 
@@ -697,7 +864,6 @@ export default function AssetPerformancePage() {
                   name="Withdrawal" 
                   strokeWidth={2} 
                   dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
-                  activeDot={{ r: 6, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
                 />
               </LineChart>
             ) : (
@@ -717,7 +883,7 @@ export default function AssetPerformancePage() {
                   labelStyle={{ color: '#FFD700' }}
                 />
                 <Legend />
-                <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
+                {/* <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" /> */}
                 <Bar yAxisId="left" dataKey="deposit" fill="#3b82f6" name="Deposit" />
                 <Bar yAxisId="left" dataKey="withdrawal" fill="#ef4444" name="Withdrawal" />
               </BarChart>
@@ -727,100 +893,85 @@ export default function AssetPerformancePage() {
       </div>
 
       {/* SECOND CHART - By Value (IDR) */}
-<div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
-  <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle('value')}</h2>
-  
-  <div className="h-80">
-    <ResponsiveContainer width="100%" height="100%">
-      {selectedChartType === 'line' ? (
-        <LineChart data={performanceData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-          <XAxis 
-            dataKey="label" 
-            stroke="#A7D8FF" 
-            interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
-            angle={filterType === 'hourly' ? -45 : 0}
-            textAnchor="end"
-            height={60}
-          />
-          <YAxis yAxisId="left" stroke="#A7D8FF" />
-          <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-            labelStyle={{ color: '#FFD700' }}
-            formatter={(value, name) => {
-              if (name === 'CS') return value;
-              return formatIDR(value);
-            }}
-          />
-          <Legend />
-          
-          {/* CS - jumlah chat (satuan) - pake left axis */}
-          <Line 
-            yAxisId="left" 
-            type="monotone" 
-            dataKey="chat" 
-            stroke="#FFD700" 
-            name="CS" 
-            strokeWidth={2} 
-            dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }}
-            activeDot={{ r: 6, fill: "#FFD700", stroke: "#fff", strokeWidth: 2 }}
-          />
-          
-          {/* Deposit Volume - pake right axis (IDR) */}
-          <Line 
-            yAxisId="right" 
-            type="monotone" 
-            dataKey="depositVolume" 
-            stroke="#3b82f6" 
-            name="Deposit Volume" 
-            strokeWidth={2} 
-            dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
-            activeDot={{ r: 6, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }}
-          />
-          
-          {/* Withdrawal Volume - pake right axis (IDR) */}
-          <Line 
-            yAxisId="right" 
-            type="monotone" 
-            dataKey="withdrawalVolume" 
-            stroke="#ef4444" 
-            name="Withdrawal Volume" 
-            strokeWidth={2} 
-            dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
-            activeDot={{ r: 6, fill: "#ef4444", stroke: "#fff", strokeWidth: 2 }}
-          />
-        </LineChart>
-      ) : (
-        <BarChart data={performanceData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-          <XAxis 
-            dataKey="label" 
-            stroke="#A7D8FF" 
-            interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
-            angle={filterType === 'hourly' ? -45 : 0}
-            textAnchor="end"
-            height={60}
-          />
-          <YAxis yAxisId="left" stroke="#A7D8FF" />
-          <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-            labelStyle={{ color: '#FFD700' }}
-            formatter={(value, name) => {
-              if (name === 'CS') return value;
-              return formatIDR(value);
-            }}
-          />
-          <Legend />
-          <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
-          <Bar yAxisId="right" dataKey="depositVolume" fill="#3b82f6" name="Deposit Volume" />
-          <Bar yAxisId="right" dataKey="withdrawalVolume" fill="#ef4444" name="Withdrawal Volume" />
-        </BarChart>
-      )}
-    </ResponsiveContainer>
-  </div>
-</div>
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle('value')}</h2>
+        
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            {selectedChartType === 'line' ? (
+              <LineChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                <XAxis 
+                  dataKey="label" 
+                  stroke="#A7D8FF" 
+                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+                  angle={filterType === 'hourly' ? -45 : 0}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis yAxisId="left" stroke="#A7D8FF" />
+                <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                  labelStyle={{ color: '#FFD700' }}
+                  formatter={(value, name) => {
+                    if (name === 'CS') return value;
+                    return formatIDR(value);
+                  }}
+                />
+                <Legend />
+                
+                {/* <Line yAxisId="left" type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 4 }} /> */}
+                
+                <Line 
+                  yAxisId="right" 
+                  type="monotone" 
+                  dataKey="depositVolume" 
+                  stroke="#3b82f6" 
+                  name="Deposit Volume" 
+                  strokeWidth={2} 
+                  dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
+                />
+                <Line 
+                  yAxisId="right" 
+                  type="monotone" 
+                  dataKey="withdrawalVolume" 
+                  stroke="#ef4444" 
+                  name="Withdrawal Volume" 
+                  strokeWidth={2} 
+                  dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
+                />
+              </LineChart>
+            ) : (
+              <BarChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                <XAxis 
+                  dataKey="label" 
+                  stroke="#A7D8FF" 
+                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+                  angle={filterType === 'hourly' ? -45 : 0}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis yAxisId="left" stroke="#A7D8FF" />
+                <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                  labelStyle={{ color: '#FFD700' }}
+                  formatter={(value, name) => {
+                    if (name === 'CS') return value;
+                    return formatIDR(value);
+                  }}
+                />
+                <Legend />
+                {/* <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" /> */}
+                <Bar yAxisId="right" dataKey="depositVolume" fill="#3b82f6" name="Deposit Volume" />
+                <Bar yAxisId="right" dataKey="withdrawalVolume" fill="#ef4444" name="Withdrawal Volume" />
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   );
 }
