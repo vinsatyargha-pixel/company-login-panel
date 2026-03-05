@@ -25,7 +25,7 @@ export default function ReviewBreakdownTransactionPage() {
   // DATA
   const [traficData, setTraficData] = useState([]);
   const [summaryData, setSummaryData] = useState({
-    // Chat
+    // Chat - KOSONGIN DULU
     chatTotal: 0,
     
     // Deposit
@@ -154,7 +154,7 @@ export default function ReviewBreakdownTransactionPage() {
       return {
         period: period,
         type: 'hour',
-        chat: 0,
+        chat: 0, // CHAT KOSONG
         
         depositApproved: 0,
         depositRejected: 0,
@@ -182,12 +182,12 @@ export default function ReviewBreakdownTransactionPage() {
       };
     });
     
-    // Proses deposits
+    // Proses deposits (CHAT TETAP 0)
     deposits.forEach(deposit => {
       const hour = new Date(deposit.approved_date).getHours();
       const hourData = hours[hour];
       
-      hourData.chat++;
+      // hourData.chat++; // COMMENT - CHAT KOSONG
       hourData.depositTotal++;
       hourData.depositVolume += deposit.deposit_amount || 0;
       
@@ -208,12 +208,12 @@ export default function ReviewBreakdownTransactionPage() {
       }
     });
     
-    // Proses withdrawals
+    // Proses withdrawals (CHAT TETAP 0)
     withdrawals.forEach(withdrawal => {
       const hour = new Date(withdrawal.approved_date).getHours();
       const hourData = hours[hour];
       
-      hourData.chat++;
+      // hourData.chat++; // COMMENT - CHAT KOSONG
       hourData.withdrawalTotal++;
       hourData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
       
@@ -232,7 +232,7 @@ export default function ReviewBreakdownTransactionPage() {
     });
     
     hours.forEach(hour => {
-      hour.total = hour.chat;
+      hour.total = hour.depositTotal + hour.withdrawalTotal; // TOTAL TANPA CHAT
       hour.totalVolume = hour.depositVolume + hour.withdrawalVolume;
     });
     
@@ -301,7 +301,7 @@ export default function ReviewBreakdownTransactionPage() {
       return {
         period: `${monthName} ${day}`,
         type: 'day',
-        chat: 0,
+        chat: 0, // CHAT KOSONG
         
         depositApproved: 0,
         depositRejected: 0,
@@ -329,14 +329,14 @@ export default function ReviewBreakdownTransactionPage() {
       };
     });
     
-    // Proses deposits
+    // Proses deposits (CHAT TETAP 0)
     deposits.forEach(deposit => {
       const date = new Date(deposit.approved_date);
       const day = date.getDate() - 1;
       const dayData = days[day];
       
       if (dayData) {
-        dayData.chat++;
+        // dayData.chat++; // COMMENT - CHAT KOSONG
         dayData.depositTotal++;
         dayData.depositVolume += deposit.deposit_amount || 0;
         
@@ -358,14 +358,14 @@ export default function ReviewBreakdownTransactionPage() {
       }
     });
     
-    // Proses withdrawals
+    // Proses withdrawals (CHAT TETAP 0)
     withdrawals.forEach(withdrawal => {
       const date = new Date(withdrawal.approved_date);
       const day = date.getDate() - 1;
       const dayData = days[day];
       
       if (dayData) {
-        dayData.chat++;
+        // dayData.chat++; // COMMENT - CHAT KOSONG
         dayData.withdrawalTotal++;
         dayData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
         
@@ -385,7 +385,7 @@ export default function ReviewBreakdownTransactionPage() {
     });
     
     days.forEach(day => {
-      day.total = day.chat;
+      day.total = day.depositTotal + day.withdrawalTotal; // TOTAL TANPA CHAT
       day.totalVolume = day.depositVolume + day.withdrawalVolume;
     });
     
@@ -393,172 +393,164 @@ export default function ReviewBreakdownTransactionPage() {
   };
 
   // ===========================================
-// FETCH MONTHLY DATA (6 BULAN) - FIXED
-// ===========================================
-const fetchMonthlyData = async (period, year, asset, status) => {
-  try {
-    const startMonth = period === 'jan-jun' ? 1 : 7;
+  // FETCH MONTHLY DATA (6 BULAN)
+  // ===========================================
+  const fetchMonthlyData = async (period, year, asset, status) => {
+    try {
+      const startMonth = period === 'jan-jun' ? 1 : 7;
+      const endMonth = period === 'jan-jun' ? 6 : 12;
+      
+      const startDate = `${year}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${year}-${String(endMonth).padStart(2, '0')}-${new Date(year, endMonth, 0).getDate()} 23:59:59`;
+      
+      const assetCode = asset === 'all' ? 'XLY' : asset;
+      
+      // Fetch deposits
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date, status, deposit_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all') {
+        const dbStatus = status === 'failed' ? 'Fail' : 
+                        status.charAt(0).toUpperCase() + status.slice(1);
+        depositQuery = depositQuery.eq('status', dbStatus);
+      }
+      
+      const { data: deposits, error: depositError } = await depositQuery;
+      if (depositError) throw depositError;
+      
+      // Fetch withdrawals
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date, status, withdrawal_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all' && status !== 'failed') {
+        const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
+        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+      } else if (status === 'failed') {
+        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
+      }
+      
+      const { data: withdrawals, error: withdrawalError } = await withdrawalQuery;
+      if (withdrawalError) throw withdrawalError;
+      
+      return processMonthlyData(deposits || [], withdrawals || [], period, year);
+      
+    } catch (error) {
+      console.error('Error fetching monthly data:', error);
+      return [];
+    }
+  };
+
+  const processMonthlyData = (deposits, withdrawals, period, year) => {
+    const startMonth = period === 'jan-jun' ? 0 : 6;
     const endMonth = period === 'jan-jun' ? 6 : 12;
     
-    const startDate = `${year}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
-    const endDate = `${year}-${String(endMonth).padStart(2, '0')}-${new Date(year, endMonth, 0).getDate()} 23:59:59`;
+    const monthlyData = Array.from({ length: 6 }, (_, i) => {
+      const monthIndex = startMonth + i;
+      return {
+        period: months[monthIndex],
+        type: 'month',
+        chat: 0, // CHAT KOSONG
+        
+        depositApproved: 0,
+        depositRejected: 0,
+        depositFailed: 0,
+        depositApprovedAmount: 0,
+        depositRejectedAmount: 0,
+        depositFailedAmount: 0,
+        depositVolume: 0,
+        depositHighest: 0,
+        depositTotal: 0,
+        
+        withdrawalApproved: 0,
+        withdrawalRejected: 0,
+        withdrawalFailed: 0,
+        withdrawalApprovedAmount: 0,
+        withdrawalRejectedAmount: 0,
+        withdrawalFailedAmount: 0,
+        withdrawalVolume: 0,
+        withdrawalHighest: 0,
+        withdrawalTotal: 0,
+        
+        total: 0,
+        totalVolume: 0,
+        asset: 'XLY'
+      };
+    });
     
-    const assetCode = asset === 'all' ? 'XLY' : asset;
-    
-    console.log('Fetching monthly data:', { startDate, endDate, assetCode, status });
-    
-    // Fetch deposits
-    let depositQuery = supabase
-      .from('deposit_transactions')
-      .select('approved_date, status, deposit_amount, brand')
-      .eq('brand', assetCode)
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    if (status !== 'all') {
-      const dbStatus = status === 'failed' ? 'Fail' : 
-                      status.charAt(0).toUpperCase() + status.slice(1);
-      depositQuery = depositQuery.eq('status', dbStatus);
-    }
-    
-    const { data: deposits, error: depositError } = await depositQuery;
-    if (depositError) throw depositError;
-    
-    console.log('Deposits found:', deposits?.length || 0);
-    
-    // Fetch withdrawals
-    let withdrawalQuery = supabase
-      .from('withdrawal_transactions')
-      .select('approved_date, status, withdrawal_amount, brand')
-      .eq('brand', assetCode)
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    if (status !== 'all' && status !== 'failed') {
-      const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
-      withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
-    } else if (status === 'failed') {
-      withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
-    }
-    
-    const { data: withdrawals, error: withdrawalError } = await withdrawalQuery;
-    if (withdrawalError) throw withdrawalError;
-    
-    console.log('Withdrawals found:', withdrawals?.length || 0);
-    
-    return processMonthlyData(deposits || [], withdrawals || [], period, year);
-    
-  } catch (error) {
-    console.error('Error fetching monthly data:', error);
-    return [];
-  }
-};
-
-const processMonthlyData = (deposits, withdrawals, period, year) => {
-  const startMonth = period === 'jan-jun' ? 0 : 6;
-  const endMonth = period === 'jan-jun' ? 6 : 12;
-  
-  // Gunakan nama berbeda untuk array data (monthlyData) biar ga konflik dengan months array di atas
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
-    const monthIndex = startMonth + i;
-    return {
-      period: months[monthIndex], // pake months dari global
-      type: 'month',
-      chat: 0,
+    // Proses deposits (CHAT TETAP 0)
+    deposits.forEach(deposit => {
+      const date = new Date(deposit.approved_date);
+      const month = date.getMonth();
+      const monthIndex = month - startMonth;
       
-      depositApproved: 0,
-      depositRejected: 0,
-      depositFailed: 0,
-      depositApprovedAmount: 0,
-      depositRejectedAmount: 0,
-      depositFailedAmount: 0,
-      depositVolume: 0,
-      depositHighest: 0,
-      depositTotal: 0,
-      
-      withdrawalApproved: 0,
-      withdrawalRejected: 0,
-      withdrawalFailed: 0,
-      withdrawalApprovedAmount: 0,
-      withdrawalRejectedAmount: 0,
-      withdrawalFailedAmount: 0,
-      withdrawalVolume: 0,
-      withdrawalHighest: 0,
-      withdrawalTotal: 0,
-      
-      total: 0,
-      totalVolume: 0,
-      asset: 'XLY'
-    };
-  });
-  
-  // Proses deposits
-  deposits.forEach(deposit => {
-    const date = new Date(deposit.approved_date);
-    const month = date.getMonth();
-    const monthIndex = month - startMonth;
-    
-    if (monthIndex >= 0 && monthIndex < 6) {
-      const monthData = monthlyData[monthIndex];
-      
-      monthData.chat++;
-      monthData.depositTotal++;
-      monthData.depositVolume += deposit.deposit_amount || 0;
-      
-      if (deposit.deposit_amount > monthData.depositHighest) {
-        monthData.depositHighest = deposit.deposit_amount;
+      if (monthIndex >= 0 && monthIndex < 6) {
+        const monthData = monthlyData[monthIndex];
+        
+        // monthData.chat++; // COMMENT - CHAT KOSONG
+        monthData.depositTotal++;
+        monthData.depositVolume += deposit.deposit_amount || 0;
+        
+        if (deposit.deposit_amount > monthData.depositHighest) {
+          monthData.depositHighest = deposit.deposit_amount;
+        }
+        
+        const status = deposit.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          monthData.depositApproved++;
+          monthData.depositApprovedAmount += deposit.deposit_amount || 0;
+        } else if (status === 'rejected') {
+          monthData.depositRejected++;
+          monthData.depositRejectedAmount += deposit.deposit_amount || 0;
+        } else if (status === 'fail') {
+          monthData.depositFailed++;
+          monthData.depositFailedAmount += deposit.deposit_amount || 0;
+        }
       }
-      
-      const status = deposit.status?.toLowerCase() || '';
-      if (status === 'approved') {
-        monthData.depositApproved++;
-        monthData.depositApprovedAmount += deposit.deposit_amount || 0;
-      } else if (status === 'rejected') {
-        monthData.depositRejected++;
-        monthData.depositRejectedAmount += deposit.deposit_amount || 0;
-      } else if (status === 'fail') {
-        monthData.depositFailed++;
-        monthData.depositFailedAmount += deposit.deposit_amount || 0;
-      }
-    }
-  });
-  
-  // Proses withdrawals
-  withdrawals.forEach(withdrawal => {
-    const date = new Date(withdrawal.approved_date);
-    const month = date.getMonth();
-    const monthIndex = month - startMonth;
+    });
     
-    if (monthIndex >= 0 && monthIndex < 6) {
-      const monthData = monthlyData[monthIndex];
+    // Proses withdrawals (CHAT TETAP 0)
+    withdrawals.forEach(withdrawal => {
+      const date = new Date(withdrawal.approved_date);
+      const month = date.getMonth();
+      const monthIndex = month - startMonth;
       
-      monthData.chat++;
-      monthData.withdrawalTotal++;
-      monthData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
-      
-      if (withdrawal.withdrawal_amount > monthData.withdrawalHighest) {
-        monthData.withdrawalHighest = withdrawal.withdrawal_amount;
+      if (monthIndex >= 0 && monthIndex < 6) {
+        const monthData = monthlyData[monthIndex];
+        
+        // monthData.chat++; // COMMENT - CHAT KOSONG
+        monthData.withdrawalTotal++;
+        monthData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
+        
+        if (withdrawal.withdrawal_amount > monthData.withdrawalHighest) {
+          monthData.withdrawalHighest = withdrawal.withdrawal_amount;
+        }
+        
+        const status = withdrawal.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          monthData.withdrawalApproved++;
+          monthData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
+        } else if (status === 'rejected') {
+          monthData.withdrawalRejected++;
+          monthData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
+        }
       }
-      
-      const status = withdrawal.status?.toLowerCase() || '';
-      if (status === 'approved') {
-        monthData.withdrawalApproved++;
-        monthData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
-      } else if (status === 'rejected') {
-        monthData.withdrawalRejected++;
-        monthData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
-      }
-    }
-  });
-  
-  monthlyData.forEach(month => {
-    month.total = month.chat;
-    month.totalVolume = month.depositVolume + month.withdrawalVolume;
-  });
-  
-  console.log('Processed monthly data:', monthlyData);
-  return monthlyData;
-};
+    });
+    
+    monthlyData.forEach(month => {
+      month.total = month.depositTotal + month.withdrawalTotal; // TOTAL TANPA CHAT
+      month.totalVolume = month.depositVolume + month.withdrawalVolume;
+    });
+    
+    return monthlyData;
+  };
 
   // ===========================================
   // FETCH DATA
@@ -587,8 +579,8 @@ const processMonthlyData = (deposits, withdrawals, period, year) => {
       
       setTraficData(data);
       
-      // Hitung summary
-      const chatTotal = data.reduce((sum, item) => sum + item.chat, 0);
+      // Hitung summary - CHAT TETAP 0
+      const chatTotal = 0; // CHAT KOSONG
       
       const depositApproved = data.reduce((sum, item) => sum + item.depositApproved, 0);
       const depositRejected = data.reduce((sum, item) => sum + item.depositRejected, 0);
@@ -610,7 +602,7 @@ const processMonthlyData = (deposits, withdrawals, period, year) => {
       const totalVol = data.reduce((sum, item) => sum + item.totalVolume, 0);
       
       setSummaryData({
-        chatTotal,
+        chatTotal, // 0
         
         depositApproved,
         depositRejected,
@@ -674,7 +666,8 @@ const processMonthlyData = (deposits, withdrawals, period, year) => {
     );
   }
 
-  const maxChat = Math.max(...traficData.map(item => item.chat), 0);
+  // Hitung nilai tertinggi - PASTIKAN CHAT TIDAK TERHITUNG
+  const maxChat = 0; // CHAT KOSONG
   const maxDeposit = Math.max(...traficData.map(item => item.depositTotal), 0);
   const maxDepositVolume = Math.max(...traficData.map(item => item.depositVolume), 0);
   const maxDepositHighest = Math.max(...traficData.map(item => item.depositHighest), 0);
@@ -828,10 +821,10 @@ const processMonthlyData = (deposits, withdrawals, period, year) => {
 
       {/* RESUME TOTAL CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* CS CHAT CARD */}
+        {/* CS CHAT CARD - TETAP 0 */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
           <div className="text-[#A7D8FF] text-sm font-semibold mb-2">💬 CS CHAT</div>
-          <div className="text-3xl font-bold text-yellow-400">{Math.round(summaryData.chatTotal).toLocaleString()}</div>
+          <div className="text-3xl font-bold text-yellow-400">0</div>
           <div className="text-xs text-[#A7D8FF] mt-1">Total Chat Transactions</div>
         </div>
 
@@ -926,7 +919,7 @@ const processMonthlyData = (deposits, withdrawals, period, year) => {
               <tr className="border-b border-[#FFD700]/20">
                 <th className="px-4 py-2 text-left text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20"></th>
                 
-                {/* CHAT SUBHEADERS */}
+                {/* CHAT SUBHEADERS - TETAP 0 */}
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Trans</th>
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">%</th>
                 
@@ -945,15 +938,15 @@ const processMonthlyData = (deposits, withdrawals, period, year) => {
             </thead>
             <tbody>
               {traficData.map((item, idx) => {
-                const totalChat = traficData.reduce((sum, i) => sum + i.chat, 0);
+                const totalChat = 0; // CHAT KOSONG
                 const totalDeposit = traficData.reduce((sum, i) => sum + i.depositTotal, 0);
                 const totalWithdrawal = traficData.reduce((sum, i) => sum + i.withdrawalTotal, 0);
                 
-                const chatPercentage = totalChat > 0 ? (item.chat / totalChat) * 100 : 0;
+                const chatPercentage = 0; // CHAT KOSONG
                 const depositPercentage = totalDeposit > 0 ? (item.depositTotal / totalDeposit) * 100 : 0;
                 const withdrawalPercentage = totalWithdrawal > 0 ? (item.withdrawalTotal / totalWithdrawal) * 100 : 0;
                 
-                const isMaxChat = item.chat === maxChat && maxChat > 0;
+                const isMaxChat = false; // CHAT KOSONG
                 const isMaxDeposit = item.depositTotal === maxDeposit && maxDeposit > 0;
                 const isMaxDepositVolume = item.depositVolume === maxDepositVolume && maxDepositVolume > 0;
                 const isMaxDepositHighest = item.depositHighest === maxDepositHighest && maxDepositHighest > 0;
@@ -965,11 +958,9 @@ const processMonthlyData = (deposits, withdrawals, period, year) => {
                   <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
                     <td className="px-4 py-3 text-white font-medium border-r border-[#FFD700]/10">{item.period}</td>
                     
-                    {/* CHAT DATA */}
-                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxChat ? 'bg-yellow-300 text-black font-bold' : 'text-yellow-400'}`}>
-                      {Math.round(item.chat)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{chatPercentage.toFixed(2)}%</td>
+                    {/* CHAT DATA - KOSONG */}
+                    <td className="px-4 py-3 text-right border-r border-[#FFD700]/10 text-yellow-400">0</td>
+                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">0%</td>
                     
                     {/* DEPOSIT DATA */}
                     <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDeposit ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
