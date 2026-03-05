@@ -1242,7 +1242,7 @@ export default function DashboardContent() {
 
         {/* KOLOM 3: OFFICER PERFORMANCE - DARI DATA KPI */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <Link href="/dashboard/officers-kpi" className="block group">
+          <Link href="/dashboard/officers-performance" className="block group">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance</h3>
               <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
