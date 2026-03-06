@@ -19,12 +19,12 @@ export default function OfficersKPIPage() {
       </div>
 
       {/* HEADER */}
-      <h1 className="text-3xl font-bold text-[#FFD700] mb-8">ANALYTICS</h1>
+      <h1 className="text-3xl font-bold text-[#FFD700] mb-8">KEY PERFORMANCE INDICATOR</h1>
 
       {/* GRID 2 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* KOLOM KIRI - ATTENDANCE OVERVIEW */}
+        {/* KOLOM KIRI - Summary KPI Officers */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h2 className="text-xl font-bold text-[#FFD700] mb-4">Attendance Overview</h2>
           
@@ -34,7 +34,7 @@ export default function OfficersKPIPage() {
           </div>
         </div>
         
-        {/* KOLOM KANAN - DIVISION OVERVIEW */}
+        {/* KOLOM KANAN - SUMMARY COMPARISON */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h2 className="text-xl font-bold text-[#FFD700] mb-4">Division Overview</h2>
           
