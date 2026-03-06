@@ -165,7 +165,7 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // GET DATE RANGE BASED ON FILTER
+  // GET DATE RANGE BASED ON FILTER (FIXED)
   // ===========================================
   const getDateRange = () => {
     let startDate = ''
@@ -182,8 +182,11 @@ export default function OfficersKPIPage() {
     else if (filterType === 'yesterday') {
       const yesterday = new Date()
       yesterday.setDate(yesterday.getDate() - 1)
-      startDate = yesterday.toISOString().split('T')[0]
-      endDate = yesterday.toISOString().split('T')[0]
+      const year = yesterday.getFullYear()
+      const month = String(yesterday.getMonth() + 1).padStart(2, '0')
+      const day = String(yesterday.getDate()).padStart(2, '0')
+      startDate = `${year}-${month}-${day}`
+      endDate = `${year}-${month}-${day}`
       periodText = `Yesterday (${startDate})`
     } 
     else if (filterType === 'custom') {
@@ -192,11 +195,16 @@ export default function OfficersKPIPage() {
       periodText = `${startDate} s/d ${endDate}`
     }
 
-    return { startDate, endDate, periodText }
+    // Tambahkan waktu untuk query yang benar
+    return { 
+      startDate: `${startDate} 00:00:00`, 
+      endDate: `${endDate} 23:59:59`, 
+      periodText 
+    }
   }
 
   // ===========================================
-  // FETCH KPI
+  // FETCH KPI (FIXED QUERY)
   // ===========================================
 
   const fetchKPI = async () => {
@@ -211,8 +219,8 @@ export default function OfficersKPIPage() {
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
         .select('handler, status, duration_minutes, reason')
-        .gte('approved_date::date', startDate)
-        .lte('approved_date::date', endDate)
+        .gte('approved_date', startDate)  // Langsung pake timestamp string
+        .lte('approved_date', endDate)    // Langsung pake timestamp string
 
       if (depositError) throw depositError
 
@@ -220,8 +228,8 @@ export default function OfficersKPIPage() {
       const { data: withdrawalData, error: withdrawalError } = await supabase
         .from('withdrawal_transactions')
         .select('handler, status, duration_minutes, reason')
-        .gte('approved_date::date', startDate)
-        .lte('approved_date::date', endDate)
+        .gte('approved_date', startDate)  // Langsung pake timestamp string
+        .lte('approved_date', endDate)    // Langsung pake timestamp string
 
       if (withdrawalError) throw withdrawalError
 
@@ -629,7 +637,7 @@ export default function OfficersKPIPage() {
         </div>
       </div>
 
-      {/* PIE CHARTS SECTION - TANPA LABEL (FIX ERROR) */}
+      {/* PIE CHARTS SECTION */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Deposit Pie Chart */}
         <div className="bg-[#1A2F4A] rounded-lg border border-blue-500/30 p-4">
