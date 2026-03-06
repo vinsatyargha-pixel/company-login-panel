@@ -119,7 +119,7 @@ export default function DashboardContent() {
     if (name.includes('bca')) return '/images/bca.png';
     if (name.includes('bni')) return '/images/bni.png';
     if (name.includes('bri')) return '/images/bri.png';
-    if (name.includes('nexus')) return '/images/nexuspay.png';
+    if (name.includes('nexus')) return '/images/nexus.png';
     if (name.includes('midas')) return '/images/midas.png';
     if (name.includes('mandiri')) return '/images/mandiri.png';
     if (name.includes('dana')) return '/images/dana.png';
