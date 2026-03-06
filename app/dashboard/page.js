@@ -12,6 +12,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import Link from 'next/link';
+import NextImage from 'next/image';
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
@@ -482,15 +483,35 @@ export default function DashboardContent() {
   // ===========================================
   const fetchPaymentData = async () => {
     try {
-      // GUNAKAN DUMMY DATA SEMENTARA KARENA TABEL transactions DAN chat_logs MUNGKIN BELUM ADA
+      const { data: depositData } = await supabase
+        .from('deposit_transactions')
+        .select('amount');
+
+      const totalDeposit = depositData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
+
+      const { data: withdrawalData } = await supabase
+        .from('withdrawal_transactions')
+        .select('amount');
+
+      const totalWithdrawal = withdrawalData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
+
+      const { count: chatCount } = await supabase
+        .from('chat_sessions')
+        .select('*', { count: 'exact' });
+
       setTrafficData([
-        { name: 'Deposit', value: 125000000 },
-        { name: 'Withdrawal', value: 87500000 },
-        { name: 'Livechat', value: 342 }
+        { name: 'Deposit', value: totalDeposit },
+        { name: 'Withdrawal', value: totalWithdrawal },
+        { name: 'Livechat', value: chatCount || 0 }
       ]);
 
     } catch (error) {
       console.error('Error fetching payment data:', error);
+      setTrafficData([
+        { name: 'Deposit', value: 0 },
+        { name: 'Withdrawal', value: 0 },
+        { name: 'Livechat', value: 0 }
+      ]);
     }
   };
 
@@ -504,7 +525,7 @@ export default function DashboardContent() {
     fetchBankAccounts();
     fetchOfficerPerformance();
     fetchAssetPerformanceData();
-    fetchOfficerPieData(); // AMBIL DATA PIE CHART
+    fetchOfficerPieData();
   }, [chartFilter, chartYear, selectedAsset, assetPerformanceFilter, 
       assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
 
@@ -650,6 +671,20 @@ export default function DashboardContent() {
     }
   ];
 
+  // Fungsi untuk dapatkan nama file gambar
+  const getBankImage = (bankName) => {
+    if (!bankName) return '/images/bank.png';
+    const name = bankName.toLowerCase();
+    if (name.includes('bca')) return '/images/bca.png';
+    if (name.includes('bni')) return '/images/bni.png';
+    if (name.includes('bri')) return '/images/bri.png';
+    if (name.includes('nexus')) return '/images/nexuspay.png';
+    if (name.includes('midas')) return '/images/midas.png';
+    if (name.includes('mandiri')) return '/images/mandiri.png';
+    if (name.includes('dana')) return '/images/dana.png';
+    return '/images/bank.png';
+  };
+
   if (loading) return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
       <div className="text-center">
@@ -790,7 +825,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD - DENGAN GAMBAR BANK */}
+        {/* KOLOM 2: DEPOSIT METHOD - DENGAN GAMBAR */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -800,23 +835,27 @@ export default function DashboardContent() {
               bankAccounts
                 .filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
                 .map(bank => {
-                  // Fungsi untuk mendapatkan inisial bank
-                  const getInitial = (bankName) => {
-                    if (!bankName) return '🏦';
-                    if (bankName.toUpperCase().includes('BCA')) return '🏦';
-                    if (bankName.toUpperCase().includes('BNI')) return '🏦';
-                    if (bankName.toUpperCase().includes('BRI')) return '🏦';
-                    if (bankName.toUpperCase().includes('NEXUS')) return '💳';
-                    if (bankName.toUpperCase().includes('MIDAS')) return '💰';
-                    return '🏦';
-                  };
-
+                  const [imgError, setImgError] = useState(false);
+                  
                   return (
                     <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
                       <div className="flex items-center gap-3">
-                        {/* GAMBAR BANK - MENGGUNAKAN EMOJI/ICON UNTUK MENGHINDARI ERROR */}
-                        <div className="w-8 h-8 bg-[#FFD700]/20 rounded-full flex items-center justify-center text-[#FFD700] text-sm font-bold">
-                          {getInitial(bank.bank)}
+                        {/* GAMBAR BANK */}
+                        <div className="w-8 h-8 relative flex-shrink-0">
+                          {!imgError ? (
+                            <NextImage
+                              src={getBankImage(bank.bank)}
+                              alt={bank.bank}
+                              width={32}
+                              height={32}
+                              className="rounded-full object-cover"
+                              onError={() => setImgError(true)}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 bg-[#FFD700]/20 rounded-full flex items-center justify-center text-[#FFD700] text-sm font-bold">
+                              {bank.bank?.charAt(0) || 'B'}
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
@@ -834,7 +873,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN GAMBAR BANK */}
+        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN GAMBAR */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -844,23 +883,27 @@ export default function DashboardContent() {
               bankAccounts
                 .filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
                 .map(bank => {
-                  // Fungsi untuk mendapatkan inisial bank
-                  const getInitial = (bankName) => {
-                    if (!bankName) return '🏦';
-                    if (bankName.toUpperCase().includes('BCA')) return '🏦';
-                    if (bankName.toUpperCase().includes('BNI')) return '🏦';
-                    if (bankName.toUpperCase().includes('BRI')) return '🏦';
-                    if (bankName.toUpperCase().includes('NEXUS')) return '💳';
-                    if (bankName.toUpperCase().includes('MIDAS')) return '💰';
-                    return '🏦';
-                  };
-
+                  const [imgError, setImgError] = useState(false);
+                  
                   return (
                     <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
                       <div className="flex items-center gap-3">
-                        {/* GAMBAR BANK - MENGGUNAKAN EMOJI/ICON UNTUK MENGHINDARI ERROR */}
-                        <div className="w-8 h-8 bg-[#FFD700]/20 rounded-full flex items-center justify-center text-[#FFD700] text-sm font-bold">
-                          {getInitial(bank.bank)}
+                        {/* GAMBAR BANK */}
+                        <div className="w-8 h-8 relative flex-shrink-0">
+                          {!imgError ? (
+                            <NextImage
+                              src={getBankImage(bank.bank)}
+                              alt={bank.bank}
+                              width={32}
+                              height={32}
+                              className="rounded-full object-cover"
+                              onError={() => setImgError(true)}
+                            />
+                          ) : (
+                            <div className="w-8 h-8 bg-[#FFD700]/20 rounded-full flex items-center justify-center text-[#FFD700] text-sm font-bold">
+                              {bank.bank?.charAt(0) || 'B'}
+                            </div>
+                          )}
                         </div>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
@@ -879,7 +922,7 @@ export default function DashboardContent() {
         </div>
       </div>
 
-      {/* ROW 2 - GRID 3 KOLOM */}
+      {/* ROW 2 - GRID 3 KOLOM (SISANYA TETAP SAMA) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
         {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
@@ -946,9 +989,8 @@ export default function DashboardContent() {
             </button>
           </div>
           
-          {/* FILTER SECTION - SEDERHANA */}
+          {/* FILTER SECTION */}
           <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
-            {/* FILTER ASSET - CUMA 2 PILIHAN */}
             <select 
               value={selectedAsset} 
               onChange={(e) => setSelectedAsset(e.target.value)}
@@ -958,7 +1000,6 @@ export default function DashboardContent() {
               <option value="XLY">XLY</option>
             </select>
 
-            {/* FILTER PERIODE */}
             <select value={assetPerformanceFilter} onChange={(e) => setAssetPerformanceFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
               <option value="daily">Daily</option>
               <option value="monthly">Monthly</option>
@@ -1014,7 +1055,7 @@ export default function DashboardContent() {
           </Link>
         </div>
 
-        {/* KOLOM 3: OFFICER PERFORMANCE - PIE CHART (HUMAN VS SYSTEM) */}
+        {/* KOLOM 3: OFFICER PERFORMANCE - PIE CHART */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <Link href="/dashboard/officers-performance" className="block group">
             <div className="flex items-center justify-between mb-2">
