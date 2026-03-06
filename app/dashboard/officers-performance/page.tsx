@@ -219,8 +219,8 @@ export default function OfficersKPIPage() {
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
         .select('handler, status, duration_minutes, reason')
-        .gte('approved_date', startDate)  // Langsung pake timestamp string
-        .lte('approved_date', endDate)    // Langsung pake timestamp string
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate)
 
       if (depositError) throw depositError
 
@@ -228,8 +228,8 @@ export default function OfficersKPIPage() {
       const { data: withdrawalData, error: withdrawalError } = await supabase
         .from('withdrawal_transactions')
         .select('handler, status, duration_minutes, reason')
-        .gte('approved_date', startDate)  // Langsung pake timestamp string
-        .lte('approved_date', endDate)    // Langsung pake timestamp string
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate)
 
       if (withdrawalError) throw withdrawalError
 
@@ -663,16 +663,17 @@ export default function OfficersKPIPage() {
                     ))}
                   </Pie>
                   <Tooltip 
-  contentStyle={{ 
-    backgroundColor: '#0B1A33', 
-    borderColor: '#FFD700',
-    color: 'white'
-  }}
-  wrapperStyle={{ color: 'white' }}
-  formatter={(value, name, props) => {
-    return [`${value} approved`, props.payload.fullName];
-  }}
-/>
+                    contentStyle={{ 
+                      backgroundColor: '#0B1A33', 
+                      borderColor: '#FFD700',
+                      color: '#FFFFFF'
+                    }}
+                    itemStyle={{ color: '#FFFFFF' }}
+                    labelStyle={{ color: '#FFD700' }}
+                    formatter={(value: any, name: any, props: any) => {
+                      return [`${value} approved`, props.payload.fullName];
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -710,10 +711,15 @@ export default function OfficersKPIPage() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                    contentStyle={{ 
+                      backgroundColor: '#0B1A33', 
+                      borderColor: '#FFD700',
+                      color: '#FFFFFF'
+                    }}
+                    itemStyle={{ color: '#FFFFFF' }}
+                    labelStyle={{ color: '#FFD700' }}
                     formatter={(value: any, name: any, props: any) => {
-                      const item = withdrawalPieData.find(d => d.name === props.payload.name);
-                      return [`${value} approved`, item?.fullName || props.payload.name];
+                      return [`${value} approved`, props.payload.fullName];
                     }}
                   />
                 </PieChart>
