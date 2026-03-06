@@ -18,22 +18,22 @@ export default function SummaryKPIDataPage() {
       try {
         setLoading(true);
         
-        // Ambil dari tabel officers, fokus ke panel_id
-        const { data, error } = await supabase
-          .from('officers')
-          .select(`
-            id,
-            employee_id,
-            full_name,
-            email,
-            department,
-            role,
-            status,
-            panel_id,
-            join_date
-          `)
-          .eq('department', 'CS DP WD')
-          .order('full_name', { ascending: true });
+        // AMBIL DARI TABEL OFFICERS
+const { data, error } = await supabase
+  .from('officers')
+  .select(`
+    id,
+    employee_id,
+    full_name,
+    email,
+    department,
+    role,
+    status,
+    panel_id,  // <-- PASTIKAN INI ADA
+    join_date
+  `)
+  .eq('department', 'CS DP WD')
+  .order('full_name', { ascending: true });
 
         if (error) throw error;
         
