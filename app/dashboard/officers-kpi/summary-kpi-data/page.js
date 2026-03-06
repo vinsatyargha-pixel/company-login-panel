@@ -1,158 +1,78 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 export default function SummaryKPIDataPage() {
   const [tahun, setTahun] = useState('2026');
   const [periode, setPeriode] = useState('Jan - Jun');
+  const [officers, setOfficers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // DATA DUMMY SESUAI EXCEL - DEPOSIT & WITHDRAWAL (2 BARIS PER OFFICER)
-  const dpwdData = [
-    // OFFICER 1 - HAKIM
-    { no: 1, name: 'Hakim', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-01-15', aspect: 'Deposit Aspect',
-      totalApproved: 145, totalReject: 2, intervalApp: 2, intervalRej: 0,
-      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 95, p2: 100, p3: 100, p4: 100, avg: 98.75 },
-    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
-      totalApproved: 138, totalReject: 1, intervalApp: 1, intervalRej: 0,
-      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 94, p2: 100, p3: 100, p4: 100, avg: 98.5 },
-    
-    // OFFICER 2 - ZAKIY
-    { no: 2, name: 'Zakiy', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-02-10', aspect: 'Deposit Aspect',
-      totalApproved: 132, totalReject: 3, intervalApp: 3, intervalRej: 1,
-      heQty: 1, heAmount: '500K', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 1, crossBankAmount: '500K', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 92, p2: 95, p3: 90, p4: 95, avg: 93 },
-    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
-      totalApproved: 128, totalReject: 2, intervalApp: 2, intervalRej: 1,
-      heQty: 1, heAmount: '250K', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 1, crossBankAmount: '250K', crossAssetQty: 1, crossAssetAmount: '250K',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 90, p2: 92, p3: 88, p4: 92, avg: 90.5 },
-    
-    // OFFICER 3 - GOLDIE
-    { no: 3, name: 'Goldie', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-03-05', aspect: 'Deposit Aspect',
-      totalApproved: 150, totalReject: 0, intervalApp: 1, intervalRej: 0,
-      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 98, p2: 100, p3: 100, p4: 100, avg: 99.5 },
-    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
-      totalApproved: 142, totalReject: 1, intervalApp: 1, intervalRej: 0,
-      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 97, p2: 100, p3: 100, p4: 100, avg: 99.25 },
-    
-    // OFFICER 4 - VINI
-    { no: 4, name: 'Vini', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-04-20', aspect: 'Deposit Aspect',
-      totalApproved: 118, totalReject: 4, intervalApp: 4, intervalRej: 2,
-      heQty: 1, heAmount: '500K', mistakeQty: 1, mistakeAmount: '250K', blockBank: 0,
-      crossBankQty: 1, crossBankAmount: '500K', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 88, p2: 85, p3: 80, p4: 85, avg: 84.5 },
-    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
-      totalApproved: 112, totalReject: 3, intervalApp: 3, intervalRej: 1,
-      heQty: 1, heAmount: '250K', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 85, p2: 88, p3: 85, p4: 90, avg: 87 },
-    
-    // OFFICER 5 - RONALDO
-    { no: 5, name: 'Ronaldo', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-05-12', aspect: 'Deposit Aspect',
-      totalApproved: 135, totalReject: 1, intervalApp: 2, intervalRej: 0,
-      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 90, p2: 100, p3: 100, p4: 100, avg: 97.5 },
-    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
-      totalApproved: 128, totalReject: 1, intervalApp: 1, intervalRej: 0,
-      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 89, p2: 100, p3: 100, p4: 100, avg: 97.25 },
-    
-    // OFFICER 6 - SULAEMAN
-    { no: 6, name: 'Sulaeman', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-06-08', aspect: 'Deposit Aspect',
-      totalApproved: 142, totalReject: 1, intervalApp: 1, intervalRej: 0,
-      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 96, p2: 100, p3: 100, p4: 100, avg: 99 },
-    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
-      totalApproved: 135, totalReject: 0, intervalApp: 1, intervalRej: 0,
-      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
-      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
-      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
-      p1: 95, p2: 100, p3: 100, p4: 100, avg: 98.75 },
-    
-    // SYSTEM
-    { no: 7, name: 'System', dept: 'System', status: 'SYSTEM', joinDate: '-', aspect: 'Deposit Aspect',
-      totalApproved: '-', totalReject: '-', intervalApp: '-', intervalRej: '-',
-      heQty: '-', heAmount: '-', mistakeQty: '-', mistakeAmount: '-', blockBank: '-',
-      crossBankQty: '-', crossBankAmount: '-', crossAssetQty: '-', crossAssetAmount: '-',
-      bukuDosa: '-', sp1: '-', sp2: '-', sus: '-',
-      p1: '-', p2: '-', p3: '-', p4: '-', avg: '-' },
-    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
-      totalApproved: '-', totalReject: '-', intervalApp: '-', intervalRej: '-',
-      heQty: '-', heAmount: '-', mistakeQty: '-', mistakeAmount: '-', blockBank: '-',
-      crossBankQty: '-', crossBankAmount: '-', crossAssetQty: '-', crossAssetAmount: '-',
-      bukuDosa: '-', sp1: '-', sp2: '-', sus: '-',
-      p1: '-', p2: '-', p3: '-', p4: '-', avg: '-' },
-    
-    // TOTAL ALL
-    { no: 8, name: 'TOTAL ALL', dept: 'System + Human', status: '-', joinDate: '-', aspect: 'Deposit Aspect',
-      totalApproved: '822', totalReject: '11', intervalApp: '13', intervalRej: '3',
-      heQty: '2', heAmount: '1M', mistakeQty: '1', mistakeAmount: '250K', blockBank: '0',
-      crossBankQty: '2', crossBankAmount: '1M', crossAssetQty: '0', crossAssetAmount: '0',
-      bukuDosa: '0', sp1: '0', sp2: '0', sus: '0',
-      p1: '559', p2: '580', p3: '570', p4: '580', avg: '572' },
-    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
-      totalApproved: '763', totalReject: '7', intervalApp: '8', intervalRej: '2',
-      heQty: '2', heAmount: '500K', mistakeQty: '0', mistakeAmount: '0', blockBank: '0',
-      crossBankQty: '1', crossBankAmount: '250K', crossAssetQty: '1', crossAssetAmount: '250K',
-      bukuDosa: '0', sp1: '0', sp2: '0', sus: '0',
-      p1: '550', p2: '580', p3: '573', p4: '582', avg: '571' }
-  ];
+  // ===========================================
+  // FETCH OFFICERS DARI DATABASE
+  // ===========================================
+  useEffect(() => {
+    const fetchOfficers = async () => {
+      try {
+        setLoading(true);
+        
+        // Ambil dari tabel users (atau officers) yang department = CS DP WD
+        const { data, error } = await supabase
+          .from('users')  // atau 'officers' tergantung nama tabel lo
+          .select('id, user_id, email, full_name, department, role, join_date')
+          .eq('department', 'CS DP WD')
+          .order('full_name');
 
-  // DATA CUSTOMER SERVICE (TETAP SAMA - SATU BARIS PER OFFICER)
-  const csData = [
-    { no: 1, name: 'Hakim', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-01-15',
-      totalChat: 145, missedChat: 2, timeMgmt: 95, commSkill: 90, problemSolving: 88,
-      s: 0, i: 0, a: 0, u: 0, total: 145, target: 150, achieve: 96.7,
-      p1: 96.7, p2: 95, p3: 90, p4: 88, p5: 100, p6: 100 },
-    { no: 2, name: 'Zakiy', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-02-10',
-      totalChat: 138, missedChat: 1, timeMgmt: 92, commSkill: 88, problemSolving: 85,
-      s: 1, i: 0, a: 0, u: 0, total: 138, target: 150, achieve: 92,
-      p1: 92, p2: 92, p3: 88, p4: 85, p5: 98, p6: 98 },
-    { no: 3, name: 'Goldie', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-03-05',
-      totalChat: 142, missedChat: 3, timeMgmt: 90, commSkill: 92, problemSolving: 90,
-      s: 0, i: 1, a: 0, u: 0, total: 142, target: 150, achieve: 94.7,
-      p1: 94.7, p2: 90, p3: 92, p4: 90, p5: 95, p6: 95 },
-    { no: 4, name: 'Vini', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-04-20',
-      totalChat: 128, missedChat: 0, timeMgmt: 88, commSkill: 85, problemSolving: 82,
-      s: 0, i: 0, a: 0, u: 0, total: 128, target: 150, achieve: 85.3,
-      p1: 85.3, p2: 88, p3: 85, p4: 82, p5: 100, p6: 100 },
-    { no: 5, name: 'Ronaldo', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-05-12',
-      totalChat: 135, missedChat: 2, timeMgmt: 85, commSkill: 88, problemSolving: 86,
-      s: 0, i: 0, a: 0, u: 0, total: 135, target: 150, achieve: 90,
-      p1: 90, p2: 85, p3: 88, p4: 86, p5: 100, p6: 100 },
-    { no: 6, name: 'Sulaeman', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-06-08',
-      totalChat: 140, missedChat: 1, timeMgmt: 94, commSkill: 91, problemSolving: 89,
-      s: 0, i: 0, a: 0, u: 0, total: 140, target: 150, achieve: 93.3,
-      p1: 93.3, p2: 94, p3: 91, p4: 89, p5: 100, p6: 100 },
-    { no: 7, name: 'BOT', dept: 'System', status: 'SYSTEM', joinDate: '-',
-      totalChat: 200, missedChat: 0, timeMgmt: 100, commSkill: 100, problemSolving: 100,
-      s: 0, i: 0, a: 0, u: 0, total: 200, target: 200, achieve: 100,
-      p1: 100, p2: 100, p3: 100, p4: 100, p5: 100, p6: 100 }
-  ];
+        if (error) throw error;
+        
+        // Filter yang beneran CS DP WD (case insensitive)
+        const filteredData = data?.filter(officer => 
+          officer.department?.toUpperCase().includes('CS') &&
+          officer.department?.toUpperCase().includes('DP') &&
+          officer.department?.toUpperCase().includes('WD')
+        ) || [];
+        
+        setOfficers(filteredData);
+        console.log('Officers CS DP WD:', filteredData);
+        
+      } catch (error) {
+        console.error('Error fetching officers:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOfficers();
+  }, []);
+
+  // DATA DUMMY TRANSAKSI (nanti diganti dengan data real)
+  const getDummyDataForOfficer = (officerName) => {
+    // Ini cuma contoh, nanti ambil dari deposit_transactions & withdrawal_transactions
+    return {
+      deposit: {
+        totalApproved: Math.floor(Math.random() * 50) + 100,
+        totalReject: Math.floor(Math.random() * 5),
+        sop: Math.floor(Math.random() * 10) + 85,
+      },
+      withdrawal: {
+        totalApproved: Math.floor(Math.random() * 40) + 80,
+        totalReject: Math.floor(Math.random() * 4),
+        sop: Math.floor(Math.random() * 10) + 83,
+      }
+    };
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
@@ -194,6 +114,9 @@ export default function SummaryKPIDataPage() {
           <option>Jan - Jun</option>
           <option>Jul - Dec</option>
         </select>
+        <span className="text-[#A7D8FF] text-sm ml-auto">
+          Total Officers: {officers.length}
+        </span>
       </div>
 
       {/* BAGIAN 1: DEPOSIT & WITHDRAWAL KPI */}
@@ -202,255 +125,200 @@ export default function SummaryKPIDataPage() {
         
         {/* TABLE WRAPPER - SCROLL HORIZONTAL */}
         <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-          <table className="w-full text-xs min-w-[2000px]">
+          <table className="w-full text-xs min-w-[1800px]">
             <thead>
               {/* HEADER ROW 1 - KATEGORI UTAMA */}
               <tr className="border-b border-[#FFD700]/20">
-                <th colSpan="6" className="text-left py-2 px-2 text-[#FFD700] bg-[#1A2F4A] sticky left-0 z-20"> </th>
-                <th colSpan="4" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Time Management</th>
-                <th colSpan="2" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10"> </th>
-                <th colSpan="7" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Human Error</th>
-                <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Problem Solving</th>
-                <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Follow SOP / Teamwork</th>
-                <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE DP & WD</th>
+                <th colSpan="6" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
+                <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Time Management</th>
+                <th colSpan="2" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Human Error</th>
+                <th colSpan="4" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Problem Solving</th>
+                <th colSpan="4" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Follow SOP</th>
+                <th colSpan="4" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE</th>
               </tr>
               
               {/* HEADER ROW 2 - SUB KATEGORI */}
               <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
                 {/* STICKY COLUMNS */}
-                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[50px]">No</th>
-                <th className="sticky left-[50px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">NAME</th>
-                <th className="sticky left-[150px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
-                <th className="sticky left-[250px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
-                <th className="sticky left-[330px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">JOIN DATE</th>
-                <th className="sticky left-[430px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">ASPECT</th>
+                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
+                <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[120px]">NAME</th>
+                <th className="sticky left-[160px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[60px]">ID</th>
+                <th className="sticky left-[220px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
+                <th className="sticky left-[320px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[70px]">STATUS</th>
+                <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">ASPECT</th>
                 
                 {/* Time Management */}
                 <th className="text-center py-2 px-2 min-w-[60px]">Total App</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Total Rej</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP %</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">NON SOP</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">SOP%</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP %</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">NON SOP</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">SOP%</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP</th>
                 
                 {/* Human Error */}
-                <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">HE Qty</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">HE Amount</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Mistake Qty</th>
-                <th className="text-center py-2 px-2 min-w-[80px]">Mistake Amt</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
                 
                 {/* Problem Solving */}
-                <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Qty</th>
-                <th className="text-center py-2 px-2 min-w-[90px]">Cross Bank Amt</th>
-                <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Qty</th>
-                <th className="text-center py-2 px-2 min-w-[90px]">Cross Asset Amt</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Presentase</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Poin 2</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Poin 3</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Cross Bank</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Cross Amt</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Cross Asset</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Asset Amt</th>
                 
-                {/* Follow SOP / Teamwork */}
-                <th className="text-center py-2 px-2 min-w-[70px]">Buku Dosa</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">SP1</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">SP2</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">SUS</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Total Poin 4</th>
+                {/* Follow SOP */}
+                <th className="text-center py-2 px-2 min-w-[50px]">Buku Dosa</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">SP1</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">SP2</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">SUS</th>
                 
                 {/* SUB SCORE */}
-                <th className="text-center py-2 px-2 min-w-[50px]">P1</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">P2</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">P3</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">P4</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">Avg</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
               </tr>
             </thead>
             <tbody>
-              {dpwdData.map((row, index) => {
-                // Tentukan apakah baris ini perlu nampilin no/name atau tidak
-                const showMainInfo = row.no !== '';
+              {officers.map((officer, index) => {
+                const officerData = getDummyDataForOfficer(officer.full_name);
+                const rowNumber = index + 1;
                 
                 return (
-                  <tr key={index} className={`border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5 ${
-                    row.aspect === 'Withdrawal Aspect' ? 'bg-[#0B1A33]/30' : ''
-                  }`}>
-                    {/* STICKY COLUMNS */}
-                    <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.no}</td>
-                    <td className="sticky left-[50px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{row.name}</td>
-                    <td className="sticky left-[150px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.dept}</td>
-                    <td className="sticky left-[250px] z-10 bg-[#1A2F4A] py-2 px-2">
-                      {row.status && (
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${
-                          row.status === 'REGULAR' ? 'bg-green-500/20 text-green-400' : 
-                          row.status === 'SYSTEM' ? 'bg-blue-500/20 text-blue-400' : 
-                          row.status === '-' ? '' : 'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {row.status}
+                  <>
+                    {/* DEPOSIT ASPECT */}
+                    <tr key={`${officer.id}-deposit`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
+                      <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{rowNumber}</td>
+                      <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.full_name || officer.username}</td>
+                      <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF] text-[9px]">{officer.user_id || officer.id}</td>
+                      <td className="sticky left-[220px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.department}</td>
+                      <td className="sticky left-[320px] z-10 bg-[#1A2F4A] py-2 px-2">
+                        <span className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px]">
+                          {officer.role || 'REGULAR'}
                         </span>
-                      )}
-                    </td>
-                    <td className="sticky left-[330px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.joinDate}</td>
-                    <td className="sticky left-[430px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] text-[10px] font-bold">{row.aspect}</td>
-                    
-                    {/* Time Management */}
-                    <td className="text-center py-2 px-2">{row.totalApproved}</td>
-                    <td className="text-center py-2 px-2">{row.totalReject}</td>
-                    <td className="text-center py-2 px-2">{row.totalApproved}</td>
-                    <td className="text-center py-2 px-2">{row.p1}%</td>
-                    <td className="text-center py-2 px-2">{row.totalReject}</td>
-                    <td className="text-center py-2 px-2">{row.totalApproved}</td>
-                    <td className="text-center py-2 px-2">{row.p1}%</td>
-                    <td className="text-center py-2 px-2">{row.totalReject}</td>
-                    
-                    {/* Human Error */}
-                    <td className="text-center py-2 px-2">{row.intervalApp}</td>
-                    <td className="text-center py-2 px-2">{row.intervalRej}</td>
-                    <td className="text-center py-2 px-2">{row.heQty}</td>
-                    <td className="text-center py-2 px-2">{row.heAmount}</td>
-                    <td className="text-center py-2 px-2">{row.mistakeQty}</td>
-                    <td className="text-center py-2 px-2">{row.mistakeAmount}</td>
-                    <td className="text-center py-2 px-2">{row.blockBank}</td>
-                    
-                    {/* Problem Solving */}
-                    <td className="text-center py-2 px-2">{row.crossBankQty}</td>
-                    <td className="text-center py-2 px-2">{row.crossBankAmount}</td>
-                    <td className="text-center py-2 px-2">{row.crossAssetQty}</td>
-                    <td className="text-center py-2 px-2">{row.crossAssetAmount}</td>
-                    <td className="text-center py-2 px-2">{row.p3}%</td>
-                    <td className="text-center py-2 px-2">{row.p2}</td>
-                    <td className="text-center py-2 px-2">{row.p3}</td>
-                    
-                    {/* Follow SOP / Teamwork */}
-                    <td className="text-center py-2 px-2">{row.bukuDosa}</td>
-                    <td className="text-center py-2 px-2">{row.sp1}</td>
-                    <td className="text-center py-2 px-2">{row.sp2}</td>
-                    <td className="text-center py-2 px-2">{row.sus}</td>
-                    <td className="text-center py-2 px-2">{row.p4}</td>
-                    
-                    {/* SUB SCORE */}
-                    <td className="text-center py-2 px-2 font-bold text-blue-400">{row.p1}</td>
-                    <td className="text-center py-2 px-2 font-bold text-red-400">{row.p2}</td>
-                    <td className="text-center py-2 px-2 font-bold text-yellow-400">{row.p3}</td>
-                    <td className="text-center py-2 px-2 font-bold text-green-400">{row.p4}</td>
-                    <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{row.avg}</td>
-                  </tr>
+                      </td>
+                      <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] text-[10px] font-bold">Deposit</td>
+                      
+                      {/* Time Management */}
+                      <td className="text-center py-2 px-2">{officerData.deposit.totalApproved}</td>
+                      <td className="text-center py-2 px-2">{officerData.deposit.totalReject}</td>
+                      <td className="text-center py-2 px-2">{officerData.deposit.totalApproved}</td>
+                      <td className="text-center py-2 px-2">{officerData.deposit.sop}%</td>
+                      <td className="text-center py-2 px-2">{officerData.deposit.totalReject}</td>
+                      <td className="text-center py-2 px-2">{officerData.deposit.totalApproved}</td>
+                      <td className="text-center py-2 px-2">{officerData.deposit.sop}%</td>
+                      <td className="text-center py-2 px-2">{officerData.deposit.totalReject}</td>
+                      
+                      {/* Human Error */}
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">-</td>
+                      
+                      {/* Problem Solving */}
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">-</td>
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">-</td>
+                      
+                      {/* Follow SOP */}
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">0</td>
+                      
+                      {/* SUB SCORE */}
+                      <td className="text-center py-2 px-2 font-bold text-blue-400">{officerData.deposit.sop}</td>
+                      <td className="text-center py-2 px-2 font-bold text-red-400">100</td>
+                      <td className="text-center py-2 px-2 font-bold text-yellow-400">100</td>
+                      <td className="text-center py-2 px-2 font-bold text-green-400">100</td>
+                    </tr>
+
+                    {/* WITHDRAWAL ASPECT */}
+                    <tr key={`${officer.id}-withdrawal`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5 bg-[#0B1A33]/30">
+                      <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]"></td>
+                      <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium"></td>
+                      <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]"></td>
+                      <td className="sticky left-[220px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]"></td>
+                      <td className="sticky left-[320px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                      <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] text-[10px] font-bold">Withdrawal</td>
+                      
+                      {/* Time Management */}
+                      <td className="text-center py-2 px-2">{officerData.withdrawal.totalApproved}</td>
+                      <td className="text-center py-2 px-2">{officerData.withdrawal.totalReject}</td>
+                      <td className="text-center py-2 px-2">{officerData.withdrawal.totalApproved}</td>
+                      <td className="text-center py-2 px-2">{officerData.withdrawal.sop}%</td>
+                      <td className="text-center py-2 px-2">{officerData.withdrawal.totalReject}</td>
+                      <td className="text-center py-2 px-2">{officerData.withdrawal.totalApproved}</td>
+                      <td className="text-center py-2 px-2">{officerData.withdrawal.sop}%</td>
+                      <td className="text-center py-2 px-2">{officerData.withdrawal.totalReject}</td>
+                      
+                      {/* Human Error */}
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">-</td>
+                      
+                      {/* Problem Solving */}
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">-</td>
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">-</td>
+                      
+                      {/* Follow SOP */}
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">0</td>
+                      <td className="text-center py-2 px-2">0</td>
+                      
+                      {/* SUB SCORE */}
+                      <td className="text-center py-2 px-2 font-bold text-blue-400">{officerData.withdrawal.sop}</td>
+                      <td className="text-center py-2 px-2 font-bold text-red-400">100</td>
+                      <td className="text-center py-2 px-2 font-bold text-yellow-400">100</td>
+                      <td className="text-center py-2 px-2 font-bold text-green-400">100</td>
+                    </tr>
+                  </>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      {/* BAGIAN 2: CUSTOMER SERVICE KPI (SAMA KAYA SEBELUMNYA) */}
-      <div className="mb-10">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">CUSTOMER SERVICE KPI</h2>
-        
-        {/* TABLE WRAPPER - SCROLL HORIZONTAL */}
-        <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-          <table className="w-full text-xs min-w-[1400px]">
-            <thead>
-              {/* HEADER ROW 1 - KATEGORI UTAMA */}
-              <tr className="border-b border-[#FFD700]/20">
-                <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
-                <th colSpan="2" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
-                <th colSpan="2" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Poin 2</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Poin 3</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">Poin 4</th>
-                <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Poin 5 & Attendance</th>
-                <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-orange-500/10">SUB SCORE CS</th>
+              {/* SYSTEM ROW */}
+              <tr className="border-b border-[#FFD700]/10 bg-blue-900/20">
+                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officers.length + 1}</td>
+                <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium text-blue-400">System</td>
+                <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">-</td>
+                <td className="sticky left-[220px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">System</td>
+                <td className="sticky left-[320px] z-10 bg-[#1A2F4A] py-2 px-2">
+                  <span className="bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded text-[10px]">SYSTEM</span>
+                </td>
+                <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] text-[10px] font-bold">Deposit</td>
+                <td colSpan="24" className="text-center py-2 px-2 text-[#A7D8FF]">-</td>
               </tr>
-              
-              {/* HEADER ROW 2 - SUB KATEGORI */}
-              <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-                {/* STICKY COLUMNS */}
-                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[50px]">No</th>
-                <th className="sticky left-[50px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">NAME</th>
-                <th className="sticky left-[150px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
-                <th className="sticky left-[250px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
-                <th className="sticky left-[330px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">JOIN DATE</th>
-                
-                {/* Poin 1 */}
-                <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Missed Chat</th>
-                
-                {/* Poin 2 */}
-                <th className="text-center py-2 px-2 min-w-[80px]">Time Mgmt</th>
-                <th className="text-center py-2 px-2 min-w-[80px]">Comm Skill</th>
-                
-                {/* Poin 3 */}
-                <th className="text-center py-2 px-2 min-w-[90px]">Problem Solving</th>
-                
-                {/* Poin 4 */}
-                <th className="text-center py-2 px-2 min-w-[70px]">Follow SOP</th>
-                
-                {/* Poin 5 & Attendance */}
-                <th className="text-center py-2 px-2 min-w-[40px]">S</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">I</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">A</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">U</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">Total</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">Target</th>
-                
-                {/* SUB SCORE */}
-                <th className="text-center py-2 px-2 min-w-[50px]">P1</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">P2</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">P3</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">P4</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">P5</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">P6</th>
+              <tr className="border-b border-[#FFD700]/10 bg-blue-900/20">
+                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[220px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[320px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] text-[10px] font-bold">Withdrawal</td>
+                <td colSpan="24" className="text-center py-2 px-2 text-[#A7D8FF]">-</td>
               </tr>
-            </thead>
-            <tbody>
-              {csData.map((row) => (
-                <tr key={row.no} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
-                  {/* STICKY COLUMNS */}
-                  <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.no}</td>
-                  <td className="sticky left-[50px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{row.name}</td>
-                  <td className="sticky left-[150px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.dept}</td>
-                  <td className="sticky left-[250px] z-10 bg-[#1A2F4A] py-2 px-2">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${
-                      row.status === 'REGULAR' ? 'bg-green-500/20 text-green-400' : 
-                      row.status === 'SYSTEM' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'
-                    }`}>
-                      {row.status}
-                    </span>
-                  </td>
-                  <td className="sticky left-[330px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.joinDate}</td>
-                  
-                  {/* Poin 1 */}
-                  <td className="text-center py-2 px-2">{row.totalChat}</td>
-                  <td className="text-center py-2 px-2">{row.missedChat}</td>
-                  
-                  {/* Poin 2 */}
-                  <td className="text-center py-2 px-2">{row.timeMgmt}%</td>
-                  <td className="text-center py-2 px-2">{row.commSkill}%</td>
-                  
-                  {/* Poin 3 */}
-                  <td className="text-center py-2 px-2">{row.problemSolving}%</td>
-                  
-                  {/* Poin 4 */}
-                  <td className="text-center py-2 px-2">100%</td>
-                  
-                  {/* Poin 5 & Attendance */}
-                  <td className="text-center py-2 px-2">{row.s}</td>
-                  <td className="text-center py-2 px-2">{row.i}</td>
-                  <td className="text-center py-2 px-2">{row.a}</td>
-                  <td className="text-center py-2 px-2">{row.u}</td>
-                  <td className="text-center py-2 px-2">{row.total}</td>
-                  <td className="text-center py-2 px-2">{row.target}</td>
-                  
-                  {/* SUB SCORE */}
-                  <td className="text-center py-2 px-2 font-bold text-blue-400">{row.p1}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-green-400">{row.p2}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-yellow-400">{row.p3}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-purple-400">{row.p4}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-red-400">{row.p5}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{row.p6}%</td>
-                </tr>
-              ))}
+
+              {/* TOTAL ALL ROW */}
+              <tr className="border-t-2 border-[#FFD700]/30 font-bold">
+                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officers.length + 2}</td>
+                <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">TOTAL ALL</td>
+                <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
+                <td className="sticky left-[220px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
+                <td className="sticky left-[320px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
+                <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">Deposit</td>
+                <td colSpan="24" className="text-center py-2 px-2 text-[#FFD700]">822</td>
+              </tr>
+              <tr className="border-b border-[#FFD700]/10 font-bold">
+                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[220px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[320px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">Withdrawal</td>
+                <td colSpan="24" className="text-center py-2 px-2 text-[#FFD700]">763</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -458,8 +326,7 @@ export default function SummaryKPIDataPage() {
 
       {/* FOOTER */}
       <div className="text-xs text-[#A7D8FF]/30 text-center mt-8">
-        <p>KPI Summary • Deposit & Withdrawal (2 baris per officer: Deposit Aspect & Withdrawal Aspect) • Periode {periode} {tahun}</p>
-        <p className="mt-1">P1: Time Management | P2: Human Error | P3: Problem Solving | P4: Follow SOP | P5: Chat Achievement | P6: Attendance</p>
+        <p>KPI Summary • Data officers diambil dari database ({officers.length} officers CS DP WD) • Periode {periode} {tahun}</p>
       </div>
     </div>
   );
