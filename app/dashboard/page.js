@@ -12,7 +12,6 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import Link from 'next/link';
-import NextImage from 'next/image';
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
@@ -484,20 +483,22 @@ export default function DashboardContent() {
   const fetchPaymentData = async () => {
     try {
       const { data: depositData } = await supabase
-        .from('deposit_transactions')
-        .select('amount');
+        .from('transactions')
+        .select('amount')
+        .eq('type', 'deposit')
 
       const totalDeposit = depositData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
 
       const { data: withdrawalData } = await supabase
-        .from('withdrawal_transactions')
-        .select('amount');
+        .from('transactions')
+        .select('amount')
+        .eq('type', 'withdrawal')
 
       const totalWithdrawal = withdrawalData?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0;
 
       const { count: chatCount } = await supabase
-        .from('chat_sessions')
-        .select('*', { count: 'exact' });
+        .from('chat_logs')
+        .select('*', { count: 'exact' })
 
       setTrafficData([
         { name: 'Deposit', value: totalDeposit },
@@ -507,11 +508,6 @@ export default function DashboardContent() {
 
     } catch (error) {
       console.error('Error fetching payment data:', error);
-      setTrafficData([
-        { name: 'Deposit', value: 0 },
-        { name: 'Withdrawal', value: 0 },
-        { name: 'Livechat', value: 0 }
-      ]);
     }
   };
 
@@ -525,7 +521,7 @@ export default function DashboardContent() {
     fetchBankAccounts();
     fetchOfficerPerformance();
     fetchAssetPerformanceData();
-    fetchOfficerPieData();
+    fetchOfficerPieData(); // AMBIL DATA PIE CHART
   }, [chartFilter, chartYear, selectedAsset, assetPerformanceFilter, 
       assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
 
@@ -671,20 +667,6 @@ export default function DashboardContent() {
     }
   ];
 
-  // Fungsi untuk dapatkan nama file gambar
-  const getBankImage = (bankName) => {
-    if (!bankName) return '/images/bank.png';
-    const name = bankName.toLowerCase();
-    if (name.includes('bca')) return '/images/bca.png';
-    if (name.includes('bni')) return '/images/bni.png';
-    if (name.includes('bri')) return '/images/bri.png';
-    if (name.includes('nexus')) return '/images/nexuspay.png';
-    if (name.includes('midas')) return '/images/midas.png';
-    if (name.includes('mandiri')) return '/images/mandiri.png';
-    if (name.includes('dana')) return '/images/dana.png';
-    return '/images/bank.png';
-  };
-
   if (loading) return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
       <div className="text-center">
@@ -825,104 +807,52 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD - DENGAN GAMBAR */}
+        {/* KOLOM 2: DEPOSIT METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {loadingBanks ? (
-              <div className="text-center text-[#A7D8FF]">Loading banks...</div>
-            ) : 
-              bankAccounts
-                .filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
-                .map(bank => {
-                  const [imgError, setImgError] = useState(false);
-                  
-                  return (
-                    <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-                      <div className="flex items-center gap-3">
-                        {/* GAMBAR BANK */}
-                        <div className="w-8 h-8 relative flex-shrink-0">
-                          {!imgError ? (
-                            <NextImage
-                              src={getBankImage(bank.bank)}
-                              alt={bank.bank}
-                              width={32}
-                              height={32}
-                              className="rounded-full object-cover"
-                              onError={() => setImgError(true)}
-                            />
-                          ) : (
-                            <div className="w-8 h-8 bg-[#FFD700]/20 rounded-full flex items-center justify-center text-[#FFD700] text-sm font-bold">
-                              {bank.bank?.charAt(0) || 'B'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                            <span className="text-white text-sm font-medium">{bank.bank}</span>
-                          </div>
-                          <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
-                        </div>
+            {loadingBanks ? <div className="text-center text-[#A7D8FF]">Loading banks...</div> : 
+              bankAccounts.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
+                .map(bank => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span className="text-white text-sm font-medium">{bank.bank}</span>
                       </div>
-                      <span className="text-xs font-medium text-green-400">ON</span>
+                      <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
                     </div>
-                  );
-                })
+                    <span className="text-xs font-medium text-green-400">ON</span>
+                  </div>
+                ))
             }
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN GAMBAR */}
+        {/* KOLOM 3: WITHDRAWAL METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {loadingBanks ? (
-              <div className="text-center text-[#A7D8FF]">Loading banks...</div>
-            ) : 
-              bankAccounts
-                .filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
-                .map(bank => {
-                  const [imgError, setImgError] = useState(false);
-                  
-                  return (
-                    <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-                      <div className="flex items-center gap-3">
-                        {/* GAMBAR BANK */}
-                        <div className="w-8 h-8 relative flex-shrink-0">
-                          {!imgError ? (
-                            <NextImage
-                              src={getBankImage(bank.bank)}
-                              alt={bank.bank}
-                              width={32}
-                              height={32}
-                              className="rounded-full object-cover"
-                              onError={() => setImgError(true)}
-                            />
-                          ) : (
-                            <div className="w-8 h-8 bg-[#FFD700]/20 rounded-full flex items-center justify-center text-[#FFD700] text-sm font-bold">
-                              {bank.bank?.charAt(0) || 'B'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                            <span className="text-white text-sm font-medium">{bank.bank}</span>
-                          </div>
-                          <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
-                        </div>
+            {loadingBanks ? <div className="text-center text-[#A7D8FF]">Loading banks...</div> : 
+              bankAccounts.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
+                .map(bank => (
+                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span className="text-white text-sm font-medium">{bank.bank}</span>
                       </div>
-                      <span className="text-xs font-medium text-green-400">ON</span>
+                      <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
                     </div>
-                  );
-                })
+                    <span className="text-xs font-medium text-green-400">ON</span>
+                  </div>
+                ))
             }
           </div>
         </div>
       </div>
 
-      {/* ROW 2 - GRID 3 KOLOM (SISANYA TETAP SAMA) */}
+      {/* ROW 2 - GRID 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
         {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
@@ -959,103 +889,105 @@ export default function DashboardContent() {
         </div>
 
         {/* KOLOM 2: ASSET PERFORMANCE */}
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <div className="flex items-center justify-between mb-2">
-            <Link href="/dashboard/asset-performance" className="block group flex-1">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-[#FFD700]">📈 Asset Performance</h3>
-                <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
-            </Link>
-            
-            {/* TOMBOL REFRESH */}
-            <button
-              onClick={async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                await fetchAssetPerformanceData();
-              }}
-              disabled={loadingAssetPerformance}
-              className="ml-2 p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex-shrink-0"
-              title="Refresh asset data"
-            >
-              <svg className={`w-4 h-4 text-white ${loadingAssetPerformance ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-          </div>
-          
-          {/* FILTER SECTION */}
-          <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
-            <select 
-              value={selectedAsset} 
-              onChange={(e) => setSelectedAsset(e.target.value)}
-              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
-            >
-              <option value="all">ALL</option>
-              <option value="XLY">XLY</option>
-            </select>
-
-            <select value={assetPerformanceFilter} onChange={(e) => setAssetPerformanceFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-              <option value="daily">Daily</option>
-              <option value="monthly">Monthly</option>
-            </select>
-            
-            {assetPerformanceFilter === 'daily' ? (
-              <>
-                <select value={assetPerformanceMonth} onChange={(e) => setAssetPerformanceMonth(parseInt(e.target.value))} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-                  {fullMonths.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
-                </select>
-                <select value={assetPerformanceYear} onChange={(e) => setAssetPerformanceYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-                  {years.map(year => <option key={year} value={year}>{year}</option>)}
-                </select>
-              </>
-            ) : (
-              <>
-                <select value={assetPerformancePeriod} onChange={(e) => setAssetPerformancePeriod(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-                  <option value="jan-jun">Jan-Jun</option>
-                  <option value="jul-dec">Jul-Dec</option>
-                </select>
-                <select value={assetPerformanceYear} onChange={(e) => setAssetPerformanceYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-                  {years.map(year => <option key={year} value={year}>{year}</option>)}
-                </select>
-              </>
-            )}
-          </div>
-          
-          {/* CHART */}
-          <div className="h-64">
-            {loadingAssetPerformance ? (
-              <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={assetPerformance}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                  <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
-                  <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-                  <Legend />
-                  <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-          
-          {/* LINK DETAIL */}
-          <Link href="/dashboard/asset-performance" className="block mt-2 text-right">
-            <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
-              Click to see detailed breakdown →
-            </span>
-          </Link>
+<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+  <div className="flex items-center justify-between mb-2">
+    <Link href="/dashboard/asset-performance" className="block group flex-1">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-[#FFD700]">📈 Asset Performance</h3>
+        <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+          </svg>
         </div>
+      </div>
+    </Link>
+    
+    {/* TOMBOL REFRESH */}
+    <button
+      onClick={async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await fetchAssetPerformanceData();
+      }}
+      disabled={loadingAssetPerformance}
+      className="ml-2 p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex-shrink-0"
+      title="Refresh asset data"
+    >
+      <svg className={`w-4 h-4 text-white ${loadingAssetPerformance ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+      </svg>
+    </button>
+  </div>
+  
+  {/* FILTER SECTION - SEDERHANA */}
+  <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
+    {/* FILTER ASSET - CUMA 2 PILIHAN */}
+    <select 
+      value={selectedAsset} 
+      onChange={(e) => setSelectedAsset(e.target.value)}
+      className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
+    >
+      <option value="all">ALL</option>
+      <option value="XLY">XLY</option>
+    </select>
 
-        {/* KOLOM 3: OFFICER PERFORMANCE - PIE CHART */}
+    {/* FILTER PERIODE */}
+    <select value={assetPerformanceFilter} onChange={(e) => setAssetPerformanceFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+      <option value="daily">Daily</option>
+      <option value="monthly">Monthly</option>
+    </select>
+    
+    {assetPerformanceFilter === 'daily' ? (
+      <>
+        <select value={assetPerformanceMonth} onChange={(e) => setAssetPerformanceMonth(parseInt(e.target.value))} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+          {fullMonths.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+        </select>
+        <select value={assetPerformanceYear} onChange={(e) => setAssetPerformanceYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+          {years.map(year => <option key={year} value={year}>{year}</option>)}
+        </select>
+      </>
+    ) : (
+      <>
+        <select value={assetPerformancePeriod} onChange={(e) => setAssetPerformancePeriod(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+          <option value="jan-jun">Jan-Jun</option>
+          <option value="jul-dec">Jul-Dec</option>
+        </select>
+        <select value={assetPerformanceYear} onChange={(e) => setAssetPerformanceYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+          {years.map(year => <option key={year} value={year}>{year}</option>)}
+        </select>
+      </>
+    )}
+  </div>
+  
+  {/* CHART */}
+  <div className="h-64">
+    {loadingAssetPerformance ? (
+      <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
+    ) : (
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={assetPerformance}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+          <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
+          <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
+          <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+          <Legend />
+          <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    )}
+  </div>
+  
+  {/* LINK DETAIL */}
+  <Link href="/dashboard/asset-performance" className="block mt-2 text-right">
+    <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
+      Click to see detailed breakdown →
+    </span>
+  </Link>
+</div>
+
+        {/* KOLOM 3: OFFICER PERFORMANCE - PIE CHART (HUMAN VS SYSTEM) */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <Link href="/dashboard/officers-performance" className="block group">
             <div className="flex items-center justify-between mb-2">
