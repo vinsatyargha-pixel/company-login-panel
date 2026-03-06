@@ -11,33 +11,23 @@ export default function SummaryKPIDataPage() {
   const [loading, setLoading] = useState(true);
 
   // ===========================================
-  // FETCH OFFICERS DARI TABEL OFFICERS
+  // FETCH OFFICERS CS DP WD DARI DATABASE
   // ===========================================
   useEffect(() => {
     const fetchOfficers = async () => {
       try {
         setLoading(true);
         
-        // AMBIL DARI TABEL OFFICERS
-const { data, error } = await supabase
-  .from('officers')
-  .select(`
-    id,
-    employee_id,
-    full_name,
-    email,
-    department,
-    role,
-    status,
-    panel_id,  // <-- PASTIKAN INI ADA
-    join_date
-  `)
-  .eq('department', 'CS DP WD')
-  .order('full_name', { ascending: true });
+        // Ambil dari tabel officers dengan filter CS DP WD
+        const { data, error } = await supabase
+          .from('officers')
+          .select('*')
+          .eq('department', 'CS DP WD')
+          .order('full_name', { ascending: true });
 
         if (error) throw error;
         
-        console.log('Data officers dengan panel_id:', data);
+        console.log('Data officers CS DP WD:', data);
         setOfficers(data || []);
         
       } catch (error) {
@@ -62,12 +52,12 @@ const { data, error } = await supabase
     return {
       deposit: {
         no: baseNo,
-        name: officer.full_name || officer.employee_id || 'Unknown',
-        panelId: officer.panel_id || '-',  // <-- PAKAI PANEL_ID
+        name: officer.full_name || 'Unknown',
+        panelId: officer.panel_id || '-',
         dept: officer.department || 'CS DP WD',
         status: officer.status || 'REGULAR',
         joinDate: officer.join_date || '-',
-        aspect: 'Deposit Aspect',
+        aspect: 'Deposit',
         totalApproved: randomDeposit,
         totalReject: Math.floor(Math.random() * 5),
         intervalApp: Math.floor(Math.random() * 4) + 1,
@@ -98,7 +88,7 @@ const { data, error } = await supabase
         dept: '',
         status: '',
         joinDate: '',
-        aspect: 'Withdrawal Aspect',
+        aspect: 'Withdrawal',
         totalApproved: randomWithdrawal,
         totalReject: Math.floor(Math.random() * 4),
         intervalApp: Math.floor(Math.random() * 3) + 1,
@@ -137,7 +127,7 @@ const { data, error } = await supabase
       dept: 'System',
       status: 'SYSTEM',
       joinDate: '-',
-      aspect: 'Deposit Aspect',
+      aspect: 'Deposit',
       totalApproved: '-',
       totalReject: '-',
     }
@@ -151,7 +141,7 @@ const { data, error } = await supabase
       dept: 'System + Human',
       status: '-',
       joinDate: '-',
-      aspect: 'Deposit Aspect',
+      aspect: 'Deposit',
       totalApproved: officers.length > 0 ? '822' : '-',
       totalReject: officers.length > 0 ? '11' : '-',
     }
@@ -241,66 +231,66 @@ const { data, error } = await supabase
                   <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE DP & WD</th>
                 </tr>
                 
-                {/* HEADER ROW 2 - SUB KATEGORI DENGAN PANEL ID */}
+                {/* HEADER ROW 2 - SUB KATEGORI */}
                 <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
                   <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
                   <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[120px]">NAME</th>
-                  <th className="sticky left-[160px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th> {/* UBAH JADI PANEL ID */}
+                  <th className="sticky left-[160px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
                   <th className="sticky left-[260px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
                   <th className="sticky left-[360px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[70px]">STATUS</th>
                   <th className="sticky left-[430px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
-                  <th className="sticky left-[520px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">ASPECT</th>
+                  <th className="sticky left-[520px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">ASPECT</th>
                   
                   {/* Time Management */}
                   <th className="text-center py-2 px-2 min-w-[60px]">Total App</th>
                   <th className="text-center py-2 px-2 min-w-[60px]">Total Rej</th>
                   <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
-                  <th className="text-center py-2 px-2 min-w-[60px]">SOP %</th>
-                  <th className="text-center py-2 px-2 min-w-[60px]">NON SOP</th>
+                  <th className="text-center py-2 px-2 min-w-[50px]">SOP%</th>
+                  <th className="text-center py-2 px-2 min-w-[60px]">Non SOP</th>
                   <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
-                  <th className="text-center py-2 px-2 min-w-[60px]">SOP %</th>
-                  <th className="text-center py-2 px-2 min-w-[60px]">NON SOP</th>
+                  <th className="text-center py-2 px-2 min-w-[50px]">SOP%</th>
+                  <th className="text-center py-2 px-2 min-w-[60px]">Non SOP</th>
                   
                   {/* Human Error */}
-                  <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
-                  <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
+                  <th className="text-center py-2 px-2 min-w-[60px]">Interval App</th>
+                  <th className="text-center py-2 px-2 min-w-[60px]">Interval Rej</th>
                   <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
-                  <th className="text-center py-2 px-2 min-w-[70px]">HE Amount</th>
+                  <th className="text-center py-2 px-2 min-w-[70px]">HE Amt</th>
                   <th className="text-center py-2 px-2 min-w-[60px]">Mistake Qty</th>
-                  <th className="text-center py-2 px-2 min-w-[80px]">Mistake Amt</th>
+                  <th className="text-center py-2 px-2 min-w-[70px]">Mistake Amt</th>
                   <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
                   
                   {/* Problem Solving */}
-                  <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Qty</th>
-                  <th className="text-center py-2 px-2 min-w-[90px]">Cross Bank Amt</th>
-                  <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Qty</th>
-                  <th className="text-center py-2 px-2 min-w-[90px]">Cross Asset Amt</th>
-                  <th className="text-center py-2 px-2 min-w-[70px]">Presentase</th>
-                  <th className="text-center py-2 px-2 min-w-[70px]">Poin 2</th>
-                  <th className="text-center py-2 px-2 min-w-[70px]">Poin 3</th>
+                  <th className="text-center py-2 px-2 min-w-[70px]">Cross Bank Qty</th>
+                  <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Amt</th>
+                  <th className="text-center py-2 px-2 min-w-[70px]">Cross Asset Qty</th>
+                  <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Amt</th>
+                  <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
+                  <th className="text-center py-2 px-2 min-w-[50px]">Poin 2</th>
+                  <th className="text-center py-2 px-2 min-w-[50px]">Poin 3</th>
                   
                   {/* Follow SOP / Teamwork */}
-                  <th className="text-center py-2 px-2 min-w-[70px]">Buku Dosa</th>
-                  <th className="text-center py-2 px-2 min-w-[50px]">SP1</th>
-                  <th className="text-center py-2 px-2 min-w-[50px]">SP2</th>
-                  <th className="text-center py-2 px-2 min-w-[50px]">SUS</th>
-                  <th className="text-center py-2 px-2 min-w-[70px]">Total Poin 4</th>
+                  <th className="text-center py-2 px-2 min-w-[60px]">Buku Dosa</th>
+                  <th className="text-center py-2 px-2 min-w-[40px]">SP1</th>
+                  <th className="text-center py-2 px-2 min-w-[40px]">SP2</th>
+                  <th className="text-center py-2 px-2 min-w-[40px]">SUS</th>
+                  <th className="text-center py-2 px-2 min-w-[60px]">Total Poin 4</th>
                   
                   {/* SUB SCORE */}
-                  <th className="text-center py-2 px-2 min-w-[50px]">P1</th>
-                  <th className="text-center py-2 px-2 min-w-[50px]">P2</th>
-                  <th className="text-center py-2 px-2 min-w-[50px]">P3</th>
-                  <th className="text-center py-2 px-2 min-w-[50px]">P4</th>
-                  <th className="text-center py-2 px-2 min-w-[50px]">Avg</th>
+                  <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
+                  <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
+                  <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
+                  <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
+                  <th className="text-center py-2 px-2 min-w-[40px]">Avg</th>
                 </tr>
               </thead>
               <tbody>
-                {/* LOOPING DATA OFFICER DENGAN PANEL ID */}
+                {/* LOOPING DATA OFFICER - DEPOSIT ASPECT */}
                 {officerDataList.map((officer, idx) => (
                   <tr key={`deposit-${idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
                     <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.deposit.no}</td>
                     <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.deposit.name}</td>
-                    <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF] font-mono text-[10px]">{officer.deposit.panelId}</td> {/* PANEL ID */}
+                    <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-mono text-[10px]">{officer.deposit.panelId}</td>
                     <td className="sticky left-[260px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.deposit.dept}</td>
                     <td className="sticky left-[360px] z-10 bg-[#1A2F4A] py-2 px-2">
                       <span className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px]">
@@ -310,7 +300,6 @@ const { data, error } = await supabase
                     <td className="sticky left-[430px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.deposit.joinDate}</td>
                     <td className="sticky left-[520px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] text-[10px] font-bold">Deposit</td>
                     
-                    {/* SISANYA SAMA... */}
                     <td className="text-center py-2 px-2">{officer.deposit.totalApproved}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.totalReject}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.totalApproved}</td>
@@ -365,7 +354,7 @@ const { data, error } = await supabase
                 </tr>
 
                 {/* BARIS TOTAL ALL */}
-                <tr className="border-t-2 border-[#FFD700]/30 font-bold">
+                <tr className="border-t-2 border-[#FFD700]/30 font-bold bg-[#1A2F4A]/50">
                   <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{totalData.deposit.no}</td>
                   <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">TOTAL ALL</td>
                   <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
@@ -373,9 +362,7 @@ const { data, error } = await supabase
                   <td className="sticky left-[360px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
                   <td className="sticky left-[430px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
                   <td className="sticky left-[520px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">Deposit</td>
-                  <td colSpan="31" className="text-center py-2 px-2 text-[#FFD700]">
-                    {officers.length > 0 ? '822' : '-'}
-                  </td>
+                  <td colSpan="31" className="text-center py-2 px-2 text-[#FFD700]">822</td>
                 </tr>
               </tbody>
             </table>
@@ -385,7 +372,7 @@ const { data, error } = await supabase
 
       {/* FOOTER */}
       <div className="text-xs text-[#A7D8FF]/30 text-center mt-8">
-        <p>KPI Summary • Data officers diambil dari database {officers.length} officers CS DP WD • Periode {periode} {tahun}</p>
+        <p>KPI Summary • Data officers diambil dari database ({officers.length} officers CS DP WD) • Periode {periode} {tahun}</p>
         <p className="mt-1">P1: Time Management | P2: Human Error | P3: Problem Solving | P4: Follow SOP</p>
       </div>
     </div>
