@@ -12,7 +12,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
 import Link from 'next/link';
-import NextImage from 'next/image'; // <--- TAMBAHIN INI (1)
+import NextImage from 'next/image';
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
@@ -95,6 +95,9 @@ export default function DashboardContent() {
   const [assetPerformancePeriod, setAssetPerformancePeriod] = useState('jan-jun');
   const [loadingAssetPerformance, setLoadingAssetPerformance] = useState(false);
   
+  // STATE FILTER ASSET KHUSUS UNTUK ASSET PERFORMANCE (INDEPENDEN)
+  const [assetPerformanceAsset, setAssetPerformanceAsset] = useState('XLY'); // default XLY
+  
   // OFFICER PERFORMANCE - PIE CHART (HUMAN VS SYSTEM)
   const [officerPieData, setOfficerPieData] = useState([]);
   const [loadingOfficerPie, setLoadingOfficerPie] = useState(false);
@@ -111,7 +114,7 @@ export default function DashboardContent() {
   const years = ['2024', '2025', '2026', '2027', '2028'];
 
   // ===========================================
-  // FUNGSI UNTUK GET GAMBAR BANK - TAMBAHIN INI (2)
+  // FUNGSI UNTUK GET GAMBAR BANK
   // ===========================================
   const getBankImage = (bankName) => {
     if (!bankName) return '/images/bank.png';
@@ -124,6 +127,33 @@ export default function DashboardContent() {
     if (name.includes('mandiri')) return '/images/mandiri.png';
     if (name.includes('dana')) return '/images/dana.png';
     return '/images/bank.png';
+  };
+
+  // ===========================================
+  // FUNGSI MAPPING ASSET (NAMA PANJANG -> SINGKATAN)
+  // ===========================================
+  const getAssetCode = (assetName) => {
+    if (!assetName) return 'XLY';
+    
+    // Mapping asset name to code
+    const assetMap = {
+      'LUCKY77': 'XLY',
+      'LUCKY 77': 'XLY',
+      'LUCKY': 'XLY',
+      // Tambahin mapping lain kalau ada
+      // 'BET365': 'BET',
+      // 'MAXBET': 'MAX',
+    };
+    
+    // Cari mapping yang match (case insensitive)
+    const upperName = assetName.toUpperCase();
+    for (const [key, value] of Object.entries(assetMap)) {
+      if (upperName.includes(key.toUpperCase())) {
+        return value;
+      }
+    }
+    
+    return assetName; // return nama asli kalau ga ada mapping
   };
 
   // ===========================================
@@ -196,7 +226,7 @@ export default function DashboardContent() {
     try {
       setLoadingAssetPerformance(true);
       
-      const assetCode = selectedAsset === 'all' ? 'XLY' : selectedAsset;
+      const assetCode = assetPerformanceAsset; // PAKAI STATE KHUSUS
       
       let data = [];
       
@@ -531,15 +561,20 @@ export default function DashboardContent() {
   // ===========================================
   // USE EFFECTS
   // ===========================================
+  // EFFECT UNTUK GLOBAL FILTER (Deposit/Withdrawal Method, dll)
   useEffect(() => {
     fetchDashboardData();
     fetchRecentActivities();
     fetchPaymentData();
     fetchBankAccounts();
     fetchOfficerPerformance();
+    fetchOfficerPieData();
+  }, [chartFilter, chartYear, selectedAsset]); // selectedAsset cuma buat global
+
+  // EFFECT KHUSUS UNTUK ASSET PERFORMANCE (PAKAI FILTER NYA SENDIRI)
+  useEffect(() => {
     fetchAssetPerformanceData();
-    fetchOfficerPieData(); // AMBIL DATA PIE CHART
-  }, [chartFilter, chartYear, selectedAsset, assetPerformanceFilter, 
+  }, [assetPerformanceAsset, assetPerformanceFilter, 
       assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
 
   // LOAD DARI LOCALSTORAGE
@@ -824,7 +859,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD - UBAH INI (3) */}
+        {/* KOLOM 2: DEPOSIT METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -858,7 +893,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD - UBAH INI (4) */}
+        {/* KOLOM 3: WITHDRAWAL METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -893,7 +928,7 @@ export default function DashboardContent() {
         </div>
       </div>
 
-      {/* ROW 2 - GRID 3 KOLOM - INI GA BERUBAH */}
+      {/* ROW 2 - GRID 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
         {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
@@ -929,7 +964,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: ASSET PERFORMANCE */}
+        {/* KOLOM 2: ASSET PERFORMANCE - DENGAN FILTER ASSET SENDIRI */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <div className="flex items-center justify-between mb-2">
             <Link href="/dashboard/asset-performance" className="block group flex-1">
@@ -948,6 +983,7 @@ export default function DashboardContent() {
               onClick={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                setLoadingAssetPerformance(true);
                 await fetchAssetPerformanceData();
               }}
               disabled={loadingAssetPerformance}
@@ -960,16 +996,29 @@ export default function DashboardContent() {
             </button>
           </div>
           
-          {/* FILTER SECTION - SEDERHANA */}
+          {/* FILTER SECTION - PAKAI STATE KHUSUS assetPerformanceAsset */}
           <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
-            {/* FILTER ASSET - CUMA 2 PILIHAN */}
+            {/* FILTER ASSET - PAKAI DATA DARI assetList DENGAN MAPPING KE SINGKATAN */}
             <select 
-              value={selectedAsset} 
-              onChange={(e) => setSelectedAsset(e.target.value)}
+              value={assetPerformanceAsset} 
+              onChange={(e) => setAssetPerformanceAsset(e.target.value)}
               className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
             >
-              <option value="all">ALL</option>
-              <option value="XLY">XLY</option>
+              {/* TAMPILIN SINGKATAN TAPI VALUE NYA TETEP SINGKATAN */}
+              {assetList.length > 0 ? (
+                assetList.map(asset => {
+                  const assetCode = getAssetCode(asset);
+                  return (
+                    <option key={asset} value={assetCode}>
+                      {assetCode}
+                    </option>
+                  );
+                })
+              ) : (
+                <>
+                  <option value="XLY">XLY</option>
+                </>
+              )}
             </select>
 
             {/* FILTER PERIODE */}
