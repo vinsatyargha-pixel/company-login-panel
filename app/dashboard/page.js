@@ -707,9 +707,9 @@ export default function DashboardContent() {
       adminOnly: false
     },
     {
-      title: '📊 OFFICER KPI',
+      title: '📊 OFFICER KPI REVIEW',
       description: 'Officers Key Performance Indicators',
-      href: '/dashboard/officers-performance',
+      href: '/dashboard/officers-kpi',
       icon: '📊',
       color: 'text-purple-400',
       bgColor: 'bg-purple-500/10',
