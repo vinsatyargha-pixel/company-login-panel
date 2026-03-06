@@ -35,7 +35,7 @@ export default function OfficersKPILayout({ children }) {
             }`}
           >
             <div className="text-sm font-medium">All Summary KPI Review</div>
-            <div className="text-xs opacity-80 mt-1">Attendance & Division Overview</div>
+            <div className="text-xs opacity-80 mt-1">Attendance Overview • Perbulan - offday 4 hari</div>
           </button>
           
           {/* MENU COMPARISON REVIEW KPI */}
@@ -48,7 +48,7 @@ export default function OfficersKPILayout({ children }) {
             }`}
           >
             <div className="text-sm font-medium">Comparison Review KPI</div>
-            <div className="text-xs opacity-80 mt-1">CS, Deposit, WD Performance</div>
+            <div className="text-xs opacity-80 mt-1">Division Overview • CS, Deposit, WD Performance</div>
           </button>
         </div>
         
@@ -60,33 +60,36 @@ export default function OfficersKPILayout({ children }) {
       
       {/* CONTENT KANAN */}
       <div className="flex-1 p-8">
-        {/* HEADER - SESUAI MENU ACTIVE */}
+        {/* HEADER */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#FFD700]">
-            {activeMenu === 'summary' ? 'All Summary KPI Review' : 'Comparison Review KPI'}
-          </h1>
-          <p className="text-[#A7D8FF] mt-2">
-            {activeMenu === 'summary' 
-              ? 'Attendance Overview • Perbulan - offday 4 hari' 
-              : 'Division Overview • CS, Deposit, WD Performance'}
-          </p>
+          <h1 className="text-3xl font-bold text-[#FFD700]">ANALYTICS</h1>
         </div>
         
-        {/* CONTENT AREA - KOSONG DULU */}
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 min-h-[600px]">
-          {activeMenu === 'summary' ? (
-            <div className="text-center text-[#A7D8FF] py-20">
-              <p className="text-2xl mb-4">📊 All Summary KPI Review</p>
-              <p>Attendance & Division Overview akan ditampilkan di sini</p>
-              <p className="text-sm mt-4">Perbulan - offday 4 hari</p>
+        {/* GRID 2 KOLOM UNTUK KONTEN */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* BOX KIRI - ALL SUMMARY KPI REVIEW */}
+          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 min-h-[500px] hover:border-[#FFD700] transition-all">
+            <h3 className="text-lg font-bold text-[#FFD700] mb-2">All Summary KPI Review</h3>
+            <p className="text-[#A7D8FF] text-sm mb-4">Attendance Overview • Perbulan - offday 4 hari</p>
+            
+            {/* TEMPAT UNTUK ISI NANTI */}
+            <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
+              <p className="text-[#A7D8FF]/50">Chart & Data Summary akan ditampilkan</p>
             </div>
-          ) : (
-            <div className="text-center text-[#A7D8FF] py-20">
-              <p className="text-2xl mb-4">📈 Comparison Review KPI</p>
-              <p>CS, Deposit, WD Performance akan ditampilkan di sini</p>
-              <p className="text-sm mt-4">Perbandingan antar officer dan divisi</p>
+          </div>
+          
+          {/* BOX KANAN - COMPARISON REVIEW KPI */}
+          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 min-h-[500px] hover:border-[#FFD700] transition-all">
+            <h3 className="text-lg font-bold text-[#FFD700] mb-2">Comparison Review KPI</h3>
+            <p className="text-[#A7D8FF] text-sm mb-4">Division Overview • CS, Deposit, WD Performance</p>
+            
+            {/* TEMPAT UNTUK ISI NANTI */}
+            <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
+              <p className="text-[#A7D8FF]/50">Chart & Data Comparison akan ditampilkan</p>
             </div>
-          )}
+          </div>
+          
         </div>
       </div>
     </div>
