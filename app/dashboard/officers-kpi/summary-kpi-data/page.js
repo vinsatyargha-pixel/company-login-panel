@@ -230,59 +230,59 @@ export default function SummaryKPIDataPage() {
   <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP / TEAMWORK</th>
   <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE DP & WD</th>
 </tr>
-              
-              {/* SUB HEADER - BARIS 2 */}
-              <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-                {/* STICKY COLUMNS - 7 KOLOM */}
-                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
-                <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
-                <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
-                <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
-                <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
-                <th className="sticky left-[470px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
-                <th className="sticky left-[560px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DIVISI</th>
-                
-                {/* TIME MANAGEMENT (8 kolom) */}
-                <th className="text-center py-2 px-2 min-w-[70px]">Total App</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Total Rej</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP DP</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP DP% (P1)</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP DP</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP WD</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP WD%</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP WD</th>
-                
-                {/* HUMAN ERROR (8 kolom) */}
-                <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">HE Amt</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Mistake Qty</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Mistake Amt</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P2)</th>
-                
-                {/* PROBLEM SOLVING (5 kolom) */}
-                <th className="text-center py-2 px-2 min-w-[70px]">Cross Bank Qty</th>
-                <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Amt</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Cross Asset Qty</th>
-                <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Amt</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P3)</th>
-                
-                {/* FOLLOW SOP (5 kolom) */}
-                <th className="text-center py-2 px-2 min-w-[60px]">Buku Dosa</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">SP1</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">SP2</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">SUS</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Total (P4)</th>
-                
-                {/* SUB SCORE (5 kolom) */}
-                <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">Avg</th>
-              </tr>
+
+{/* SUB HEADER - BARIS 2 (PATOKAN LO - UDAH BENAR) */}
+<tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
+  {/* STICKY COLUMNS - 7 KOLOM */}
+  <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
+  <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
+  <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
+  <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
+  <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
+  <th className="sticky left-[470px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
+  <th className="sticky left-[560px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DIVISI</th>
+  
+  {/* TIME MANAGEMENT (8 kolom) */}
+  <th className="text-center py-2 px-2 min-w-[70px]">Total App</th>
+  <th className="text-center py-2 px-2 min-w-[70px]">Total Rej</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">SOP DP</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">SOP DP% (P1)</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">Non SOP DP</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">SOP WD</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">SOP WD%</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">Non SOP WD</th>
+  
+  {/* HUMAN ERROR (8 kolom) */}
+  <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
+  <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
+  <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
+  <th className="text-center py-2 px-2 min-w-[70px]">HE Amt</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">Mistake Qty</th>
+  <th className="text-center py-2 px-2 min-w-[70px]">Mistake Amt</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P2)</th>
+  
+  {/* PROBLEM SOLVING (5 kolom) */}
+  <th className="text-center py-2 px-2 min-w-[70px]">Cross Bank Qty</th>
+  <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Amt</th>
+  <th className="text-center py-2 px-2 min-w-[70px]">Cross Asset Qty</th>
+  <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Amt</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P3)</th>
+  
+  {/* FOLLOW SOP (5 kolom) */}
+  <th className="text-center py-2 px-2 min-w-[60px]">Buku Dosa</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">SP1</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">SP2</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">SUS</th>
+  <th className="text-center py-2 px-2 min-w-[70px]">Total (P4)</th>
+  
+  {/* SUB SCORE (5 kolom) */}
+  <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">Avg</th>
+</tr>
             </thead>
             
             <tbody>
