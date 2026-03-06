@@ -224,8 +224,8 @@ export default function SummaryKPIDataPage() {
               {/* MAIN HEADER - BARIS 1 */}
 <tr className="border-b border-[#FFD700]/20">
   <th colSpan="7" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
-  <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">TIME MANAGEMENT</th>
-  <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">HUMAN ERROR</th>
+  <th colSpan="10" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">TIME MANAGEMENT</th>
+  <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">HUMAN ERROR</th>
   <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">PROBLEM SOLVING</th>
   <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP / TEAMWORK</th>
   <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE DP & WD</th>
@@ -242,7 +242,7 @@ export default function SummaryKPIDataPage() {
   <th className="sticky left-[470px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
   <th className="sticky left-[560px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DIVISI</th>
   
-  {/* TIME MANAGEMENT (8 kolom) */}
+  {/* TIME MANAGEMENT (10 kolom) */}
   <th className="text-center py-2 px-2 min-w-[70px]">Total App</th>
   <th className="text-center py-2 px-2 min-w-[70px]">Total Rej</th>
   <th className="text-center py-2 px-2 min-w-[60px]">SOP DP</th>
@@ -251,10 +251,10 @@ export default function SummaryKPIDataPage() {
   <th className="text-center py-2 px-2 min-w-[60px]">SOP WD</th>
   <th className="text-center py-2 px-2 min-w-[60px]">SOP WD%</th>
   <th className="text-center py-2 px-2 min-w-[60px]">Non SOP WD</th>
-  
-  {/* HUMAN ERROR (8 kolom) */}
   <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
   <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
+  
+  {/* HUMAN ERROR (6 kolom) */}
   <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
   <th className="text-center py-2 px-2 min-w-[70px]">HE Amt</th>
   <th className="text-center py-2 px-2 min-w-[60px]">Mistake Qty</th>
