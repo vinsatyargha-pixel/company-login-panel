@@ -974,6 +974,59 @@ export default function DashboardContent() {
     </span>
   </Link>
 </div>
+
+        {/* KOLOM 3: OFFICER PERFORMANCE - PIE CHART (HUMAN VS SYSTEM) */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <Link href="/dashboard/officers-performance" className="block group">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance </h3>
+              <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+            
+            <div className="h-64 flex flex-col items-center justify-center">
+              {loadingOfficerPie ? (
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+              ) : officerPieData.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height="70%">
+                    <PieChart>
+                      <Pie
+                        data={officerPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={60}
+                        paddingAngle={2}
+                        dataKey="value"
+                      >
+                        {officerPieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                        formatter={(value, name) => [`${value} transactions`, name]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="text-xs text-[#A7D8FF] mt-2">
+                    Total: {officerPieData.reduce((sum, item) => sum + item.value, 0)} transactions
+                  </div>
+                </>
+              ) : (
+                <div className="text-[#A7D8FF] text-sm text-center">No transaction data this month</div>
+              )}
+            </div>
+            
+            <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
+              Click to see detailed performance →
+            </div>
+          </Link>
+        </div>
       </div>
 
       {/* MENU SECTION */}
