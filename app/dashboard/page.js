@@ -808,48 +808,86 @@ export default function DashboardContent() {
         </div>
 
         {/* KOLOM 2: DEPOSIT METHOD */}
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {loadingBanks ? <div className="text-center text-[#A7D8FF]">Loading banks...</div> : 
-              bankAccounts.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
-                .map(bank => (
-                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        <span className="text-white text-sm font-medium">{bank.bank}</span>
-                      </div>
-                      <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
-                    </div>
-                    <span className="text-xs font-medium text-green-400">ON</span>
-                  </div>
-                ))
-            }
+<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+  <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
+  <div className="space-y-4 max-h-96 overflow-y-auto">
+    {loadingBanks ? (
+      <div className="text-center text-[#A7D8FF]">Loading banks...</div>
+    ) : 
+      bankAccounts
+        .filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
+        .map(bank => (
+          <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+            <div className="flex items-center gap-3">
+              {/* GAMBAR BANK */}
+              <div className="w-8 h-8 relative flex-shrink-0">
+                <Image
+                  src={`/images/${bank.bank?.toLowerCase()}.png`}
+                  alt={bank.bank}
+                  width={32}
+                  height={32}
+                  className="rounded-full object-cover"
+                  onError={(e) => {
+                    // Fallback jika gambar tidak ditemukan
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  <span className="text-white text-sm font-medium">{bank.bank}</span>
+                </div>
+                <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
+              </div>
+            </div>
+            <span className="text-xs font-medium text-green-400">ON</span>
           </div>
-        </div>
+        ))
+    }
+  </div>
+</div>
 
         {/* KOLOM 3: WITHDRAWAL METHOD */}
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method</h3>
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {loadingBanks ? <div className="text-center text-[#A7D8FF]">Loading banks...</div> : 
-              bankAccounts.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
-                .map(bank => (
-                  <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                        <span className="text-white text-sm font-medium">{bank.bank}</span>
-                      </div>
-                      <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
-                    </div>
-                    <span className="text-xs font-medium text-green-400">ON</span>
-                  </div>
-                ))
-            }
+<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+  <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method</h3>
+  <div className="space-y-4 max-h-96 overflow-y-auto">
+    {loadingBanks ? (
+      <div className="text-center text-[#A7D8FF]">Loading banks...</div>
+    ) : 
+      bankAccounts
+        .filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
+        .map(bank => (
+          <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
+            <div className="flex items-center gap-3">
+              {/* GAMBAR BANK */}
+              <div className="w-8 h-8 relative flex-shrink-0">
+                <Image
+                  src={`/images/${bank.bank?.toLowerCase()}.png`}
+                  alt={bank.bank}
+                  width={32}
+                  height={32}
+                  className="rounded-full object-cover"
+                  onError={(e) => {
+                    // Fallback jika gambar tidak ditemukan
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                  <span className="text-white text-sm font-medium">{bank.bank}</span>
+                </div>
+                <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
+              </div>
+            </div>
+            <span className="text-xs font-medium text-green-400">ON</span>
           </div>
-        </div>
+        ))
+    }
+  </div>
+</div>
       </div>
 
       {/* ROW 2 - GRID 3 KOLOM */}
