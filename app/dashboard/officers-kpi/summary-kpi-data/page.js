@@ -463,44 +463,59 @@ export default function SummaryKPIDataPage() {
           <table className="w-full text-xs min-w-[1600px]">
             <thead>
               {/* MAIN HEADER CS */}
-              <tr className="border-b border-[#FFD700]/20">
-                <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
-                <th colSpan="2" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
-                <th colSpan="2" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Poin 2</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Poin 3</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">Poin 4</th>
-                <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Poin 5 & Attendance (Poin 6)</th>
-                <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-orange-500/10">SUB SCORE CS</th>
-              </tr>
+<tr className="border-b border-[#FFD700]/20">
+  <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
+  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
+  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Poin 2</th>
+  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Poin 3</th>
+  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">Poin 4</th>
+  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Poin 5</th>
+  <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-orange-500/10">Attendance & Attitude (Poin 6)</th>
+  <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-pink-500/10">SUB SCORE CS</th>
+</tr>
               
               {/* SUB HEADER CS */}
-              <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
-                <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
-                <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
-                <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
-                <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
-                
-                <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Missed Chat</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
-                <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Follow SOP</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">S</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">I</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">A</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">U</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">Total</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">Target</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Achieve%</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P5</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P6</th>
-              </tr>
+<tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
+  {/* STICKY COLUMNS - 5 KOLOM */}
+  <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
+  <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
+  <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
+  <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
+  <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
+  
+  {/* Poin 1 */}
+  <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
+  
+  {/* Poin 2 */}
+  <th className="text-center py-2 px-2 min-w-[60px]">Missed Chat</th>
+  
+  {/* Poin 3 */}
+  <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
+  
+  {/* Poin 4 */}
+  <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
+  
+  {/* Poin 5 */}
+  <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
+  
+  {/* Poin 6 - Attendance & Attitude (8 kolom) */}
+  <th className="text-center py-2 px-2 min-w-[40px]">S</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">I</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">A</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">U</th>
+  <th className="text-center py-2 px-2 min-w-[50px]">Total</th>
+  <th className="text-center py-2 px-2 min-w-[50px]">Target</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">Achieve</th>
+  <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
+  
+  {/* SUB SCORE CS (6 kolom) */}
+  <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">P5</th>
+  <th className="text-center py-2 px-2 min-w-[40px]">P6</th>
+</tr>
             </thead>
             <tbody>
               {officerDataList.map((officer, idx) => (
