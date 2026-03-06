@@ -819,12 +819,12 @@ export default function DashboardContent() {
 
       {/* ROYAL GOLD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <DashboardCard title="Asset GROUP-X" value={`${dashboardData.totalAssets} Assets`} icon={<span className="text-6xl">💎</span>} color="gold" href="/dashboard/assets" />
-        <DashboardCard title="Account Bank Management" value="Manage Banks" icon={<span className="text-6xl">🏦</span>} color="gold" href="/dashboard/data-bank" />
-        <DashboardCard title="Data Officers GROUP-X" value={`${dashboardData.activeOfficers} Officers`} icon={<span className="text-6xl">👨‍💼</span>} color="gold" href="/dashboard/officers/active" />
-        <DashboardCard title="Schedule Officers GROUP-X" value="Calendar" icon={<span className="text-6xl">📅</span>} color="gold" href="/dashboard/schedule" />
-        <DashboardCard title="Financial Summary GROUP-X" value="Management" icon={<span className="text-6xl">💰</span>} color="gold" href="/dashboard/financial" />
-      </div>
+  <DashboardCard title="Asset GROUP-X" value={`${dashboardData.totalAssets} Assets`} icon={<span className="text-6xl">💎</span>} color="gold" glassEffect={true} href="/dashboard/assets" />
+  <DashboardCard title="Account Bank Management" value="Manage Banks" icon={<span className="text-6xl">🏦</span>} color="gold" glassEffect={true} href="/dashboard/data-bank" />
+  <DashboardCard title="Data Officers GROUP-X" value={`${dashboardData.activeOfficers} Officers`} icon={<span className="text-6xl">👨‍💼</span>} color="gold" glassEffect={true} href="/dashboard/officers/active" />
+  <DashboardCard title="Schedule Officers GROUP-X" value="Calendar" icon={<span className="text-6xl">📅</span>} color="gold" glassEffect={true} href="/dashboard/schedule" />
+  <DashboardCard title="Financial Summary GROUP-X" value="Management" icon={<span className="text-6xl">💰</span>} color="gold" glassEffect={true} href="/dashboard/financial" />
+</div>
 
       {/* SYNC BUTTON */}
       <div className="mb-4 flex items-center justify-between">
