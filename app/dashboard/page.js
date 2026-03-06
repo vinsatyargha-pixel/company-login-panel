@@ -902,7 +902,7 @@ export default function DashboardContent() {
       </div>
     </Link>
     
-    {/* TOMBOL REFRESH KHUSUS ASSET PERFORMANCE */}
+    {/* TOMBOL REFRESH */}
     <button
       onClick={async (e) => {
         e.preventDefault();
@@ -919,11 +919,22 @@ export default function DashboardContent() {
     </button>
   </div>
   
-  {/* FILTER ASSET PERFORMANCE (TIDAK BERUBAH) */}
-  <div className="flex gap-2 mb-3" onClick={(e) => e.preventDefault()}>
+  {/* FILTER SECTION - SEDERHANA */}
+  <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
+    {/* FILTER ASSET - CUMA 2 PILIHAN */}
+    <select 
+      value={selectedAsset} 
+      onChange={(e) => setSelectedAsset(e.target.value)}
+      className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
+    >
+      <option value="all">ALL</option>
+      <option value="XLY">XLY</option>
+    </select>
+
+    {/* FILTER PERIODE */}
     <select value={assetPerformanceFilter} onChange={(e) => setAssetPerformanceFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-      <option value="daily">Daily (1 Bulan)</option>
-      <option value="monthly">Monthly (6 Bulan)</option>
+      <option value="daily">Daily</option>
+      <option value="monthly">Monthly</option>
     </select>
     
     {assetPerformanceFilter === 'daily' ? (
@@ -938,7 +949,8 @@ export default function DashboardContent() {
     ) : (
       <>
         <select value={assetPerformancePeriod} onChange={(e) => setAssetPerformancePeriod(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-          <option value="jan-jun">Jan-Jun</option><option value="jul-dec">Jul-Dec</option>
+          <option value="jan-jun">Jan-Jun</option>
+          <option value="jul-dec">Jul-Dec</option>
         </select>
         <select value={assetPerformanceYear} onChange={(e) => setAssetPerformanceYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
           {years.map(year => <option key={year} value={year}>{year}</option>)}
@@ -947,7 +959,7 @@ export default function DashboardContent() {
     )}
   </div>
   
-  {/* CHART (TIDAK BERUBAH) */}
+  {/* CHART */}
   <div className="h-64">
     {loadingAssetPerformance ? (
       <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
@@ -967,7 +979,7 @@ export default function DashboardContent() {
     )}
   </div>
   
-  {/* LINK DETAIL (TIDAK BERUBAH) */}
+  {/* LINK DETAIL */}
   <Link href="/dashboard/asset-performance" className="block mt-2 text-right">
     <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
       Click to see detailed breakdown →
