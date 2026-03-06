@@ -15,6 +15,7 @@ import Link from 'next/link';
 
 export default function DashboardContent() {
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [dashboardData, setDashboardData] = useState({
     totalAssets: 0,
@@ -86,10 +87,10 @@ export default function DashboardContent() {
   // ===========================================
   // STATE UNTUK PERFORMANCE METRICS
   // ===========================================
-  // ASSET PERFORMANCE
+  // ASSET PERFORMANCE - SET DEFAULT KE BULAN INI
   const [assetPerformance, setAssetPerformance] = useState([]);
   const [assetPerformanceFilter, setAssetPerformanceFilter] = useState('daily');
-  const [assetPerformanceYear, setAssetPerformanceYear] = useState('2026');
+  const [assetPerformanceYear, setAssetPerformanceYear] = useState(new Date().getFullYear().toString());
   const [assetPerformanceMonth, setAssetPerformanceMonth] = useState(new Date().getMonth() + 1);
   const [assetPerformancePeriod, setAssetPerformancePeriod] = useState('jan-jun');
   const [loadingAssetPerformance, setLoadingAssetPerformance] = useState(false);
@@ -108,6 +109,23 @@ export default function DashboardContent() {
   const fullMonths = ['January', 'February', 'March', 'April', 'May', 'June', 
                       'July', 'August', 'September', 'October', 'November', 'December'];
   const years = ['2024', '2025', '2026', '2027', '2028'];
+
+  // ===========================================
+  // FUNGSI REFRESH SEMUA DATA
+  // ===========================================
+  const refreshAllData = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      fetchDashboardData(),
+      fetchRecentActivities(),
+      fetchPaymentData(),
+      fetchBankAccounts(),
+      fetchOfficerPerformance(),
+      fetchAssetPerformanceData(),
+      fetchOfficerPieData()
+    ]);
+    setRefreshing(false);
+  };
 
   // ===========================================
   // FETCH OFFICER PIE DATA (HUMAN VS SYSTEM)
@@ -173,7 +191,7 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FETCH ASSET PERFORMANCE DATA
+  // FETCH ASSET PERFORMANCE DATA (BULAN INI)
   // ===========================================
   const fetchAssetPerformanceData = async () => {
     try {
@@ -181,52 +199,37 @@ export default function DashboardContent() {
       
       const assetCode = selectedAsset === 'all' ? 'XLY' : selectedAsset;
       
-      let data = [];
+      // PASTIKAN SELALU AMBIL BULAN INI
+      const today = new Date();
+      const month = today.getMonth() + 1;
+      const year = today.getFullYear();
       
-      if (assetPerformanceFilter === 'daily') {
-        const startDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-01 00:00:00`;
-        const endDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, assetPerformanceMonth, 0).getDate()} 23:59:59`;
-        
-        const { data: deposits } = await supabase
-          .from('deposit_transactions')
-          .select('approved_date')
-          .eq('brand', assetCode)
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        const { data: withdrawals } = await supabase
-          .from('withdrawal_transactions')
-          .select('approved_date')
-          .eq('brand', assetCode)
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        data = processDailyAssetData(deposits || [], withdrawals || [], assetPerformanceMonth, assetPerformanceYear);
-        
-      } else {
-        const startMonth = assetPerformancePeriod === 'jan-jun' ? 1 : 7;
-        const endMonth = assetPerformancePeriod === 'jan-jun' ? 6 : 12;
-        
-        const startDate = `${assetPerformanceYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
-        const endDate = `${assetPerformanceYear}-${String(endMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, endMonth, 0).getDate()} 23:59:59`;
-        
-        const { data: deposits } = await supabase
-          .from('deposit_transactions')
-          .select('approved_date')
-          .eq('brand', assetCode)
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        const { data: withdrawals } = await supabase
-          .from('withdrawal_transactions')
-          .select('approved_date')
-          .eq('brand', assetCode)
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        data = processMonthlyAssetData(deposits || [], withdrawals || [], assetPerformancePeriod, assetPerformanceYear);
-      }
+      setAssetPerformanceMonth(month);
+      setAssetPerformanceYear(year.toString());
       
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()} 23:59:59`;
+      
+      console.log('📅 Fetching asset performance for:', { startDate, endDate });
+      
+      // Fetch deposits
+      const { data: deposits } = await supabase
+        .from('deposit_transactions')
+        .select('approved_date')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      // Fetch withdrawals
+      const { data: withdrawals } = await supabase
+        .from('withdrawal_transactions')
+        .select('approved_date')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      // Process daily data
+      const data = processDailyAssetData(deposits || [], withdrawals || [], month, year);
       setAssetPerformance(data);
       
     } catch (error) {
@@ -273,48 +276,6 @@ export default function DashboardContent() {
     });
     
     return days;
-  };
-
-  const processMonthlyAssetData = (deposits, withdrawals, period, year) => {
-    const startMonth = period === 'jan-jun' ? 0 : 6;
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
-    
-    const monthlyData = Array.from({ length: 6 }, (_, i) => {
-      const monthIndex = startMonth + i;
-      const isPastDate = (year < currentYear) || (year === currentYear && monthIndex <= currentMonth);
-      
-      return {
-        name: months[monthIndex],
-        month: months[monthIndex],
-        monthNum: monthIndex + 1,
-        chat: isPastDate ? 0 : null,
-        deposit: 0,
-        withdrawal: 0,
-        isPastDate: isPastDate
-      };
-    });
-    
-    deposits.forEach(deposit => {
-      const date = new Date(deposit.approved_date);
-      const month = date.getMonth();
-      const monthIndex = month - startMonth;
-      if (monthIndex >= 0 && monthIndex < 6) {
-        monthlyData[monthIndex].deposit++;
-      }
-    });
-    
-    withdrawals.forEach(withdrawal => {
-      const date = new Date(withdrawal.approved_date);
-      const month = date.getMonth();
-      const monthIndex = month - startMonth;
-      if (monthIndex >= 0 && monthIndex < 6) {
-        monthlyData[monthIndex].withdrawal++;
-      }
-    });
-    
-    return monthlyData;
   };
 
   // ===========================================
@@ -515,13 +476,7 @@ export default function DashboardContent() {
   // USE EFFECTS
   // ===========================================
   useEffect(() => {
-    fetchDashboardData();
-    fetchRecentActivities();
-    fetchPaymentData();
-    fetchBankAccounts();
-    fetchOfficerPerformance();
-    fetchAssetPerformanceData();
-    fetchOfficerPieData(); // AMBIL DATA PIE CHART
+    refreshAllData();
   }, [chartFilter, chartYear, selectedAsset, assetPerformanceFilter, 
       assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
 
@@ -667,7 +622,7 @@ export default function DashboardContent() {
     }
   ];
 
-  if (loading) return (
+  if (loading && !refreshing) return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700] mx-auto"></div>
@@ -693,6 +648,19 @@ export default function DashboardContent() {
         </div>
         
         <div className="flex items-center gap-4">
+          {/* REFRESH BUTTON - TAMBAHAN BARU */}
+          <button
+            onClick={refreshAllData}
+            disabled={refreshing}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-colors"
+            title="Refresh all data"
+          >
+            <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+
           {/* RECENT ACTIVITY NOTIFICATION */}
           <div className="relative">
             <button
