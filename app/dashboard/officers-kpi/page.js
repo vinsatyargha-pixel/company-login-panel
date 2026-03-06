@@ -24,10 +24,9 @@ export default function OfficersKPIPage() {
       {/* GRID 2 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        {/* KOLOM KIRI - ALL SUMMARY KPI REVIEW */}
+        {/* KOLOM KIRI - ATTENDANCE OVERVIEW */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h2 className="text-xl font-bold text-[#FFD700] mb-4">All Summary KPI Review</h2>
-          <p className="text-[#A7D8FF] text-sm mb-6">Attendance Overview • Perbulan - offday 4 hari</p>
+          <h2 className="text-xl font-bold text-[#FFD700] mb-4">Attendance Overview</h2>
           
           {/* CHART PLACEHOLDER */}
           <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
@@ -35,10 +34,9 @@ export default function OfficersKPIPage() {
           </div>
         </div>
         
-        {/* KOLOM KANAN - COMPARISON REVIEW KPI */}
+        {/* KOLOM KANAN - DIVISION OVERVIEW */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h2 className="text-xl font-bold text-[#FFD700] mb-4">Comparison Review KPI</h2>
-          <p className="text-[#A7D8FF] text-sm mb-6">Division Overview • CS, Deposit, WD Performance</p>
+          <h2 className="text-xl font-bold text-[#FFD700] mb-4">Division Overview</h2>
           
           {/* CHART PLACEHOLDER */}
           <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
