@@ -245,14 +245,14 @@ export default function SummaryKPIDataPage() {
                 {/* TIME MANAGEMENT (8 kolom) */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Total App</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Total Rej</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP% (P1)</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP%</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP DP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP DP% (P1)</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP DP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP WD</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP WD%</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP WD</th>
                 
-                {/* HUMAN ERROR (7 kolom) */}
+                {/* HUMAN ERROR (8 kolom) */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
                 <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
@@ -262,14 +262,12 @@ export default function SummaryKPIDataPage() {
                 <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P2)</th>
                 
-                {/* PROBLEM SOLVING (8 kolom) */}
+                {/* PROBLEM SOLVING (5 kolom) */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Cross Bank Qty</th>
                 <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Amt</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Cross Asset Qty</th>
                 <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Amt</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P3)</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Poin 2</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Poin 3</th>
                 
                 {/* FOLLOW SOP (5 kolom) */}
                 <th className="text-center py-2 px-2 min-w-[60px]">Buku Dosa</th>
