@@ -260,13 +260,13 @@ export default function SummaryKPIDataPage() {
                 <th className="text-center py-2 px-2 min-w-[60px]">Mistake Qty</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Mistake Amt</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P2)</th>
                 
                 {/* PROBLEM SOLVING (8 kolom) */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Cross Bank Qty</th>
                 <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Amt</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Cross Asset Qty</th>
                 <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Amt</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P2)</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P3)</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Poin 2</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Poin 3</th>
