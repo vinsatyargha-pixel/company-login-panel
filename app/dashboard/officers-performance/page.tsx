@@ -663,12 +663,15 @@ export default function OfficersKPIPage() {
                     ))}
                   </Pie>
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                    formatter={(value: any, name: any, props: any) => {
-                      const item = depositPieData.find(d => d.name === props.payload.name);
-                      return [`${value} approved`, item?.fullName || props.payload.name];
-                    }}
-                  />
+  contentStyle={{ 
+    backgroundColor: '#0B1A33', 
+    borderColor: '#FFD700',
+    color: '#FFFFFF'  // <--- INI YANG NGE-FIX WARNA TEKS
+  }}
+  formatter={(value: any, name: any, props: any) => {
+    return [`${value} approved`, props.payload.fullName];
+  }}
+/>
                 </PieChart>
               </ResponsiveContainer>
             </div>
