@@ -18,21 +18,31 @@ export default function SummaryKPIDataPage() {
       try {
         setLoading(true);
         
-        // Ambil dari tabel officers
+        // Ambil dari tabel officers, fokus ke panel_id
         const { data, error } = await supabase
-          .from('officers')  // GANTI JADI 'officers'
-          .select('*')
+          .from('officers')
+          .select(`
+            id,
+            employee_id,
+            full_name,
+            email,
+            department,
+            role,
+            status,
+            panel_id,
+            join_date
+          `)
           .eq('department', 'CS DP WD')
           .order('full_name', { ascending: true });
 
         if (error) throw error;
         
-        console.log('Data officers:', data);
+        console.log('Data officers dengan panel_id:', data);
         setOfficers(data || []);
         
       } catch (error) {
         console.error('Error fetching officers:', error);
-        setOfficers([]); // Set kosong kalau error
+        setOfficers([]);
       } finally {
         setLoading(false);
       }
@@ -52,11 +62,11 @@ export default function SummaryKPIDataPage() {
     return {
       deposit: {
         no: baseNo,
-        name: officer.full_name || officer.name || 'Unknown',
-        userId: officer.id || officer.user_id || '-',
+        name: officer.full_name || officer.employee_id || 'Unknown',
+        panelId: officer.panel_id || '-',  // <-- PAKAI PANEL_ID
         dept: officer.department || 'CS DP WD',
         status: officer.status || 'REGULAR',
-        joinDate: officer.join_date || officer.created_at?.split('T')[0] || '-',
+        joinDate: officer.join_date || '-',
         aspect: 'Deposit Aspect',
         totalApproved: randomDeposit,
         totalReject: Math.floor(Math.random() * 5),
@@ -84,7 +94,7 @@ export default function SummaryKPIDataPage() {
       withdrawal: {
         no: '',
         name: '',
-        userId: '',
+        panelId: '',
         dept: '',
         status: '',
         joinDate: '',
@@ -123,7 +133,7 @@ export default function SummaryKPIDataPage() {
     deposit: {
       no: officers.length + 1,
       name: 'System',
-      userId: '-',
+      panelId: '-',
       dept: 'System',
       status: 'SYSTEM',
       joinDate: '-',
@@ -137,7 +147,7 @@ export default function SummaryKPIDataPage() {
     deposit: {
       no: officers.length + 2,
       name: 'TOTAL ALL',
-      userId: '-',
+      panelId: '-',
       dept: 'System + Human',
       status: '-',
       joinDate: '-',
@@ -220,7 +230,7 @@ export default function SummaryKPIDataPage() {
           <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
             <table className="w-full text-xs min-w-[2000px]">
               <thead>
-                {/* HEADER ROWS - SAMA KAYA SEBELUMNYA */}
+                {/* HEADER ROW 1 - KATEGORI UTAMA */}
                 <tr className="border-b border-[#FFD700]/20">
                   <th colSpan="7" className="text-left py-2 px-2 text-[#FFD700] bg-[#1A2F4A] sticky left-0 z-20"> </th>
                   <th colSpan="4" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Time Management</th>
@@ -231,15 +241,17 @@ export default function SummaryKPIDataPage() {
                   <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE DP & WD</th>
                 </tr>
                 
+                {/* HEADER ROW 2 - SUB KATEGORI DENGAN PANEL ID */}
                 <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
                   <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
                   <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[120px]">NAME</th>
-                  <th className="sticky left-[160px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">ID</th>
+                  <th className="sticky left-[160px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th> {/* UBAH JADI PANEL ID */}
                   <th className="sticky left-[260px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
                   <th className="sticky left-[360px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[70px]">STATUS</th>
                   <th className="sticky left-[430px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
                   <th className="sticky left-[520px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">ASPECT</th>
                   
+                  {/* Time Management */}
                   <th className="text-center py-2 px-2 min-w-[60px]">Total App</th>
                   <th className="text-center py-2 px-2 min-w-[60px]">Total Rej</th>
                   <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
@@ -249,6 +261,7 @@ export default function SummaryKPIDataPage() {
                   <th className="text-center py-2 px-2 min-w-[60px]">SOP %</th>
                   <th className="text-center py-2 px-2 min-w-[60px]">NON SOP</th>
                   
+                  {/* Human Error */}
                   <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
                   <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
                   <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
@@ -257,6 +270,7 @@ export default function SummaryKPIDataPage() {
                   <th className="text-center py-2 px-2 min-w-[80px]">Mistake Amt</th>
                   <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
                   
+                  {/* Problem Solving */}
                   <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Qty</th>
                   <th className="text-center py-2 px-2 min-w-[90px]">Cross Bank Amt</th>
                   <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Qty</th>
@@ -265,12 +279,14 @@ export default function SummaryKPIDataPage() {
                   <th className="text-center py-2 px-2 min-w-[70px]">Poin 2</th>
                   <th className="text-center py-2 px-2 min-w-[70px]">Poin 3</th>
                   
+                  {/* Follow SOP / Teamwork */}
                   <th className="text-center py-2 px-2 min-w-[70px]">Buku Dosa</th>
                   <th className="text-center py-2 px-2 min-w-[50px]">SP1</th>
                   <th className="text-center py-2 px-2 min-w-[50px]">SP2</th>
                   <th className="text-center py-2 px-2 min-w-[50px]">SUS</th>
                   <th className="text-center py-2 px-2 min-w-[70px]">Total Poin 4</th>
                   
+                  {/* SUB SCORE */}
                   <th className="text-center py-2 px-2 min-w-[50px]">P1</th>
                   <th className="text-center py-2 px-2 min-w-[50px]">P2</th>
                   <th className="text-center py-2 px-2 min-w-[50px]">P3</th>
@@ -279,12 +295,12 @@ export default function SummaryKPIDataPage() {
                 </tr>
               </thead>
               <tbody>
-                {/* LOOPING DATA OFFICER */}
+                {/* LOOPING DATA OFFICER DENGAN PANEL ID */}
                 {officerDataList.map((officer, idx) => (
                   <tr key={`deposit-${idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
                     <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.deposit.no}</td>
                     <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.deposit.name}</td>
-                    <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF] text-[9px]">{officer.deposit.userId}</td>
+                    <td className="sticky left-[160px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF] font-mono text-[10px]">{officer.deposit.panelId}</td> {/* PANEL ID */}
                     <td className="sticky left-[260px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.deposit.dept}</td>
                     <td className="sticky left-[360px] z-10 bg-[#1A2F4A] py-2 px-2">
                       <span className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[10px]">
@@ -294,6 +310,7 @@ export default function SummaryKPIDataPage() {
                     <td className="sticky left-[430px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.deposit.joinDate}</td>
                     <td className="sticky left-[520px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] text-[10px] font-bold">Deposit</td>
                     
+                    {/* SISANYA SAMA... */}
                     <td className="text-center py-2 px-2">{officer.deposit.totalApproved}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.totalReject}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.totalApproved}</td>
