@@ -666,9 +666,10 @@ export default function OfficersKPIPage() {
   contentStyle={{ 
     backgroundColor: '#0B1A33', 
     borderColor: '#FFD700',
-    color: '#FFFFFF'  // <--- INI YANG NGE-FIX WARNA TEKS
+    color: 'white'
   }}
-  formatter={(value: any, name: any, props: any) => {
+  wrapperStyle={{ color: 'white' }}
+  formatter={(value, name, props) => {
     return [`${value} approved`, props.payload.fullName];
   }}
 />
