@@ -1,96 +1,51 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 
-export default function OfficersKPILayout({ children }) {
-  const [activeMenu, setActiveMenu] = useState('summary');
-  
+export default function OfficersKPIPage() {
   return (
-    <div className="flex min-h-screen bg-[#0B1A33]">
-      {/* SIDEBAR KIRI */}
-      <div className="w-80 bg-[#1A2F4A] border-r border-[#FFD700]/30 p-6">
-        {/* BACK TO DASHBOARD */}
+    <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
+      {/* BACK TO DASHBOARD */}
+      <div className="mb-6">
         <Link 
           href="/dashboard"
-          className="flex items-center gap-2 text-[#A7D8FF] hover:text-[#FFD700] transition-colors mb-8 text-sm"
+          className="inline-flex items-center gap-2 text-[#A7D8FF] hover:text-[#FFD700] transition-colors text-sm"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           BACK TO DASHBOARD
         </Link>
-        
-        {/* MENU ANALYTICS */}
-        <div className="mb-6">
-          <h3 className="text-xs font-bold text-[#FFD700] tracking-wider mb-3">ANALYTICS</h3>
-          
-          {/* MENU ALL SUMMARY KPI REVIEW */}
-          <button
-            onClick={() => setActiveMenu('summary')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-all mb-1 ${
-              activeMenu === 'summary' 
-                ? 'bg-[#FFD700] text-[#0B1A33] font-bold' 
-                : 'text-[#A7D8FF] hover:bg-[#FFD700]/10 hover:text-white'
-            }`}
-          >
-            <div className="text-sm font-medium">All Summary KPI Review</div>
-            <div className="text-xs opacity-80 mt-1">Attendance Overview • Perbulan - offday 4 hari</div>
-          </button>
-          
-          {/* MENU COMPARISON REVIEW KPI */}
-          <button
-            onClick={() => setActiveMenu('comparison')}
-            className={`w-full text-left px-4 py-3 rounded-lg transition-all ${
-              activeMenu === 'comparison' 
-                ? 'bg-[#FFD700] text-[#0B1A33] font-bold' 
-                : 'text-[#A7D8FF] hover:bg-[#FFD700]/10 hover:text-white'
-            }`}
-          >
-            <div className="text-sm font-medium">Comparison Review KPI</div>
-            <div className="text-xs opacity-80 mt-1">Division Overview • CS, Deposit, WD Performance</div>
-          </button>
-        </div>
-        
-        {/* FOOTER SIDEBAR */}
-        <div className="absolute bottom-6 left-6 text-xs text-[#A7D8FF]/50">
-          KPI Review v1.0
-        </div>
       </div>
-      
-      {/* CONTENT KANAN */}
-      <div className="flex-1 p-8">
-        {/* HEADER */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[#FFD700]">ANALYTICS</h1>
+
+      {/* HEADER */}
+      <h1 className="text-3xl font-bold text-[#FFD700] mb-8">ANALYTICS</h1>
+
+      {/* GRID 2 KOLOM */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* KOLOM KIRI - ALL SUMMARY KPI REVIEW */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h2 className="text-xl font-bold text-[#FFD700] mb-4">All Summary KPI Review</h2>
+          <p className="text-[#A7D8FF] text-sm mb-6">Attendance Overview • Perbulan - offday 4 hari</p>
+          
+          {/* CHART PLACEHOLDER */}
+          <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
+            <p className="text-[#A7D8FF]/50">Chart & Data Summary akan ditampilkan</p>
+          </div>
         </div>
         
-        {/* GRID 2 KOLOM UNTUK KONTEN */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* KOLOM KANAN - COMPARISON REVIEW KPI */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <h2 className="text-xl font-bold text-[#FFD700] mb-4">Comparison Review KPI</h2>
+          <p className="text-[#A7D8FF] text-sm mb-6">Division Overview • CS, Deposit, WD Performance</p>
           
-          {/* BOX KIRI - ALL SUMMARY KPI REVIEW */}
-          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 min-h-[500px] hover:border-[#FFD700] transition-all">
-            <h3 className="text-lg font-bold text-[#FFD700] mb-2">All Summary KPI Review</h3>
-            <p className="text-[#A7D8FF] text-sm mb-4">Attendance Overview • Perbulan - offday 4 hari</p>
-            
-            {/* TEMPAT UNTUK ISI NANTI */}
-            <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
-              <p className="text-[#A7D8FF]/50">Chart & Data Summary akan ditampilkan</p>
-            </div>
+          {/* CHART PLACEHOLDER */}
+          <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
+            <p className="text-[#A7D8FF]/50">Chart & Data Comparison akan ditampilkan</p>
           </div>
-          
-          {/* BOX KANAN - COMPARISON REVIEW KPI */}
-          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 min-h-[500px] hover:border-[#FFD700] transition-all">
-            <h3 className="text-lg font-bold text-[#FFD700] mb-2">Comparison Review KPI</h3>
-            <p className="text-[#A7D8FF] text-sm mb-4">Division Overview • CS, Deposit, WD Performance</p>
-            
-            {/* TEMPAT UNTUK ISI NANTI */}
-            <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
-              <p className="text-[#A7D8FF]/50">Chart & Data Comparison akan ditampilkan</p>
-            </div>
-          </div>
-          
         </div>
+        
       </div>
     </div>
   );
