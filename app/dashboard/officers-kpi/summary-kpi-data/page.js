@@ -7,59 +7,122 @@ export default function SummaryKPIDataPage() {
   const [tahun, setTahun] = useState('2026');
   const [periode, setPeriode] = useState('Jan - Jun');
 
-  // DATA DUMMY SESUAI EXCEL - DEPOSIT & WITHDRAWAL
+  // DATA DUMMY SESUAI EXCEL - DEPOSIT & WITHDRAWAL (2 BARIS PER OFFICER)
   const dpwdData = [
-    { no: 1, name: 'Hakim', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-01-15', 
-      sop: 95, nonSop: 5, intervalApp: 2, intervalRej: 0, 
-      heQty: 0, heAmount: 0, mistakeQty: 0, mistakeAmount: 0, blockBank: 0,
-      crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0,
+    // OFFICER 1 - HAKIM
+    { no: 1, name: 'Hakim', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-01-15', aspect: 'Deposit Aspect',
+      totalApproved: 145, totalReject: 2, intervalApp: 2, intervalRej: 0,
+      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
       bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
       p1: 95, p2: 100, p3: 100, p4: 100, avg: 98.75 },
-    { no: 2, name: 'Zakiy', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-02-10',
-      sop: 92, nonSop: 8, intervalApp: 3, intervalRej: 1,
-      heQty: 1, heAmount: 500000, mistakeQty: 0, mistakeAmount: 0, blockBank: 0,
-      crossBankQty: 2, crossBankAmount: 750000, crossAssetQty: 1, crossAssetAmount: 250000,
+    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
+      totalApproved: 138, totalReject: 1, intervalApp: 1, intervalRej: 0,
+      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
+      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
+      p1: 94, p2: 100, p3: 100, p4: 100, avg: 98.5 },
+    
+    // OFFICER 2 - ZAKIY
+    { no: 2, name: 'Zakiy', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-02-10', aspect: 'Deposit Aspect',
+      totalApproved: 132, totalReject: 3, intervalApp: 3, intervalRej: 1,
+      heQty: 1, heAmount: '500K', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 1, crossBankAmount: '500K', crossAssetQty: 0, crossAssetAmount: '-',
       bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
       p1: 92, p2: 95, p3: 90, p4: 95, avg: 93 },
-    { no: 3, name: 'Goldie', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-03-05',
-      sop: 98, nonSop: 2, intervalApp: 1, intervalRej: 0,
-      heQty: 0, heAmount: 0, mistakeQty: 0, mistakeAmount: 0, blockBank: 0,
-      crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0,
+    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
+      totalApproved: 128, totalReject: 2, intervalApp: 2, intervalRej: 1,
+      heQty: 1, heAmount: '250K', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 1, crossBankAmount: '250K', crossAssetQty: 1, crossAssetAmount: '250K',
+      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
+      p1: 90, p2: 92, p3: 88, p4: 92, avg: 90.5 },
+    
+    // OFFICER 3 - GOLDIE
+    { no: 3, name: 'Goldie', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-03-05', aspect: 'Deposit Aspect',
+      totalApproved: 150, totalReject: 0, intervalApp: 1, intervalRej: 0,
+      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
       bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
       p1: 98, p2: 100, p3: 100, p4: 100, avg: 99.5 },
-    { no: 4, name: 'Vini', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-04-20',
-      sop: 88, nonSop: 12, intervalApp: 4, intervalRej: 2,
-      heQty: 2, heAmount: 750000, mistakeQty: 1, mistakeAmount: 250000, blockBank: 0,
-      crossBankQty: 1, crossBankAmount: 500000, crossAssetQty: 0, crossAssetAmount: 0,
+    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
+      totalApproved: 142, totalReject: 1, intervalApp: 1, intervalRej: 0,
+      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
+      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
+      p1: 97, p2: 100, p3: 100, p4: 100, avg: 99.25 },
+    
+    // OFFICER 4 - VINI
+    { no: 4, name: 'Vini', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-04-20', aspect: 'Deposit Aspect',
+      totalApproved: 118, totalReject: 4, intervalApp: 4, intervalRej: 2,
+      heQty: 1, heAmount: '500K', mistakeQty: 1, mistakeAmount: '250K', blockBank: 0,
+      crossBankQty: 1, crossBankAmount: '500K', crossAssetQty: 0, crossAssetAmount: '-',
       bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
       p1: 88, p2: 85, p3: 80, p4: 85, avg: 84.5 },
-    { no: 5, name: 'Ronaldo', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-05-12',
-      sop: 90, nonSop: 10, intervalApp: 2, intervalRej: 0,
-      heQty: 0, heAmount: 0, mistakeQty: 0, mistakeAmount: 0, blockBank: 0,
-      crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0,
+    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
+      totalApproved: 112, totalReject: 3, intervalApp: 3, intervalRej: 1,
+      heQty: 1, heAmount: '250K', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
+      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
+      p1: 85, p2: 88, p3: 85, p4: 90, avg: 87 },
+    
+    // OFFICER 5 - RONALDO
+    { no: 5, name: 'Ronaldo', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-05-12', aspect: 'Deposit Aspect',
+      totalApproved: 135, totalReject: 1, intervalApp: 2, intervalRej: 0,
+      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
       bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
       p1: 90, p2: 100, p3: 100, p4: 100, avg: 97.5 },
-    { no: 6, name: 'Sulaeman', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-06-08',
-      sop: 96, nonSop: 4, intervalApp: 1, intervalRej: 0,
-      heQty: 0, heAmount: 0, mistakeQty: 0, mistakeAmount: 0, blockBank: 0,
-      crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0,
+    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
+      totalApproved: 128, totalReject: 1, intervalApp: 1, intervalRej: 0,
+      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
+      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
+      p1: 89, p2: 100, p3: 100, p4: 100, avg: 97.25 },
+    
+    // OFFICER 6 - SULAEMAN
+    { no: 6, name: 'Sulaeman', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-06-08', aspect: 'Deposit Aspect',
+      totalApproved: 142, totalReject: 1, intervalApp: 1, intervalRej: 0,
+      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
       bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
       p1: 96, p2: 100, p3: 100, p4: 100, avg: 99 },
-    { no: 7, name: 'System', dept: 'System', status: 'SYSTEM', joinDate: '-',
-      sop: '-', nonSop: '-', intervalApp: '-', intervalRej: '-',
+    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
+      totalApproved: 135, totalReject: 0, intervalApp: 1, intervalRej: 0,
+      heQty: 0, heAmount: '-', mistakeQty: 0, mistakeAmount: '-', blockBank: 0,
+      crossBankQty: 0, crossBankAmount: '-', crossAssetQty: 0, crossAssetAmount: '-',
+      bukuDosa: 0, sp1: 0, sp2: 0, sus: 0,
+      p1: 95, p2: 100, p3: 100, p4: 100, avg: 98.75 },
+    
+    // SYSTEM
+    { no: 7, name: 'System', dept: 'System', status: 'SYSTEM', joinDate: '-', aspect: 'Deposit Aspect',
+      totalApproved: '-', totalReject: '-', intervalApp: '-', intervalRej: '-',
       heQty: '-', heAmount: '-', mistakeQty: '-', mistakeAmount: '-', blockBank: '-',
       crossBankQty: '-', crossBankAmount: '-', crossAssetQty: '-', crossAssetAmount: '-',
       bukuDosa: '-', sp1: '-', sp2: '-', sus: '-',
       p1: '-', p2: '-', p3: '-', p4: '-', avg: '-' },
-    { no: 8, name: 'TOTAL', dept: 'All', status: '-', joinDate: '-',
-      sop: '559', nonSop: '41', intervalApp: '13', intervalRej: '3',
-      heQty: '3', heAmount: '1.25M', mistakeQty: '1', mistakeAmount: '250K', blockBank: '0',
-      crossBankQty: '3', crossBankAmount: '1.25M', crossAssetQty: '1', crossAssetAmount: '250K',
+    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
+      totalApproved: '-', totalReject: '-', intervalApp: '-', intervalRej: '-',
+      heQty: '-', heAmount: '-', mistakeQty: '-', mistakeAmount: '-', blockBank: '-',
+      crossBankQty: '-', crossBankAmount: '-', crossAssetQty: '-', crossAssetAmount: '-',
+      bukuDosa: '-', sp1: '-', sp2: '-', sus: '-',
+      p1: '-', p2: '-', p3: '-', p4: '-', avg: '-' },
+    
+    // TOTAL ALL
+    { no: 8, name: 'TOTAL ALL', dept: 'System + Human', status: '-', joinDate: '-', aspect: 'Deposit Aspect',
+      totalApproved: '822', totalReject: '11', intervalApp: '13', intervalRej: '3',
+      heQty: '2', heAmount: '1M', mistakeQty: '1', mistakeAmount: '250K', blockBank: '0',
+      crossBankQty: '2', crossBankAmount: '1M', crossAssetQty: '0', crossAssetAmount: '0',
       bukuDosa: '0', sp1: '0', sp2: '0', sus: '0',
-      p1: '559', p2: '580', p3: '570', p4: '580', avg: '572' }
+      p1: '559', p2: '580', p3: '570', p4: '580', avg: '572' },
+    { no: '', name: '', dept: '', status: '', joinDate: '', aspect: 'Withdrawal Aspect',
+      totalApproved: '763', totalReject: '7', intervalApp: '8', intervalRej: '2',
+      heQty: '2', heAmount: '500K', mistakeQty: '0', mistakeAmount: '0', blockBank: '0',
+      crossBankQty: '1', crossBankAmount: '250K', crossAssetQty: '1', crossAssetAmount: '250K',
+      bukuDosa: '0', sp1: '0', sp2: '0', sus: '0',
+      p1: '550', p2: '580', p3: '573', p4: '582', avg: '571' }
   ];
 
-  // DATA DUMMY SESUAI EXCEL - CUSTOMER SERVICE
+  // DATA CUSTOMER SERVICE (TETAP SAMA - SATU BARIS PER OFFICER)
   const csData = [
     { no: 1, name: 'Hakim', dept: 'CS DP WD', status: 'REGULAR', joinDate: '2023-01-15',
       totalChat: 145, missedChat: 2, timeMgmt: 95, commSkill: 90, problemSolving: 88,
@@ -139,13 +202,14 @@ export default function SummaryKPIDataPage() {
         
         {/* TABLE WRAPPER - SCROLL HORIZONTAL */}
         <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-          <table className="w-full text-xs min-w-[1800px]">
+          <table className="w-full text-xs min-w-[2000px]">
             <thead>
               {/* HEADER ROW 1 - KATEGORI UTAMA */}
               <tr className="border-b border-[#FFD700]/20">
-                <th colSpan="5" className="text-left py-2 px-2 text-[#FFD700]"> </th>
-                <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Time Management</th>
-                <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Human Error</th>
+                <th colSpan="6" className="text-left py-2 px-2 text-[#FFD700] bg-[#1A2F4A] sticky left-0 z-20"> </th>
+                <th colSpan="4" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Time Management</th>
+                <th colSpan="2" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10"> </th>
+                <th colSpan="7" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Human Error</th>
                 <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Problem Solving</th>
                 <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Follow SOP / Teamwork</th>
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE DP & WD</th>
@@ -153,112 +217,134 @@ export default function SummaryKPIDataPage() {
               
               {/* HEADER ROW 2 - SUB KATEGORI */}
               <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-                <th className="text-left py-2 px-2">No</th>
-                <th className="text-left py-2 px-2">NAME</th>
-                <th className="text-left py-2 px-2">DEPARTMENT</th>
-                <th className="text-left py-2 px-2">STATUS</th>
-                <th className="text-left py-2 px-2">JOIN DATE</th>
+                {/* STICKY COLUMNS */}
+                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[50px]">No</th>
+                <th className="sticky left-[50px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">NAME</th>
+                <th className="sticky left-[150px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
+                <th className="sticky left-[250px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
+                <th className="sticky left-[330px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">JOIN DATE</th>
+                <th className="sticky left-[430px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">ASPECT</th>
                 
                 {/* Time Management */}
-                <th className="text-center py-2 px-2">SOP</th>
-                <th className="text-center py-2 px-2">SOP %</th>
-                <th className="text-center py-2 px-2">NON SOP</th>
-                <th className="text-center py-2 px-2">SOP</th>
-                <th className="text-center py-2 px-2">SOP %</th>
-                <th className="text-center py-2 px-2">NON SOP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Total App</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Total Rej</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP %</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">NON SOP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP %</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">NON SOP</th>
                 
                 {/* Human Error */}
-                <th className="text-center py-2 px-2">Interval App</th>
-                <th className="text-center py-2 px-2">Interval Rej</th>
-                <th className="text-center py-2 px-2">HE Qty</th>
-                <th className="text-center py-2 px-2">HE Amount</th>
-                <th className="text-center py-2 px-2">Mistake Qty</th>
-                <th className="text-center py-2 px-2">Mistake Amt</th>
-                <th className="text-center py-2 px-2">Block Bank</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">HE Amount</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Mistake Qty</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Mistake Amt</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
                 
                 {/* Problem Solving */}
-                <th className="text-center py-2 px-2">Cross Bank Qty</th>
-                <th className="text-center py-2 px-2">Cross Bank Amt</th>
-                <th className="text-center py-2 px-2">Cross Asset Qty</th>
-                <th className="text-center py-2 px-2">Cross Asset Amt</th>
-                <th className="text-center py-2 px-2">Presentase</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Qty</th>
+                <th className="text-center py-2 px-2 min-w-[90px]">Cross Bank Amt</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Qty</th>
+                <th className="text-center py-2 px-2 min-w-[90px]">Cross Asset Amt</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Presentase</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Poin 2</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Poin 3</th>
                 
                 {/* Follow SOP / Teamwork */}
-                <th className="text-center py-2 px-2">Buku Dosa</th>
-                <th className="text-center py-2 px-2">SP1</th>
-                <th className="text-center py-2 px-2">SP2</th>
-                <th className="text-center py-2 px-2">SUS</th>
-                <th className="text-center py-2 px-2">Total Poin 4</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Buku Dosa</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">SP1</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">SP2</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">SUS</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Total Poin 4</th>
                 
                 {/* SUB SCORE */}
-                <th className="text-center py-2 px-2">P1</th>
-                <th className="text-center py-2 px-2">P2</th>
-                <th className="text-center py-2 px-2">P3</th>
-                <th className="text-center py-2 px-2">P4</th>
-                <th className="text-center py-2 px-2">AVG</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P1</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P2</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P3</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P4</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">Avg</th>
               </tr>
             </thead>
             <tbody>
-              {dpwdData.map((row) => (
-                <tr key={row.no} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
-                  <td className="py-2 px-2 text-[#A7D8FF]">{row.no}</td>
-                  <td className="py-2 px-2 font-medium">{row.name}</td>
-                  <td className="py-2 px-2 text-[#A7D8FF]">{row.dept}</td>
-                  <td className="py-2 px-2">
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] ${
-                      row.status === 'REGULAR' ? 'bg-green-500/20 text-green-400' : 
-                      row.status === 'SYSTEM' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'
-                    }`}>
-                      {row.status}
-                    </span>
-                  </td>
-                  <td className="py-2 px-2 text-[#A7D8FF]">{row.joinDate}</td>
-                  
-                  {/* Time Management */}
-                  <td className="text-center py-2 px-2">{row.sop}</td>
-                  <td className="text-center py-2 px-2">{row.sop}%</td>
-                  <td className="text-center py-2 px-2">{row.nonSop}</td>
-                  <td className="text-center py-2 px-2">{row.sop}</td>
-                  <td className="text-center py-2 px-2">{row.sop}%</td>
-                  <td className="text-center py-2 px-2">{row.nonSop}</td>
-                  
-                  {/* Human Error */}
-                  <td className="text-center py-2 px-2">{row.intervalApp}</td>
-                  <td className="text-center py-2 px-2">{row.intervalRej}</td>
-                  <td className="text-center py-2 px-2">{row.heQty}</td>
-                  <td className="text-center py-2 px-2">{row.heAmount}</td>
-                  <td className="text-center py-2 px-2">{row.mistakeQty}</td>
-                  <td className="text-center py-2 px-2">{row.mistakeAmount}</td>
-                  <td className="text-center py-2 px-2">{row.blockBank}</td>
-                  
-                  {/* Problem Solving */}
-                  <td className="text-center py-2 px-2">{row.crossBankQty}</td>
-                  <td className="text-center py-2 px-2">{row.crossBankAmount}</td>
-                  <td className="text-center py-2 px-2">{row.crossAssetQty}</td>
-                  <td className="text-center py-2 px-2">{row.crossAssetAmount}</td>
-                  <td className="text-center py-2 px-2">{(row.crossBankQty === '-' ? '-' : '100')}</td>
-                  
-                  {/* Follow SOP / Teamwork */}
-                  <td className="text-center py-2 px-2">{row.bukuDosa}</td>
-                  <td className="text-center py-2 px-2">{row.sp1}</td>
-                  <td className="text-center py-2 px-2">{row.sp2}</td>
-                  <td className="text-center py-2 px-2">{row.sus}</td>
-                  <td className="text-center py-2 px-2">{(row.bukuDosa === '-' ? '-' : '100')}</td>
-                  
-                  {/* SUB SCORE */}
-                  <td className="text-center py-2 px-2 font-bold text-blue-400">{row.p1}</td>
-                  <td className="text-center py-2 px-2 font-bold text-red-400">{row.p2}</td>
-                  <td className="text-center py-2 px-2 font-bold text-yellow-400">{row.p3}</td>
-                  <td className="text-center py-2 px-2 font-bold text-green-400">{row.p4}</td>
-                  <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{row.avg}</td>
-                </tr>
-              ))}
+              {dpwdData.map((row, index) => {
+                // Tentukan apakah baris ini perlu nampilin no/name atau tidak
+                const showMainInfo = row.no !== '';
+                
+                return (
+                  <tr key={index} className={`border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5 ${
+                    row.aspect === 'Withdrawal Aspect' ? 'bg-[#0B1A33]/30' : ''
+                  }`}>
+                    {/* STICKY COLUMNS */}
+                    <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.no}</td>
+                    <td className="sticky left-[50px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{row.name}</td>
+                    <td className="sticky left-[150px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.dept}</td>
+                    <td className="sticky left-[250px] z-10 bg-[#1A2F4A] py-2 px-2">
+                      {row.status && (
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${
+                          row.status === 'REGULAR' ? 'bg-green-500/20 text-green-400' : 
+                          row.status === 'SYSTEM' ? 'bg-blue-500/20 text-blue-400' : 
+                          row.status === '-' ? '' : 'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {row.status}
+                        </span>
+                      )}
+                    </td>
+                    <td className="sticky left-[330px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.joinDate}</td>
+                    <td className="sticky left-[430px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] text-[10px] font-bold">{row.aspect}</td>
+                    
+                    {/* Time Management */}
+                    <td className="text-center py-2 px-2">{row.totalApproved}</td>
+                    <td className="text-center py-2 px-2">{row.totalReject}</td>
+                    <td className="text-center py-2 px-2">{row.totalApproved}</td>
+                    <td className="text-center py-2 px-2">{row.p1}%</td>
+                    <td className="text-center py-2 px-2">{row.totalReject}</td>
+                    <td className="text-center py-2 px-2">{row.totalApproved}</td>
+                    <td className="text-center py-2 px-2">{row.p1}%</td>
+                    <td className="text-center py-2 px-2">{row.totalReject}</td>
+                    
+                    {/* Human Error */}
+                    <td className="text-center py-2 px-2">{row.intervalApp}</td>
+                    <td className="text-center py-2 px-2">{row.intervalRej}</td>
+                    <td className="text-center py-2 px-2">{row.heQty}</td>
+                    <td className="text-center py-2 px-2">{row.heAmount}</td>
+                    <td className="text-center py-2 px-2">{row.mistakeQty}</td>
+                    <td className="text-center py-2 px-2">{row.mistakeAmount}</td>
+                    <td className="text-center py-2 px-2">{row.blockBank}</td>
+                    
+                    {/* Problem Solving */}
+                    <td className="text-center py-2 px-2">{row.crossBankQty}</td>
+                    <td className="text-center py-2 px-2">{row.crossBankAmount}</td>
+                    <td className="text-center py-2 px-2">{row.crossAssetQty}</td>
+                    <td className="text-center py-2 px-2">{row.crossAssetAmount}</td>
+                    <td className="text-center py-2 px-2">{row.p3}%</td>
+                    <td className="text-center py-2 px-2">{row.p2}</td>
+                    <td className="text-center py-2 px-2">{row.p3}</td>
+                    
+                    {/* Follow SOP / Teamwork */}
+                    <td className="text-center py-2 px-2">{row.bukuDosa}</td>
+                    <td className="text-center py-2 px-2">{row.sp1}</td>
+                    <td className="text-center py-2 px-2">{row.sp2}</td>
+                    <td className="text-center py-2 px-2">{row.sus}</td>
+                    <td className="text-center py-2 px-2">{row.p4}</td>
+                    
+                    {/* SUB SCORE */}
+                    <td className="text-center py-2 px-2 font-bold text-blue-400">{row.p1}</td>
+                    <td className="text-center py-2 px-2 font-bold text-red-400">{row.p2}</td>
+                    <td className="text-center py-2 px-2 font-bold text-yellow-400">{row.p3}</td>
+                    <td className="text-center py-2 px-2 font-bold text-green-400">{row.p4}</td>
+                    <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{row.avg}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* BAGIAN 2: CUSTOMER SERVICE KPI */}
+      {/* BAGIAN 2: CUSTOMER SERVICE KPI (SAMA KAYA SEBELUMNYA) */}
       <div className="mb-10">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">CUSTOMER SERVICE KPI</h2>
         
@@ -268,7 +354,7 @@ export default function SummaryKPIDataPage() {
             <thead>
               {/* HEADER ROW 1 - KATEGORI UTAMA */}
               <tr className="border-b border-[#FFD700]/20">
-                <th colSpan="5" className="text-left py-2 px-2 text-[#FFD700]"> </th>
+                <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
                 <th colSpan="2" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
                 <th colSpan="2" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Poin 2</th>
                 <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Poin 3</th>
@@ -279,50 +365,52 @@ export default function SummaryKPIDataPage() {
               
               {/* HEADER ROW 2 - SUB KATEGORI */}
               <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-                <th className="text-left py-2 px-2">No</th>
-                <th className="text-left py-2 px-2">NAME</th>
-                <th className="text-left py-2 px-2">DEPARTMENT</th>
-                <th className="text-left py-2 px-2">STATUS</th>
-                <th className="text-left py-2 px-2">JOIN DATE</th>
+                {/* STICKY COLUMNS */}
+                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[50px]">No</th>
+                <th className="sticky left-[50px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">NAME</th>
+                <th className="sticky left-[150px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
+                <th className="sticky left-[250px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
+                <th className="sticky left-[330px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">JOIN DATE</th>
                 
                 {/* Poin 1 */}
-                <th className="text-center py-2 px-2">Total Chat</th>
-                <th className="text-center py-2 px-2">Missed Chat</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Missed Chat</th>
                 
                 {/* Poin 2 */}
-                <th className="text-center py-2 px-2">Time Mgmt</th>
-                <th className="text-center py-2 px-2">Comm Skill</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Time Mgmt</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Comm Skill</th>
                 
                 {/* Poin 3 */}
-                <th className="text-center py-2 px-2">Problem Solving</th>
+                <th className="text-center py-2 px-2 min-w-[90px]">Problem Solving</th>
                 
                 {/* Poin 4 */}
-                <th className="text-center py-2 px-2">Follow SOP</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Follow SOP</th>
                 
                 {/* Poin 5 & Attendance */}
-                <th className="text-center py-2 px-2">S</th>
-                <th className="text-center py-2 px-2">I</th>
-                <th className="text-center py-2 px-2">A</th>
-                <th className="text-center py-2 px-2">U</th>
-                <th className="text-center py-2 px-2">Total</th>
-                <th className="text-center py-2 px-2">Target</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">S</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">I</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">A</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">U</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">Total</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">Target</th>
                 
                 {/* SUB SCORE */}
-                <th className="text-center py-2 px-2">P1</th>
-                <th className="text-center py-2 px-2">P2</th>
-                <th className="text-center py-2 px-2">P3</th>
-                <th className="text-center py-2 px-2">P4</th>
-                <th className="text-center py-2 px-2">P5</th>
-                <th className="text-center py-2 px-2">P6</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P1</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P2</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P3</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P4</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P5</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">P6</th>
               </tr>
             </thead>
             <tbody>
               {csData.map((row) => (
                 <tr key={row.no} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
-                  <td className="py-2 px-2 text-[#A7D8FF]">{row.no}</td>
-                  <td className="py-2 px-2 font-medium">{row.name}</td>
-                  <td className="py-2 px-2 text-[#A7D8FF]">{row.dept}</td>
-                  <td className="py-2 px-2">
+                  {/* STICKY COLUMNS */}
+                  <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.no}</td>
+                  <td className="sticky left-[50px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{row.name}</td>
+                  <td className="sticky left-[150px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.dept}</td>
+                  <td className="sticky left-[250px] z-10 bg-[#1A2F4A] py-2 px-2">
                     <span className={`px-1.5 py-0.5 rounded text-[10px] ${
                       row.status === 'REGULAR' ? 'bg-green-500/20 text-green-400' : 
                       row.status === 'SYSTEM' ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'
@@ -330,7 +418,7 @@ export default function SummaryKPIDataPage() {
                       {row.status}
                     </span>
                   </td>
-                  <td className="py-2 px-2 text-[#A7D8FF]">{row.joinDate}</td>
+                  <td className="sticky left-[330px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{row.joinDate}</td>
                   
                   {/* Poin 1 */}
                   <td className="text-center py-2 px-2">{row.totalChat}</td>
@@ -370,7 +458,7 @@ export default function SummaryKPIDataPage() {
 
       {/* FOOTER */}
       <div className="text-xs text-[#A7D8FF]/30 text-center mt-8">
-        <p>KPI Summary • All data is dummy for display • Periode {periode} {tahun}</p>
+        <p>KPI Summary • Deposit & Withdrawal (2 baris per officer: Deposit Aspect & Withdrawal Aspect) • Periode {periode} {tahun}</p>
         <p className="mt-1">P1: Time Management | P2: Human Error | P3: Problem Solving | P4: Follow SOP | P5: Chat Achievement | P6: Attendance</p>
       </div>
     </div>
