@@ -223,65 +223,81 @@ export default function DashboardContent() {
   // FETCH ASSET PERFORMANCE DATA
   // ===========================================
   const fetchAssetPerformanceData = async () => {
-    try {
-      setLoadingAssetPerformance(true);
+  try {
+    setLoadingAssetPerformance(true);
+    
+    let query;
+    
+    if (assetPerformanceFilter === 'daily') {
+      const startDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, assetPerformanceMonth, 0).getDate()} 23:59:59`;
       
-      const assetCode = assetPerformanceAsset; // PAKAI STATE KHUSUS
+      // Ambil deposits
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
       
-      let data = [];
+      // Ambil withdrawals
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
       
-      if (assetPerformanceFilter === 'daily') {
-        const startDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-01 00:00:00`;
-        const endDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, assetPerformanceMonth, 0).getDate()} 23:59:59`;
-        
-        const { data: deposits } = await supabase
-          .from('deposit_transactions')
-          .select('approved_date')
-          .eq('brand', assetCode)
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        const { data: withdrawals } = await supabase
-          .from('withdrawal_transactions')
-          .select('approved_date')
-          .eq('brand', assetCode)
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        data = processDailyAssetData(deposits || [], withdrawals || [], assetPerformanceMonth, assetPerformanceYear);
-        
-      } else {
-        const startMonth = assetPerformancePeriod === 'jan-jun' ? 1 : 7;
-        const endMonth = assetPerformancePeriod === 'jan-jun' ? 6 : 12;
-        
-        const startDate = `${assetPerformanceYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
-        const endDate = `${assetPerformanceYear}-${String(endMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, endMonth, 0).getDate()} 23:59:59`;
-        
-        const { data: deposits } = await supabase
-          .from('deposit_transactions')
-          .select('approved_date')
-          .eq('brand', assetCode)
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        const { data: withdrawals } = await supabase
-          .from('withdrawal_transactions')
-          .select('approved_date')
-          .eq('brand', assetCode)
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        data = processMonthlyAssetData(deposits || [], withdrawals || [], assetPerformancePeriod, assetPerformanceYear);
+      // Kalau bukan "all", filter berdasarkan brand
+      if (assetPerformanceAsset !== 'all') {
+        depositQuery = depositQuery.eq('brand', assetPerformanceAsset);
+        withdrawalQuery = withdrawalQuery.eq('brand', assetPerformanceAsset);
       }
       
+      const { data: deposits } = await depositQuery;
+      const { data: withdrawals } = await withdrawalQuery;
+      
+      const data = processDailyAssetData(deposits || [], withdrawals || [], assetPerformanceMonth, assetPerformanceYear);
       setAssetPerformance(data);
       
-    } catch (error) {
-      console.error('Error fetching asset performance:', error);
-    } finally {
-      setLoadingAssetPerformance(false);
+    } else {
+      const startMonth = assetPerformancePeriod === 'jan-jun' ? 1 : 7;
+      const endMonth = assetPerformancePeriod === 'jan-jun' ? 6 : 12;
+      
+      const startDate = `${assetPerformanceYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${assetPerformanceYear}-${String(endMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, endMonth, 0).getDate()} 23:59:59`;
+      
+      // Ambil deposits
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      // Ambil withdrawals
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      // Kalau bukan "all", filter berdasarkan brand
+      if (assetPerformanceAsset !== 'all') {
+        depositQuery = depositQuery.eq('brand', assetPerformanceAsset);
+        withdrawalQuery = withdrawalQuery.eq('brand', assetPerformanceAsset);
+      }
+      
+      const { data: deposits } = await depositQuery;
+      const { data: withdrawals } = await withdrawalQuery;
+      
+      const data = processMonthlyAssetData(deposits || [], withdrawals || [], assetPerformancePeriod, assetPerformanceYear);
+      setAssetPerformance(data);
     }
-  };
+    
+  } catch (error) {
+    console.error('Error fetching asset performance:', error);
+  } finally {
+    setLoadingAssetPerformance(false);
+  }
+};
 
   const processDailyAssetData = (deposits, withdrawals, month, year) => {
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -998,28 +1014,29 @@ export default function DashboardContent() {
           
           {/* FILTER SECTION - PAKAI STATE KHUSUS assetPerformanceAsset */}
           <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
-            {/* FILTER ASSET - PAKAI DATA DARI assetList DENGAN MAPPING KE SINGKATAN */}
-            <select 
-              value={assetPerformanceAsset} 
-              onChange={(e) => setAssetPerformanceAsset(e.target.value)}
-              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
-            >
-              {/* TAMPILIN SINGKATAN TAPI VALUE NYA TETEP SINGKATAN */}
-              {assetList.length > 0 ? (
-                assetList.map(asset => {
-                  const assetCode = getAssetCode(asset);
-                  return (
-                    <option key={asset} value={assetCode}>
-                      {assetCode}
-                    </option>
-                  );
-                })
-              ) : (
-                <>
-                  <option value="XLY">XLY</option>
-                </>
-              )}
-            </select>
+            {/* FILTER ASSET - TAMBAH OPSI ALL */}
+<select 
+  value={assetPerformanceAsset} 
+  onChange={(e) => setAssetPerformanceAsset(e.target.value)}
+  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
+>
+  {/* OPSI ALL - TAMPILIN SEMUA ASSET */}
+  <option value="all">ALL</option>
+  
+  {/* TAMPILIN SINGKATAN DARI ASSET YANG ADA */}
+  {assetList.length > 0 ? (
+    assetList.map(asset => {
+      const assetCode = getAssetCode(asset);
+      return (
+        <option key={asset} value={assetCode}>
+          {assetCode}
+        </option>
+      );
+    })
+  ) : (
+    <option value="XLY">XLY</option>
+  )}
+</select>
 
             {/* FILTER PERIODE */}
             <select value={assetPerformanceFilter} onChange={(e) => setAssetPerformanceFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
