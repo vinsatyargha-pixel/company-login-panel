@@ -26,7 +26,7 @@ export default function OfficersKPIPage() {
         
         {/* KOLOM KIRI - Summary KPI Officers */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h2 className="text-xl font-bold text-[#FFD700] mb-4">Attendance Overview</h2>
+          <h2 className="text-xl font-bold text-[#FFD700] mb-4">Summary KPI data</h2>
           
           {/* CHART PLACEHOLDER */}
           <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
@@ -36,7 +36,7 @@ export default function OfficersKPIPage() {
         
         {/* KOLOM KANAN - SUMMARY COMPARISON */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h2 className="text-xl font-bold text-[#FFD700] mb-4">Division Overview</h2>
+          <h2 className="text-xl font-bold text-[#FFD700] mb-4">COMPARISON PERIODE KPI</h2>
           
           {/* CHART PLACEHOLDER */}
           <div className="h-64 flex items-center justify-center border border-dashed border-[#FFD700]/20 rounded-lg">
