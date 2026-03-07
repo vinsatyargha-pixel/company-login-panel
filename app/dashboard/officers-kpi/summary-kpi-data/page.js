@@ -23,14 +23,14 @@ const formatTime = (minutes) => {
 // ===========================================
 const getMonthDateRange = (tahun, bulan) => {
   const startDate = `${tahun}-${bulan.toString().padStart(2, '0')}-01`;
-  const endDate = new Date(tahun, bulan, 0).toISOString().split('T')[0]; // Last day of month
+  const endDate = new Date(tahun, bulan, 0).toISOString().split('T')[0];
   return { startDate, endDate };
 };
 
 export default function SummaryKPIDataPage() {
   const [tahun, setTahun] = useState('2026');
-  const [bulanAwal, setBulanAwal] = useState('1'); // Januari
-  const [bulanAkhir, setBulanAkhir] = useState('6'); // Juni
+  const [bulanAwal, setBulanAwal] = useState('1');
+  const [bulanAkhir, setBulanAkhir] = useState('6');
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -106,7 +106,6 @@ export default function SummaryKPIDataPage() {
       try {
         const { startDate, endDate } = getMonthDateRange(tahun, parseInt(bulanAkhir));
         
-        // Ambil data deposit berdasarkan approved_date
         const { data, error } = await supabase
           .from('deposit_transactions')
           .select('*')
@@ -254,6 +253,93 @@ export default function SummaryKPIDataPage() {
 
     if (tahun && bulanAwal && bulanAkhir) {
       fetchWithdrawalTransactions();
+    }
+  }, [tahun, bulanAwal, bulanAkhir]);
+
+  // ===========================================
+  // FETCH ATTENDANCE FROM API SCHEDULE
+  // ===========================================
+  const [attendanceData, setAttendanceData] = useState({});
+
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      try {
+        // Konversi bulan angka ke nama (1=January, 2=February, dst)
+        const bulanNama = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ][parseInt(bulanAwal) - 1];
+        
+        const response = await fetch(
+          `/api/schedule?year=${tahun}&month=${bulanNama}`
+        );
+        const result = await response.json();
+        
+        if (!result.success) throw new Error('Failed to fetch schedule');
+        
+        // Hitung S, I, A, U per officer
+        const grouped = {};
+        
+        // Filter data sesuai range bulanAwal - bulanAkhir
+        const startMonth = parseInt(bulanAwal);
+        const endMonth = parseInt(bulanAkhir);
+        
+        result.data.forEach(day => {
+          const dateStr = day['DATE RUNDOWN'];
+          if (!dateStr) return;
+          
+          const date = new Date(dateStr);
+          const monthNum = date.getMonth() + 1;
+          
+          // Filter sesuai range bulan
+          if (monthNum < startMonth || monthNum > endMonth) return;
+          
+          // Daftar officers
+          const officers = [
+            'Sulaeman',
+            'Goldie Mountana',
+            'Achmad Naufal Zakiy',
+            'Mushollina Nul Hakim',
+            'Lie Fung Kien (Vini)',
+            'Ronaldo Ichwan'
+          ];
+          
+          officers.forEach(officerName => {
+            const status = day[officerName];
+            if (!status) return;
+            
+            if (!grouped[officerName]) {
+              grouped[officerName] = { s: 0, i: 0, a: 0, u: 0 };
+            }
+            
+            const statusUpper = status.toUpperCase().trim();
+            
+            if (statusUpper === 'SAKIT') {
+              grouped[officerName].s += 1;
+            } 
+            else if (statusUpper === 'CUTI') {
+              grouped[officerName].u += 1;
+            }
+            else if (statusUpper === 'OFF') {
+              grouped[officerName].a += 1;
+            }
+            else if (statusUpper === 'IZIN') {
+              grouped[officerName].i += 1;
+            }
+            // P dan M diabaikan (masuk)
+          });
+        });
+        
+        setAttendanceData(grouped);
+        console.log('Attendance data:', grouped);
+        
+      } catch (error) {
+        console.error('Error fetching attendance:', error);
+      }
+    };
+
+    if (tahun && bulanAwal && bulanAkhir) {
+      fetchAttendance();
     }
   }, [tahun, bulanAwal, bulanAkhir]);
 
@@ -416,10 +502,17 @@ export default function SummaryKPIDataPage() {
     };
   };
 
-  // Generate data
+  // Generate data dengan real attendance
   const officerDataList = officers.map((officer, index) => {
     const depositReal = getDepositDataForOfficer(officer);
     const withdrawalReal = getWithdrawalDataForOfficer(officer);
+    
+    // Ambil data attendance berdasarkan nama officer
+    const officerName = officer.full_name;
+    const attendance = attendanceData[officerName] || { s: 0, i: 0, a: 0, u: 0 };
+    const totalAbsen = attendance.s + attendance.i + attendance.a + attendance.u;
+    const targetHari = 150; // Sesuaikan dengan target per periode
+    const achievePercent = targetHari > 0 ? Math.round(((targetHari - totalAbsen) / targetHari) * 100) : 100;
     
     return {
       no: index + 1,
@@ -440,18 +533,18 @@ export default function SummaryKPIDataPage() {
       },
       
       cs: {
-        totalChat: Math.floor(Math.random() * 50) + 80,
+        totalChat: Math.floor(Math.random() * 50) + 80, // Masih dummy
         missedChat: Math.floor(Math.random() * 3),
         timeMgmt: Math.floor(Math.random() * 10) + 85,
         commSkill: Math.floor(Math.random() * 10) + 85,
         problemSolving: Math.floor(Math.random() * 10) + 85,
-        s: 0,
-        i: 0,
-        a: 0,
-        u: 0,
-        total: 0,
-        target: 150,
-        achieve: 0,
+        s: attendance.s,
+        i: attendance.i,
+        a: attendance.a,
+        u: attendance.u,
+        total: totalAbsen,
+        target: targetHari,
+        achieve: achievePercent,
         p1: 85,
         p2: 85,
         p3: 85,
@@ -826,6 +919,7 @@ export default function SummaryKPIDataPage() {
         <p className="mt-1">P1: Time Management | P2: Human Error | P3: Problem Solving | P4: Follow SOP | P5: Chat Achievement | P6: Attendance & Attitude</p>
         <p className="mt-1 text-green-400">✓ Time Management menggunakan data real berdasarkan approved_date</p>
         <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
+        <p className="mt-1 text-blue-400">✓ Attendance (S/I/A/U) dari API Schedule real</p>
       </div>
     </div>
   );
