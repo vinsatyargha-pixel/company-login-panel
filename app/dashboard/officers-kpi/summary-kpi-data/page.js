@@ -51,6 +51,8 @@ export default function SummaryKPIDataPage() {
           status: 'SYSTEM',
           join_date: '-'
         }]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -205,8 +207,6 @@ export default function SummaryKPIDataPage() {
         
       } catch (error) {
         console.error('Error fetching withdrawal transactions:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -225,9 +225,9 @@ export default function SummaryKPIDataPage() {
       return {
         totalApproved: data.totalApproved || 0,
         totalReject: data.totalReject || 0,
-        sop1: data.totalSOP || 0,
-        sopPercent1: data.sopPercentage || 0,
-        nonSop1: data.totalManual || 0,
+        sop: data.totalSOP || 0,
+        sopPercent: data.sopPercentage || 0,
+        nonSop: data.totalManual || 0,
         intervalApp: data.avgApprovalTime || 0,
         intervalRej: data.avgRejectTime || 0,
         heQty: 0,
@@ -271,9 +271,9 @@ export default function SummaryKPIDataPage() {
     return {
       totalApproved: data.totalApproved || 0,
       totalReject: data.totalReject || 0,
-      sop1: data.totalSOP || 0,
-      sopPercent1: data.sopPercentage || 0,
-      nonSop1: data.totalManual || 0,
+      sop: data.totalSOP || 0,
+      sopPercent: data.sopPercentage || 0,
+      nonSop: data.totalManual || 0,
       intervalApp: data.avgApprovalTime || 0,
       intervalRej: data.avgRejectTime || 0,
       heQty: 0,
@@ -305,9 +305,9 @@ export default function SummaryKPIDataPage() {
       return {
         totalApproved: data.totalApproved || 0,
         totalReject: data.totalReject || 0,
-        sop1: data.totalSOP || 0,
-        sopPercent1: data.sopPercentage || 0,
-        nonSop1: data.totalManual || 0,
+        sop: data.totalSOP || 0,
+        sopPercent: data.sopPercentage || 0,
+        nonSop: data.totalManual || 0,
         intervalApp: data.avgApprovalTime || 0,
         intervalRej: data.avgRejectTime || 0,
         heQty: 0,
@@ -351,9 +351,9 @@ export default function SummaryKPIDataPage() {
     return {
       totalApproved: data.totalApproved || 0,
       totalReject: data.totalReject || 0,
-      sop1: data.totalSOP || 0,
-      sopPercent1: data.sopPercentage || 0,
-      nonSop1: data.totalManual || 0,
+      sop: data.totalSOP || 0,
+      sopPercent: data.sopPercentage || 0,
+      nonSop: data.totalManual || 0,
       intervalApp: data.avgApprovalTime || 0,
       intervalRej: data.avgRejectTime || 0,
       heQty: 0,
@@ -393,18 +393,12 @@ export default function SummaryKPIDataPage() {
       
       deposit: {
         divisi: 'Deposit Aspect',
-        ...depositReal,
-        sop2: depositReal.totalApproved,
-        sopPercent2: depositReal.sopPercent1,
-        nonSop2: depositReal.nonSop1,
+        ...depositReal
       },
       
       withdrawal: {
         divisi: 'Withdrawal Aspect',
-        ...withdrawalReal,
-        sop2: withdrawalReal.totalApproved,
-        sopPercent2: withdrawalReal.sopPercent1,
-        nonSop2: withdrawalReal.nonSop1,
+        ...withdrawalReal
       },
       
       // CS Data (tetap dummy untuk sekarang)
@@ -496,12 +490,12 @@ export default function SummaryKPIDataPage() {
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">DEPOSIT & WITHDRAWAL KPI</h2>
         
         <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-          <table className="w-full text-xs min-w-[2200px]">
+          <table className="w-full text-xs min-w-[1800px]">
             <thead>
               {/* MAIN HEADER - BARIS 1 */}
               <tr className="border-b border-[#FFD700]/20">
                 <th colSpan="7" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
-                <th colSpan="10" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">TIME MANAGEMENT</th>
+                <th colSpan="7" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">TIME MANAGEMENT</th>
                 <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">HUMAN ERROR</th>
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">PROBLEM SOLVING</th>
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP / TEAMWORK</th>
@@ -519,15 +513,12 @@ export default function SummaryKPIDataPage() {
                 <th className="sticky left-[470px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
                 <th className="sticky left-[560px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DIVISI</th>
                 
-                {/* TIME MANAGEMENT (10 kolom) */}
+                {/* TIME MANAGEMENT - 7 KOLOM (BARU) */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Total App</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Total Rej</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP DP</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP DP% (P1)</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP DP</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP WD</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">SOP WD%</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP WD</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP % (P1)</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
                 
@@ -578,15 +569,12 @@ export default function SummaryKPIDataPage() {
                     <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.joinDate}</td>
                     <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Deposit</td>
                     
-                    {/* TIME MANAGEMENT - DATA REAL */}
+                    {/* TIME MANAGEMENT - 7 KOLOM (DATA REAL) */}
                     <td className="text-center py-2 px-2">{officer.deposit.totalApproved || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.totalReject || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sop1 || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sopPercent1 ? `${officer.deposit.sopPercent1}%` : '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.nonSop1 || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sop2 || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sopPercent2 ? `${officer.deposit.sopPercent2}%` : '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.nonSop2 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sop || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sopPercent ? `${officer.deposit.sopPercent}%` : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.nonSop || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.intervalApp || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.intervalRej || '-'}</td>
                     
@@ -630,15 +618,12 @@ export default function SummaryKPIDataPage() {
                     <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
                     <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Withdrawal</td>
                     
-                    {/* TIME MANAGEMENT - DATA REAL */}
+                    {/* TIME MANAGEMENT - 7 KOLOM (DATA REAL) */}
                     <td className="text-center py-2 px-2">{officer.withdrawal.totalApproved || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.withdrawal.totalReject || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sop1 || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent1 ? `${officer.withdrawal.sopPercent1}%` : '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.nonSop1 || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sop2 || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent2 ? `${officer.withdrawal.sopPercent2}%` : '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.nonSop2 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sop || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent ? `${officer.withdrawal.sopPercent}%` : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.nonSop || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.withdrawal.intervalApp || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.withdrawal.intervalRej || '-'}</td>
                     
@@ -792,7 +777,7 @@ export default function SummaryKPIDataPage() {
       <div className="text-xs text-[#A7D8FF]/30 text-center mt-8">
         <p>KPI Summary • Data officers diambil dari database ({officers.length} officers CS DP WD) • Periode {periode} {tahun}</p>
         <p className="mt-1">P1: Time Management | P2: Human Error | P3: Problem Solving | P4: Follow SOP | P5: Chat Achievement | P6: Attendance & Attitude</p>
-        <p className="mt-1 text-green-400">✓ Time Management sudah menggunakan data real dari transaksi deposit & withdrawal</p>
+        <p className="mt-1 text-green-400">✓ Time Management sudah menggunakan data real dari transaksi deposit & withdrawal (7 kolom)</p>
         <p className="mt-1 text-yellow-400">✓ Jika tidak ada data, tampilkan tanda "-" (strip)</p>
       </div>
     </div>
