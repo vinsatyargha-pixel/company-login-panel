@@ -10,15 +10,34 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ⭐⭐⭐ HANYA INI YANG DIUBAH ⭐⭐⭐
-  const handleLogin = async (e) => {
+  // ⭐⭐⭐ UPDATE HANDLE LOGIN ⭐⭐⭐
+const handleLogin = async (e) => {
   e.preventDefault();
   setIsLoading(true);
   setError("");
 
   try {
+    let loginEmail = email; // Default pake input
+    
+    // Cek apakah input adalah Panel ID (bukan email)
+    if (!email.includes('@')) {
+      // Cari user berdasarkan user_id (panel ID)
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('user_id', email.trim())
+        .single();
+      
+      if (userError || !userData) {
+        throw new Error('Panel ID tidak ditemukan');
+      }
+      
+      loginEmail = userData.email; // Ganti dengan email dari database
+    }
+
+    // Login pake email
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
+      email: loginEmail,
       password: password.trim(),
     });
 
@@ -27,7 +46,7 @@ export default function LoginPage() {
     const { data: userProfile } = await supabase
       .from("users")
       .select("*")
-      .eq("email", email.trim())
+      .eq("email", loginEmail)
       .single();
 
     localStorage.setItem(
@@ -35,16 +54,15 @@ export default function LoginPage() {
       JSON.stringify({
         id: data.user.id,
         email: data.user.email,
+        panel_id: userProfile?.user_id || email, // Simpan panel ID juga
         role: userProfile?.role || "officer",
         full_name: userProfile?.full_name || "",
       })
     );
 
-    // ⭐ Tambahkan cookie auth-token
     document.cookie = `auth-token=${data.user.id}; path=/; max-age=${60 * 60 * 24}`;
-
-    // redirect ke dashboard
     window.location.href = "/dashboard";
+    
   } catch (err) {
     alert(err.message);
   } finally {
@@ -189,16 +207,16 @@ export default function LoginPage() {
         
         <form onSubmit={handleLogin} style={{ marginTop: "40px" }}>
           <div style={{ textAlign: "left", marginBottom: "20px" }}>
-            <label style={{ color: "#88ccff" }}>E-mail</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="login-input"
-              placeholder="admin@magnigroupx.com"
-              required
-              disabled={isLoading}
-            />
+            <label style={{ color: "#88ccff" }}>Email / Panel ID</label>
+<input
+  type="text"  // Ganti dari "email" ke "text"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  className="login-input"
+  placeholder="admin@magnigroupx.com / zakiyxops"
+  required
+  disabled={isLoading}
+/>
           </div>
           
           <div style={{ textAlign: "left", marginBottom: "20px" }}>
