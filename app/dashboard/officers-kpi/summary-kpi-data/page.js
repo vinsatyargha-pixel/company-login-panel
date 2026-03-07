@@ -256,74 +256,79 @@ export default function SummaryKPIDataPage() {
     }
   }, [tahun, bulanAwal, bulanAkhir]);
 
-  // ===========================================
-// FETCH ATTENDANCE FROM API SCHEDULE
+// ===========================================
+// FETCH ATTENDANCE FROM API SCHEDULE (MULTI MONTH)
 // ===========================================
 const [attendanceData, setAttendanceData] = useState({});
 
 useEffect(() => {
   const fetchAttendance = async () => {
     try {
-      const bulanNama = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-      ][parseInt(bulanAwal) - 1];
-      
-      const response = await fetch(
-        `/api/schedule?year=${tahun}&month=${bulanNama}`
-      );
-      const result = await response.json();
-      
-      if (!result.success) throw new Error('Failed to fetch schedule');
-      
-      const grouped = {};
       const startMonth = parseInt(bulanAwal);
       const endMonth = parseInt(bulanAkhir);
       
-      result.data.forEach(day => {
-        const dateStr = day['DATE RUNDOWN'];
-        if (!dateStr) return;
+      const grouped = {};
+      
+      // Loop setiap bulan dalam range
+      for (let month = startMonth; month <= endMonth; month++) {
+        const bulanNama = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December'
+        ][month - 1];
         
-        const date = new Date(dateStr);
-        const monthNum = date.getMonth() + 1;
+        const response = await fetch(
+          `/api/schedule?year=${tahun}&month=${bulanNama}`
+        );
+        const result = await response.json();
         
-        if (monthNum < startMonth || monthNum > endMonth) return;
+        if (!result.success) continue;
         
-        const officers = [
-          'Sulaeman',
-          'Goldie Mountana',
-          'Achmad Naufal Zakiy',
-          'Mushollina Nul Hakim',
-          'Lie Fung Kien (Vini)',
-          'Ronaldo Ichwan'
-        ];
-        
-        officers.forEach(officerName => {
-          const status = day[officerName];
-          if (!status) return;
+        result.data.forEach(day => {
+          const dateStr = day['DATE RUNDOWN'];
+          if (!dateStr) return;
           
-          if (!grouped[officerName]) {
-            grouped[officerName] = { s: 0, i: 0, a: 0, u: 0 };
-          }
+          const date = new Date(dateStr);
+          const monthNum = date.getMonth() + 1;
           
-          const statusUpper = status.toUpperCase().trim();
+          // Filter sesuai range bulan
+          if (monthNum < startMonth || monthNum > endMonth) return;
           
-          // Siap untuk SEMUA kemungkinan status
-          if (statusUpper === 'SAKIT') {
-            grouped[officerName].s += 1;
-          }
-          else if (statusUpper === 'IZIN') {
-            grouped[officerName].i += 1;
-          }
-          else if (statusUpper === 'ABSEN') {
-            grouped[officerName].a += 1;
-          }
-          else if (statusUpper === 'UNPAID' || statusUpper === 'UNPAID LEAVE') {
-            grouped[officerName].u += 1;
-          }
-          // Status lain (P, M, OFF, CUTI, dll) diabaikan
+          const officers = [
+            'Sulaeman',
+            'Goldie Mountana',
+            'Achmad Naufal Zakiy',
+            'Mushollina Nul Hakim',
+            'Lie Fung Kien (Vini)',
+            'Ronaldo Ichwan'
+          ];
+          
+          officers.forEach(officerName => {
+            const status = day[officerName];
+            if (!status) return;
+            
+            if (!grouped[officerName]) {
+              grouped[officerName] = { s: 0, i: 0, a: 0, u: 0 };
+            }
+            
+            const statusUpper = status.toUpperCase().trim();
+            
+            // HANYA 4 STATUS YANG DIPROSES
+            if (statusUpper === 'SAKIT') {
+              grouped[officerName].s += 1;
+            }
+            else if (statusUpper === 'IZIN') {
+              grouped[officerName].i += 1;
+            }
+            else if (statusUpper === 'ABSEN') {
+              grouped[officerName].a += 1;
+            }
+            else if (statusUpper === 'UNPAID LEAVE') { // PERSIS "UNPAID LEAVE"
+              grouped[officerName].u += 1;
+            }
+            // Status lain diabaikan total
+          });
         });
-      });
+      }
       
       setAttendanceData(grouped);
       console.log('Attendance data (S/I/A/U):', grouped);
