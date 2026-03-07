@@ -60,178 +60,219 @@ export default function SummaryKPIDataPage() {
   }, []);
 
   // ===========================================
-// FETCH DEPOSIT TRANSACTIONS (DATA REAL)
-// ===========================================
-useEffect(() => {
-  const fetchDepositTransactions = async () => {
-    try {
-      // Ambil semua data deposit untuk periode tertentu
-      const { data, error } = await supabase
-        .from('deposit_transactions')
-        .select('*')
-        .gte('requested_date', `${tahun}-01-01`)
-        .lte('requested_date', `${tahun}-12-31`);
+  // FETCH DEPOSIT TRANSACTIONS (DATA REAL)
+  // ===========================================
+  useEffect(() => {
+    const fetchDepositTransactions = async () => {
+      try {
+        // Ambil semua data deposit untuk periode tertentu
+        const { data, error } = await supabase
+          .from('deposit_transactions')
+          .select('*')
+          .gte('requested_date', `${tahun}-01-01`)
+          .lte('requested_date', `${tahun}-12-31`);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Group by handler (officer username)
-      const grouped = {};
-      
-      data.forEach(tx => {
-        const handler = tx.handler || 'system';
+        // Group by handler (officer username)
+        const grouped = {};
         
-        if (!grouped[handler]) {
-          grouped[handler] = {
-            totalApproved: 0,
-            totalReject: 0,
-            totalSOP: 0,
-            totalNonSOP: 0,
-            totalDuration: 0,
-            approvedCount: 0,
-            rejectCount: 0,
-            rejectDuration: 0
-          };
-        }
+        data.forEach(tx => {
+          const handler = tx.handler || 'system';
+          
+          if (!grouped[handler]) {
+            grouped[handler] = {
+              totalApproved: 0,
+              totalReject: 0,
+              totalSOP: 0,
+              totalNonSOP: 0,
+              totalDuration: 0,
+              approvedCount: 0,
+              rejectCount: 0,
+              rejectDuration: 0
+            };
+          }
+          
+          // Hitung berdasarkan status
+          if (tx.status === 'Approved') {
+            grouped[handler].totalApproved++;
+            grouped[handler].approvedCount++;
+            
+            // CEK SOP BERDASARKAN DURASI (maksimal 3 menit)
+            const duration = tx.duration_minutes ? parseFloat(tx.duration_minutes) : 0;
+            
+            if (duration <= 3) {  // ✅ SOP: ≤ 3 menit
+              grouped[handler].totalSOP++;
+            } else {               // ❌ Non SOP: > 3 menit
+              grouped[handler].totalNonSOP++;
+            }
+            
+            // Hitung durasi total untuk rata-rata
+            if (tx.duration_minutes) {
+              grouped[handler].totalDuration += duration;
+            }
+          } 
+          else if (tx.status === 'Rejected' || tx.status === 'Fail') {
+            grouped[handler].totalReject++;
+            grouped[handler].rejectCount++;
+            
+            if (tx.duration_minutes) {
+              grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);
+            }
+          }
+        });
         
-        // Hitung berdasarkan status
-        if (tx.status === 'Approved') {
-          grouped[handler].totalApproved++;
-          grouped[handler].approvedCount++;
-          
-          // CEK SOP BERDASARKAN DURASI (maksimal 3 menit)
-          const duration = tx.duration_minutes ? parseFloat(tx.duration_minutes) : 0;
-          
-          if (duration <= 3) {  // ✅ SOP: ≤ 3 menit
-            grouped[handler].totalSOP++;
-          } else {               // ❌ Non SOP: > 3 menit
-            grouped[handler].totalNonSOP++;
-          }
-          
-          // Hitung durasi total untuk rata-rata
-          if (tx.duration_minutes) {
-            grouped[handler].totalDuration += duration;
-          }
-        } 
-        else if (tx.status === 'Rejected' || tx.status === 'Fail') {
-          grouped[handler].totalReject++;
-          grouped[handler].rejectCount++;
-          
-          if (tx.duration_minutes) {
-            grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);
-          }
-        }
-      });
-      
-      // Hitung rata-rata dan persentase
-      Object.keys(grouped).forEach(key => {
-        const g = grouped[key];
-        g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
-        g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
-        g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
-      });
-      
-      setDepositData(grouped);
-      
-    } catch (error) {
-      console.error('Error fetching deposit transactions:', error);
+        // Hitung rata-rata dan persentase
+        Object.keys(grouped).forEach(key => {
+          const g = grouped[key];
+          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
+          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+          g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
+        });
+        
+        setDepositData(grouped);
+        
+      } catch (error) {
+        console.error('Error fetching deposit transactions:', error);
+      }
+    };
+
+    if (tahun) {
+      fetchDepositTransactions();
     }
-  };
-
-  if (tahun) {
-    fetchDepositTransactions();
-  }
-}, [tahun]);
+  }, [tahun]);
 
   // ===========================================
-// FETCH DEPOSIT TRANSACTIONS (DATA REAL)
-// ===========================================
-useEffect(() => {
-  const fetchDepositTransactions = async () => {
-    try {
-      // Ambil semua data deposit untuk periode tertentu
-      const { data, error } = await supabase
-        .from('deposit_transactions')
-        .select('*')
-        .gte('requested_date', `${tahun}-01-01`)
-        .lte('requested_date', `${tahun}-12-31`);
+  // FETCH WITHDRAWAL TRANSACTIONS (DATA REAL)
+  // ===========================================
+  useEffect(() => {
+    const fetchWithdrawalTransactions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('withdrawal_transactions')
+          .select('*')
+          .gte('requested_date', `${tahun}-01-01`)
+          .lte('requested_date', `${tahun}-12-31`);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Group by handler (officer username)
-      const grouped = {};
-      
-      data.forEach(tx => {
-        const handler = tx.handler || 'system';
+        const grouped = {};
         
-        if (!grouped[handler]) {
-          grouped[handler] = {
-            totalApproved: 0,
-            totalReject: 0,
-            totalSOP: 0,
-            totalNonSOP: 0,
-            totalDuration: 0,
-            approvedCount: 0,
-            rejectCount: 0,
-            rejectDuration: 0
-          };
-        }
+        data.forEach(tx => {
+          const handler = tx.handler || 'system';
+          
+          if (!grouped[handler]) {
+            grouped[handler] = {
+              totalApproved: 0,
+              totalReject: 0,
+              totalSOP: 0,
+              totalNonSOP: 0,
+              totalDuration: 0,
+              approvedCount: 0,
+              rejectCount: 0,
+              rejectDuration: 0
+            };
+          }
+          
+          if (tx.status === 'Approved') {
+            grouped[handler].totalApproved++;
+            grouped[handler].approvedCount++;
+            
+            // CEK SOP BERDASARKAN DURASI (maksimal 5 menit)
+            const duration = tx.duration_minutes ? parseFloat(tx.duration_minutes) : 0;
+            
+            if (duration <= 5) {  // ✅ SOP: ≤ 5 menit
+              grouped[handler].totalSOP++;
+            } else {               // ❌ Non SOP: > 5 menit
+              grouped[handler].totalNonSOP++;
+            }
+            
+            if (tx.duration_minutes) {
+              grouped[handler].totalDuration += duration;
+            }
+          } 
+          else if (tx.status === 'Rejected') {
+            grouped[handler].totalReject++;
+            grouped[handler].rejectCount++;
+            
+            if (tx.duration_minutes) {
+              grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);
+            }
+          }
+        });
         
-        // Hitung berdasarkan status
-        if (tx.status === 'Approved') {
-          grouped[handler].totalApproved++;
-          grouped[handler].approvedCount++;
-          
-          // CEK SOP BERDASARKAN DURASI (maksimal 3 menit)
-          const duration = tx.duration_minutes ? parseFloat(tx.duration_minutes) : 0;
-          
-          if (duration <= 3) {  // ✅ SOP: ≤ 3 menit
-            grouped[handler].totalSOP++;
-          } else {               // ❌ Non SOP: > 3 menit
-            grouped[handler].totalNonSOP++;
-          }
-          
-          // Hitung durasi total untuk rata-rata
-          if (tx.duration_minutes) {
-            grouped[handler].totalDuration += duration;
-          }
-        } 
-        else if (tx.status === 'Rejected' || tx.status === 'Fail') {
-          grouped[handler].totalReject++;
-          grouped[handler].rejectCount++;
-          
-          if (tx.duration_minutes) {
-            grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);
-          }
-        }
-      });
-      
-      // Hitung rata-rata dan persentase
-      Object.keys(grouped).forEach(key => {
-        const g = grouped[key];
-        g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
-        g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
-        g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
-      });
-      
-      setDepositData(grouped);
-      
-    } catch (error) {
-      console.error('Error fetching deposit transactions:', error);
+        Object.keys(grouped).forEach(key => {
+          const g = grouped[key];
+          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
+          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+          g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
+        });
+        
+        setWithdrawalData(grouped);
+        
+      } catch (error) {
+        console.error('Error fetching withdrawal transactions:', error);
+      }
+    };
+
+    if (tahun) {
+      fetchWithdrawalTransactions();
     }
-  };
-
-  if (tahun) {
-    fetchDepositTransactions();
-  }
-}, [tahun]);
+  }, [tahun]);
 
   // ===========================================
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
   // ===========================================
   const getDepositDataForOfficer = (officer) => {
-  // Handle khusus untuk System
-  if (officer.panel_id === 'System' || officer.full_name === 'System') {
-    const data = depositData['SYSTEM'] || depositData['system'] || {};
+    // Handle khusus untuk System
+    if (officer.panel_id === 'System' || officer.full_name === 'System') {
+      const data = depositData['SYSTEM'] || depositData['system'] || {};
+      return {
+        totalApproved: data.totalApproved || 0,
+        totalReject: data.totalReject || 0,
+        sop: data.totalSOP || 0,
+        sopPercent: data.sopPercentage || 0,
+        nonSop: data.totalNonSOP || 0,
+        intervalApp: data.avgApprovalTime || 0,
+        intervalRej: data.avgRejectTime || 0,
+        heQty: 0,
+        heAmount: '-',
+        mistakeQty: 0,
+        mistakeAmount: '-',
+        blockBank: 0,
+        crossBankQty: 0,
+        crossBankAmount: '-',
+        crossAssetQty: 0,
+        crossAssetAmount: '-',
+        bukuDosa: 0,
+        sp1: 0,
+        sp2: 0,
+        sus: 0,
+        totalPoin4: 100,
+        p1: data.sopPercentage || 0,
+        p2: 100,
+        p3: 100,
+        p4: 100,
+        avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
+      };
+    }
+
+    // Untuk officer biasa
+    const handlerVariants = [
+      officer.panel_id?.toLowerCase(),
+      officer.panel_id,
+      officer.username?.toLowerCase(),
+      officer.full_name?.toLowerCase()
+    ].filter(Boolean);
+    
+    let data = {};
+    for (const variant of handlerVariants) {
+      if (depositData[variant]) {
+        data = depositData[variant];
+        break;
+      }
+    }
+    
     return {
       totalApproved: data.totalApproved || 0,
       totalReject: data.totalReject || 0,
@@ -260,58 +301,58 @@ useEffect(() => {
       p4: 100,
       avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
     };
-  }
-
-  // Untuk officer biasa
-  const handlerVariants = [
-    officer.panel_id?.toLowerCase(),
-    officer.panel_id,
-    officer.username?.toLowerCase(),
-    officer.full_name?.toLowerCase()
-  ].filter(Boolean);
-  
-  let data = {};
-  for (const variant of handlerVariants) {
-    if (depositData[variant]) {
-      data = depositData[variant];
-      break;
-    }
-  }
-  
-  return {
-    totalApproved: data.totalApproved || 0,
-    totalReject: data.totalReject || 0,
-    sop: data.totalSOP || 0,
-    sopPercent: data.sopPercentage || 0,
-    nonSop: data.totalNonSOP || 0,
-    intervalApp: data.avgApprovalTime || 0,
-    intervalRej: data.avgRejectTime || 0,
-    heQty: 0,
-    heAmount: '-',
-    mistakeQty: 0,
-    mistakeAmount: '-',
-    blockBank: 0,
-    crossBankQty: 0,
-    crossBankAmount: '-',
-    crossAssetQty: 0,
-    crossAssetAmount: '-',
-    bukuDosa: 0,
-    sp1: 0,
-    sp2: 0,
-    sus: 0,
-    totalPoin4: 100,
-    p1: data.sopPercentage || 0,
-    p2: 100,
-    p3: 100,
-    p4: 100,
-    avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
   };
-};
 
   const getWithdrawalDataForOfficer = (officer) => {
-  // Handle khusus untuk System
-  if (officer.panel_id === 'System' || officer.full_name === 'System') {
-    const data = withdrawalData['SYSTEM'] || withdrawalData['system'] || {};
+    // Handle khusus untuk System
+    if (officer.panel_id === 'System' || officer.full_name === 'System') {
+      const data = withdrawalData['SYSTEM'] || withdrawalData['system'] || {};
+      return {
+        totalApproved: data.totalApproved || 0,
+        totalReject: data.totalReject || 0,
+        sop: data.totalSOP || 0,
+        sopPercent: data.sopPercentage || 0,
+        nonSop: data.totalNonSOP || 0,
+        intervalApp: data.avgApprovalTime || 0,
+        intervalRej: data.avgRejectTime || 0,
+        heQty: 0,
+        heAmount: '-',
+        mistakeQty: 0,
+        mistakeAmount: '-',
+        blockBank: 0,
+        crossBankQty: 0,
+        crossBankAmount: '-',
+        crossAssetQty: 0,
+        crossAssetAmount: '-',
+        bukuDosa: 0,
+        sp1: 0,
+        sp2: 0,
+        sus: 0,
+        totalPoin4: 100,
+        p1: data.sopPercentage || 0,
+        p2: 100,
+        p3: 100,
+        p4: 100,
+        avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
+      };
+    }
+
+    // Untuk officer biasa
+    const handlerVariants = [
+      officer.panel_id?.toLowerCase(),
+      officer.panel_id,
+      officer.username?.toLowerCase(),
+      officer.full_name?.toLowerCase()
+    ].filter(Boolean);
+    
+    let data = {};
+    for (const variant of handlerVariants) {
+      if (withdrawalData[variant]) {
+        data = withdrawalData[variant];
+        break;
+      }
+    }
+    
     return {
       totalApproved: data.totalApproved || 0,
       totalReject: data.totalReject || 0,
@@ -340,53 +381,7 @@ useEffect(() => {
       p4: 100,
       avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
     };
-  }
-
-  // Untuk officer biasa
-  const handlerVariants = [
-    officer.panel_id?.toLowerCase(),
-    officer.panel_id,
-    officer.username?.toLowerCase(),
-    officer.full_name?.toLowerCase()
-  ].filter(Boolean);
-  
-  let data = {};
-  for (const variant of handlerVariants) {
-    if (withdrawalData[variant]) {
-      data = withdrawalData[variant];
-      break;
-    }
-  }
-  
-  return {
-    totalApproved: data.totalApproved || 0,
-    totalReject: data.totalReject || 0,
-    sop: data.totalSOP || 0,
-    sopPercent: data.sopPercentage || 0,
-    nonSop: data.totalNonSOP || 0,
-    intervalApp: data.avgApprovalTime || 0,
-    intervalRej: data.avgRejectTime || 0,
-    heQty: 0,
-    heAmount: '-',
-    mistakeQty: 0,
-    mistakeAmount: '-',
-    blockBank: 0,
-    crossBankQty: 0,
-    crossBankAmount: '-',
-    crossAssetQty: 0,
-    crossAssetAmount: '-',
-    bukuDosa: 0,
-    sp1: 0,
-    sp2: 0,
-    sus: 0,
-    totalPoin4: 100,
-    p1: data.sopPercentage || 0,
-    p2: 100,
-    p3: 100,
-    p4: 100,
-    avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
   };
-};
 
   // Generate data dengan campuran real + dummy (untuk kolom lain)
   const officerDataList = officers.map((officer, index) => {
