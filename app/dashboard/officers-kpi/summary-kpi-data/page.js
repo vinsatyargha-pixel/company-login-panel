@@ -257,91 +257,77 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
-  // FETCH ATTENDANCE FROM API SCHEDULE
-  // ===========================================
-  const [attendanceData, setAttendanceData] = useState({});
+// FETCH ATTENDANCE FROM API SCHEDULE
+// ===========================================
+const [attendanceData, setAttendanceData] = useState({});
 
-  useEffect(() => {
-    const fetchAttendance = async () => {
-      try {
-        // Konversi bulan angka ke nama (1=January, 2=February, dst)
-        const bulanNama = [
-          'January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'
-        ][parseInt(bulanAwal) - 1];
+useEffect(() => {
+  const fetchAttendance = async () => {
+    try {
+      const bulanNama = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+      ][parseInt(bulanAwal) - 1];
+      
+      const response = await fetch(
+        `/api/schedule?year=${tahun}&month=${bulanNama}`
+      );
+      const result = await response.json();
+      
+      if (!result.success) throw new Error('Failed to fetch schedule');
+      
+      const grouped = {};
+      const startMonth = parseInt(bulanAwal);
+      const endMonth = parseInt(bulanAkhir);
+      
+      result.data.forEach(day => {
+        const dateStr = day['DATE RUNDOWN'];
+        if (!dateStr) return;
         
-        const response = await fetch(
-          `/api/schedule?year=${tahun}&month=${bulanNama}`
-        );
-        const result = await response.json();
+        const date = new Date(dateStr);
+        const monthNum = date.getMonth() + 1;
         
-        if (!result.success) throw new Error('Failed to fetch schedule');
+        if (monthNum < startMonth || monthNum > endMonth) return;
         
-        // Hitung S, I, A, U per officer
-        const grouped = {};
+        const officers = [
+          'Sulaeman',
+          'Goldie Mountana',
+          'Achmad Naufal Zakiy',
+          'Mushollina Nul Hakim',
+          'Lie Fung Kien (Vini)',
+          'Ronaldo Ichwan'
+        ];
         
-        // Filter data sesuai range bulanAwal - bulanAkhir
-        const startMonth = parseInt(bulanAwal);
-        const endMonth = parseInt(bulanAkhir);
-        
-        result.data.forEach(day => {
-          const dateStr = day['DATE RUNDOWN'];
-          if (!dateStr) return;
+        officers.forEach(officerName => {
+          const status = day[officerName];
+          if (!status) return;
           
-          const date = new Date(dateStr);
-          const monthNum = date.getMonth() + 1;
+          if (!grouped[officerName]) {
+            grouped[officerName] = { s: 0, i: 0, a: 0, u: 0 };
+          }
           
-          // Filter sesuai range bulan
-          if (monthNum < startMonth || monthNum > endMonth) return;
+          const statusUpper = status.toUpperCase().trim();
           
-          // Daftar officers
-          const officers = [
-            'Sulaeman',
-            'Goldie Mountana',
-            'Achmad Naufal Zakiy',
-            'Mushollina Nul Hakim',
-            'Lie Fung Kien (Vini)',
-            'Ronaldo Ichwan'
-          ];
-          
-          officers.forEach(officerName => {
-            const status = day[officerName];
-            if (!status) return;
-            
-            if (!grouped[officerName]) {
-              grouped[officerName] = { s: 0, i: 0, a: 0, u: 0 };
-            }
-            
-            const statusUpper = status.toUpperCase().trim();
-            
-            if (statusUpper === 'SAKIT') {
-              grouped[officerName].s += 1;
-            } 
-            else if (statusUpper === 'CUTI') {
-              grouped[officerName].u += 1;
-            }
-            else if (statusUpper === 'OFF') {
-              grouped[officerName].a += 1;
-            }
-            else if (statusUpper === 'IZIN') {
-              grouped[officerName].i += 1;
-            }
-            // P dan M diabaikan (masuk)
-          });
+          // Hanya SAKIT yang diproses, sisanya diabaikan
+          if (statusUpper === 'SAKIT') {
+            grouped[officerName].s += 1;
+          }
+          // I, A, U belum ada data, tetap 0
         });
-        
-        setAttendanceData(grouped);
-        console.log('Attendance data:', grouped);
-        
-      } catch (error) {
-        console.error('Error fetching attendance:', error);
-      }
-    };
-
-    if (tahun && bulanAwal && bulanAkhir) {
-      fetchAttendance();
+      });
+      
+      setAttendanceData(grouped);
+      console.log('Attendance data (only SAKIT):', grouped);
+      
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
     }
-  }, [tahun, bulanAwal, bulanAkhir]);
+  };
+
+  if (tahun && bulanAwal && bulanAkhir) {
+    fetchAttendance();
+  }
+}, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
