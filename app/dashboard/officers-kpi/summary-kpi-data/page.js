@@ -256,92 +256,121 @@ export default function SummaryKPIDataPage() {
     }
   }, [tahun, bulanAwal, bulanAkhir]);
 
-// ===========================================
-// FETCH ATTENDANCE FROM API SCHEDULE (MULTI MONTH)
-// ===========================================
-const [attendanceData, setAttendanceData] = useState({});
+  // ===========================================
+  // FETCH ATTENDANCE FROM API SCHEDULE (MULTI MONTH)
+  // ===========================================
+  const [attendanceData, setAttendanceData] = useState({});
+  const [offDaysData, setOffDaysData] = useState({});
 
-useEffect(() => {
-  const fetchAttendance = async () => {
-    try {
-      const startMonth = parseInt(bulanAwal);
-      const endMonth = parseInt(bulanAkhir);
-      
-      const grouped = {};
-      
-      // Loop setiap bulan dalam range
-      for (let month = startMonth; month <= endMonth; month++) {
-        const bulanNama = [
-          'January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'
-        ][month - 1];
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      try {
+        const startMonth = parseInt(bulanAwal);
+        const endMonth = parseInt(bulanAkhir);
         
-        const response = await fetch(
-          `/api/schedule?year=${tahun}&month=${bulanNama}`
-        );
-        const result = await response.json();
+        const grouped = {};
+        const offCount = {};
         
-        if (!result.success) continue;
-        
-        result.data.forEach(day => {
-          const dateStr = day['DATE RUNDOWN'];
-          if (!dateStr) return;
+        // Loop setiap bulan dalam range
+        for (let month = startMonth; month <= endMonth; month++) {
+          const bulanNama = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+          ][month - 1];
           
-          const date = new Date(dateStr);
-          const monthNum = date.getMonth() + 1;
+          const response = await fetch(
+            `/api/schedule?year=${tahun}&month=${bulanNama}`
+          );
+          const result = await response.json();
           
-          // Filter sesuai range bulan
-          if (monthNum < startMonth || monthNum > endMonth) return;
+          if (!result.success) continue;
           
-          const officers = [
-            'Sulaeman',
-            'Goldie Mountana',
-            'Achmad Naufal Zakiy',
-            'Mushollina Nul Hakim',
-            'Lie Fung Kien (Vini)',
-            'Ronaldo Ichwan'
-          ];
-          
-          officers.forEach(officerName => {
-            const status = day[officerName];
-            if (!status) return;
+          result.data.forEach(day => {
+            const dateStr = day['DATE RUNDOWN'];
+            if (!dateStr) return;
             
-            if (!grouped[officerName]) {
-              grouped[officerName] = { s: 0, i: 0, a: 0, u: 0 };
-            }
+            const date = new Date(dateStr);
+            const monthNum = date.getMonth() + 1;
             
-            const statusUpper = status.toUpperCase().trim();
+            // Filter sesuai range bulan
+            if (monthNum < startMonth || monthNum > endMonth) return;
             
-            // HANYA 4 STATUS YANG DIPROSES
-            if (statusUpper === 'SAKIT') {
-              grouped[officerName].s += 1;
-            }
-            else if (statusUpper === 'IZIN') {
-              grouped[officerName].i += 1;
-            }
-            else if (statusUpper === 'ABSEN') {
-              grouped[officerName].a += 1;
-            }
-            else if (statusUpper === 'UNPAID LEAVE') { // PERSIS "UNPAID LEAVE"
-              grouped[officerName].u += 1;
-            }
-            // Status lain diabaikan total
+            const officers = [
+              'Sulaeman',
+              'Goldie Mountana',
+              'Achmad Naufal Zakiy',
+              'Mushollina Nul Hakim',
+              'Lie Fung Kien (Vini)',
+              'Ronaldo Ichwan'
+            ];
+            
+            officers.forEach(officerName => {
+              const status = day[officerName];
+              if (!status) return;
+              
+              if (!grouped[officerName]) {
+                grouped[officerName] = { s: 0, i: 0, a: 0, u: 0 };
+              }
+              if (offCount[officerName] === undefined) {
+                offCount[officerName] = 0;
+              }
+              
+              const statusUpper = status.toUpperCase().trim();
+              
+              // Hitung OFF day (libur terjadwal)
+              if (statusUpper === 'OFF') {
+                offCount[officerName] += 1;
+              }
+              
+              // HANYA 4 STATUS YANG DIPROSES untuk attendance
+              if (statusUpper === 'SAKIT') {
+                grouped[officerName].s += 1;
+              }
+              else if (statusUpper === 'IZIN') {
+                grouped[officerName].i += 1;
+              }
+              else if (statusUpper === 'ABSEN') {
+                grouped[officerName].a += 1;
+              }
+              else if (statusUpper === 'UNPAID LEAVE') {
+                grouped[officerName].u += 1;
+              }
+              // Status lain diabaikan total
+            });
           });
-        });
+        }
+        
+        setAttendanceData(grouped);
+        setOffDaysData(offCount);
+        console.log('Attendance data (S/I/A/U):', grouped);
+        console.log('OFF days:', offCount);
+        
+      } catch (error) {
+        console.error('Error fetching attendance:', error);
       }
-      
-      setAttendanceData(grouped);
-      console.log('Attendance data (S/I/A/U):', grouped);
-      
-    } catch (error) {
-      console.error('Error fetching attendance:', error);
+    };
+
+    if (tahun && bulanAwal && bulanAkhir) {
+      fetchAttendance();
     }
+  }, [tahun, bulanAwal, bulanAkhir]);
+
+  // ===========================================
+  // HITUNG TOTAL HARI DALAM RENTANG BULAN
+  // ===========================================
+  const getTotalDaysInRange = () => {
+    const start = parseInt(bulanAwal);
+    const end = parseInt(bulanAkhir);
+    let total = 0;
+    
+    for (let month = start; month <= end; month++) {
+      total += new Date(tahun, month, 0).getDate();
+    }
+    
+    return total;
   };
 
-  if (tahun && bulanAwal && bulanAkhir) {
-    fetchAttendance();
-  }
-}, [tahun, bulanAwal, bulanAkhir]);
+  const totalDays = getTotalDaysInRange();
 
   // ===========================================
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
@@ -510,9 +539,17 @@ useEffect(() => {
     // Ambil data attendance berdasarkan nama officer
     const officerName = officer.full_name;
     const attendance = attendanceData[officerName] || { s: 0, i: 0, a: 0, u: 0 };
+    const offDays = offDaysData[officerName] || 0;
+    
+    // Target = total hari dalam range - OFF days
+    const target = totalDays - offDays;
+    
+    // Total absen (S + I + A + U)
     const totalAbsen = attendance.s + attendance.i + attendance.a + attendance.u;
-    const targetHari = 150; // Sesuaikan dengan target per periode
-    const achievePercent = targetHari > 0 ? Math.round(((targetHari - totalAbsen) / targetHari) * 100) : 100;
+    
+    // Achieve = (Hari kerja efektif) / Target
+    const hariKerjaEfektif = target - totalAbsen;
+    const achievePercent = target > 0 ? Math.round((hariKerjaEfektif / target) * 100) : 100;
     
     return {
       no: index + 1,
@@ -539,12 +576,12 @@ useEffect(() => {
         timeMgmt: Math.floor(Math.random() * 10) + 85,
         commSkill: Math.floor(Math.random() * 10) + 85,
         problemSolving: Math.floor(Math.random() * 10) + 85,
-        s: attendance.s,      // ✅ S dari attendance
-        i: attendance.i,      // ✅ I dari attendance
-        a: attendance.a,      // ✅ A dari attendance
-        u: attendance.u,      // ✅ U dari attendance
+        s: attendance.s,
+        i: attendance.i,
+        a: attendance.a,
+        u: attendance.u,
         total: totalAbsen,
-        target: targetHari,
+        target: target,
         achieve: achievePercent,
         p1: 85,
         p2: 85,
@@ -921,6 +958,7 @@ useEffect(() => {
         <p className="mt-1 text-green-400">✓ Time Management menggunakan data real berdasarkan approved_date</p>
         <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
         <p className="mt-1 text-blue-400">✓ Attendance (S/I/A/U) dari API Schedule real</p>
+        <p className="mt-1 text-purple-400">✓ Target dinamis berdasarkan total hari - OFF day</p>
       </div>
     </div>
   );
