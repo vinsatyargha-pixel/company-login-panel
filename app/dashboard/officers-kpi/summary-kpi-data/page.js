@@ -527,65 +527,67 @@ export default function SummaryKPIDataPage() {
   };
 
   // Generate data dengan real attendance
-  const officerDataList = officers.map((officer, index) => {
-    const depositReal = getDepositDataForOfficer(officer);
-    const withdrawalReal = getWithdrawalDataForOfficer(officer);
+const officerDataList = officers.map((officer, index) => {
+  const depositReal = getDepositDataForOfficer(officer);
+  const withdrawalReal = getWithdrawalDataForOfficer(officer);
+  
+  // Ambil data attendance berdasarkan nama officer
+  const officerName = officer.full_name;
+  const attendance = attendanceData[officerName] || { s: 0, i: 0, a: 0, u: 0 };
+  
+  // Target SAMA untuk semua officer (181 - 24 = 157)
+  const target = targetPerOfficer;
+  
+  // Total kejadian (S + I + A + U)
+  const totalKejadian = attendance.s + attendance.i + attendance.a + attendance.u;
+  
+  // Achieve = Target - Total Kejadian (hari kerja efektif)
+  const achieve = target - totalKejadian;
+  
+  // Presentase = (Achieve / Target) * 100%
+  const presentase = target > 0 ? Math.round((achieve / target) * 100) : 100;
+  
+  return {
+    no: index + 1,
+    name: officer.full_name || 'Unknown',
+    panelId: officer.panel_id || '-',
+    dept: officer.department || 'CS DP WD',
+    status: officer.status || 'REGULAR',
+    joinDate: officer.join_date || '-',
     
-    // Ambil data attendance berdasarkan nama officer
-    const officerName = officer.full_name;
-    const attendance = attendanceData[officerName] || { s: 0, i: 0, a: 0, u: 0 };
+    deposit: {
+      divisi: 'Deposit Aspect',
+      ...depositReal
+    },
     
-    // Target SAMA untuk semua officer (181 - 24 = 157)
-    const target = targetPerOfficer;
+    withdrawal: {
+      divisi: 'Withdrawal Aspect',
+      ...withdrawalReal
+    },
     
-    // Total absen (S + I + A + U)
-    const totalAbsen = attendance.s + attendance.i + attendance.a + attendance.u;
-    
-    // Achieve = (Target - Absen) / Target
-    const hariKerjaEfektif = target - totalAbsen;
-    const achievePercent = target > 0 ? Math.round((hariKerjaEfektif / target) * 100) : 100;
-    
-    return {
-      no: index + 1,
-      name: officer.full_name || 'Unknown',
-      panelId: officer.panel_id || '-',
-      dept: officer.department || 'CS DP WD',
-      status: officer.status || 'REGULAR',
-      joinDate: officer.join_date || '-',
-      
-      deposit: {
-        divisi: 'Deposit Aspect',
-        ...depositReal
-      },
-      
-      withdrawal: {
-        divisi: 'Withdrawal Aspect',
-        ...withdrawalReal
-      },
-      
-      cs: {
-        // DATA REAL dari attendance untuk S/I/A/U
-        totalChat: Math.floor(Math.random() * 50) + 80, // Masih dummy
-        missedChat: Math.floor(Math.random() * 3),
-        timeMgmt: Math.floor(Math.random() * 10) + 85,
-        commSkill: Math.floor(Math.random() * 10) + 85,
-        problemSolving: Math.floor(Math.random() * 10) + 85,
-        s: attendance.s,
-        i: attendance.i,
-        a: attendance.a,
-        u: attendance.u,
-        total: totalAbsen,
-        target: target,
-        achieve: achievePercent,
-        p1: 85,
-        p2: 85,
-        p3: 85,
-        p4: 85,
-        p5: 85,
-        p6: 100
-      }
-    };
-  });
+    cs: {
+      totalChat: Math.floor(Math.random() * 50) + 80, // Masih dummy
+      missedChat: Math.floor(Math.random() * 3),
+      timeMgmt: Math.floor(Math.random() * 10) + 85,
+      commSkill: Math.floor(Math.random() * 10) + 85,
+      problemSolving: Math.floor(Math.random() * 10) + 85,
+      s: attendance.s,
+      i: attendance.i,
+      a: attendance.a,
+      u: attendance.u,
+      total: totalKejadian,      // Total kejadian (S+I+A+U)
+      target: target,             // Target (hari kerja - OFF)
+      achieve: achieve,           // ✅ Achieve = angka (bukan %)
+      presentase: presentase,     // ✅ Presentase = %
+      p1: 85,
+      p2: 85,
+      p3: 85,
+      p4: 85,
+      p5: 85,
+      p6: 100
+    }
+  };
+});
 
   const totalDepositApproved = officerDataList.reduce((sum, o) => sum + (o.deposit.totalApproved || 0), 0);
   const totalWithdrawalApproved = officerDataList.reduce((sum, o) => sum + (o.withdrawal.totalApproved || 0), 0);
@@ -917,9 +919,10 @@ export default function SummaryKPIDataPage() {
                   <td className="text-center py-2 px-2">{officer.cs.i}</td>
                   <td className="text-center py-2 px-2">{officer.cs.a}</td>
                   <td className="text-center py-2 px-2">{officer.cs.u}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.total}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.target}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.achieve}%</td>
+                  <td className="text-center py-2 px-2">{officer.cs.total}</td>      {/* Total kejadian */}
+                  <td className="text-center py-2 px-2">{officer.cs.target}</td>     {/* Target */}
+                  <td className="text-center py-2 px-2">{officer.cs.achieve}</td>    {/* ✅ Achieve (angka) */}
+                  <td className="text-center py-2 px-2">{officer.cs.presentase}%</td> {/* ✅ Presentase */}
                   <td className="text-center py-2 px-2">{officer.cs.p1}%</td>
                   <td className="text-center py-2 px-2">{officer.cs.p2}%</td>
                   <td className="text-center py-2 px-2">{officer.cs.p3}%</td>
