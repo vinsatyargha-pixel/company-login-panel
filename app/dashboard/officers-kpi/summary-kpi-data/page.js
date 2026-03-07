@@ -533,15 +533,16 @@ export default function SummaryKPIDataPage() {
       },
       
       cs: {
+        // DATA REAL dari attendance untuk S/I/A/U
         totalChat: Math.floor(Math.random() * 50) + 80, // Masih dummy
         missedChat: Math.floor(Math.random() * 3),
         timeMgmt: Math.floor(Math.random() * 10) + 85,
         commSkill: Math.floor(Math.random() * 10) + 85,
         problemSolving: Math.floor(Math.random() * 10) + 85,
-        s: attendance.s,
-        i: attendance.i,
-        a: attendance.a,
-        u: attendance.u,
+        s: attendance.s,      // ✅ S dari attendance
+        i: attendance.i,      // ✅ I dari attendance
+        a: attendance.a,      // ✅ A dari attendance
+        u: attendance.u,      // ✅ U dari attendance
         total: totalAbsen,
         target: targetHari,
         achieve: achievePercent,
