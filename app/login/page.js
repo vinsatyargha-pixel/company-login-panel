@@ -213,7 +213,7 @@ const handleLogin = async (e) => {
   value={email}
   onChange={(e) => setEmail(e.target.value)}
   className="login-input"
-  placeholder="admin@magnigroupx.com / zakiyxops"
+  placeholder=""
   required
   disabled={isLoading}
 />
