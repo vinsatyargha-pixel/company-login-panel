@@ -260,7 +260,6 @@ export default function SummaryKPIDataPage() {
   // FETCH ATTENDANCE FROM API SCHEDULE (MULTI MONTH)
   // ===========================================
   const [attendanceData, setAttendanceData] = useState({});
-  const [offDaysData, setOffDaysData] = useState({});
 
   useEffect(() => {
     const fetchAttendance = async () => {
@@ -269,7 +268,6 @@ export default function SummaryKPIDataPage() {
         const endMonth = parseInt(bulanAkhir);
         
         const grouped = {};
-        const offCount = {};
         
         // Loop setiap bulan dalam range
         for (let month = startMonth; month <= endMonth; month++) {
@@ -311,18 +309,10 @@ export default function SummaryKPIDataPage() {
               if (!grouped[officerName]) {
                 grouped[officerName] = { s: 0, i: 0, a: 0, u: 0 };
               }
-              if (offCount[officerName] === undefined) {
-                offCount[officerName] = 0;
-              }
               
               const statusUpper = status.toUpperCase().trim();
               
-              // Hitung OFF day (libur terjadwal)
-              if (statusUpper === 'OFF') {
-                offCount[officerName] += 1;
-              }
-              
-              // HANYA 4 STATUS YANG DIPROSES untuk attendance
+              // HANYA 4 STATUS YANG DIPROSES
               if (statusUpper === 'SAKIT') {
                 grouped[officerName].s += 1;
               }
@@ -341,9 +331,7 @@ export default function SummaryKPIDataPage() {
         }
         
         setAttendanceData(grouped);
-        setOffDaysData(offCount);
         console.log('Attendance data (S/I/A/U):', grouped);
-        console.log('OFF days:', offCount);
         
       } catch (error) {
         console.error('Error fetching attendance:', error);
@@ -371,6 +359,13 @@ export default function SummaryKPIDataPage() {
   };
 
   const totalDays = getTotalDaysInRange();
+  
+  // Hitung OFF day (4 per bulan) - SAMA UNTUK SEMUA OFFICER
+  const monthsInRange = parseInt(bulanAkhir) - parseInt(bulanAwal) + 1;
+  const totalOffDays = monthsInRange * 4; // 4 OFF day per bulan
+  
+  // Target untuk SEMUA officer sama
+  const targetPerOfficer = totalDays - totalOffDays;
 
   // ===========================================
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
@@ -539,15 +534,14 @@ export default function SummaryKPIDataPage() {
     // Ambil data attendance berdasarkan nama officer
     const officerName = officer.full_name;
     const attendance = attendanceData[officerName] || { s: 0, i: 0, a: 0, u: 0 };
-    const offDays = offDaysData[officerName] || 0;
     
-    // Target = total hari dalam range - OFF days
-    const target = totalDays - offDays;
+    // Target SAMA untuk semua officer (181 - 24 = 157)
+    const target = targetPerOfficer;
     
     // Total absen (S + I + A + U)
     const totalAbsen = attendance.s + attendance.i + attendance.a + attendance.u;
     
-    // Achieve = (Hari kerja efektif) / Target
+    // Achieve = (Target - Absen) / Target
     const hariKerjaEfektif = target - totalAbsen;
     const achievePercent = target > 0 ? Math.round((hariKerjaEfektif / target) * 100) : 100;
     
@@ -958,7 +952,7 @@ export default function SummaryKPIDataPage() {
         <p className="mt-1 text-green-400">✓ Time Management menggunakan data real berdasarkan approved_date</p>
         <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
         <p className="mt-1 text-blue-400">✓ Attendance (S/I/A/U) dari API Schedule real</p>
-        <p className="mt-1 text-purple-400">✓ Target dinamis berdasarkan total hari - OFF day</p>
+        <p className="mt-1 text-purple-400">✓ Target: {totalDays} hari - {totalOffDays} OFF = {targetPerOfficer} hari</p>
       </div>
     </div>
   );
