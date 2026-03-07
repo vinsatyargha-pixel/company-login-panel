@@ -123,81 +123,81 @@ useEffect(() => {
 }, [tahun]);
 
   // ===========================================
-  // FETCH WITHDRAWAL TRANSACTIONS (DATA REAL)
-  // ===========================================
-  useEffect(() => {
-    const fetchWithdrawalTransactions = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('withdrawal_transactions')
-          .select('*')
-          .gte('requested_date', `${tahun}-01-01`)
-          .lte('requested_date', `${tahun}-12-31`);
+// FETCH WITHDRAWAL TRANSACTIONS (DATA REAL)
+// ===========================================
+useEffect(() => {
+  const fetchWithdrawalTransactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('withdrawal_transactions')
+        .select('*')
+        .gte('requested_date', `${tahun}-01-01`)
+        .lte('requested_date', `${tahun}-12-31`);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        const grouped = {};
+      const grouped = {};
+      
+      data.forEach(tx => {
+        const handler = tx.handler || 'system';  // ✅ GANTI: creator → handler
         
-        data.forEach(tx => {
-  const handler = tx.handler || 'system';  // ← GANTI INI
-  
-  if (!grouped[handler]) {  // ← GANTI INI
-    grouped[handler] = {
-      totalApproved: 0,
-      totalReject: 0,
-      totalSOP: 0,
-      totalManual: 0,
-      totalDuration: 0,
-      approvedCount: 0,
-      rejectCount: 0,
-      rejectDuration: 0
-    };
-  }
+        if (!grouped[handler]) {  // ✅ GANTI
+          grouped[handler] = {
+            totalApproved: 0,
+            totalReject: 0,
+            totalSOP: 0,
+            totalManual: 0,
+            totalDuration: 0,
+            approvedCount: 0,
+            rejectCount: 0,
+            rejectDuration: 0
+          };
+        }
+        
+        if (tx.status === 'Approved') {
+          grouped[handler].totalApproved++;  // ✅ GANTI
+          grouped[handler].approvedCount++;   // ✅ GANTI
           
-          if (tx.status === 'Approved') {
-            grouped[creator].totalApproved++;
-            grouped[creator].approvedCount++;
-            
-            if (tx.remarks && tx.remarks.includes('Auto Approve')) {
-              grouped[creator].totalSOP++;
-            } else {
-              grouped[creator].totalManual++;
-            }
-            
-            if (tx.duration_minutes) {
-              grouped[creator].totalDuration += parseFloat(tx.duration_minutes);
-            }
-          } 
-          else if (tx.status === 'Rejected') {
-            grouped[creator].totalReject++;
-            grouped[creator].rejectCount++;
-            
-            if (tx.duration_minutes) {
-              grouped[creator].rejectDuration += parseFloat(tx.duration_minutes);
-            }
+          if (tx.remarks && tx.remarks.includes('Auto Approve')) {
+            grouped[handler].totalSOP++;  // ✅ GANTI
+          } else {
+            grouped[handler].totalManual++;  // ✅ GANTI
           }
-        });
-        
-        Object.keys(grouped).forEach(key => {
-          const g = grouped[key];
-          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
-          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
-          g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
-        });
-        
-        setWithdrawalData(grouped);
-        
-      } catch (error) {
-        console.error('Error fetching withdrawal transactions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (tahun) {
-      fetchWithdrawalTransactions();
+          
+          if (tx.duration_minutes) {
+            grouped[handler].totalDuration += parseFloat(tx.duration_minutes);  // ✅ GANTI
+          }
+        } 
+        else if (tx.status === 'Rejected') {
+          grouped[handler].totalReject++;  // ✅ GANTI
+          grouped[handler].rejectCount++;   // ✅ GANTI
+          
+          if (tx.duration_minutes) {
+            grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);  // ✅ GANTI
+          }
+        }
+      });
+      
+      Object.keys(grouped).forEach(key => {
+        const g = grouped[key];
+        g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
+        g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+        g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
+      });
+      
+      setWithdrawalData(grouped);
+      
+    } catch (error) {
+      console.error('Error fetching withdrawal transactions:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [tahun]);
+  };
+
+  if (tahun) {
+    fetchWithdrawalTransactions();
+  }
+}, [tahun]);
 
   // ===========================================
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
