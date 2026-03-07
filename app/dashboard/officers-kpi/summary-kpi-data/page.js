@@ -308,16 +308,25 @@ useEffect(() => {
           
           const statusUpper = status.toUpperCase().trim();
           
-          // Hanya SAKIT yang diproses, sisanya diabaikan
+          // Siap untuk SEMUA kemungkinan status
           if (statusUpper === 'SAKIT') {
             grouped[officerName].s += 1;
           }
-          // I, A, U belum ada data, tetap 0
+          else if (statusUpper === 'IZIN') {
+            grouped[officerName].i += 1;
+          }
+          else if (statusUpper === 'ABSEN') {
+            grouped[officerName].a += 1;
+          }
+          else if (statusUpper === 'UNPAID' || statusUpper === 'UNPAID LEAVE') {
+            grouped[officerName].u += 1;
+          }
+          // Status lain (P, M, OFF, CUTI, dll) diabaikan
         });
       });
       
       setAttendanceData(grouped);
-      console.log('Attendance data (only SAKIT):', grouped);
+      console.log('Attendance data (S/I/A/U):', grouped);
       
     } catch (error) {
       console.error('Error fetching attendance:', error);
