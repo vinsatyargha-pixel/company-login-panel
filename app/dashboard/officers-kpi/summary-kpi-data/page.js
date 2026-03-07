@@ -18,15 +18,41 @@ const formatTime = (minutes) => {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
+// ===========================================
+// HELPER: Get first and last day of month
+// ===========================================
+const getMonthDateRange = (tahun, bulan) => {
+  const startDate = `${tahun}-${bulan.toString().padStart(2, '0')}-01`;
+  const endDate = new Date(tahun, bulan, 0).toISOString().split('T')[0]; // Last day of month
+  return { startDate, endDate };
+};
+
 export default function SummaryKPIDataPage() {
   const [tahun, setTahun] = useState('2026');
-  const [periode, setPeriode] = useState('Jan - Jun');
+  const [bulanAwal, setBulanAwal] = useState('1'); // Januari
+  const [bulanAkhir, setBulanAkhir] = useState('6'); // Juni
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // State untuk menyimpan data transaksi
   const [depositData, setDepositData] = useState({});
   const [withdrawalData, setWithdrawalData] = useState({});
+
+  // Daftar bulan
+  const bulanList = [
+    { value: '1', label: 'Januari' },
+    { value: '2', label: 'Februari' },
+    { value: '3', label: 'Maret' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'Mei' },
+    { value: '6', label: 'Juni' },
+    { value: '7', label: 'Juli' },
+    { value: '8', label: 'Agustus' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' }
+  ];
 
   // ===========================================
   // FETCH OFFICERS CS DP WD
@@ -57,7 +83,6 @@ export default function SummaryKPIDataPage() {
         
       } catch (error) {
         console.error('Error fetching officers:', error);
-        // Fallback: set officers dengan System aja
         setOfficers([{
           full_name: 'System',
           panel_id: 'System',
@@ -79,16 +104,17 @@ export default function SummaryKPIDataPage() {
   useEffect(() => {
     const fetchDepositTransactions = async () => {
       try {
-        // Ambil semua data deposit untuk periode tertentu
+        const { startDate, endDate } = getMonthDateRange(tahun, parseInt(bulanAkhir));
+        
+        // Ambil data deposit berdasarkan approved_date
         const { data, error } = await supabase
           .from('deposit_transactions')
           .select('*')
-          .gte('requested_date', `${tahun}-01-01`)
-          .lte('requested_date', `${tahun}-12-31`);
+          .gte('approved_date', `${tahun}-${bulanAwal.padStart(2, '0')}-01`)
+          .lte('approved_date', endDate);
 
         if (error) throw error;
 
-        // Group by handler (officer username)
         const grouped = {};
         
         data.forEach(tx => {
@@ -107,21 +133,18 @@ export default function SummaryKPIDataPage() {
             };
           }
           
-          // Hitung berdasarkan status
           if (tx.status === 'Approved') {
             grouped[handler].totalApproved++;
             grouped[handler].approvedCount++;
             
-            // CEK SOP BERDASARKAN DURASI (maksimal 3 menit)
             const duration = tx.duration_minutes ? parseFloat(tx.duration_minutes) : 0;
             
-            if (duration <= 3) {  // ✅ SOP: ≤ 3 menit
+            if (duration <= 3) {
               grouped[handler].totalSOP++;
-            } else {               // ❌ Non SOP: > 3 menit
+            } else {
               grouped[handler].totalNonSOP++;
             }
             
-            // Hitung durasi total untuk rata-rata
             if (tx.duration_minutes) {
               grouped[handler].totalDuration += duration;
             }
@@ -136,7 +159,6 @@ export default function SummaryKPIDataPage() {
           }
         });
         
-        // Hitung rata-rata dan persentase
         Object.keys(grouped).forEach(key => {
           const g = grouped[key];
           g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount) : 0;
@@ -151,10 +173,10 @@ export default function SummaryKPIDataPage() {
       }
     };
 
-    if (tahun) {
+    if (tahun && bulanAwal && bulanAkhir) {
       fetchDepositTransactions();
     }
-  }, [tahun]);
+  }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
   // FETCH WITHDRAWAL TRANSACTIONS (DATA REAL)
@@ -162,11 +184,13 @@ export default function SummaryKPIDataPage() {
   useEffect(() => {
     const fetchWithdrawalTransactions = async () => {
       try {
+        const { startDate, endDate } = getMonthDateRange(tahun, parseInt(bulanAkhir));
+        
         const { data, error } = await supabase
           .from('withdrawal_transactions')
           .select('*')
-          .gte('requested_date', `${tahun}-01-01`)
-          .lte('requested_date', `${tahun}-12-31`);
+          .gte('approved_date', `${tahun}-${bulanAwal.padStart(2, '0')}-01`)
+          .lte('approved_date', endDate);
 
         if (error) throw error;
 
@@ -192,12 +216,11 @@ export default function SummaryKPIDataPage() {
             grouped[handler].totalApproved++;
             grouped[handler].approvedCount++;
             
-            // CEK SOP BERDASARKAN DURASI (maksimal 5 menit)
             const duration = tx.duration_minutes ? parseFloat(tx.duration_minutes) : 0;
             
-            if (duration <= 5) {  // ✅ SOP: ≤ 5 menit
+            if (duration <= 5) {
               grouped[handler].totalSOP++;
-            } else {               // ❌ Non SOP: > 5 menit
+            } else {
               grouped[handler].totalNonSOP++;
             }
             
@@ -229,16 +252,15 @@ export default function SummaryKPIDataPage() {
       }
     };
 
-    if (tahun) {
+    if (tahun && bulanAwal && bulanAkhir) {
       fetchWithdrawalTransactions();
     }
-  }, [tahun]);
+  }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
   // ===========================================
   const getDepositDataForOfficer = (officer) => {
-    // Handle khusus untuk System
     if (officer.panel_id === 'System' || officer.full_name === 'System') {
       const data = depositData['SYSTEM'] || depositData['system'] || {};
       return {
@@ -271,7 +293,6 @@ export default function SummaryKPIDataPage() {
       };
     }
 
-    // Untuk officer biasa
     const handlerVariants = [
       officer.panel_id?.toLowerCase(),
       officer.panel_id,
@@ -318,7 +339,6 @@ export default function SummaryKPIDataPage() {
   };
 
   const getWithdrawalDataForOfficer = (officer) => {
-    // Handle khusus untuk System
     if (officer.panel_id === 'System' || officer.full_name === 'System') {
       const data = withdrawalData['SYSTEM'] || withdrawalData['system'] || {};
       return {
@@ -351,7 +371,6 @@ export default function SummaryKPIDataPage() {
       };
     }
 
-    // Untuk officer biasa
     const handlerVariants = [
       officer.panel_id?.toLowerCase(),
       officer.panel_id,
@@ -397,7 +416,7 @@ export default function SummaryKPIDataPage() {
     };
   };
 
-  // Generate data dengan campuran real + dummy (untuk kolom lain)
+  // Generate data
   const officerDataList = officers.map((officer, index) => {
     const depositReal = getDepositDataForOfficer(officer);
     const withdrawalReal = getWithdrawalDataForOfficer(officer);
@@ -420,7 +439,6 @@ export default function SummaryKPIDataPage() {
         ...withdrawalReal
       },
       
-      // CS Data (tetap dummy untuk sekarang)
       cs: {
         totalChat: Math.floor(Math.random() * 50) + 80,
         missedChat: Math.floor(Math.random() * 3),
@@ -444,7 +462,6 @@ export default function SummaryKPIDataPage() {
     };
   });
 
-  // Hitung total untuk footer
   const totalDepositApproved = officerDataList.reduce((sum, o) => sum + (o.deposit.totalApproved || 0), 0);
   const totalWithdrawalApproved = officerDataList.reduce((sum, o) => sum + (o.withdrawal.totalApproved || 0), 0);
 
@@ -476,11 +493,14 @@ export default function SummaryKPIDataPage() {
 
       {/* HEADER */}
       <h1 className="text-3xl font-bold text-[#FFD700] mb-2">SUMMARY KPI DATA</h1>
-      <p className="text-[#A7D8FF] mb-6">KPI Summary CS DP WD • Periode {periode} {tahun}</p>
+      <p className="text-[#A7D8FF] mb-6">
+        KPI Summary CS DP WD • Periode {bulanList.find(b => b.value === bulanAwal)?.label} - {bulanList.find(b => b.value === bulanAkhir)?.label} {tahun}
+      </p>
 
-      {/* FILTER */}
+      {/* FILTER - RENTANG BULAN */}
       <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4 mb-8 flex flex-wrap gap-4 items-center">
-        <span className="text-[#FFD700] font-bold text-sm">FILTER RANGE:</span>
+        <span className="text-[#FFD700] font-bold text-sm">FILTER RENTANG BULAN:</span>
+        
         <select 
           value={tahun}
           onChange={(e) => setTahun(e.target.value)}
@@ -491,14 +511,34 @@ export default function SummaryKPIDataPage() {
           <option>2026</option>
           <option>2027</option>
         </select>
+        
         <select 
-          value={periode}
-          onChange={(e) => setPeriode(e.target.value)}
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-3 py-2 text-white text-sm w-28"
+          value={bulanAwal}
+          onChange={(e) => {
+            setBulanAwal(e.target.value);
+            if (parseInt(e.target.value) > parseInt(bulanAkhir)) {
+              setBulanAkhir(e.target.value);
+            }
+          }}
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-3 py-2 text-white text-sm"
         >
-          <option>Jan - Jun</option>
-          <option>Jul - Dec</option>
+          {bulanList.map(bulan => (
+            <option key={bulan.value} value={bulan.value}>{bulan.label}</option>
+          ))}
         </select>
+        
+        <span className="text-[#FFD700]">s/d</span>
+        
+        <select 
+          value={bulanAkhir}
+          onChange={(e) => setBulanAkhir(e.target.value)}
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-3 py-2 text-white text-sm"
+        >
+          {bulanList.filter(b => parseInt(b.value) >= parseInt(bulanAwal)).map(bulan => (
+            <option key={bulan.value} value={bulan.value}>{bulan.label}</option>
+          ))}
+        </select>
+        
         <span className="text-[#A7D8FF] text-sm ml-auto">
           Total Officers: {officers.length}
         </span>
@@ -588,7 +628,7 @@ export default function SummaryKPIDataPage() {
                     <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.joinDate}</td>
                     <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Deposit</td>
                     
-                    {/* TIME MANAGEMENT - 7 KOLOM (DATA REAL) */}
+                    {/* TIME MANAGEMENT */}
                     <td className="text-center py-2 px-2">{officer.deposit.totalApproved || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.totalReject || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.sop || '-'}</td>
@@ -597,7 +637,7 @@ export default function SummaryKPIDataPage() {
                     <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.deposit.intervalApp)}</td>
                     <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.deposit.intervalRej)}</td>
                     
-                    {/* HUMAN ERROR - TETAP DUMMY */}
+                    {/* HUMAN ERROR */}
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">-</td>
                     <td className="text-center py-2 px-2">0</td>
@@ -605,21 +645,21 @@ export default function SummaryKPIDataPage() {
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">100%</td>
                     
-                    {/* PROBLEM SOLVING - TETAP DUMMY */}
+                    {/* PROBLEM SOLVING */}
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">-</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">-</td>
                     <td className="text-center py-2 px-2">100%</td>
                     
-                    {/* FOLLOW SOP - TETAP DUMMY */}
+                    {/* FOLLOW SOP */}
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">100</td>
                     
-                    {/* SUB SCORE - P1 REAL, LAINNYA DUMMY */}
+                    {/* SUB SCORE */}
                     <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.deposit.p1 ? `${officer.deposit.p1}%` : '-'}</td>
                     <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
                     <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
@@ -637,7 +677,7 @@ export default function SummaryKPIDataPage() {
                     <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
                     <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Withdrawal</td>
                     
-                    {/* TIME MANAGEMENT - 7 KOLOM (DATA REAL) */}
+                    {/* TIME MANAGEMENT */}
                     <td className="text-center py-2 px-2">{officer.withdrawal.totalApproved || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.withdrawal.totalReject || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.withdrawal.sop || '-'}</td>
@@ -646,7 +686,7 @@ export default function SummaryKPIDataPage() {
                     <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.withdrawal.intervalApp)}</td>
                     <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.withdrawal.intervalRej)}</td>
                     
-                    {/* HUMAN ERROR - TETAP DUMMY */}
+                    {/* HUMAN ERROR */}
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">-</td>
                     <td className="text-center py-2 px-2">0</td>
@@ -654,21 +694,21 @@ export default function SummaryKPIDataPage() {
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">100%</td>
                     
-                    {/* PROBLEM SOLVING - TETAP DUMMY */}
+                    {/* PROBLEM SOLVING */}
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">-</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">-</td>
                     <td className="text-center py-2 px-2">100%</td>
                     
-                    {/* FOLLOW SOP - TETAP DUMMY */}
+                    {/* FOLLOW SOP */}
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">100</td>
                     
-                    {/* SUB SCORE - P1 REAL, LAINNYA DUMMY */}
+                    {/* SUB SCORE */}
                     <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.withdrawal.p1 ? `${officer.withdrawal.p1}%` : '-'}</td>
                     <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
                     <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
@@ -703,29 +743,18 @@ export default function SummaryKPIDataPage() {
               
               {/* SUB HEADER CS */}
               <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-                {/* STICKY COLUMNS - 5 KOLOM */}
                 <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
                 <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
                 <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
                 <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
                 <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
                 
-                {/* Poin 1 */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
-                
-                {/* Poin 2 */}
                 <th className="text-center py-2 px-2 min-w-[60px]">Missed Chat</th>
-                
-                {/* Poin 3 */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
-                
-                {/* Poin 4 */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
-                
-                {/* Poin 5 */}
                 <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
                 
-                {/* Poin 6 - Attendance & Attitude (8 kolom) */}
                 <th className="text-center py-2 px-2 min-w-[40px]">S</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">I</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">A</th>
@@ -735,7 +764,6 @@ export default function SummaryKPIDataPage() {
                 <th className="text-center py-2 px-2 min-w-[60px]">Achieve</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
                 
-                {/* SUB SCORE CS (6 kolom) */}
                 <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
@@ -785,7 +813,7 @@ export default function SummaryKPIDataPage() {
                 <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
                   <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">SYSTEM</span>
                 </td>
-                <td colSpan="18" className="text-center py-2 px-2 text-[#A7D8FF]">-</td>
+                <td colSpan="19" className="text-center py-2 px-2 text-[#A7D8FF]">-</td>
               </tr>
             </tbody>
           </table>
@@ -794,9 +822,9 @@ export default function SummaryKPIDataPage() {
 
       {/* FOOTER */}
       <div className="text-xs text-[#A7D8FF]/30 text-center mt-8">
-        <p>KPI Summary • Data officers diambil dari database ({officers.length} officers CS DP WD) • Periode {periode} {tahun}</p>
+        <p>KPI Summary • Data officers diambil dari database ({officers.length} officers CS DP WD) • Periode {bulanList.find(b => b.value === bulanAwal)?.label} - {bulanList.find(b => b.value === bulanAkhir)?.label} {tahun}</p>
         <p className="mt-1">P1: Time Management | P2: Human Error | P3: Problem Solving | P4: Follow SOP | P5: Chat Achievement | P6: Attendance & Attitude</p>
-        <p className="mt-1 text-green-400">✓ Time Management sudah menggunakan data real dari transaksi deposit & withdrawal (7 kolom)</p>
+        <p className="mt-1 text-green-400">✓ Time Management menggunakan data real berdasarkan approved_date</p>
         <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
       </div>
     </div>
