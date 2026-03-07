@@ -30,11 +30,27 @@ export default function SummaryKPIDataPage() {
 
         if (error) throw error;
         
-        setOfficers(data || []);
+        // Tambah System secara manual
+        const systemOfficer = {
+          full_name: 'System',
+          panel_id: 'System',
+          department: 'System',
+          status: 'SYSTEM',
+          join_date: '-'
+        };
+        
+        setOfficers([...(data || []), systemOfficer]);
         
       } catch (error) {
         console.error('Error fetching officers:', error);
-        setOfficers([]);
+        // Fallback: set officers dengan System aja
+        setOfficers([{
+          full_name: 'System',
+          panel_id: 'System',
+          department: 'System',
+          status: 'SYSTEM',
+          join_date: '-'
+        }]);
       }
     };
 
@@ -42,193 +58,224 @@ export default function SummaryKPIDataPage() {
   }, []);
 
   // ===========================================
-// FETCH DEPOSIT TRANSACTIONS (DATA REAL)
-// ===========================================
-useEffect(() => {
-  const fetchDepositTransactions = async () => {
-    try {
-      // Ambil semua data deposit untuk periode tertentu
-      const { data, error } = await supabase
-        .from('deposit_transactions')
-        .select('*')
-        .gte('requested_date', `${tahun}-01-01`)
-        .lte('requested_date', `${tahun}-12-31`);
+  // FETCH DEPOSIT TRANSACTIONS (DATA REAL)
+  // ===========================================
+  useEffect(() => {
+    const fetchDepositTransactions = async () => {
+      try {
+        // Ambil semua data deposit untuk periode tertentu
+        const { data, error } = await supabase
+          .from('deposit_transactions')
+          .select('*')
+          .gte('requested_date', `${tahun}-01-01`)
+          .lte('requested_date', `${tahun}-12-31`);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Group by handler (officer username)
-      const grouped = {};
-      
-      data.forEach(tx => {
-        const handler = tx.handler || 'system';  // ✅ GANTI: creator → handler
+        // Group by handler (officer username)
+        const grouped = {};
         
-        if (!grouped[handler]) {  // ✅ GANTI: creator → handler
-          grouped[handler] = {
-            totalApproved: 0,
-            totalReject: 0,
-            totalSOP: 0,
-            totalManual: 0,
-            totalDuration: 0,
-            approvedCount: 0,
-            rejectCount: 0,
-            rejectDuration: 0
-          };
-        }
+        data.forEach(tx => {
+          const handler = tx.handler || 'system';
+          
+          if (!grouped[handler]) {
+            grouped[handler] = {
+              totalApproved: 0,
+              totalReject: 0,
+              totalSOP: 0,
+              totalManual: 0,
+              totalDuration: 0,
+              approvedCount: 0,
+              rejectCount: 0,
+              rejectDuration: 0
+            };
+          }
+          
+          // Hitung berdasarkan status
+          if (tx.status === 'Approved') {
+            grouped[handler].totalApproved++;
+            grouped[handler].approvedCount++;
+            
+            // Cek apakah Auto Approved (SOP)
+            if (tx.remarks && tx.remarks.includes('Auto Approved')) {
+              grouped[handler].totalSOP++;
+            } else {
+              grouped[handler].totalManual++;
+            }
+            
+            // Hitung durasi
+            if (tx.duration_minutes) {
+              grouped[handler].totalDuration += parseFloat(tx.duration_minutes);
+            }
+          } 
+          else if (tx.status === 'Rejected' || tx.status === 'Fail') {
+            grouped[handler].totalReject++;
+            grouped[handler].rejectCount++;
+            
+            if (tx.duration_minutes) {
+              grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);
+            }
+          }
+        });
         
-        // Hitung berdasarkan status
-        if (tx.status === 'Approved') {
-          grouped[handler].totalApproved++;  // ✅ GANTI
-          grouped[handler].approvedCount++;   // ✅ GANTI
-          
-          // Cek apakah Auto Approved (SOP)
-          if (tx.remarks && tx.remarks.includes('Auto Approved')) {
-            grouped[handler].totalSOP++;  // ✅ GANTI
-          } else {
-            grouped[handler].totalManual++;  // ✅ GANTI
-          }
-          
-          // Hitung durasi
-          if (tx.duration_minutes) {
-            grouped[handler].totalDuration += parseFloat(tx.duration_minutes);  // ✅ GANTI
-          }
-        } 
-        else if (tx.status === 'Rejected' || tx.status === 'Fail') {
-          grouped[handler].totalReject++;  // ✅ GANTI
-          grouped[handler].rejectCount++;   // ✅ GANTI
-          
-          if (tx.duration_minutes) {
-            grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);  // ✅ GANTI
-          }
-        }
-      });
-      
-      // Hitung rata-rata
-      Object.keys(grouped).forEach(key => {
-        const g = grouped[key];
-        g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
-        g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
-        g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
-      });
-      
-      setDepositData(grouped);
-      
-    } catch (error) {
-      console.error('Error fetching deposit transactions:', error);
+        // Hitung rata-rata
+        Object.keys(grouped).forEach(key => {
+          const g = grouped[key];
+          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
+          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+          g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
+        });
+        
+        setDepositData(grouped);
+        
+      } catch (error) {
+        console.error('Error fetching deposit transactions:', error);
+      }
+    };
+
+    if (tahun) {
+      fetchDepositTransactions();
     }
-  };
-
-  if (tahun) {
-    fetchDepositTransactions();
-  }
-}, [tahun]);
+  }, [tahun]);
 
   // ===========================================
-// FETCH WITHDRAWAL TRANSACTIONS (DATA REAL)
-// ===========================================
-useEffect(() => {
-  const fetchWithdrawalTransactions = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('withdrawal_transactions')
-        .select('*')
-        .gte('requested_date', `${tahun}-01-01`)
-        .lte('requested_date', `${tahun}-12-31`);
+  // FETCH WITHDRAWAL TRANSACTIONS (DATA REAL)
+  // ===========================================
+  useEffect(() => {
+    const fetchWithdrawalTransactions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('withdrawal_transactions')
+          .select('*')
+          .gte('requested_date', `${tahun}-01-01`)
+          .lte('requested_date', `${tahun}-12-31`);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const grouped = {};
-      
-      data.forEach(tx => {
-        const handler = tx.handler || 'system';  // ✅ GANTI: creator → handler
+        const grouped = {};
         
-        if (!grouped[handler]) {  // ✅ GANTI
-          grouped[handler] = {
-            totalApproved: 0,
-            totalReject: 0,
-            totalSOP: 0,
-            totalManual: 0,
-            totalDuration: 0,
-            approvedCount: 0,
-            rejectCount: 0,
-            rejectDuration: 0
-          };
-        }
+        data.forEach(tx => {
+          const handler = tx.handler || 'system';
+          
+          if (!grouped[handler]) {
+            grouped[handler] = {
+              totalApproved: 0,
+              totalReject: 0,
+              totalSOP: 0,
+              totalManual: 0,
+              totalDuration: 0,
+              approvedCount: 0,
+              rejectCount: 0,
+              rejectDuration: 0
+            };
+          }
+          
+          if (tx.status === 'Approved') {
+            grouped[handler].totalApproved++;
+            grouped[handler].approvedCount++;
+            
+            if (tx.remarks && tx.remarks.includes('Auto Approve')) {
+              grouped[handler].totalSOP++;
+            } else {
+              grouped[handler].totalManual++;
+            }
+            
+            if (tx.duration_minutes) {
+              grouped[handler].totalDuration += parseFloat(tx.duration_minutes);
+            }
+          } 
+          else if (tx.status === 'Rejected') {
+            grouped[handler].totalReject++;
+            grouped[handler].rejectCount++;
+            
+            if (tx.duration_minutes) {
+              grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);
+            }
+          }
+        });
         
-        if (tx.status === 'Approved') {
-          grouped[handler].totalApproved++;  // ✅ GANTI
-          grouped[handler].approvedCount++;   // ✅ GANTI
-          
-          if (tx.remarks && tx.remarks.includes('Auto Approve')) {
-            grouped[handler].totalSOP++;  // ✅ GANTI
-          } else {
-            grouped[handler].totalManual++;  // ✅ GANTI
-          }
-          
-          if (tx.duration_minutes) {
-            grouped[handler].totalDuration += parseFloat(tx.duration_minutes);  // ✅ GANTI
-          }
-        } 
-        else if (tx.status === 'Rejected') {
-          grouped[handler].totalReject++;  // ✅ GANTI
-          grouped[handler].rejectCount++;   // ✅ GANTI
-          
-          if (tx.duration_minutes) {
-            grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);  // ✅ GANTI
-          }
-        }
-      });
-      
-      Object.keys(grouped).forEach(key => {
-        const g = grouped[key];
-        g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
-        g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
-        g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
-      });
-      
-      setWithdrawalData(grouped);
-      
-    } catch (error) {
-      console.error('Error fetching withdrawal transactions:', error);
-    } finally {
-      setLoading(false);
+        Object.keys(grouped).forEach(key => {
+          const g = grouped[key];
+          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
+          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+          g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
+        });
+        
+        setWithdrawalData(grouped);
+        
+      } catch (error) {
+        console.error('Error fetching withdrawal transactions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (tahun) {
+      fetchWithdrawalTransactions();
     }
-  };
-
-  if (tahun) {
-    fetchWithdrawalTransactions();
-  }
-}, [tahun]);
+  }, [tahun]);
 
   // ===========================================
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
   // ===========================================
   const getDepositDataForOfficer = (officer) => {
-  // Coba cocokkan dengan berbagai kemungkinan format handler
-  const handlerVariants = [
-    officer.panel_id?.toLowerCase(),           // 'zakiyxops'
-    officer.panel_id,                           // 'zakiyxops' (original)
-    officer.username?.toLowerCase(),
-    officer.full_name?.toLowerCase()
-  ].filter(Boolean);
-  
-  // Cari data yang cocok
-  let data = {};
-  for (const variant of handlerVariants) {
-    if (depositData[variant]) {
-      data = depositData[variant];
-      break;
+    // Handle khusus untuk System
+    if (officer.panel_id === 'System' || officer.full_name === 'System') {
+      const data = depositData['SYSTEM'] || depositData['system'] || {};
+      return {
+        totalApproved: data.totalApproved || 0,
+        totalReject: data.totalReject || 0,
+        sop1: data.totalSOP || 0,
+        sopPercent1: data.sopPercentage || 0,
+        nonSop1: data.totalManual || 0,
+        intervalApp: data.avgApprovalTime || 0,
+        intervalRej: data.avgRejectTime || 0,
+        heQty: 0,
+        heAmount: '-',
+        mistakeQty: 0,
+        mistakeAmount: '-',
+        blockBank: 0,
+        crossBankQty: 0,
+        crossBankAmount: '-',
+        crossAssetQty: 0,
+        crossAssetAmount: '-',
+        bukuDosa: 0,
+        sp1: 0,
+        sp2: 0,
+        sus: 0,
+        totalPoin4: 100,
+        p1: data.sopPercentage || 0,
+        p2: 100,
+        p3: 100,
+        p4: 100,
+        avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
+      };
     }
-  }
-  
-  return {
-    totalApproved: data.totalApproved || 0,
-    totalReject: data.totalReject || 0,
-    sop1: data.totalSOP || 0,
-    sopPercent1: data.sopPercentage || 0,
-    nonSop1: data.totalManual || 0,
-    intervalApp: data.avgApprovalTime || 0,
-    intervalRej: data.avgRejectTime || 0,
-      // Data dummy untuk kolom lain (tetap pakai dummy karena belum ada)
+
+    // Untuk officer biasa
+    const handlerVariants = [
+      officer.panel_id?.toLowerCase(),
+      officer.panel_id,
+      officer.username?.toLowerCase(),
+      officer.full_name?.toLowerCase()
+    ].filter(Boolean);
+    
+    let data = {};
+    for (const variant of handlerVariants) {
+      if (depositData[variant]) {
+        data = depositData[variant];
+        break;
+      }
+    }
+    
+    return {
+      totalApproved: data.totalApproved || 0,
+      totalReject: data.totalReject || 0,
+      sop1: data.totalSOP || 0,
+      sopPercent1: data.sopPercentage || 0,
+      nonSop1: data.totalManual || 0,
+      intervalApp: data.avgApprovalTime || 0,
+      intervalRej: data.avgRejectTime || 0,
       heQty: 0,
       heAmount: '-',
       mistakeQty: 0,
@@ -252,32 +299,63 @@ useEffect(() => {
   };
 
   const getWithdrawalDataForOfficer = (officer) => {
-  // SAMA PERSIS: Coba cocokkan dengan berbagai kemungkinan format handler
-  const handlerVariants = [
-    officer.panel_id?.toLowerCase(),           // 'zakiyxops'
-    officer.panel_id,                           // 'zakiyxops' (original)
-    officer.username?.toLowerCase(),
-    officer.full_name?.toLowerCase()
-  ].filter(Boolean);
-  
-  // Cari data yang cocok
-  let data = {};
-  for (const variant of handlerVariants) {
-    if (withdrawalData[variant]) {
-      data = withdrawalData[variant];
-      break;
+    // Handle khusus untuk System
+    if (officer.panel_id === 'System' || officer.full_name === 'System') {
+      const data = withdrawalData['SYSTEM'] || withdrawalData['system'] || {};
+      return {
+        totalApproved: data.totalApproved || 0,
+        totalReject: data.totalReject || 0,
+        sop1: data.totalSOP || 0,
+        sopPercent1: data.sopPercentage || 0,
+        nonSop1: data.totalManual || 0,
+        intervalApp: data.avgApprovalTime || 0,
+        intervalRej: data.avgRejectTime || 0,
+        heQty: 0,
+        heAmount: '-',
+        mistakeQty: 0,
+        mistakeAmount: '-',
+        blockBank: 0,
+        crossBankQty: 0,
+        crossBankAmount: '-',
+        crossAssetQty: 0,
+        crossAssetAmount: '-',
+        bukuDosa: 0,
+        sp1: 0,
+        sp2: 0,
+        sus: 0,
+        totalPoin4: 100,
+        p1: data.sopPercentage || 0,
+        p2: 100,
+        p3: 100,
+        p4: 100,
+        avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
+      };
     }
-  }
-  
-  return {
-    totalApproved: data.totalApproved || 0,
-    totalReject: data.totalReject || 0,
-    sop1: data.totalSOP || 0,
-    sopPercent1: data.sopPercentage || 0,
-    nonSop1: data.totalManual || 0,
-    intervalApp: data.avgApprovalTime || 0,
-    intervalRej: data.avgRejectTime || 0,
-      // Data dummy
+
+    // Untuk officer biasa
+    const handlerVariants = [
+      officer.panel_id?.toLowerCase(),
+      officer.panel_id,
+      officer.username?.toLowerCase(),
+      officer.full_name?.toLowerCase()
+    ].filter(Boolean);
+    
+    let data = {};
+    for (const variant of handlerVariants) {
+      if (withdrawalData[variant]) {
+        data = withdrawalData[variant];
+        break;
+      }
+    }
+    
+    return {
+      totalApproved: data.totalApproved || 0,
+      totalReject: data.totalReject || 0,
+      sop1: data.totalSOP || 0,
+      sopPercent1: data.sopPercentage || 0,
+      nonSop1: data.totalManual || 0,
+      intervalApp: data.avgApprovalTime || 0,
+      intervalRej: data.avgRejectTime || 0,
       heQty: 0,
       heAmount: '-',
       mistakeQty: 0,
@@ -487,9 +565,9 @@ useEffect(() => {
             <tbody>
               {/* LOOPING OFFICERS */}
               {officerDataList.map((officer, idx) => (
-                <>
+                <React.Fragment key={`officer-${idx}`}>
                   {/* DEPOSIT ASPECT */}
-                  <tr key={`dep-${idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
+                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
                     <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.no}</td>
                     <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
                     <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
@@ -500,7 +578,7 @@ useEffect(() => {
                     <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.joinDate}</td>
                     <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Deposit</td>
                     
-                    {/* TIME MANAGEMENT - DATA REAL (KOSONG KALAU TIDAK ADA) */}
+                    {/* TIME MANAGEMENT - DATA REAL */}
                     <td className="text-center py-2 px-2">{officer.deposit.totalApproved || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.totalReject || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.sop1 || '-'}</td>
@@ -543,7 +621,7 @@ useEffect(() => {
                   </tr>
 
                   {/* WITHDRAWAL ASPECT */}
-                  <tr key={`wd-${idx}`} className="border-b border-[#FFD700]/10 bg-[#0B1A33]/50 hover:bg-[#FFD700]/5">
+                  <tr className="border-b border-[#FFD700]/10 bg-[#0B1A33]/50 hover:bg-[#FFD700]/5">
                     <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2"></td>
                     <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
                     <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
@@ -552,7 +630,7 @@ useEffect(() => {
                     <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
                     <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Withdrawal</td>
                     
-                    {/* TIME MANAGEMENT - DATA REAL (KOSONG KALAU TIDAK ADA) */}
+                    {/* TIME MANAGEMENT - DATA REAL */}
                     <td className="text-center py-2 px-2">{officer.withdrawal.totalApproved || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.withdrawal.totalReject || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.withdrawal.sop1 || '-'}</td>
@@ -593,58 +671,8 @@ useEffect(() => {
                     <td className="text-center py-2 px-2 font-bold text-green-400">100%</td>
                     <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.withdrawal.avg || '-'}</td>
                   </tr>
-                </>
+                </React.Fragment>
               ))}
-
-              {/* SYSTEM ROW - DEPOSIT */}
-              <tr className="border-b border-[#FFD700]/10 bg-blue-900/20">
-                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officers.length + 1}</td>
-                <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium text-blue-400">System</td>
-                <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">-</td>
-                <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">System</td>
-                <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
-                  <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">SYSTEM</span>
-                </td>
-                <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">-</td>
-                <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Deposit</td>
-                <td colSpan="31" className="text-center py-2 px-2 text-[#A7D8FF]">-</td>
-              </tr>
-
-              {/* SYSTEM ROW - WITHDRAWAL */}
-              <tr className="border-b border-[#FFD700]/10 bg-blue-900/20">
-                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Withdrawal</td>
-                <td colSpan="31" className="text-center py-2 px-2 text-[#A7D8FF]">-</td>
-              </tr>
-
-              {/* TOTAL ALL - DEPOSIT */}
-              <tr className="border-t-2 border-[#FFD700]/30 font-bold bg-[#1A2F4A]/80">
-                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officers.length + 2}</td>
-                <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">TOTAL ALL</td>
-                <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
-                <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
-                <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
-                <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
-                <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">Deposit</td>
-                <td colSpan="31" className="text-center py-2 px-2 text-[#FFD700]">{totalDepositApproved}</td>
-              </tr>
-
-              {/* TOTAL ALL - WITHDRAWAL */}
-              <tr className="border-b border-[#FFD700]/10 font-bold bg-[#1A2F4A]/80">
-                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-                <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">Withdrawal</td>
-                <td colSpan="31" className="text-center py-2 px-2 text-[#FFD700]">{totalWithdrawalApproved}</td>
-              </tr>
             </tbody>
           </table>
         </div>
