@@ -60,20 +60,20 @@ export default function SummaryKPIDataPage() {
         const grouped = {};
         
         data.forEach(tx => {
-          const creator = tx.creator || 'system';
-          
-          if (!grouped[creator]) {
-            grouped[creator] = {
-              totalApproved: 0,
-              totalReject: 0,
-              totalSOP: 0,
-              totalManual: 0,
-              totalDuration: 0,
-              approvedCount: 0,
-              rejectCount: 0,
-              rejectDuration: 0
-            };
-          }
+  const handler = tx.handler || 'system';  // ← GANTI INI
+  
+  if (!grouped[handler]) {  // ← GANTI INI
+    grouped[handler] = {
+      totalApproved: 0,
+      totalReject: 0,
+      totalSOP: 0,
+      totalManual: 0,
+      totalDuration: 0,
+      approvedCount: 0,
+      rejectCount: 0,
+      rejectDuration: 0
+    };
+  }
           
           // Hitung berdasarkan status
           if (tx.status === 'Approved') {
@@ -139,20 +139,20 @@ export default function SummaryKPIDataPage() {
         const grouped = {};
         
         data.forEach(tx => {
-          const creator = tx.creator || 'system';
-          
-          if (!grouped[creator]) {
-            grouped[creator] = {
-              totalApproved: 0,
-              totalReject: 0,
-              totalSOP: 0,
-              totalManual: 0,
-              totalDuration: 0,
-              approvedCount: 0,
-              rejectCount: 0,
-              rejectDuration: 0
-            };
-          }
+  const handler = tx.handler || 'system';  // ← GANTI INI
+  
+  if (!grouped[handler]) {  // ← GANTI INI
+    grouped[handler] = {
+      totalApproved: 0,
+      totalReject: 0,
+      totalSOP: 0,
+      totalManual: 0,
+      totalDuration: 0,
+      approvedCount: 0,
+      rejectCount: 0,
+      rejectDuration: 0
+    };
+  }
           
           if (tx.status === 'Approved') {
             grouped[creator].totalApproved++;
@@ -203,17 +203,31 @@ export default function SummaryKPIDataPage() {
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
   // ===========================================
   const getDepositDataForOfficer = (officer) => {
-    const username = officer.username || officer.panel_id?.toLowerCase() || '';
-    const data = depositData[username] || depositData[officer.full_name] || {};
-    
-    return {
-      totalApproved: data.totalApproved || 0,
-      totalReject: data.totalReject || 0,
-      sop1: data.totalSOP || 0,
-      sopPercent1: data.sopPercentage || 0,
-      nonSop1: data.totalManual || 0,
-      intervalApp: data.avgApprovalTime || 0,
-      intervalRej: data.avgRejectTime || 0,
+  // Coba cocokkan dengan berbagai kemungkinan format handler
+  const handlerVariants = [
+    officer.panel_id?.toLowerCase(),           // 'zakiyxops'
+    officer.panel_id,                           // 'zakiyxops' (original)
+    officer.username?.toLowerCase(),
+    officer.full_name?.toLowerCase()
+  ].filter(Boolean);
+  
+  // Cari data yang cocok
+  let data = {};
+  for (const variant of handlerVariants) {
+    if (depositData[variant]) {
+      data = depositData[variant];
+      break;
+    }
+  }
+  
+  return {
+    totalApproved: data.totalApproved || 0,
+    totalReject: data.totalReject || 0,
+    sop1: data.totalSOP || 0,
+    sopPercent1: data.sopPercentage || 0,
+    nonSop1: data.totalManual || 0,
+    intervalApp: data.avgApprovalTime || 0,
+    intervalRej: data.avgRejectTime || 0,
       // Data dummy untuk kolom lain (tetap pakai dummy karena belum ada)
       heQty: 0,
       heAmount: '-',
@@ -238,17 +252,31 @@ export default function SummaryKPIDataPage() {
   };
 
   const getWithdrawalDataForOfficer = (officer) => {
-    const username = officer.username || officer.panel_id?.toLowerCase() || '';
-    const data = withdrawalData[username] || withdrawalData[officer.full_name] || {};
-    
-    return {
-      totalApproved: data.totalApproved || 0,
-      totalReject: data.totalReject || 0,
-      sop1: data.totalSOP || 0,
-      sopPercent1: data.sopPercentage || 0,
-      nonSop1: data.totalManual || 0,
-      intervalApp: data.avgApprovalTime || 0,
-      intervalRej: data.avgRejectTime || 0,
+  // SAMA PERSIS: Coba cocokkan dengan berbagai kemungkinan format handler
+  const handlerVariants = [
+    officer.panel_id?.toLowerCase(),           // 'zakiyxops'
+    officer.panel_id,                           // 'zakiyxops' (original)
+    officer.username?.toLowerCase(),
+    officer.full_name?.toLowerCase()
+  ].filter(Boolean);
+  
+  // Cari data yang cocok
+  let data = {};
+  for (const variant of handlerVariants) {
+    if (withdrawalData[variant]) {
+      data = withdrawalData[variant];
+      break;
+    }
+  }
+  
+  return {
+    totalApproved: data.totalApproved || 0,
+    totalReject: data.totalReject || 0,
+    sop1: data.totalSOP || 0,
+    sopPercent1: data.sopPercentage || 0,
+    nonSop1: data.totalManual || 0,
+    intervalApp: data.avgApprovalTime || 0,
+    intervalRej: data.avgRejectTime || 0,
       // Data dummy
       heQty: 0,
       heAmount: '-',
