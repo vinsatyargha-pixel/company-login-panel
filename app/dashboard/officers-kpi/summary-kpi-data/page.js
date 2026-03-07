@@ -4,6 +4,20 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
+// ===========================================
+// HELPER: Convert minutes to HH:MM:SS
+// ===========================================
+const formatTime = (minutes) => {
+  if (!minutes || minutes === 0 || minutes === '0') return '-';
+  
+  const totalSeconds = Math.floor(parseFloat(minutes) * 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
 export default function SummaryKPIDataPage() {
   const [tahun, setTahun] = useState('2026');
   const [periode, setPeriode] = useState('Jan - Jun');
@@ -125,8 +139,8 @@ export default function SummaryKPIDataPage() {
         // Hitung rata-rata dan persentase
         Object.keys(grouped).forEach(key => {
           const g = grouped[key];
-          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
-          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount) : 0;
+          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount) : 0;
           g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
         });
         
@@ -203,8 +217,8 @@ export default function SummaryKPIDataPage() {
         
         Object.keys(grouped).forEach(key => {
           const g = grouped[key];
-          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
-          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount) : 0;
+          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount) : 0;
           g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
         });
         
@@ -518,14 +532,14 @@ export default function SummaryKPIDataPage() {
                 <th className="sticky left-[470px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
                 <th className="sticky left-[560px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DIVISI</th>
                 
-                {/* TIME MANAGEMENT - 7 KOLOM (BARU) */}
+                {/* TIME MANAGEMENT - 7 KOLOM */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Total App</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Total Rej</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">SOP</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">SOP % (P1)</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Non SOP</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Interval App</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Interval Rej</th>
                 
                 {/* HUMAN ERROR (6 kolom) */}
                 <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
@@ -580,8 +594,8 @@ export default function SummaryKPIDataPage() {
                     <td className="text-center py-2 px-2">{officer.deposit.sop || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.sopPercent ? `${officer.deposit.sopPercent}%` : '-'}</td>
                     <td className="text-center py-2 px-2">{officer.deposit.nonSop || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.intervalApp || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.intervalRej || '-'}</td>
+                    <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.deposit.intervalApp)}</td>
+                    <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.deposit.intervalRej)}</td>
                     
                     {/* HUMAN ERROR - TETAP DUMMY */}
                     <td className="text-center py-2 px-2">0</td>
@@ -629,8 +643,8 @@ export default function SummaryKPIDataPage() {
                     <td className="text-center py-2 px-2">{officer.withdrawal.sop || '-'}</td>
                     <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent ? `${officer.withdrawal.sopPercent}%` : '-'}</td>
                     <td className="text-center py-2 px-2">{officer.withdrawal.nonSop || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.intervalApp || '-'}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.intervalRej || '-'}</td>
+                    <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.withdrawal.intervalApp)}</td>
+                    <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.withdrawal.intervalRej)}</td>
                     
                     {/* HUMAN ERROR - TETAP DUMMY */}
                     <td className="text-center py-2 px-2">0</td>
@@ -783,7 +797,7 @@ export default function SummaryKPIDataPage() {
         <p>KPI Summary • Data officers diambil dari database ({officers.length} officers CS DP WD) • Periode {periode} {tahun}</p>
         <p className="mt-1">P1: Time Management | P2: Human Error | P3: Problem Solving | P4: Follow SOP | P5: Chat Achievement | P6: Attendance & Attitude</p>
         <p className="mt-1 text-green-400">✓ Time Management sudah menggunakan data real dari transaksi deposit & withdrawal (7 kolom)</p>
-        <p className="mt-1 text-yellow-400">✓ Jika tidak ada data, tampilkan tanda "-" (strip)</p>
+        <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
       </div>
     </div>
   );
