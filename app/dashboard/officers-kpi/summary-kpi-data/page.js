@@ -42,85 +42,85 @@ export default function SummaryKPIDataPage() {
   }, []);
 
   // ===========================================
-  // FETCH DEPOSIT TRANSACTIONS (DATA REAL)
-  // ===========================================
-  useEffect(() => {
-    const fetchDepositTransactions = async () => {
-      try {
-        // Ambil semua data deposit untuk periode tertentu
-        const { data, error } = await supabase
-          .from('deposit_transactions')
-          .select('*')
-          .gte('requested_date', `${tahun}-01-01`) // Filter tahun
-          .lte('requested_date', `${tahun}-12-31`);
+// FETCH DEPOSIT TRANSACTIONS (DATA REAL)
+// ===========================================
+useEffect(() => {
+  const fetchDepositTransactions = async () => {
+    try {
+      // Ambil semua data deposit untuk periode tertentu
+      const { data, error } = await supabase
+        .from('deposit_transactions')
+        .select('*')
+        .gte('requested_date', `${tahun}-01-01`)
+        .lte('requested_date', `${tahun}-12-31`);
 
-        if (error) throw error;
+      if (error) throw error;
 
-        // Group by creator (officer username)
-        const grouped = {};
+      // Group by handler (officer username)
+      const grouped = {};
+      
+      data.forEach(tx => {
+        const handler = tx.handler || 'system';  // ✅ GANTI: creator → handler
         
-        data.forEach(tx => {
-  const handler = tx.handler || 'system';  // ← GANTI INI
-  
-  if (!grouped[handler]) {  // ← GANTI INI
-    grouped[handler] = {
-      totalApproved: 0,
-      totalReject: 0,
-      totalSOP: 0,
-      totalManual: 0,
-      totalDuration: 0,
-      approvedCount: 0,
-      rejectCount: 0,
-      rejectDuration: 0
-    };
-  }
+        if (!grouped[handler]) {  // ✅ GANTI: creator → handler
+          grouped[handler] = {
+            totalApproved: 0,
+            totalReject: 0,
+            totalSOP: 0,
+            totalManual: 0,
+            totalDuration: 0,
+            approvedCount: 0,
+            rejectCount: 0,
+            rejectDuration: 0
+          };
+        }
+        
+        // Hitung berdasarkan status
+        if (tx.status === 'Approved') {
+          grouped[handler].totalApproved++;  // ✅ GANTI
+          grouped[handler].approvedCount++;   // ✅ GANTI
           
-          // Hitung berdasarkan status
-          if (tx.status === 'Approved') {
-            grouped[creator].totalApproved++;
-            grouped[creator].approvedCount++;
-            
-            // Cek apakah Auto Approved (SOP)
-            if (tx.remarks && tx.remarks.includes('Auto Approved')) {
-              grouped[creator].totalSOP++;
-            } else {
-              grouped[creator].totalManual++;
-            }
-            
-            // Hitung durasi
-            if (tx.duration_minutes) {
-              grouped[creator].totalDuration += parseFloat(tx.duration_minutes);
-            }
-          } 
-          else if (tx.status === 'Rejected' || tx.status === 'Fail') {
-            grouped[creator].totalReject++;
-            grouped[creator].rejectCount++;
-            
-            if (tx.duration_minutes) {
-              grouped[creator].rejectDuration += parseFloat(tx.duration_minutes);
-            }
+          // Cek apakah Auto Approved (SOP)
+          if (tx.remarks && tx.remarks.includes('Auto Approved')) {
+            grouped[handler].totalSOP++;  // ✅ GANTI
+          } else {
+            grouped[handler].totalManual++;  // ✅ GANTI
           }
-        });
-        
-        // Hitung rata-rata
-        Object.keys(grouped).forEach(key => {
-          const g = grouped[key];
-          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
-          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
-          g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
-        });
-        
-        setDepositData(grouped);
-        
-      } catch (error) {
-        console.error('Error fetching deposit transactions:', error);
-      }
-    };
-
-    if (tahun) {
-      fetchDepositTransactions();
+          
+          // Hitung durasi
+          if (tx.duration_minutes) {
+            grouped[handler].totalDuration += parseFloat(tx.duration_minutes);  // ✅ GANTI
+          }
+        } 
+        else if (tx.status === 'Rejected' || tx.status === 'Fail') {
+          grouped[handler].totalReject++;  // ✅ GANTI
+          grouped[handler].rejectCount++;   // ✅ GANTI
+          
+          if (tx.duration_minutes) {
+            grouped[handler].rejectDuration += parseFloat(tx.duration_minutes);  // ✅ GANTI
+          }
+        }
+      });
+      
+      // Hitung rata-rata
+      Object.keys(grouped).forEach(key => {
+        const g = grouped[key];
+        g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
+        g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+        g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
+      });
+      
+      setDepositData(grouped);
+      
+    } catch (error) {
+      console.error('Error fetching deposit transactions:', error);
     }
-  }, [tahun]);
+  };
+
+  if (tahun) {
+    fetchDepositTransactions();
+  }
+}, [tahun]);
 
   // ===========================================
   // FETCH WITHDRAWAL TRANSACTIONS (DATA REAL)
