@@ -9,6 +9,10 @@ export default function SummaryKPIDataPage() {
   const [periode, setPeriode] = useState('Jan - Jun');
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // State untuk menyimpan data transaksi
+  const [depositData, setDepositData] = useState({});
+  const [withdrawalData, setWithdrawalData] = useState({});
 
   // ===========================================
   // FETCH OFFICERS CS DP WD
@@ -31,8 +35,6 @@ export default function SummaryKPIDataPage() {
       } catch (error) {
         console.error('Error fetching officers:', error);
         setOfficers([]);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -40,27 +42,243 @@ export default function SummaryKPIDataPage() {
   }, []);
 
   // ===========================================
-  // GENERATE DATA DUMMY
+  // FETCH DEPOSIT TRANSACTIONS (DATA REAL)
   // ===========================================
-  const generateDummyData = (officer, index) => {
-    const baseNo = index + 1;
-    
-    // Deposit Data
-    const depositTotal = Math.floor(Math.random() * 50) + 100;
-    const depositReject = Math.floor(Math.random() * 5);
-    const depositSOP = Math.floor(Math.random() * 15) + 80;
-    
-    // Withdrawal Data
-    const withdrawalTotal = Math.floor(Math.random() * 40) + 80;
-    const withdrawalReject = Math.floor(Math.random() * 4);
-    const withdrawalSOP = Math.floor(Math.random() * 15) + 75;
-    
-    // CS Data
-    const totalChat = Math.floor(Math.random() * 100) + 100;
-    const missedChat = Math.floor(Math.random() * 5);
+  useEffect(() => {
+    const fetchDepositTransactions = async () => {
+      try {
+        // Ambil semua data deposit untuk periode tertentu
+        const { data, error } = await supabase
+          .from('deposit_transactions')
+          .select('*')
+          .gte('requested_date', `${tahun}-01-01`) // Filter tahun
+          .lte('requested_date', `${tahun}-12-31`);
+
+        if (error) throw error;
+
+        // Group by creator (officer username)
+        const grouped = {};
+        
+        data.forEach(tx => {
+          const creator = tx.creator || 'system';
+          
+          if (!grouped[creator]) {
+            grouped[creator] = {
+              totalApproved: 0,
+              totalReject: 0,
+              totalSOP: 0,
+              totalManual: 0,
+              totalDuration: 0,
+              approvedCount: 0,
+              rejectCount: 0,
+              rejectDuration: 0
+            };
+          }
+          
+          // Hitung berdasarkan status
+          if (tx.status === 'Approved') {
+            grouped[creator].totalApproved++;
+            grouped[creator].approvedCount++;
+            
+            // Cek apakah Auto Approved (SOP)
+            if (tx.remarks && tx.remarks.includes('Auto Approved')) {
+              grouped[creator].totalSOP++;
+            } else {
+              grouped[creator].totalManual++;
+            }
+            
+            // Hitung durasi
+            if (tx.duration_minutes) {
+              grouped[creator].totalDuration += parseFloat(tx.duration_minutes);
+            }
+          } 
+          else if (tx.status === 'Rejected' || tx.status === 'Fail') {
+            grouped[creator].totalReject++;
+            grouped[creator].rejectCount++;
+            
+            if (tx.duration_minutes) {
+              grouped[creator].rejectDuration += parseFloat(tx.duration_minutes);
+            }
+          }
+        });
+        
+        // Hitung rata-rata
+        Object.keys(grouped).forEach(key => {
+          const g = grouped[key];
+          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
+          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+          g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
+        });
+        
+        setDepositData(grouped);
+        
+      } catch (error) {
+        console.error('Error fetching deposit transactions:', error);
+      }
+    };
+
+    if (tahun) {
+      fetchDepositTransactions();
+    }
+  }, [tahun]);
+
+  // ===========================================
+  // FETCH WITHDRAWAL TRANSACTIONS (DATA REAL)
+  // ===========================================
+  useEffect(() => {
+    const fetchWithdrawalTransactions = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('withdrawal_transactions')
+          .select('*')
+          .gte('requested_date', `${tahun}-01-01`)
+          .lte('requested_date', `${tahun}-12-31`);
+
+        if (error) throw error;
+
+        const grouped = {};
+        
+        data.forEach(tx => {
+          const creator = tx.creator || 'system';
+          
+          if (!grouped[creator]) {
+            grouped[creator] = {
+              totalApproved: 0,
+              totalReject: 0,
+              totalSOP: 0,
+              totalManual: 0,
+              totalDuration: 0,
+              approvedCount: 0,
+              rejectCount: 0,
+              rejectDuration: 0
+            };
+          }
+          
+          if (tx.status === 'Approved') {
+            grouped[creator].totalApproved++;
+            grouped[creator].approvedCount++;
+            
+            if (tx.remarks && tx.remarks.includes('Auto Approve')) {
+              grouped[creator].totalSOP++;
+            } else {
+              grouped[creator].totalManual++;
+            }
+            
+            if (tx.duration_minutes) {
+              grouped[creator].totalDuration += parseFloat(tx.duration_minutes);
+            }
+          } 
+          else if (tx.status === 'Rejected') {
+            grouped[creator].totalReject++;
+            grouped[creator].rejectCount++;
+            
+            if (tx.duration_minutes) {
+              grouped[creator].rejectDuration += parseFloat(tx.duration_minutes);
+            }
+          }
+        });
+        
+        Object.keys(grouped).forEach(key => {
+          const g = grouped[key];
+          g.avgApprovalTime = g.approvedCount > 0 ? (g.totalDuration / g.approvedCount).toFixed(1) : 0;
+          g.avgRejectTime = g.rejectCount > 0 ? (g.rejectDuration / g.rejectCount).toFixed(1) : 0;
+          g.sopPercentage = g.totalApproved > 0 ? Math.round((g.totalSOP / g.totalApproved) * 100) : 0;
+        });
+        
+        setWithdrawalData(grouped);
+        
+      } catch (error) {
+        console.error('Error fetching withdrawal transactions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (tahun) {
+      fetchWithdrawalTransactions();
+    }
+  }, [tahun]);
+
+  // ===========================================
+  // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
+  // ===========================================
+  const getDepositDataForOfficer = (officer) => {
+    const username = officer.username || officer.panel_id?.toLowerCase() || '';
+    const data = depositData[username] || depositData[officer.full_name] || {};
     
     return {
-      no: baseNo,
+      totalApproved: data.totalApproved || 0,
+      totalReject: data.totalReject || 0,
+      sop1: data.totalSOP || 0,
+      sopPercent1: data.sopPercentage || 0,
+      nonSop1: data.totalManual || 0,
+      intervalApp: data.avgApprovalTime || 0,
+      intervalRej: data.avgRejectTime || 0,
+      // Data dummy untuk kolom lain (tetap pakai dummy karena belum ada)
+      heQty: 0,
+      heAmount: '-',
+      mistakeQty: 0,
+      mistakeAmount: '-',
+      blockBank: 0,
+      crossBankQty: 0,
+      crossBankAmount: '-',
+      crossAssetQty: 0,
+      crossAssetAmount: '-',
+      bukuDosa: 0,
+      sp1: 0,
+      sp2: 0,
+      sus: 0,
+      totalPoin4: 100,
+      p1: data.sopPercentage || 0,
+      p2: 100,
+      p3: 100,
+      p4: 100,
+      avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
+    };
+  };
+
+  const getWithdrawalDataForOfficer = (officer) => {
+    const username = officer.username || officer.panel_id?.toLowerCase() || '';
+    const data = withdrawalData[username] || withdrawalData[officer.full_name] || {};
+    
+    return {
+      totalApproved: data.totalApproved || 0,
+      totalReject: data.totalReject || 0,
+      sop1: data.totalSOP || 0,
+      sopPercent1: data.sopPercentage || 0,
+      nonSop1: data.totalManual || 0,
+      intervalApp: data.avgApprovalTime || 0,
+      intervalRej: data.avgRejectTime || 0,
+      // Data dummy
+      heQty: 0,
+      heAmount: '-',
+      mistakeQty: 0,
+      mistakeAmount: '-',
+      blockBank: 0,
+      crossBankQty: 0,
+      crossBankAmount: '-',
+      crossAssetQty: 0,
+      crossAssetAmount: '-',
+      bukuDosa: 0,
+      sp1: 0,
+      sp2: 0,
+      sus: 0,
+      totalPoin4: 100,
+      p1: data.sopPercentage || 0,
+      p2: 100,
+      p3: 100,
+      p4: 100,
+      avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
+    };
+  };
+
+  // Generate data dengan campuran real + dummy (untuk kolom lain)
+  const officerDataList = officers.map((officer, index) => {
+    const depositReal = getDepositDataForOfficer(officer);
+    const withdrawalReal = getWithdrawalDataForOfficer(officer);
+    
+    return {
+      no: index + 1,
       name: officer.full_name || 'Unknown',
       panelId: officer.panel_id || '-',
       dept: officer.department || 'CS DP WD',
@@ -69,101 +287,54 @@ export default function SummaryKPIDataPage() {
       
       deposit: {
         divisi: 'Deposit Aspect',
-        totalApproved: depositTotal,
-        totalReject: depositReject,
-        sop1: depositTotal,
-        sopPercent1: depositSOP,
-        nonSop1: depositReject,
-        sop2: depositTotal,
-        sopPercent2: depositSOP,
-        nonSop2: depositReject,
-        intervalApp: Math.floor(Math.random() * 4) + 1,
-        intervalRej: Math.floor(Math.random() * 2),
-        heQty: Math.random() > 0.7 ? 1 : 0,
-        heAmount: Math.random() > 0.7 ? '500K' : '-',
-        mistakeQty: Math.random() > 0.8 ? 1 : 0,
-        mistakeAmount: Math.random() > 0.8 ? '250K' : '-',
-        blockBank: 0,
-        crossBankQty: Math.random() > 0.6 ? 1 : 0,
-        crossBankAmount: Math.random() > 0.6 ? '500K' : '-',
-        crossAssetQty: Math.random() > 0.9 ? 1 : 0,
-        crossAssetAmount: Math.random() > 0.9 ? '250K' : '-',
-        bukuDosa: 0,
-        sp1: 0,
-        sp2: 0,
-        sus: 0,
-        totalPoin4: 100,
-        p1: depositSOP,
-        p2: Math.random() > 0.3 ? 100 : 95,
-        p3: Math.random() > 0.3 ? 100 : 90,
-        p4: 100,
-        avg: Math.floor((depositSOP + 100 + 100 + 100) / 4)
+        ...depositReal,
+        sop2: depositReal.totalApproved,
+        sopPercent2: depositReal.sopPercent1,
+        nonSop2: depositReal.nonSop1,
       },
       
       withdrawal: {
         divisi: 'Withdrawal Aspect',
-        totalApproved: withdrawalTotal,
-        totalReject: withdrawalReject,
-        sop1: withdrawalTotal,
-        sopPercent1: withdrawalSOP,
-        nonSop1: withdrawalReject,
-        sop2: withdrawalTotal,
-        sopPercent2: withdrawalSOP,
-        nonSop2: withdrawalReject,
-        intervalApp: Math.floor(Math.random() * 3) + 1,
-        intervalRej: Math.floor(Math.random() * 2),
-        heQty: Math.random() > 0.8 ? 1 : 0,
-        heAmount: Math.random() > 0.8 ? '250K' : '-',
-        mistakeQty: 0,
-        mistakeAmount: '-',
-        blockBank: 0,
-        crossBankQty: Math.random() > 0.7 ? 1 : 0,
-        crossBankAmount: Math.random() > 0.7 ? '250K' : '-',
-        crossAssetQty: Math.random() > 0.9 ? 1 : 0,
-        crossAssetAmount: Math.random() > 0.9 ? '250K' : '-',
-        bukuDosa: 0,
-        sp1: 0,
-        sp2: 0,
-        sus: 0,
-        totalPoin4: 100,
-        p1: withdrawalSOP,
-        p2: Math.random() > 0.4 ? 100 : 92,
-        p3: Math.random() > 0.4 ? 100 : 88,
-        p4: 100,
-        avg: Math.floor((withdrawalSOP + 100 + 100 + 100) / 4)
+        ...withdrawalReal,
+        sop2: withdrawalReal.totalApproved,
+        sopPercent2: withdrawalReal.sopPercent1,
+        nonSop2: withdrawalReal.nonSop1,
       },
       
+      // CS Data (tetap dummy untuk sekarang)
       cs: {
-        totalChat: totalChat,
-        missedChat: missedChat,
-        timeMgmt: Math.floor(Math.random() * 15) + 80,
-        commSkill: Math.floor(Math.random() * 15) + 80,
-        problemSolving: Math.floor(Math.random() * 15) + 80,
-        s: Math.random() > 0.8 ? 1 : 0,
-        i: Math.random() > 0.9 ? 1 : 0,
+        totalChat: Math.floor(Math.random() * 50) + 80,
+        missedChat: Math.floor(Math.random() * 3),
+        timeMgmt: Math.floor(Math.random() * 10) + 85,
+        commSkill: Math.floor(Math.random() * 10) + 85,
+        problemSolving: Math.floor(Math.random() * 10) + 85,
+        s: 0,
+        i: 0,
         a: 0,
         u: 0,
-        total: totalChat,
+        total: 0,
         target: 150,
-        achieve: Math.floor((totalChat / 150) * 100),
-        p1: Math.floor((totalChat / 150) * 100),
-        p2: Math.floor(Math.random() * 15) + 80,
-        p3: Math.floor(Math.random() * 15) + 80,
-        p4: Math.floor(Math.random() * 15) + 80,
-        p5: 100,
+        achieve: 0,
+        p1: 85,
+        p2: 85,
+        p3: 85,
+        p4: 85,
+        p5: 85,
         p6: 100
       }
     };
-  };
+  });
 
-  const officerDataList = officers.map((officer, index) => generateDummyData(officer, index));
+  // Hitung total untuk footer
+  const totalDepositApproved = officerDataList.reduce((sum, o) => sum + (o.deposit.totalApproved || 0), 0);
+  const totalWithdrawalApproved = officerDataList.reduce((sum, o) => sum + (o.withdrawal.totalApproved || 0), 0);
 
   if (loading) {
     return (
       <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700] mx-auto"></div>
-          <p className="mt-4 text-[#FFD700]">Loading officers data...</p>
+          <p className="mt-4 text-[#FFD700]">Loading KPI data...</p>
         </div>
       </div>
     );
@@ -222,67 +393,67 @@ export default function SummaryKPIDataPage() {
           <table className="w-full text-xs min-w-[2200px]">
             <thead>
               {/* MAIN HEADER - BARIS 1 */}
-<tr className="border-b border-[#FFD700]/20">
-  <th colSpan="7" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
-  <th colSpan="10" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">TIME MANAGEMENT</th>
-  <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">HUMAN ERROR</th>
-  <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">PROBLEM SOLVING</th>
-  <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP / TEAMWORK</th>
-  <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE DP & WD</th>
-</tr>
+              <tr className="border-b border-[#FFD700]/20">
+                <th colSpan="7" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
+                <th colSpan="10" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">TIME MANAGEMENT</th>
+                <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">HUMAN ERROR</th>
+                <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">PROBLEM SOLVING</th>
+                <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP / TEAMWORK</th>
+                <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE DP & WD</th>
+              </tr>
 
-{/* SUB HEADER - BARIS 2 (PATOKAN LO - UDAH BENAR) */}
-<tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-  {/* STICKY COLUMNS - 7 KOLOM */}
-  <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
-  <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
-  <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
-  <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
-  <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
-  <th className="sticky left-[470px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
-  <th className="sticky left-[560px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DIVISI</th>
-  
-  {/* TIME MANAGEMENT (10 kolom) */}
-  <th className="text-center py-2 px-2 min-w-[70px]">Total App</th>
-  <th className="text-center py-2 px-2 min-w-[70px]">Total Rej</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">SOP DP</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">SOP DP% (P1)</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">Non SOP DP</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">SOP WD</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">SOP WD%</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">Non SOP WD</th>
-  <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
-  <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
-  
-  {/* HUMAN ERROR (6 kolom) */}
-  <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
-  <th className="text-center py-2 px-2 min-w-[70px]">HE Amt</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">Mistake Qty</th>
-  <th className="text-center py-2 px-2 min-w-[70px]">Mistake Amt</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P2)</th>
-  
-  {/* PROBLEM SOLVING (5 kolom) */}
-  <th className="text-center py-2 px-2 min-w-[70px]">Cross Bank Qty</th>
-  <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Amt</th>
-  <th className="text-center py-2 px-2 min-w-[70px]">Cross Asset Qty</th>
-  <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Amt</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P3)</th>
-  
-  {/* FOLLOW SOP (5 kolom) */}
-  <th className="text-center py-2 px-2 min-w-[60px]">Buku Dosa</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">SP1</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">SP2</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">SUS</th>
-  <th className="text-center py-2 px-2 min-w-[70px]">Total (P4)</th>
-  
-  {/* SUB SCORE (5 kolom) */}
-  <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">Avg</th>
-</tr>
+              {/* SUB HEADER - BARIS 2 */}
+              <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
+                {/* STICKY COLUMNS - 7 KOLOM */}
+                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
+                <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
+                <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
+                <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
+                <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
+                <th className="sticky left-[470px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
+                <th className="sticky left-[560px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DIVISI</th>
+                
+                {/* TIME MANAGEMENT (10 kolom) */}
+                <th className="text-center py-2 px-2 min-w-[70px]">Total App</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Total Rej</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP DP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP DP% (P1)</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP DP</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP WD</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">SOP WD%</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Non SOP WD</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Interval App</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Interval Rej</th>
+                
+                {/* HUMAN ERROR (6 kolom) */}
+                <th className="text-center py-2 px-2 min-w-[50px]">HE Qty</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">HE Amt</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Mistake Qty</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Mistake Amt</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Block Bank</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P2)</th>
+                
+                {/* PROBLEM SOLVING (5 kolom) */}
+                <th className="text-center py-2 px-2 min-w-[70px]">Cross Bank Qty</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Cross Bank Amt</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Cross Asset Qty</th>
+                <th className="text-center py-2 px-2 min-w-[80px]">Cross Asset Amt</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Presentase (P3)</th>
+                
+                {/* FOLLOW SOP (5 kolom) */}
+                <th className="text-center py-2 px-2 min-w-[60px]">Buku Dosa</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">SP1</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">SP2</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">SUS</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Total (P4)</th>
+                
+                {/* SUB SCORE (5 kolom) */}
+                <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">Avg</th>
+              </tr>
             </thead>
             
             <tbody>
@@ -301,48 +472,46 @@ export default function SummaryKPIDataPage() {
                     <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.joinDate}</td>
                     <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Deposit</td>
                     
-                    {/* TIME MANAGEMENT */}
-                    <td className="text-center py-2 px-2">{officer.deposit.totalApproved}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.totalReject}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sop1}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sopPercent1}%</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.nonSop1}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sop2}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sopPercent2}%</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.nonSop2}</td>
+                    {/* TIME MANAGEMENT - DATA REAL (KOSONG KALAU TIDAK ADA) */}
+                    <td className="text-center py-2 px-2">{officer.deposit.totalApproved || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.totalReject || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sop1 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sopPercent1 ? `${officer.deposit.sopPercent1}%` : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.nonSop1 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sop2 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sopPercent2 ? `${officer.deposit.sopPercent2}%` : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.nonSop2 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.intervalApp || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.intervalRej || '-'}</td>
                     
-                    {/* HUMAN ERROR */}
-                    <td className="text-center py-2 px-2">{officer.deposit.intervalApp}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.intervalRej}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.heQty}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.heAmount}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.mistakeQty}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.mistakeAmount}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.blockBank}</td>
+                    {/* HUMAN ERROR - TETAP DUMMY */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">100%</td>
                     
-                    {/* PROBLEM SOLVING */}
-                    <td className="text-center py-2 px-2">{officer.deposit.crossBankQty}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.crossBankAmount}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.crossAssetQty}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.crossAssetAmount}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.p2}%</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.p3}%</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.p2}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.p3}</td>
+                    {/* PROBLEM SOLVING - TETAP DUMMY */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">100%</td>
                     
-                    {/* FOLLOW SOP */}
-                    <td className="text-center py-2 px-2">{officer.deposit.bukuDosa}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sp1}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sp2}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.sus}</td>
-                    <td className="text-center py-2 px-2">{officer.deposit.totalPoin4}</td>
+                    {/* FOLLOW SOP - TETAP DUMMY */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">100</td>
                     
-                    {/* SUB SCORE */}
-                    <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.deposit.p1}</td>
-                    <td className="text-center py-2 px-2 font-bold text-red-400">{officer.deposit.p2}</td>
-                    <td className="text-center py-2 px-2 font-bold text-yellow-400">{officer.deposit.p3}</td>
-                    <td className="text-center py-2 px-2 font-bold text-green-400">{officer.deposit.p4}</td>
-                    <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.deposit.avg}</td>
+                    {/* SUB SCORE - P1 REAL, LAINNYA DUMMY */}
+                    <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.deposit.p1 ? `${officer.deposit.p1}%` : '-'}</td>
+                    <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-green-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.deposit.avg || '-'}</td>
                   </tr>
 
                   {/* WITHDRAWAL ASPECT */}
@@ -355,48 +524,46 @@ export default function SummaryKPIDataPage() {
                     <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
                     <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Withdrawal</td>
                     
-                    {/* TIME MANAGEMENT */}
-                    <td className="text-center py-2 px-2">{officer.withdrawal.totalApproved}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.totalReject}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sop1}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent1}%</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.nonSop1}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sop2}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent2}%</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.nonSop2}</td>
+                    {/* TIME MANAGEMENT - DATA REAL (KOSONG KALAU TIDAK ADA) */}
+                    <td className="text-center py-2 px-2">{officer.withdrawal.totalApproved || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.totalReject || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sop1 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent1 ? `${officer.withdrawal.sopPercent1}%` : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.nonSop1 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sop2 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent2 ? `${officer.withdrawal.sopPercent2}%` : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.nonSop2 || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.intervalApp || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.intervalRej || '-'}</td>
                     
-                    {/* HUMAN ERROR */}
-                    <td className="text-center py-2 px-2">{officer.withdrawal.intervalApp}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.intervalRej}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.heQty}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.heAmount}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.mistakeQty}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.mistakeAmount}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.blockBank}</td>
+                    {/* HUMAN ERROR - TETAP DUMMY */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">100%</td>
                     
-                    {/* PROBLEM SOLVING */}
-                    <td className="text-center py-2 px-2">{officer.withdrawal.crossBankQty}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.crossBankAmount}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.crossAssetQty}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.crossAssetAmount}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.p2}%</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.p3}%</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.p2}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.p3}</td>
+                    {/* PROBLEM SOLVING - TETAP DUMMY */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">100%</td>
                     
-                    {/* FOLLOW SOP */}
-                    <td className="text-center py-2 px-2">{officer.withdrawal.bukuDosa}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sp1}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sp2}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.sus}</td>
-                    <td className="text-center py-2 px-2">{officer.withdrawal.totalPoin4}</td>
+                    {/* FOLLOW SOP - TETAP DUMMY */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">100</td>
                     
-                    {/* SUB SCORE */}
-                    <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.withdrawal.p1}</td>
-                    <td className="text-center py-2 px-2 font-bold text-red-400">{officer.withdrawal.p2}</td>
-                    <td className="text-center py-2 px-2 font-bold text-yellow-400">{officer.withdrawal.p3}</td>
-                    <td className="text-center py-2 px-2 font-bold text-green-400">{officer.withdrawal.p4}</td>
-                    <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.withdrawal.avg}</td>
+                    {/* SUB SCORE - P1 REAL, LAINNYA DUMMY */}
+                    <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.withdrawal.p1 ? `${officer.withdrawal.p1}%` : '-'}</td>
+                    <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-green-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.withdrawal.avg || '-'}</td>
                   </tr>
                 </>
               ))}
@@ -436,7 +603,7 @@ export default function SummaryKPIDataPage() {
                 <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
                 <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2">-</td>
                 <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">Deposit</td>
-                <td colSpan="31" className="text-center py-2 px-2 text-[#FFD700]">822</td>
+                <td colSpan="31" className="text-center py-2 px-2 text-[#FFD700]">{totalDepositApproved}</td>
               </tr>
 
               {/* TOTAL ALL - WITHDRAWAL */}
@@ -448,7 +615,7 @@ export default function SummaryKPIDataPage() {
                 <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
                 <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
                 <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">Withdrawal</td>
-                <td colSpan="31" className="text-center py-2 px-2 text-[#FFD700]">763</td>
+                <td colSpan="31" className="text-center py-2 px-2 text-[#FFD700]">{totalWithdrawalApproved}</td>
               </tr>
             </tbody>
           </table>
@@ -463,59 +630,59 @@ export default function SummaryKPIDataPage() {
           <table className="w-full text-xs min-w-[1600px]">
             <thead>
               {/* MAIN HEADER CS */}
-<tr className="border-b border-[#FFD700]/20">
-  <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
-  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
-  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Poin 2</th>
-  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Poin 3</th>
-  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">Poin 4</th>
-  <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Poin 5</th>
-  <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-orange-500/10">Attendance & Attitude (Poin 6)</th>
-  <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-pink-500/10">SUB SCORE CS</th>
-</tr>
+              <tr className="border-b border-[#FFD700]/20">
+                <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
+                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
+                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Poin 2</th>
+                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Poin 3</th>
+                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">Poin 4</th>
+                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Poin 5</th>
+                <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-orange-500/10">Attendance & Attitude (Poin 6)</th>
+                <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-pink-500/10">SUB SCORE CS</th>
+              </tr>
               
               {/* SUB HEADER CS */}
-<tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-  {/* STICKY COLUMNS - 5 KOLOM */}
-  <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
-  <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
-  <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
-  <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
-  <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
-  
-  {/* Poin 1 */}
-  <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
-  
-  {/* Poin 2 */}
-  <th className="text-center py-2 px-2 min-w-[60px]">Missed Chat</th>
-  
-  {/* Poin 3 */}
-  <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
-  
-  {/* Poin 4 */}
-  <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
-  
-  {/* Poin 5 */}
-  <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
-  
-  {/* Poin 6 - Attendance & Attitude (8 kolom) */}
-  <th className="text-center py-2 px-2 min-w-[40px]">S</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">I</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">A</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">U</th>
-  <th className="text-center py-2 px-2 min-w-[50px]">Total</th>
-  <th className="text-center py-2 px-2 min-w-[50px]">Target</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">Achieve</th>
-  <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
-  
-  {/* SUB SCORE CS (6 kolom) */}
-  <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">P5</th>
-  <th className="text-center py-2 px-2 min-w-[40px]">P6</th>
-</tr>
+              <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
+                {/* STICKY COLUMNS - 5 KOLOM */}
+                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
+                <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
+                <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
+                <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
+                <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
+                
+                {/* Poin 1 */}
+                <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
+                
+                {/* Poin 2 */}
+                <th className="text-center py-2 px-2 min-w-[60px]">Missed Chat</th>
+                
+                {/* Poin 3 */}
+                <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
+                
+                {/* Poin 4 */}
+                <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
+                
+                {/* Poin 5 */}
+                <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
+                
+                {/* Poin 6 - Attendance & Attitude (8 kolom) */}
+                <th className="text-center py-2 px-2 min-w-[40px]">S</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">I</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">A</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">U</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">Total</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">Target</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Achieve</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
+                
+                {/* SUB SCORE CS (6 kolom) */}
+                <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P5</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P6</th>
+              </tr>
             </thead>
             <tbody>
               {officerDataList.map((officer, idx) => (
@@ -533,7 +700,6 @@ export default function SummaryKPIDataPage() {
                   <td className="text-center py-2 px-2">{officer.cs.timeMgmt}%</td>
                   <td className="text-center py-2 px-2">{officer.cs.commSkill}%</td>
                   <td className="text-center py-2 px-2">{officer.cs.problemSolving}%</td>
-                  <td className="text-center py-2 px-2">100%</td>
                   <td className="text-center py-2 px-2">{officer.cs.s}</td>
                   <td className="text-center py-2 px-2">{officer.cs.i}</td>
                   <td className="text-center py-2 px-2">{officer.cs.a}</td>
@@ -541,12 +707,12 @@ export default function SummaryKPIDataPage() {
                   <td className="text-center py-2 px-2">{officer.cs.total}</td>
                   <td className="text-center py-2 px-2">{officer.cs.target}</td>
                   <td className="text-center py-2 px-2">{officer.cs.achieve}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.cs.p1}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-green-400">{officer.cs.p2}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-yellow-400">{officer.cs.p3}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-purple-400">{officer.cs.p4}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-red-400">{officer.cs.p5}%</td>
-                  <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.cs.p6}%</td>
+                  <td className="text-center py-2 px-2">{officer.cs.p1}%</td>
+                  <td className="text-center py-2 px-2">{officer.cs.p2}%</td>
+                  <td className="text-center py-2 px-2">{officer.cs.p3}%</td>
+                  <td className="text-center py-2 px-2">{officer.cs.p4}%</td>
+                  <td className="text-center py-2 px-2">{officer.cs.p5}%</td>
+                  <td className="text-center py-2 px-2">{officer.cs.p6}%</td>
                 </tr>
               ))}
               
@@ -570,6 +736,8 @@ export default function SummaryKPIDataPage() {
       <div className="text-xs text-[#A7D8FF]/30 text-center mt-8">
         <p>KPI Summary • Data officers diambil dari database ({officers.length} officers CS DP WD) • Periode {periode} {tahun}</p>
         <p className="mt-1">P1: Time Management | P2: Human Error | P3: Problem Solving | P4: Follow SOP | P5: Chat Achievement | P6: Attendance & Attitude</p>
+        <p className="mt-1 text-green-400">✓ Time Management sudah menggunakan data real dari transaksi deposit & withdrawal</p>
+        <p className="mt-1 text-yellow-400">✓ Jika tidak ada data, tampilkan tanda "-" (strip)</p>
       </div>
     </div>
   );
