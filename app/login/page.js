@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   // ⭐⭐⭐ UPDATE HANDLE LOGIN ⭐⭐⭐
-  const handleLogin = async (e) => {
+const handleLogin = async (e) => {
   e.preventDefault();
   setIsLoading(true);
   setError("");
@@ -21,12 +21,12 @@ export default function LoginPage() {
   try {
     let loginEmail = email; // Default pake input
 
-    // ✅ TAMBAHIN INI - CEK APAKAH INPUT PANEL ID
+    // ✅ CEK APAKAH INPUT PANEL ID (TIDAK PADA EMAIL)
     if (!email.includes('@')) {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('email')
-        .eq('username', email.trim())  // Cari berdasarkan username
+        .ilike('username', email.trim())  // 🔥 GANTI .eq() JADI .ilike() (case insensitive)
         .maybeSingle();
 
       if (userError || !userData) {
