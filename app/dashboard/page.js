@@ -133,24 +133,20 @@ export default function DashboardContent() {
   // FUNGSI MAPPING ASSET (NAMA PANJANG -> SINGKATAN)
   // ===========================================
   const getAssetCode = (assetName) => {
-    if (!assetName) return 'XLY';
-    
-    // Mapping asset name to code
-    const assetMap = {
-      'LUCKY77': 'XLY',
-      'LUCKY 77': 'XLY',
-      'LUCKY': 'XLY',
-    };
-    
-    const upperName = assetName.toUpperCase();
-    for (const [key, value] of Object.entries(assetMap)) {
-      if (upperName.includes(key.toUpperCase())) {
-        return value;
-      }
-    }
-    
-    return assetName;
+  if (!assetName) return 'XLY';
+  const assetMap = {
+    'LUCKY77': 'XLY',
+    'LUCKY 77': 'XLY',
+    'LUCKY': 'XLY',
   };
+  const upperName = assetName.toUpperCase();
+  for (const [key, value] of Object.entries(assetMap)) {
+    if (upperName.includes(key.toUpperCase())) {
+      return value;
+    }
+  }
+  return 'XLY'; // default XLY
+};
 
   // ===========================================
   // FETCH OFFICER PIE DATA (HUMAN VS SYSTEM)
