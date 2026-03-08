@@ -51,6 +51,7 @@ type DepositTransaction = {
   creator: string | null
   website: string
   file_name: string
+  duration_minutes: number | null  // <-- TAMBAHIN TYPE!
 }
 
 // ===========================================
@@ -124,7 +125,7 @@ export default function DPDataRawPage() {
     setSelectedMonth(months[today.getMonth()])
     setSelectedYear(today.getFullYear().toString())
     fetchAssets()
-    setSessionVariable() // <-- TAMBAHAN: SET SESSION SAAT LOAD
+    setSessionVariable()
   }, [])
 
   useEffect(() => {
@@ -160,7 +161,6 @@ export default function DPDataRawPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      // Ambil dari deposit_uploads
       let query = supabase
         .from('deposit_uploads')
         .select('*')
@@ -229,7 +229,6 @@ export default function DPDataRawPage() {
     if (!value) return null
 
     try {
-      // Handle Excel serial number
       if (typeof value === 'number') {
         const date = XLSX.SSF.parse_date_code(value)
         if (!date) return null
@@ -239,7 +238,6 @@ export default function DPDataRawPage() {
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
 
-      // Handle string format: "01-Mar-2026 17:13:47"
       const str = value.toString().trim()
       const cleanStr = str.split(',')[0].split('Platform')[0].trim()
       const parts = cleanStr.split(' ')
@@ -351,7 +349,7 @@ export default function DPDataRawPage() {
       
       // Transform data
       const validTransactions: DepositTransaction[] = []
-      const transactionDates = new Set<string>() // Untuk tracking tanggal unik
+      const transactionDates = new Set<string>()
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
@@ -369,7 +367,17 @@ export default function DPDataRawPage() {
         
         // PARSE TANGGAL
         const approvedDate = parseExcelDate(row[idx.approved])
+        const requestedDate = parseExcelDate(row[idx.requested])
+        
         if (!approvedDate) continue
+        
+        // 🔥 HITUNG DURATION_MINUTES
+        let durationMinutes = null
+        if (approvedDate && requestedDate) {
+          const diffMs = new Date(approvedDate).getTime() - new Date(requestedDate).getTime()
+          durationMinutes = diffMs / (1000 * 60)
+          console.log(`⏱️ Durasi: ${durationMinutes} menit`)
+        }
         
         // Ambil tanggal saja (YYYY-MM-DD) untuk tracking
         const dateOnly = approvedDate.split(' ')[0]
@@ -379,7 +387,7 @@ export default function DPDataRawPage() {
           nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
           brand: row[idx.brand] || null,
           ticket_number: row[idx.ticket] || null,
-          requested_date: parseExcelDate(row[idx.requested]),
+          requested_date: requestedDate,
           approved_date: approvedDate,
           bank_statement_date: parseExcelDate(row[idx.bank]),
           user_name: row[idx.userName] || null,
@@ -401,7 +409,8 @@ export default function DPDataRawPage() {
           handler_ip: row[idx.handlerIp] || null,
           creator: row[idx.creator] || null,
           website: row[idx.website] || 'XLY',
-          file_name: selectedFile.name
+          file_name: selectedFile.name,
+          duration_minutes: durationMinutes  // <-- INI YANG DITAMBAH!
         })
       }
 
@@ -424,10 +433,9 @@ export default function DPDataRawPage() {
         throw error
       }
 
-      // Insert ke deposit_uploads untuk tracking (SATU BARIS PER TANGGAL)
+      // Insert ke deposit_uploads untuk tracking
       setUploadProgress('Menyimpan tracking upload...')
       
-      // Kelompokkan transaksi per tanggal
       const transactionsByDate: { [key: string]: DepositTransaction[] } = {}
       validTransactions.forEach(t => {
         const date = t.approved_date?.split(' ')[0]
@@ -438,7 +446,6 @@ export default function DPDataRawPage() {
         transactionsByDate[date].push(t)
       })
 
-      // Insert per tanggal
       for (const [date, transactions] of Object.entries(transactionsByDate)) {
         const { error: uploadError } = await supabase
           .from('deposit_uploads')
@@ -615,7 +622,6 @@ export default function DPDataRawPage() {
               Geser file Excel ke area di bawah, atau klik untuk memilih
             </p>
             
-            {/* DRAG & DROP AREA */}
             <div
               className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer transition-colors
                 ${dragActive 
@@ -653,14 +659,12 @@ export default function DPDataRawPage() {
               )}
             </div>
             
-            {/* PROGRESS */}
             {uploadProgress && (
               <div className="mb-4 text-sm text-[#A7D8FF] text-center">
                 {uploadProgress}
               </div>
             )}
             
-            {/* ACTION BUTTONS */}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => {
