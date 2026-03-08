@@ -73,8 +73,14 @@ export default function DashboardContent() {
     BCA: false, BNI: false, BRI: false, Mandiri: false, NexusPay: false, Midas: false
   });
   
+  // ===========================================
+  // SUPPORT LINES - DARI DATABASE (REALTIME)
+  // ===========================================
   const [supportLines, setSupportLines] = useState({
-    liveChat: false, whatsapp: false
+    liveChat: false,
+    telegram: false,
+    whatsapp: false,
+    line: false
   });
 
   // STATE UNTUK UPDATE
@@ -147,6 +153,63 @@ export default function DashboardContent() {
   }
   return 'XLY'; // default XLY
 };
+
+  // ===========================================
+  // FETCH SUPPORT LINES DARI DATABASE
+  // ===========================================
+  const fetchSupportLines = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('support_line_status')
+        .select('*')
+        .eq('id', 1)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        setSupportLines({
+          liveChat: data.live_chat || false,
+          telegram: data.telegram || false,
+          whatsapp: data.whatsapp || false,
+          line: data.line || false
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching support lines:', error);
+    }
+  };
+
+  // ===========================================
+  // REALTIME SUBSCRIPTION UNTUK SUPPORT LINES
+  // ===========================================
+  useEffect(() => {
+    fetchSupportLines();
+    
+    const subscription = supabase
+      .channel('support-line-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'support_line_status',
+          filter: 'id=eq.1'
+        },
+        (payload) => {
+          console.log('🔄 Support line updated:', payload.new);
+          setSupportLines({
+            liveChat: payload.new.live_chat || false,
+            telegram: payload.new.telegram || false,
+            whatsapp: payload.new.whatsapp || false,
+            line: payload.new.line || false
+          });
+        }
+      )
+      .subscribe();
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // ===========================================
   // FETCH OFFICER PIE DATA (HUMAN VS SYSTEM)
@@ -653,6 +716,34 @@ const fetchBankAccounts = async () => {
   ];
 
   // ===========================================
+  // HANDLE TOGGLE SUPPORT LINE
+  // ===========================================
+  const handleToggleSupport = async (field, value) => {
+    setUpdatingStatus(prev => ({ ...prev, support: true }));
+    
+    try {
+      const { error } = await supabase
+        .from('support_line_status')
+        .update({ 
+          [field]: value,
+          updated_at: new Date().toISOString(),
+          updated_by: user?.email || 'system'
+        })
+        .eq('id', 1);
+      
+      if (error) throw error;
+      
+      // State akan otomatis ke-update via subscription
+      
+    } catch (error) {
+      console.error('Error updating support line:', error);
+      alert('Gagal update status support line');
+    } finally {
+      setUpdatingStatus(prev => ({ ...prev, support: false }));
+    }
+  };
+
+  // ===========================================
   // USE EFFECTS
   // ===========================================
   useEffect(() => {
@@ -681,8 +772,7 @@ const fetchBankAccounts = async () => {
     const savedWithdrawal = localStorage.getItem('withdrawalMethods');
     if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
     
-    const savedSupport = localStorage.getItem('supportLines');
-    if (savedSupport) setSupportLines(JSON.parse(savedSupport));
+    // SUPPORT LINES SUDAH PAKAI DATABASE, JANGAN AMBIL DARI LOCALSTORAGE
     
     const saved = localStorage.getItem('lastReadActivity');
     if (saved) setLastReadTimestamp(saved);
@@ -692,9 +782,9 @@ const fetchBankAccounts = async () => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
       localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
-      localStorage.setItem('supportLines', JSON.stringify(supportLines));
+      // SUPPORT LINES JANGAN DISIMPAN KE LOCALSTORAGE (SUDAH VIA DB)
     }
-  }, [depositMethods, withdrawalMethods, supportLines]);
+  }, [depositMethods, withdrawalMethods]);
 
   useEffect(() => {
     if (activities.length > 0) {
@@ -741,7 +831,7 @@ const fetchBankAccounts = async () => {
   }, []);
 
   // ===========================================
-  // FUNGSI TOGGLE SERVICE
+  // FUNGSI TOGGLE SERVICE (UNTUK DEPOSIT/WITHDRAWAL)
   // ===========================================
   const handleToggleService = async (type, serviceName, newStatus) => {
     try {
@@ -751,9 +841,6 @@ const fetchBankAccounts = async () => {
       } else if (type === 'withdrawal') {
         setUpdatingStatus(prev => ({ ...prev, withdrawal: true }));
         setWithdrawalMethods(prev => ({ ...prev, [serviceName]: newStatus }));
-      } else if (type === 'support') {
-        setUpdatingStatus(prev => ({ ...prev, support: true }));
-        setSupportLines(prev => ({ ...prev, [serviceName]: newStatus }));
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -972,33 +1059,86 @@ const fetchBankAccounts = async () => {
       {/* ROW 2 - GRID 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE - REALTIME VERSION */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Service Support Line</h3>
           <div className="space-y-4">
+            {/* Live Chat */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${supportLines.liveChat ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                <span className="text-white text-sm">Live Chat (Omega)</span>
+                <span className="text-white text-sm">Live Chat (Freshchat)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-medium ${supportLines.liveChat ? 'text-green-400' : 'text-red-400'}`}>{supportLines.liveChat ? 'ON' : 'OFF'}</span>
-                <button onClick={() => handleToggleService('support', 'liveChat', !supportLines.liveChat)} disabled={updatingStatus.support}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${supportLines.liveChat ? 'bg-green-500' : 'bg-gray-600'}`}>
+                <span className={`text-xs font-medium ${supportLines.liveChat ? 'text-green-400' : 'text-red-400'}`}>
+                  {supportLines.liveChat ? 'ON' : 'OFF'}
+                </span>
+                <button 
+                  onClick={() => handleToggleSupport('live_chat', !supportLines.liveChat)} 
+                  disabled={updatingStatus.support}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${supportLines.liveChat ? 'bg-green-500' : 'bg-gray-600'}`}
+                >
                   <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${supportLines.liveChat ? 'translate-x-5' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>
+
+            {/* Telegram */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${supportLines.telegram ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                <span className="text-white text-sm">Telegram (Official)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium ${supportLines.telegram ? 'text-green-400' : 'text-red-400'}`}>
+                  {supportLines.telegram ? 'ON' : 'OFF'}
+                </span>
+                <button 
+                  onClick={() => handleToggleSupport('telegram', !supportLines.telegram)} 
+                  disabled={updatingStatus.support}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${supportLines.telegram ? 'bg-green-500' : 'bg-gray-600'}`}
+                >
+                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${supportLines.telegram ? 'translate-x-5' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* WhatsApp (opsional) */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${supportLines.whatsapp ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                <span className="text-white text-sm">Whatsapp (Official)</span>
+                <span className="text-white text-sm">WhatsApp</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`text-xs font-medium ${supportLines.whatsapp ? 'text-green-400' : 'text-red-400'}`}>{supportLines.whatsapp ? 'ON' : 'OFF'}</span>
-                <button onClick={() => handleToggleService('support', 'whatsapp', !supportLines.whatsapp)} disabled={updatingStatus.support}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${supportLines.whatsapp ? 'bg-green-500' : 'bg-gray-600'}`}>
+                <span className={`text-xs font-medium ${supportLines.whatsapp ? 'text-green-400' : 'text-red-400'}`}>
+                  {supportLines.whatsapp ? 'ON' : 'OFF'}
+                </span>
+                <button 
+                  onClick={() => handleToggleSupport('whatsapp', !supportLines.whatsapp)} 
+                  disabled={updatingStatus.support}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${supportLines.whatsapp ? 'bg-green-500' : 'bg-gray-600'}`}
+                >
                   <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${supportLines.whatsapp ? 'translate-x-5' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* LINE (opsional) */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${supportLines.line ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                <span className="text-white text-sm">LINE</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-medium ${supportLines.line ? 'text-green-400' : 'text-red-400'}`}>
+                  {supportLines.line ? 'ON' : 'OFF'}
+                </span>
+                <button 
+                  onClick={() => handleToggleSupport('line', !supportLines.line)} 
+                  disabled={updatingStatus.support}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${supportLines.line ? 'bg-green-500' : 'bg-gray-600'}`}
+                >
+                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${supportLines.line ? 'translate-x-5' : 'translate-x-1'}`} />
                 </button>
               </div>
             </div>
