@@ -519,26 +519,32 @@ export default function DashboardContent() {
   // FETCH DASHBOARD DATA
   // ===========================================
   const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      const { count: totalAssets } = await supabase
-        .from('assets')
-        .select('*', { count: 'exact' });
+    const { count: totalAssets } = await supabase
+      .from('assets')
+      .select('*', { count: 'exact', head: true });
 
-      const { count: activeOfficers } = await supabase
-        .from('officers')
-        .select('*', { count: 'exact' })
-        .or('status.eq.TRAINING,status.eq.REGULAR,status.eq.regular,status.eq.training,status.eq.active');
+    // Query lebih sederhana untuk officers
+    const { count: activeOfficers } = await supabase
+      .from('officers')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['TRAINING', 'REGULAR', 'active']); // PAKE .in() lebih simple
 
-      setDashboardData({ totalAssets: totalAssets || 0, activeOfficers: activeOfficers || 0 });
+    setDashboardData({ 
+      totalAssets: totalAssets || 0, 
+      activeOfficers: activeOfficers || 0 
+    });
 
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    // Set ke 0 kalau error
+    setDashboardData({ totalAssets: 0, activeOfficers: 0 });
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ===========================================
   // FETCH PAYMENT DATA
