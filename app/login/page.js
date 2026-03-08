@@ -14,61 +14,62 @@ export default function LoginPage() {
 
   // ⭐⭐⭐ UPDATE HANDLE LOGIN ⭐⭐⭐
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
+  e.preventDefault();
+  setIsLoading(true);
+  setError("");
 
-    try {
-      let loginEmail = email;
+  try {
+    let loginEmail = email; // Default pake input
 
-      // ⭐⭐⭐ GANTI JADI INI ⭐⭐⭐
-if (!email.includes('@')) {
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('email')
-    .eq('username', email.trim())  // ✅ PAKE username (bukan panel_id)
-    .maybeSingle();
+    // ✅ TAMBAHIN INI - CEK APAKAH INPUT PANEL ID
+    if (!email.includes('@')) {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('email')
+        .eq('username', email.trim())  // Cari berdasarkan username
+        .maybeSingle();
 
-  if (userError || !userData) {
-    throw new Error('Panel ID tidak ditemukan');
-  }
+      if (userError || !userData) {
+        throw new Error('Panel ID tidak ditemukan');
+      }
 
-  loginEmail = userData.email;
-}
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginEmail,
-        password: password.trim(),
-      });
-
-      if (error || !data.user) throw new Error(error?.message || "Login gagal");
-
-      const { data: userProfile } = await supabase
-        .from("users")
-        .select("*")
-        .eq("email", loginEmail)
-        .single();
-
-      localStorage.setItem(
-        "magni_user",
-        JSON.stringify({
-          id: data.user.id,
-          email: data.user.email,
-          panel_id: userProfile?.user_id || email,
-          role: userProfile?.role || "officer",
-          full_name: userProfile?.full_name || "",
-        })
-      );
-
-      document.cookie = `auth-token=${data.user.id}; path=/; max-age=${60 * 60 * 24}`;
-      window.location.href = "/dashboard";
-
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setIsLoading(false);
+      loginEmail = userData.email; // Dapet email buat login
     }
-  };
+
+    // Login pake email (tetap pake Supabase Auth)
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: loginEmail,
+      password: password.trim(),
+    });
+
+    if (error || !data.user) throw new Error(error?.message || "Login gagal");
+
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", loginEmail)
+      .single();
+
+    localStorage.setItem(
+      "magni_user",
+      JSON.stringify({
+        id: data.user.id,
+        email: data.user.email,
+        panel_id: userProfile?.username || email,
+        role: userProfile?.role || "officer",
+        full_name: userProfile?.full_name || "",
+      })
+    );
+
+    document.cookie = `auth-token=${data.user.id}; path=/; max-age=${60 * 60 * 24}`;
+    window.location.href = "/dashboard";
+
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // CSS (sama seperti sebelumnya, tambah style untuk icon mata)
   const addStyles = () => {
