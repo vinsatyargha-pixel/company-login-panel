@@ -50,7 +50,41 @@ type WithdrawalTransaction = {
   own_referral_code: string | null
   last_balance: number | null
   file_name: string
+  duration_minutes: number | null  // <-- TAMBAHIN TYPE!
 }
+
+// ===========================================
+// SET SESSION VARIABLE FUNCTION
+// ===========================================
+const setSessionVariable = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const username = user.email?.split('@')[0] || user.user_metadata?.username;
+      
+      if (!username) {
+        console.warn('⚠️ Username tidak ditemukan');
+        return;
+      }
+      
+      console.log('🔧 Setting session variable:', username);
+      
+      const { error } = await supabase.rpc('set_config', {
+        name: 'app.panel_id',
+        value: username,
+        bypass: false
+      });
+      
+      if (error) {
+        console.error('❌ Gagal set session:', error);
+      } else {
+        console.log('✅ Session variable set:', username);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Error set session:', err);
+  }
+};
 
 // ===========================================
 // MAIN COMPONENT
@@ -89,6 +123,7 @@ export default function WDDataRawPage() {
     setSelectedMonth(months[today.getMonth()])
     setSelectedYear(today.getFullYear().toString())
     fetchAssets()
+    setSessionVariable()  // <-- TAMBAHKAN INI!
   }, [])
 
   useEffect(() => {
@@ -116,45 +151,44 @@ export default function WDDataRawPage() {
   }
 
   const fetchUploads = async () => {
-  try {
-    setLoading(true)
-    
-    const monthIndex = months.indexOf(selectedMonth) + 1
-    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+    try {
+      setLoading(true)
+      
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-    console.log('🔍 FILTER:', { 
-      selectedMonth, 
-      selectedYear,
-      startDate, 
-      endDate 
-    })
+      console.log('🔍 FILTER:', { 
+        selectedMonth, 
+        selectedYear,
+        startDate, 
+        endDate 
+      })
 
-    // 🔥 FILTER PAKAI SUPABASE
-    const { data, error } = await supabase
-      .from('withdrawal_uploads')
-      .select('*')
-      .gte('upload_date', startDate)
-      .lte('upload_date', endDate)
-      .order('upload_date', { ascending: true })
+      const { data, error } = await supabase
+        .from('withdrawal_uploads')
+        .select('*')
+        .gte('upload_date', startDate)
+        .lte('upload_date', endDate)
+        .order('upload_date', { ascending: true })
 
-    if (error) {
-      console.error('❌ ERROR SUPABASE:', error)
-      throw error
+      if (error) {
+        console.error('❌ ERROR SUPABASE:', error)
+        throw error
+      }
+      
+      console.log('📅 DATA DITEMUKAN:', data?.length || 0, 'baris')
+      console.log('📅 ISI DATA:', data)
+      
+      setUploads(data || [])
+      
+    } catch (error) {
+      console.error('Error fetching uploads:', error)
+    } finally {
+      setLoading(false)
     }
-    
-    console.log('📅 DATA DITEMUKAN:', data?.length || 0, 'baris')
-    console.log('📅 ISI DATA:', data)
-    
-    setUploads(data || [])
-    
-  } catch (error) {
-    console.error('Error fetching uploads:', error)
-  } finally {
-    setLoading(false)
   }
-}
 
   // ===========================================
   // DRAG & DROP HANDLERS
@@ -198,7 +232,6 @@ export default function WDDataRawPage() {
     if (!value) return null
 
     try {
-      // Handle Excel serial number
       if (typeof value === 'number') {
         const date = XLSX.SSF.parse_date_code(value)
         if (!date) return null
@@ -208,7 +241,6 @@ export default function WDDataRawPage() {
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
 
-      // Handle string format
       const str = value.toString().trim()
       const cleanStr = str.split(',')[0].split('Platform')[0].trim()
       const parts = cleanStr.split(' ')
@@ -258,7 +290,6 @@ export default function WDDataRawPage() {
       
       console.log('📋 Total baris:', rows.length)
       
-      // CARI BARIS HEADER
       let headerRowIndex = -1
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
@@ -275,7 +306,6 @@ export default function WDDataRawPage() {
       const dataRows = rows.slice(headerRowIndex + 1)
       console.log('📊 Jumlah baris data:', dataRows.length)
       
-      // INDEX KOLOM TETAP
       const idx = {
         no: 0,
         brand: 1,
@@ -316,7 +346,17 @@ export default function WDDataRawPage() {
         if (row[2]?.toString().includes('GRAND TOTAL')) continue
         
         const approvedDate = parseExcelDate(row[idx.approved])
+        const requestedDate = parseExcelDate(row[idx.requested])
+        
         if (!approvedDate) continue
+        
+        // 🔥 HITUNG DURATION_MINUTES
+        let durationMinutes = null
+        if (approvedDate && requestedDate) {
+          const diffMs = new Date(approvedDate).getTime() - new Date(requestedDate).getTime()
+          durationMinutes = diffMs / (1000 * 60)
+          console.log(`⏱️ Durasi: ${durationMinutes} menit`)
+        }
         
         const dateOnly = approvedDate.split(' ')[0]
         transactionDates.add(dateOnly)
@@ -329,7 +369,7 @@ export default function WDDataRawPage() {
           player_fee_amount: parseFloat(row[idx.playerFee]) || 0,
           agent_fee_amount: parseFloat(row[idx.agentFee]) || 0,
           nett_amount: parseFloat(row[idx.nett]) || 0,
-          requested_date: parseExcelDate(row[idx.requested]),
+          requested_date: requestedDate,
           approved_date: approvedDate,
           bank_statement_date: parseExcelDate(row[idx.bank]),
           user_name: row[idx.userName] || null,
@@ -347,7 +387,8 @@ export default function WDDataRawPage() {
           referral_code: row[idx.referralCode] || null,
           own_referral_code: row[idx.ownReferralCode] || null,
           last_balance: row[idx.lastBalance] ? parseFloat(row[idx.lastBalance]) || null : null,
-          file_name: selectedFile.name
+          file_name: selectedFile.name,
+          duration_minutes: durationMinutes  // <-- INI YANG DITAMBAH!
         })
       }
 
@@ -359,14 +400,12 @@ export default function WDDataRawPage() {
 
       setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
       
-      // Insert ke withdrawal_transactions
       const { error } = await supabase
         .from('withdrawal_transactions')
         .insert(validTransactions)
 
       if (error) throw error
 
-      // Insert ke withdrawal_uploads (PER TANGGAL)
       const transactionsByDate: { [key: string]: WithdrawalTransaction[] } = {}
       validTransactions.forEach(t => {
         const date = t.approved_date?.split(' ')[0]
@@ -415,7 +454,6 @@ export default function WDDataRawPage() {
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-      {/* Header */}
       <div className="mb-6 flex justify-between items-center">
         <Link href="/dashboard/data-raw" className="text-[#FFD700] hover:underline">
           ← BACK TO DATA RAW
@@ -434,7 +472,6 @@ export default function WDDataRawPage() {
 
       <h1 className="text-3xl font-bold text-[#FFD700] mb-6">WITHDRAWAL DATA RAW</h1>
 
-      {/* FILTERS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
           className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
@@ -474,7 +511,6 @@ export default function WDDataRawPage() {
         </div>
       </div>
 
-      {/* TABLE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
@@ -486,40 +522,39 @@ export default function WDDataRawPage() {
             </tr>
           </thead>
           <tbody>
-  {uploads.length > 0 ? (
-    uploads.map((item) => {
-      const date = new Date(item.upload_date)
-      const day = date.getDate()
-      const month = months[date.getMonth()] // Ambil dari data, bukan filter
-      const year = date.getFullYear()
-      
-      return (
-        <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-          <td className="px-4 py-3">
-            {day} {month} {year}
-          </td>
-          <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-          <td className="px-4 py-3">{item.total_rows} data</td>
-          <td className="px-4 py-3">
-            <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
-              {item.status}
-            </span>
-          </td>
-        </tr>
-      )
-    })
-  ) : (
-    <tr>
-      <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
-        Tidak ada data untuk periode ini
-      </td>
-    </tr>
-  )}
-</tbody>
+            {uploads.length > 0 ? (
+              uploads.map((item) => {
+                const date = new Date(item.upload_date)
+                const day = date.getDate()
+                const month = months[date.getMonth()]
+                const year = date.getFullYear()
+                
+                return (
+                  <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                    <td className="px-4 py-3">
+                      {day} {month} {year}
+                    </td>
+                    <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                    <td className="px-4 py-3">{item.total_rows} data</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 rounded text-xs bg-green-500/20 text-green-400">
+                        {item.status}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })
+            ) : (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                  Tidak ada data untuk periode ini
+                </td>
+              </tr>
+            )}
+          </tbody>
         </table>
       </div>
 
-      {/* MODAL UPLOAD */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
