@@ -22,18 +22,18 @@ export default function LoginPage() {
       let loginEmail = email;
 
       if (!email.includes('@')) {
-        const { data: userData, error: userError } = await supabase
-          .from('users')
-          .select('email')
-          .eq('panel_id', email.trim())
-          .single();
+  const { data: userData, error: userError } = await supabase
+  .from('users')
+  .select('email')
+  .eq('panel_id', email.trim())  // ✅ PAKE panel_id (bukan employee_id)
+  .single();
 
-        if (userError || !userData) {
-          throw new Error('Panel ID tidak ditemukan');
-        }
+if (userError || !userData) {
+  throw new Error('Panel ID tidak ditemukan');
+}
 
-        loginEmail = userData.email;
-      }
+loginEmail = userData.email;
+}
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginEmail,
