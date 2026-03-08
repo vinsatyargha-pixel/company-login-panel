@@ -54,6 +54,40 @@ type DepositTransaction = {
 }
 
 // ===========================================
+// SET SESSION VARIABLE FUNCTION
+// ===========================================
+const setSessionVariable = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      // Ambil username dari email (misal: alvin@magnigroupx.com → alvin)
+      const username = user.email?.split('@')[0] || user.user_metadata?.username;
+      
+      if (!username) {
+        console.warn('⚠️ Username tidak ditemukan');
+        return;
+      }
+      
+      console.log('🔧 Setting session variable:', username);
+      
+      const { error } = await supabase.rpc('set_config', {
+        name: 'app.panel_id',
+        value: username,
+        bypass: false
+      });
+      
+      if (error) {
+        console.error('❌ Gagal set session:', error);
+      } else {
+        console.log('✅ Session variable set:', username);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Error set session:', err);
+  }
+};
+
+// ===========================================
 // MAIN COMPONENT
 // ===========================================
 
@@ -90,6 +124,7 @@ export default function DPDataRawPage() {
     setSelectedMonth(months[today.getMonth()])
     setSelectedYear(today.getFullYear().toString())
     fetchAssets()
+    setSessionVariable() // <-- TAMBAHAN: SET SESSION SAAT LOAD
   }, [])
 
   useEffect(() => {
