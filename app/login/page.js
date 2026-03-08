@@ -25,7 +25,7 @@ export default function LoginPage() {
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('email')
-          .eq('user_id', email.trim())
+          .eq('panel_id', email.trim())
           .single();
 
         if (userError || !userData) {
