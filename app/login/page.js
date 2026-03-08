@@ -21,11 +21,12 @@ export default function LoginPage() {
     try {
       let loginEmail = email;
 
-      if (!email.includes('@')) {
+      // ⭐⭐⭐ GANTI JADI INI ⭐⭐⭐
+if (!email.includes('@')) {
   const { data: userData, error: userError } = await supabase
     .from('users')
     .select('email')
-    .eq('panel_id', email.trim())  // ✅ PAKE panel_id (bukan employee_id)
+    .eq('username', email.trim())  // ✅ PAKE username (bukan panel_id)
     .maybeSingle();
 
   if (userError || !userData) {
