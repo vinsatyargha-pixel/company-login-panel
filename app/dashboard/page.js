@@ -417,33 +417,52 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FETCH BANK ACCOUNTS
-  // ===========================================
-  const fetchBankAccounts = async () => {
-    try {
-      setLoadingBanks(true);
-      const { data, error } = await supabase
-        .from('bank_accounts')
-        .select('*');
+// FETCH BANK ACCOUNTS
+// ===========================================
+const fetchBankAccounts = async () => {
+  try {
+    setLoadingBanks(true);
+    console.log('🔍 Fetching bank accounts...'); // ← TAMBAH INI
+    
+    const { data, error } = await supabase
+      .from('bank_accounts')
+      .select('*');
 
-      if (error) throw error;
-      
-      setBankAccounts(data || []);
-      
-      const activeBanks = data?.filter(b => 
-        (b.role?.toUpperCase() === 'DEPOSIT' || b.role?.toUpperCase() === 'WITHDRAW') && 
-        b.display_used === 'YES'
-      ) || [];
-      
-      const uniqueAssets = [...new Set(activeBanks.map(item => item.asset).filter(Boolean))];
-      setAssetList(uniqueAssets);
-      
-    } catch (error) {
-      console.error('Error fetching bank accounts:', error);
-    } finally {
-      setLoadingBanks(false);
+    if (error) throw error;
+    
+    console.log('✅ Bank accounts received:', data); // ← TAMBAH INI
+    console.log('📊 Jumlah bank accounts:', data?.length); // ← TAMBAH INI
+    
+    setBankAccounts(data || []);
+    
+    // BUAT GLOBAL VARIABLE (biar bisa diakses dari console)
+    if (typeof window !== 'undefined') {
+      window.__bankAccounts = data || [];
+      window.__debug = {
+        bankAccounts: data || [],
+        timestamp: new Date().toISOString()
+      };
     }
-  };
+    
+    const activeBanks = data?.filter(b => 
+      (b.role?.toUpperCase() === 'DEPOSIT' || b.role?.toUpperCase() === 'WITHDRAW') && 
+      b.display_used === 'YES'
+    ) || [];
+    
+    console.log('🏦 Active banks (DEPOSIT/WITHDRAW):', activeBanks.length); // ← TAMBAH INI
+    
+    const uniqueAssets = [...new Set(activeBanks.map(item => item.asset).filter(Boolean))];
+    setAssetList(uniqueAssets);
+    
+    console.log('🎯 Unique assets:', uniqueAssets); // ← TAMBAH INI
+    
+  } catch (error) {
+    console.error('❌ Error fetching bank accounts:', error); // ← UPDATE
+  } finally {
+    setLoadingBanks(false);
+    console.log('🏁 Fetch bank accounts completed'); // ← TAMBAH INI
+  }
+};
 
   // ===========================================
   // SYNC KE SUPABASE
@@ -680,6 +699,33 @@ export default function DashboardContent() {
     };
     window.addEventListener('activityRead', handleActivityRead);
     return () => window.removeEventListener('activityRead', handleActivityRead);
+  }, []);
+
+  // ===========================================
+  // DEBUG: Export ke window buat console
+  // ===========================================
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__bankAccounts = bankAccounts;
+      window.__debug = {
+        ...window.__debug,
+        bankAccounts: bankAccounts,
+        assetList: assetList,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }, [bankAccounts, assetList]);
+
+  // DEBUG: Manual fetch di console
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__fetchBanks = fetchBankAccounts;
+      window.__testFetch = async () => {
+        const { data } = await supabase.from('bank_accounts').select('*');
+        console.log('Manual fetch:', data);
+        return data;
+      };
+    }
   }, []);
 
   // ===========================================
