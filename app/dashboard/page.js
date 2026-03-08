@@ -140,12 +140,8 @@ export default function DashboardContent() {
       'LUCKY77': 'XLY',
       'LUCKY 77': 'XLY',
       'LUCKY': 'XLY',
-      // Tambahin mapping lain kalau ada
-      // 'BET365': 'BET',
-      // 'MAXBET': 'MAX',
     };
     
-    // Cari mapping yang match (case insensitive)
     const upperName = assetName.toUpperCase();
     for (const [key, value] of Object.entries(assetMap)) {
       if (upperName.includes(key.toUpperCase())) {
@@ -153,7 +149,7 @@ export default function DashboardContent() {
       }
     }
     
-    return assetName; // return nama asli kalau ga ada mapping
+    return assetName;
   };
 
   // ===========================================
@@ -163,12 +159,10 @@ export default function DashboardContent() {
     try {
       setLoadingOfficerPie(true);
       
-      // Tentukan tanggal awal dan akhir bulan ini
       const now = new Date();
       const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
       const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
       
-      // Ambil deposit approved bulan ini
       const { data: depositData } = await supabase
         .from('deposit_transactions')
         .select('handler')
@@ -176,7 +170,6 @@ export default function DashboardContent() {
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      // Ambil withdrawal approved bulan ini
       const { data: withdrawalData } = await supabase
         .from('withdrawal_transactions')
         .select('handler')
@@ -184,26 +177,17 @@ export default function DashboardContent() {
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      // Hitung total transaksi
       let humanTotal = 0;
       let systemTotal = 0;
       
-      // Hitung deposit
       depositData?.forEach(tx => {
-        if (tx.handler === 'SYSTEM' || !tx.handler) {
-          systemTotal++;
-        } else {
-          humanTotal++;
-        }
+        if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
+        else humanTotal++;
       });
       
-      // Hitung withdrawal
       withdrawalData?.forEach(tx => {
-        if (tx.handler === 'SYSTEM' || !tx.handler) {
-          systemTotal++;
-        } else {
-          humanTotal++;
-        }
+        if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
+        else humanTotal++;
       });
       
       const pieData = [];
@@ -223,81 +207,75 @@ export default function DashboardContent() {
   // FETCH ASSET PERFORMANCE DATA
   // ===========================================
   const fetchAssetPerformanceData = async () => {
-  try {
-    setLoadingAssetPerformance(true);
-    
-    let query;
-    
-    if (assetPerformanceFilter === 'daily') {
-      const startDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-01 00:00:00`;
-      const endDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, assetPerformanceMonth, 0).getDate()} 23:59:59`;
+    try {
+      setLoadingAssetPerformance(true);
       
-      // Ambil deposits
-      let depositQuery = supabase
-        .from('deposit_transactions')
-        .select('approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      // Ambil withdrawals
-      let withdrawalQuery = supabase
-        .from('withdrawal_transactions')
-        .select('approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      // Kalau bukan "all", filter berdasarkan brand
-      if (assetPerformanceAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', assetPerformanceAsset);
-        withdrawalQuery = withdrawalQuery.eq('brand', assetPerformanceAsset);
+      if (assetPerformanceFilter === 'daily') {
+        const startDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-01 00:00:00`;
+        const endDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, assetPerformanceMonth, 0).getDate()} 23:59:59`;
+        
+        let depositQuery = supabase
+          .from('deposit_transactions')
+          .select('approved_date')
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate);
+        
+        let withdrawalQuery = supabase
+          .from('withdrawal_transactions')
+          .select('approved_date')
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate);
+        
+        if (assetPerformanceAsset !== 'all') {
+          depositQuery = depositQuery.eq('brand', assetPerformanceAsset);
+          withdrawalQuery = withdrawalQuery.eq('brand', assetPerformanceAsset);
+        }
+        
+        const [{ data: deposits }, { data: withdrawals }] = await Promise.all([
+          depositQuery, withdrawalQuery
+        ]);
+        
+        const data = processDailyAssetData(deposits || [], withdrawals || [], assetPerformanceMonth, assetPerformanceYear);
+        setAssetPerformance(data);
+        
+      } else {
+        const startMonth = assetPerformancePeriod === 'jan-jun' ? 1 : 7;
+        const endMonth = assetPerformancePeriod === 'jan-jun' ? 6 : 12;
+        
+        const startDate = `${assetPerformanceYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
+        const endDate = `${assetPerformanceYear}-${String(endMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, endMonth, 0).getDate()} 23:59:59`;
+        
+        let depositQuery = supabase
+          .from('deposit_transactions')
+          .select('approved_date')
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate);
+        
+        let withdrawalQuery = supabase
+          .from('withdrawal_transactions')
+          .select('approved_date')
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate);
+        
+        if (assetPerformanceAsset !== 'all') {
+          depositQuery = depositQuery.eq('brand', assetPerformanceAsset);
+          withdrawalQuery = withdrawalQuery.eq('brand', assetPerformanceAsset);
+        }
+        
+        const [{ data: deposits }, { data: withdrawals }] = await Promise.all([
+          depositQuery, withdrawalQuery
+        ]);
+        
+        const data = processMonthlyAssetData(deposits || [], withdrawals || [], assetPerformancePeriod, assetPerformanceYear);
+        setAssetPerformance(data);
       }
       
-      const { data: deposits } = await depositQuery;
-      const { data: withdrawals } = await withdrawalQuery;
-      
-      const data = processDailyAssetData(deposits || [], withdrawals || [], assetPerformanceMonth, assetPerformanceYear);
-      setAssetPerformance(data);
-      
-    } else {
-      const startMonth = assetPerformancePeriod === 'jan-jun' ? 1 : 7;
-      const endMonth = assetPerformancePeriod === 'jan-jun' ? 6 : 12;
-      
-      const startDate = `${assetPerformanceYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
-      const endDate = `${assetPerformanceYear}-${String(endMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, endMonth, 0).getDate()} 23:59:59`;
-      
-      // Ambil deposits
-      let depositQuery = supabase
-        .from('deposit_transactions')
-        .select('approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      // Ambil withdrawals
-      let withdrawalQuery = supabase
-        .from('withdrawal_transactions')
-        .select('approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      // Kalau bukan "all", filter berdasarkan brand
-      if (assetPerformanceAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', assetPerformanceAsset);
-        withdrawalQuery = withdrawalQuery.eq('brand', assetPerformanceAsset);
-      }
-      
-      const { data: deposits } = await depositQuery;
-      const { data: withdrawals } = await withdrawalQuery;
-      
-      const data = processMonthlyAssetData(deposits || [], withdrawals || [], assetPerformancePeriod, assetPerformanceYear);
-      setAssetPerformance(data);
+    } catch (error) {
+      console.error('Error fetching asset performance:', error);
+    } finally {
+      setLoadingAssetPerformance(false);
     }
-    
-  } catch (error) {
-    console.error('Error fetching asset performance:', error);
-  } finally {
-    setLoadingAssetPerformance(false);
-  }
-};
+  };
 
   const processDailyAssetData = (deposits, withdrawals, month, year) => {
     const daysInMonth = new Date(year, month, 0).getDate();
@@ -387,22 +365,11 @@ export default function DashboardContent() {
     try {
       setLoadingOfficerData(true);
       
-      const { data: officers } = await supabase
-        .from('officers')
-        .select('id, full_name')
-        .in('department', ['CS DP WD'])
-        .eq('status', 'REGULAR')
-        .order('full_name');
-
-      const { data: depositData } = await supabase
-        .from('deposit_transactions')
-        .select('handler')
-        .gte('approved_date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString());
-
-      const { data: withdrawalData } = await supabase
-        .from('withdrawal_transactions')
-        .select('handler')
-        .gte('approved_date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString());
+      const [{ data: officers }, { data: depositData }, { data: withdrawalData }] = await Promise.all([
+        supabase.from('officers').select('id, full_name').in('department', ['CS DP WD']).eq('status', 'REGULAR').order('full_name'),
+        supabase.from('deposit_transactions').select('handler').gte('approved_date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString()),
+        supabase.from('withdrawal_transactions').select('handler').gte('approved_date', new Date(new Date().setDate(new Date().getDate() - 30)).toISOString())
+      ]);
 
       const officerMap = new Map();
       
@@ -519,32 +486,30 @@ export default function DashboardContent() {
   // FETCH DASHBOARD DATA
   // ===========================================
   const fetchDashboardData = async () => {
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const { count: totalAssets } = await supabase
-      .from('assets')
-      .select('*', { count: 'exact', head: true });
+      const { count: totalAssets } = await supabase
+        .from('assets')
+        .select('*', { count: 'exact', head: true });
 
-    // Query lebih sederhana untuk officers
-    const { count: activeOfficers } = await supabase
-      .from('officers')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ['TRAINING', 'REGULAR', 'active']); // PAKE .in() lebih simple
+      const { count: activeOfficers } = await supabase
+        .from('officers')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['TRAINING', 'REGULAR', 'active']);
 
-    setDashboardData({ 
-      totalAssets: totalAssets || 0, 
-      activeOfficers: activeOfficers || 0 
-    });
+      setDashboardData({ 
+        totalAssets: totalAssets || 0, 
+        activeOfficers: activeOfficers || 0 
+      });
 
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    // Set ke 0 kalau error
-    setDashboardData({ totalAssets: 0, activeOfficers: 0 });
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setDashboardData({ totalAssets: 0, activeOfficers: 0 });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ===========================================
   // FETCH PAYMENT DATA
@@ -581,88 +546,7 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // USE EFFECTS
-  // ===========================================
-  // EFFECT UNTUK GLOBAL FILTER (Deposit/Withdrawal Method, dll)
-  useEffect(() => {
-    fetchDashboardData();
-    fetchRecentActivities();
-    fetchPaymentData();
-    fetchBankAccounts();
-    fetchOfficerPerformance();
-    fetchOfficerPieData();
-  }, [chartFilter, chartYear, selectedAsset]); // selectedAsset cuma buat global
-
-  // EFFECT KHUSUS UNTUK ASSET PERFORMANCE (PAKAI FILTER NYA SENDIRI)
-  useEffect(() => {
-    fetchAssetPerformanceData();
-  }, [assetPerformanceAsset, assetPerformanceFilter, 
-      assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
-
-  // LOAD DARI LOCALSTORAGE
-  useEffect(() => {
-    const savedDeposit = localStorage.getItem('depositMethods');
-    if (savedDeposit) setDepositMethods(JSON.parse(savedDeposit));
-    
-    const savedWithdrawal = localStorage.getItem('withdrawalMethods');
-    if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
-    
-    const savedSupport = localStorage.getItem('supportLines');
-    if (savedSupport) setSupportLines(JSON.parse(savedSupport));
-    
-    const saved = localStorage.getItem('lastReadActivity');
-    if (saved) setLastReadTimestamp(saved);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
-      localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
-      localStorage.setItem('supportLines', JSON.stringify(supportLines));
-    }
-  }, [depositMethods, withdrawalMethods, supportLines]);
-
-  useEffect(() => {
-    if (activities.length > 0) {
-      const latestActivity = new Date(activities[0].timestamp).getTime();
-      const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
-      setHasNewActivity(latestActivity > lastRead);
-    }
-  }, [activities, lastReadTimestamp]);
-
-  useEffect(() => {
-    const handleActivityRead = () => {
-      const saved = localStorage.getItem('lastReadActivity');
-      if (saved) setLastReadTimestamp(saved);
-    };
-    window.addEventListener('activityRead', handleActivityRead);
-    return () => window.removeEventListener('activityRead', handleActivityRead);
-  }, []);
-
-  // ===========================================
-  // FUNGSI TOGGLE SERVICE
-  // ===========================================
-  const handleToggleService = async (type, serviceName, newStatus) => {
-    try {
-      if (type === 'deposit') {
-        setUpdatingStatus(prev => ({ ...prev, deposit: true }));
-        setDepositMethods(prev => ({ ...prev, [serviceName]: newStatus }));
-      } else if (type === 'withdrawal') {
-        setUpdatingStatus(prev => ({ ...prev, withdrawal: true }));
-        setWithdrawalMethods(prev => ({ ...prev, [serviceName]: newStatus }));
-      } else if (type === 'support') {
-        setUpdatingStatus(prev => ({ ...prev, support: true }));
-        setSupportLines(prev => ({ ...prev, [serviceName]: newStatus }));
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
-    } finally {
-      setUpdatingStatus({ deposit: false, withdrawal: false, support: false });
-    }
-  };
-
-  // ===========================================
-  // FUNGSI RECENT ACTIVITY
+  // FETCH RECENT ACTIVITIES
   // ===========================================
   const fetchRecentActivities = async () => {
     try {
@@ -740,6 +624,89 @@ export default function DashboardContent() {
       adminOnly: true
     }
   ];
+
+  // ===========================================
+  // USE EFFECTS
+  // ===========================================
+  useEffect(() => {
+    const loadAllData = async () => {
+      await Promise.all([
+        fetchDashboardData(),
+        fetchRecentActivities(),
+        fetchPaymentData(),
+        fetchBankAccounts(),
+        fetchOfficerPerformance(),
+        fetchOfficerPieData()
+      ]);
+    };
+    loadAllData();
+  }, [chartFilter, chartYear, selectedAsset]);
+
+  useEffect(() => {
+    fetchAssetPerformanceData();
+  }, [assetPerformanceAsset, assetPerformanceFilter, 
+      assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
+
+  useEffect(() => {
+    const savedDeposit = localStorage.getItem('depositMethods');
+    if (savedDeposit) setDepositMethods(JSON.parse(savedDeposit));
+    
+    const savedWithdrawal = localStorage.getItem('withdrawalMethods');
+    if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
+    
+    const savedSupport = localStorage.getItem('supportLines');
+    if (savedSupport) setSupportLines(JSON.parse(savedSupport));
+    
+    const saved = localStorage.getItem('lastReadActivity');
+    if (saved) setLastReadTimestamp(saved);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
+      localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
+      localStorage.setItem('supportLines', JSON.stringify(supportLines));
+    }
+  }, [depositMethods, withdrawalMethods, supportLines]);
+
+  useEffect(() => {
+    if (activities.length > 0) {
+      const latestActivity = new Date(activities[0].timestamp).getTime();
+      const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
+      setHasNewActivity(latestActivity > lastRead);
+    }
+  }, [activities, lastReadTimestamp]);
+
+  useEffect(() => {
+    const handleActivityRead = () => {
+      const saved = localStorage.getItem('lastReadActivity');
+      if (saved) setLastReadTimestamp(saved);
+    };
+    window.addEventListener('activityRead', handleActivityRead);
+    return () => window.removeEventListener('activityRead', handleActivityRead);
+  }, []);
+
+  // ===========================================
+  // FUNGSI TOGGLE SERVICE
+  // ===========================================
+  const handleToggleService = async (type, serviceName, newStatus) => {
+    try {
+      if (type === 'deposit') {
+        setUpdatingStatus(prev => ({ ...prev, deposit: true }));
+        setDepositMethods(prev => ({ ...prev, [serviceName]: newStatus }));
+      } else if (type === 'withdrawal') {
+        setUpdatingStatus(prev => ({ ...prev, withdrawal: true }));
+        setWithdrawalMethods(prev => ({ ...prev, [serviceName]: newStatus }));
+      } else if (type === 'support') {
+        setUpdatingStatus(prev => ({ ...prev, support: true }));
+        setSupportLines(prev => ({ ...prev, [serviceName]: newStatus }));
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+    } finally {
+      setUpdatingStatus({ deposit: false, withdrawal: false, support: false });
+    }
+  };
 
   if (loading) return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] flex items-center justify-center">
@@ -825,12 +792,12 @@ export default function DashboardContent() {
 
       {/* ROYAL GOLD CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-  <DashboardCard title="Asset GROUP-X" value={`${dashboardData.totalAssets} Assets`} icon={<span className="text-6xl">💎</span>} color="gold" glassEffect={true} href="/dashboard/assets" />
-  <DashboardCard title="Account Bank Management" value="Manage Banks" icon={<span className="text-6xl">🏦</span>} color="gold" glassEffect={true} href="/dashboard/data-bank" />
-  <DashboardCard title="Data Officers GROUP-X" value={`${dashboardData.activeOfficers} Officers`} icon={<span className="text-6xl">👨‍💼</span>} color="gold" glassEffect={true} href="/dashboard/officers/active" />
-  <DashboardCard title="Schedule Officers GROUP-X" value="Calendar" icon={<span className="text-6xl">📅</span>} color="gold" glassEffect={true} href="/dashboard/schedule" />
-  <DashboardCard title="Financial Summary GROUP-X" value="Management" icon={<span className="text-6xl">💰</span>} color="gold" glassEffect={true} href="/dashboard/financial" />
-</div>
+        <DashboardCard title="Asset GROUP-X" value={`${dashboardData.totalAssets} Assets`} icon={<span className="text-6xl">💎</span>} color="gold" glassEffect={true} href="/dashboard/assets" />
+        <DashboardCard title="Account Bank Management" value="Manage Banks" icon={<span className="text-6xl">🏦</span>} color="gold" glassEffect={true} href="/dashboard/data-bank" />
+        <DashboardCard title="Data Officers GROUP-X" value={`${dashboardData.activeOfficers} Officers`} icon={<span className="text-6xl">👨‍💼</span>} color="gold" glassEffect={true} href="/dashboard/officers/active" />
+        <DashboardCard title="Schedule Officers GROUP-X" value="Calendar" icon={<span className="text-6xl">📅</span>} color="gold" glassEffect={true} href="/dashboard/schedule" />
+        <DashboardCard title="Financial Summary GROUP-X" value="Management" icon={<span className="text-6xl">💰</span>} color="gold" glassEffect={true} href="/dashboard/financial" />
+      </div>
 
       {/* SYNC BUTTON */}
       <div className="mb-4 flex items-center justify-between">
@@ -890,7 +857,6 @@ export default function DashboardContent() {
                 .map(bank => (
                   <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
                     <div className="flex items-center gap-3">
-                      {/* GAMBAR BANK */}
                       <div className="w-8 h-8 relative flex-shrink-0">
                         <NextImage
                           src={getBankImage(bank.bank)}
@@ -924,7 +890,6 @@ export default function DashboardContent() {
                 .map(bank => (
                   <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
                     <div className="flex items-center gap-3">
-                      {/* GAMBAR BANK */}
                       <div className="w-8 h-8 relative flex-shrink-0">
                         <NextImage
                           src={getBankImage(bank.bank)}
@@ -986,7 +951,7 @@ export default function DashboardContent() {
           </div>
         </div>
 
-        {/* KOLOM 2: ASSET PERFORMANCE - DENGAN FILTER ASSET SENDIRI */}
+        {/* KOLOM 2: ASSET PERFORMANCE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <div className="flex items-center justify-between mb-2">
             <Link href="/dashboard/asset-performance" className="block group flex-1">
@@ -1000,7 +965,6 @@ export default function DashboardContent() {
               </div>
             </Link>
             
-            {/* TOMBOL REFRESH */}
             <button
               onClick={async (e) => {
                 e.preventDefault();
@@ -1018,33 +982,23 @@ export default function DashboardContent() {
             </button>
           </div>
           
-          {/* FILTER SECTION - PAKAI STATE KHUSUS assetPerformanceAsset */}
           <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
-            {/* FILTER ASSET - TAMBAH OPSI ALL */}
-<select 
-  value={assetPerformanceAsset} 
-  onChange={(e) => setAssetPerformanceAsset(e.target.value)}
-  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
->
-  {/* OPSI ALL - TAMPILIN SEMUA ASSET */}
-  <option value="all">ALL</option>
-  
-  {/* TAMPILIN SINGKATAN DARI ASSET YANG ADA */}
-  {assetList.length > 0 ? (
-    assetList.map(asset => {
-      const assetCode = getAssetCode(asset);
-      return (
-        <option key={asset} value={assetCode}>
-          {assetCode}
-        </option>
-      );
-    })
-  ) : (
-    <option value="XLY">XLY</option>
-  )}
-</select>
+            <select 
+              value={assetPerformanceAsset} 
+              onChange={(e) => setAssetPerformanceAsset(e.target.value)}
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
+            >
+              <option value="all">ALL</option>
+              {assetList.length > 0 ? (
+                assetList.map(asset => {
+                  const assetCode = getAssetCode(asset);
+                  return <option key={asset} value={assetCode}>{assetCode}</option>;
+                })
+              ) : (
+                <option value="XLY">XLY</option>
+              )}
+            </select>
 
-            {/* FILTER PERIODE */}
             <select value={assetPerformanceFilter} onChange={(e) => setAssetPerformanceFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
               <option value="daily">Daily</option>
               <option value="monthly">Monthly</option>
@@ -1072,7 +1026,6 @@ export default function DashboardContent() {
             )}
           </div>
           
-          {/* CHART */}
           <div className="h-64">
             {loadingAssetPerformance ? (
               <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
@@ -1092,7 +1045,6 @@ export default function DashboardContent() {
             )}
           </div>
           
-          {/* LINK DETAIL */}
           <Link href="/dashboard/asset-performance" className="block mt-2 text-right">
             <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
               Click to see detailed breakdown →
@@ -1100,11 +1052,11 @@ export default function DashboardContent() {
           </Link>
         </div>
 
-        {/* KOLOM 3: OFFICER PERFORMANCE - PIE CHART (HUMAN VS SYSTEM) */}
+        {/* KOLOM 3: OFFICER PERFORMANCE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <Link href="/dashboard/officers-performance" className="block group">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance </h3>
+              <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance</h3>
               <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
