@@ -618,7 +618,7 @@ export default function AssetPerformancePage() {
             </svg>
             <span>Back to Dashboard</span>
           </Link>
-          <h1 className="text-2xl font-bold text-[#FFD700]">📈 ASSET PERFORMANCE DETAIL</h1>
+          <h1 className="text-2xl font-bold text-[#FFD700]">📈 TRAFFIC BREAKDOWN DETAIL</h1>
         </div>
       </div>
 
