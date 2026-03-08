@@ -34,15 +34,15 @@ export default function DashboardContent() {
   const [chartYear, setChartYear] = useState('2026');
 
   // ===========================================
-  // STATE UNTUK TRAFFIC VOLUME (PIE CHART)
+  // STATE UNTUK TRANSACTION METRICS (PIE CHART) - UBAH NAMA
   // ===========================================
-  const [trafficData, setTrafficData] = useState([
+  const [transactionData, setTransactionData] = useState([
     { name: 'Deposit', value: 0 },
     { name: 'Withdrawal', value: 0 },
     { name: 'Livechat', value: 0 }
   ]);
   
-  const TRAFFIC_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
+  const TRANSACTION_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
 
   // ===========================================
   // STATE UNTUK BANK ACCOUNTS (DARI SUPABASE)
@@ -91,18 +91,17 @@ export default function DashboardContent() {
   });
 
   // ===========================================
-  // STATE UNTUK PERFORMANCE METRICS
+  // STATE UNTUK TRAFFIC METRICS - UBAH NAMA
   // ===========================================
-  // ASSET PERFORMANCE
-  const [assetPerformance, setAssetPerformance] = useState([]);
-  const [assetPerformanceFilter, setAssetPerformanceFilter] = useState('daily');
-  const [assetPerformanceYear, setAssetPerformanceYear] = useState('2026');
-  const [assetPerformanceMonth, setAssetPerformanceMonth] = useState(new Date().getMonth() + 1);
-  const [assetPerformancePeriod, setAssetPerformancePeriod] = useState('jan-jun');
-  const [loadingAssetPerformance, setLoadingAssetPerformance] = useState(false);
+  const [trafficMetrics, setTrafficMetrics] = useState([]);
+  const [trafficMetricsFilter, setTrafficMetricsFilter] = useState('daily');
+  const [trafficMetricsYear, setTrafficMetricsYear] = useState('2026');
+  const [trafficMetricsMonth, setTrafficMetricsMonth] = useState(new Date().getMonth() + 1);
+  const [trafficMetricsPeriod, setTrafficMetricsPeriod] = useState('jan-jun');
+  const [loadingTrafficMetrics, setLoadingTrafficMetrics] = useState(false);
   
-  // STATE FILTER ASSET KHUSUS UNTUK ASSET PERFORMANCE (INDEPENDEN)
-  const [assetPerformanceAsset, setAssetPerformanceAsset] = useState('XLY'); // default XLY
+  // STATE FILTER ASSET KHUSUS UNTUK TRAFFIC METRICS
+  const [trafficMetricsAsset, setTrafficMetricsAsset] = useState('XLY');
   
   // OFFICER PERFORMANCE - PIE CHART (HUMAN VS SYSTEM)
   const [officerPieData, setOfficerPieData] = useState([]);
@@ -263,15 +262,15 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FETCH ASSET PERFORMANCE DATA
+  // FETCH TRAFFIC METRICS DATA - UBAH NAMA FUNGSI
   // ===========================================
-  const fetchAssetPerformanceData = async () => {
+  const fetchTrafficMetricsData = async () => {
     try {
-      setLoadingAssetPerformance(true);
+      setLoadingTrafficMetrics(true);
       
-      if (assetPerformanceFilter === 'daily') {
-        const startDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-01 00:00:00`;
-        const endDate = `${assetPerformanceYear}-${String(assetPerformanceMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, assetPerformanceMonth, 0).getDate()} 23:59:59`;
+      if (trafficMetricsFilter === 'daily') {
+        const startDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-01 00:00:00`;
+        const endDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, trafficMetricsMonth, 0).getDate()} 23:59:59`;
         
         let depositQuery = supabase
           .from('deposit_transactions')
@@ -285,24 +284,24 @@ export default function DashboardContent() {
           .gte('approved_date', startDate)
           .lte('approved_date', endDate);
         
-        if (assetPerformanceAsset !== 'all') {
-          depositQuery = depositQuery.eq('brand', assetPerformanceAsset);
-          withdrawalQuery = withdrawalQuery.eq('brand', assetPerformanceAsset);
+        if (trafficMetricsAsset !== 'all') {
+          depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
+          withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
         }
         
         const [{ data: deposits }, { data: withdrawals }] = await Promise.all([
           depositQuery, withdrawalQuery
         ]);
         
-        const data = processDailyAssetData(deposits || [], withdrawals || [], assetPerformanceMonth, assetPerformanceYear);
-        setAssetPerformance(data);
+        const data = processDailyTrafficData(deposits || [], withdrawals || [], trafficMetricsMonth, trafficMetricsYear);
+        setTrafficMetrics(data);
         
       } else {
-        const startMonth = assetPerformancePeriod === 'jan-jun' ? 1 : 7;
-        const endMonth = assetPerformancePeriod === 'jan-jun' ? 6 : 12;
+        const startMonth = trafficMetricsPeriod === 'jan-jun' ? 1 : 7;
+        const endMonth = trafficMetricsPeriod === 'jan-jun' ? 6 : 12;
         
-        const startDate = `${assetPerformanceYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
-        const endDate = `${assetPerformanceYear}-${String(endMonth).padStart(2, '0')}-${new Date(assetPerformanceYear, endMonth, 0).getDate()} 23:59:59`;
+        const startDate = `${trafficMetricsYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
+        const endDate = `${trafficMetricsYear}-${String(endMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, endMonth, 0).getDate()} 23:59:59`;
         
         let depositQuery = supabase
           .from('deposit_transactions')
@@ -316,27 +315,27 @@ export default function DashboardContent() {
           .gte('approved_date', startDate)
           .lte('approved_date', endDate);
         
-        if (assetPerformanceAsset !== 'all') {
-          depositQuery = depositQuery.eq('brand', assetPerformanceAsset);
-          withdrawalQuery = withdrawalQuery.eq('brand', assetPerformanceAsset);
+        if (trafficMetricsAsset !== 'all') {
+          depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
+          withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
         }
         
         const [{ data: deposits }, { data: withdrawals }] = await Promise.all([
           depositQuery, withdrawalQuery
         ]);
         
-        const data = processMonthlyAssetData(deposits || [], withdrawals || [], assetPerformancePeriod, assetPerformanceYear);
-        setAssetPerformance(data);
+        const data = processMonthlyTrafficData(deposits || [], withdrawals || [], trafficMetricsPeriod, trafficMetricsYear);
+        setTrafficMetrics(data);
       }
       
     } catch (error) {
-      console.error('Error fetching asset performance:', error);
+      console.error('Error fetching traffic metrics:', error);
     } finally {
-      setLoadingAssetPerformance(false);
+      setLoadingTrafficMetrics(false);
     }
   };
 
-  const processDailyAssetData = (deposits, withdrawals, month, year) => {
+  const processDailyTrafficData = (deposits, withdrawals, month, year) => {
     const daysInMonth = new Date(year, month, 0).getDate();
     const today = new Date();
     const currentDate = today.getDate();
@@ -375,7 +374,7 @@ export default function DashboardContent() {
     return days;
   };
 
-  const processMonthlyAssetData = (deposits, withdrawals, period, year) => {
+  const processMonthlyTrafficData = (deposits, withdrawals, period, year) => {
     const startMonth = period === 'jan-jun' ? 0 : 6;
     const today = new Date();
     const currentYear = today.getFullYear();
@@ -602,9 +601,9 @@ const fetchBankAccounts = async () => {
   };
 
   // ===========================================
-  // FETCH PAYMENT DATA
+  // FETCH TRANSACTION METRICS DATA - UBAH NAMA FUNGSI
   // ===========================================
-  const fetchPaymentData = async () => {
+  const fetchTransactionMetricsData = async () => {
     try {
       const { data: depositData } = await supabase
         .from('transactions')
@@ -624,14 +623,14 @@ const fetchBankAccounts = async () => {
         .from('chat_logs')
         .select('*', { count: 'exact' })
 
-      setTrafficData([
+      setTransactionData([
         { name: 'Deposit', value: totalDeposit },
         { name: 'Withdrawal', value: totalWithdrawal },
         { name: 'Livechat', value: chatCount || 0 }
       ]);
 
     } catch (error) {
-      console.error('Error fetching payment data:', error);
+      console.error('Error fetching transaction metrics:', error);
     }
   };
 
@@ -751,7 +750,7 @@ const fetchBankAccounts = async () => {
       await Promise.all([
         fetchDashboardData(),
         fetchRecentActivities(),
-        fetchPaymentData(),
+        fetchTransactionMetricsData(), // UBAH NAMA
         fetchBankAccounts(),
         fetchOfficerPerformance(),
         fetchOfficerPieData()
@@ -761,9 +760,9 @@ const fetchBankAccounts = async () => {
   }, [chartFilter, chartYear, selectedAsset]);
 
   useEffect(() => {
-    fetchAssetPerformanceData();
-  }, [assetPerformanceAsset, assetPerformanceFilter, 
-      assetPerformanceYear, assetPerformanceMonth, assetPerformancePeriod]);
+    fetchTrafficMetricsData(); // UBAH NAMA
+  }, [trafficMetricsAsset, trafficMetricsFilter, 
+      trafficMetricsYear, trafficMetricsMonth, trafficMetricsPeriod]);
 
   useEffect(() => {
     const savedDeposit = localStorage.getItem('depositMethods');
@@ -963,14 +962,14 @@ const fetchBankAccounts = async () => {
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: TRAFFIC VOLUME */}
+        {/* KOLOM 1: TRANSACTION METRICS - UBAH JUDUL */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Traffic Volume</h3>
+          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Transaction Metrics</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={trafficData}
+                  data={transactionData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -978,8 +977,8 @@ const fetchBankAccounts = async () => {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {trafficData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={TRAFFIC_COLORS[index % TRAFFIC_COLORS.length]} />
+                  {transactionData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={TRANSACTION_COLORS[index % TRANSACTION_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
@@ -1145,12 +1144,12 @@ const fetchBankAccounts = async () => {
           </div>
         </div>
 
-        {/* KOLOM 2: ASSET PERFORMANCE */}
+        {/* KOLOM 2: TRAFFIC METRICS - UBAH JUDUL */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <div className="flex items-center justify-between mb-2">
-            <Link href="/dashboard/asset-performance" className="block group flex-1">
+            <Link href="/dashboard/traffic-metrics" className="block group flex-1">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-[#FFD700]">📈 Asset Performance</h3>
+                <h3 className="text-lg font-bold text-[#FFD700]">📊 Traffic Metrics</h3>
                 <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -1163,14 +1162,14 @@ const fetchBankAccounts = async () => {
               onClick={async (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                setLoadingAssetPerformance(true);
-                await fetchAssetPerformanceData();
+                setLoadingTrafficMetrics(true);
+                await fetchTrafficMetricsData();
               }}
-              disabled={loadingAssetPerformance}
+              disabled={loadingTrafficMetrics}
               className="ml-2 p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex-shrink-0"
-              title="Refresh asset data"
+              title="Refresh traffic data"
             >
-              <svg className={`w-4 h-4 text-white ${loadingAssetPerformance ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-4 h-4 text-white ${loadingTrafficMetrics ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
@@ -1178,8 +1177,8 @@ const fetchBankAccounts = async () => {
           
           <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
             <select 
-              value={assetPerformanceAsset} 
-              onChange={(e) => setAssetPerformanceAsset(e.target.value)}
+              value={trafficMetricsAsset} 
+              onChange={(e) => setTrafficMetricsAsset(e.target.value)}
               className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
             >
               <option value="all">ALL</option>
@@ -1193,27 +1192,27 @@ const fetchBankAccounts = async () => {
               )}
             </select>
 
-            <select value={assetPerformanceFilter} onChange={(e) => setAssetPerformanceFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+            <select value={trafficMetricsFilter} onChange={(e) => setTrafficMetricsFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
               <option value="daily">Daily</option>
               <option value="monthly">Monthly</option>
             </select>
             
-            {assetPerformanceFilter === 'daily' ? (
+            {trafficMetricsFilter === 'daily' ? (
               <>
-                <select value={assetPerformanceMonth} onChange={(e) => setAssetPerformanceMonth(parseInt(e.target.value))} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                <select value={trafficMetricsMonth} onChange={(e) => setTrafficMetricsMonth(parseInt(e.target.value))} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
                   {fullMonths.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
                 </select>
-                <select value={assetPerformanceYear} onChange={(e) => setAssetPerformanceYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
                   {years.map(year => <option key={year} value={year}>{year}</option>)}
                 </select>
               </>
             ) : (
               <>
-                <select value={assetPerformancePeriod} onChange={(e) => setAssetPerformancePeriod(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                <select value={trafficMetricsPeriod} onChange={(e) => setTrafficMetricsPeriod(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
                   <option value="jan-jun">Jan-Jun</option>
                   <option value="jul-dec">Jul-Dec</option>
                 </select>
-                <select value={assetPerformanceYear} onChange={(e) => setAssetPerformanceYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
                   {years.map(year => <option key={year} value={year}>{year}</option>)}
                 </select>
               </>
@@ -1221,11 +1220,11 @@ const fetchBankAccounts = async () => {
           </div>
           
           <div className="h-64">
-            {loadingAssetPerformance ? (
+            {loadingTrafficMetrics ? (
               <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={assetPerformance}>
+                <LineChart data={trafficMetrics}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
                   <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
                   <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
@@ -1239,7 +1238,7 @@ const fetchBankAccounts = async () => {
             )}
           </div>
           
-          <Link href="/dashboard/asset-performance" className="block mt-2 text-right">
+          <Link href="/dashboard/traffic-metrics" className="block mt-2 text-right">
             <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
               Click to see detailed breakdown →
             </span>
