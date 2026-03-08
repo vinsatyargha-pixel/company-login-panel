@@ -1,57 +1,46 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase'; // Import supabase
+import { useRouter, usePathname } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from './useAuth'; // Import useAuth
 
 export default function AuthGuard({ children }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const { user, loading, isAdmin } = useAuth();
   const [isVerified, setIsVerified] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Cek session dari Supabase dulu
+      console.log('🔍 AuthGuard checking...');
+      
+      // Cek session dari Supabase
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('📊 Session:', session);
       
       if (!session) {
-        // Fallback ke localStorage (buat backward compatibility)
-        const localUser = JSON.parse(localStorage.getItem('magni_user') || 'null');
-        if (!localUser) {
-          router.push('/login');
-          return;
-        }
-        
-        // Tapi kalo pake localStorage, cek ke database untuk role terbaru
-        const { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', localUser.email)
-          .single();
-        
-        if (userData) {
-          // Update localStorage dengan data terbaru
-          localStorage.setItem('magni_user', JSON.stringify(userData));
-        }
-      } else {
-        // Kalo pake session, ambil data terbaru dari public.users
-        const { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', session.user.email)
-          .single();
-        
-        if (userData) {
-          // Simpan di localStorage
-          localStorage.setItem('magni_user', JSON.stringify(userData));
-        }
+        console.log('❌ No session, redirecting to login');
+        router.push('/login');
+        return;
       }
-      
+
+      // Cek akses berdasarkan role dan halaman
+      if (pathname.startsWith('/dashboard/admin') && !isAdmin) {
+        console.log('⛔ Admin access denied');
+        router.push('/dashboard');
+        return;
+      }
+
+      console.log('✅ Auth OK');
       setIsVerified(true);
     };
 
-    checkAuth();
-  }, []);
+    if (!loading) {
+      checkAuth();
+    }
+  }, [loading, user, isAdmin, pathname, router]);
 
-  if (!isVerified) {
+  if (loading || !isVerified) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p className="text-gray-500">Checking authentication...</p>
