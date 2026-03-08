@@ -422,46 +422,35 @@ export default function DashboardContent() {
 const fetchBankAccounts = async () => {
   try {
     setLoadingBanks(true);
-    console.log('🔍 ===== START FETCH BANK ACCOUNTS =====');
+    console.log('🔍 Fetching bank accounts...');
     
     // AMBIL TOKEN DARI LOCALSTORAGE
     const authToken = localStorage.getItem('sb-lrrghigbwxwxpvicbkos-auth-token');
-    console.log('📦 Auth token exists:', !!authToken);
-    
-    let token = null;
+    let token = '';
     if (authToken) {
       try {
-        const parsed = JSON.parse(authToken);
-        token = parsed.access_token;
-        console.log('🔑 Access token extracted:', !!token);
+        token = JSON.parse(authToken).access_token;
       } catch (e) {
-        console.error('❌ Failed to parse auth token:', e);
+        console.error('Token parse error:', e);
       }
     }
     
-    console.log('📤 Sending request to Supabase...');
+    const apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxycmdoaWdid3h3eHB2aWNia29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MTE1NjEsImV4cCI6MjA4NjE4NzU2MX0.6v7pQtcfZsNEPRP622ZzHnKdGjaCX2ibgAIKUbvwC5g';
     
-    // PAKE SUPABASE CLIENT LEWAT VARIABLE GLOBAL
-    const { data, error } = await supabase
-      .from('bank_accounts')
-      .select('*');
+    // FETCH MANUAL (YANG UDAH TERBUKTI JALAN)
+    const response = await fetch('https://lrrghigbwxwxpvicbkos.supabase.co/rest/v1/bank_accounts?select=*', {
+      headers: {
+        'apikey': apikey,
+        'Authorization': `Bearer ${token}`
+      }
+    });
     
-    console.log('📥 Supabase response received');
-    
-    if (error) {
-      console.error('❌ Supabase error:', error);
-      console.error('❌ Error code:', error.code);
-      console.error('❌ Error message:', error.message);
-      console.error('❌ Error details:', error.details);
-      throw error;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    console.log('✅ Data received! Length:', data?.length);
-    console.log('📊 First 2 records:', data?.slice(0, 2));
-    
-    if (!data || data.length === 0) {
-      console.warn('⚠️ Data array is empty!');
-    }
+    const data = await response.json();
+    console.log('✅ Bank accounts fetched:', data.length, 'records');
     
     // SET STATE
     setBankAccounts(data || []);
@@ -469,7 +458,6 @@ const fetchBankAccounts = async () => {
     // EXPORT KE WINDOW
     if (typeof window !== 'undefined') {
       window.__bankAccounts = data || [];
-      window.__lastFetch = new Date().toISOString();
     }
     
     // HITUNG ACTIVE BANKS
@@ -478,57 +466,13 @@ const fetchBankAccounts = async () => {
       b.display_used === 'YES'
     ) || [];
     
-    console.log('🏦 Active banks count:', activeBanks.length);
-    console.log('🏦 Active banks list:', activeBanks.map(b => `${b.bank} (${b.role})`));
-    
-    // UNIQUE ASSETS
     const uniqueAssets = [...new Set(activeBanks.map(item => item.asset).filter(Boolean))];
     setAssetList(uniqueAssets);
-    console.log('🎯 Unique assets:', uniqueAssets);
-    
-    console.log('✅ ===== FETCH BANK ACCOUNTS COMPLETED =====');
     
   } catch (error) {
-    console.error('❌❌❌ CRITICAL ERROR in fetchBankAccounts:', error);
-    console.error('❌ Stack trace:', error.stack);
-    
-    // FALLBACK: coba pake fetch manual
-    console.log('🔄 Attempting manual fetch as fallback...');
-    try {
-      const supabaseUrl = 'https://lrrghigbwxwxpvicbkos.supabase.co';
-      const apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxycmdoaWdid3h3eHB2aWNia29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MTE1NjEsImV4cCI6MjA4NjE4NzU2MX0.6v7pQtcfZsNEPRP622ZzHnKdGjaCX2ibgAIKUbvwC5g';
-      
-      const authToken = localStorage.getItem('sb-lrrghigbwxwxpvicbkos-auth-token');
-      let bearerToken = '';
-      if (authToken) {
-        const parsed = JSON.parse(authToken);
-        bearerToken = parsed.access_token;
-      }
-      
-      const response = await fetch(`${supabaseUrl}/rest/v1/bank_accounts?select=*`, {
-        headers: {
-          'apikey': apikey,
-          'Authorization': `Bearer ${bearerToken}`
-        }
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const fallbackData = await response.json();
-      console.log('✅ Fallback fetch succeeded! Data length:', fallbackData?.length);
-      
-      setBankAccounts(fallbackData || []);
-      window.__bankAccounts = fallbackData || [];
-      
-    } catch (fallbackError) {
-      console.error('❌ Fallback also failed:', fallbackError);
-    }
-    
+    console.error('❌ Fetch error:', error);
   } finally {
     setLoadingBanks(false);
-    console.log('🏁 Fetch completed (loading=false)');
   }
 };
 
