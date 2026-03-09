@@ -260,67 +260,117 @@ export default function DashboardContent() {
   }, []);
 
   // ===========================================
-  // FETCH OFFICER PIE DATA (HUMAN VS SYSTEM) - MODIFIED UNTUK 3D EXPLODED
-  // ===========================================
-  const fetchOfficerPieData = async () => {
-    try {
-      setLoadingOfficerPie(true);
-      
-      const now = new Date();
-      const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      
-      const { data: depositData } = await supabase
-        .from('deposit_transactions')
-        .select('handler')
-        .eq('status', 'Approved')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      const { data: withdrawalData } = await supabase
-        .from('withdrawal_transactions')
-        .select('handler')
-        .eq('status', 'Approved')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      let humanTotal = 0;
-      let systemTotal = 0;
-      
-      depositData?.forEach(tx => {
-        if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
-        else humanTotal++;
-      });
-      
-      withdrawalData?.forEach(tx => {
-        if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
-        else humanTotal++;
-      });
-      
-      const total = humanTotal + systemTotal;
-      
-      const pieData = [];
-      if (humanTotal > 0) pieData.push({ 
-        name: 'Human', 
-        value: humanTotal, 
-        color: '#3b82f6',
-        percentage: ((humanTotal / total) * 100).toFixed(1)
-      });
-      if (systemTotal > 0) pieData.push({ 
-        name: 'System', 
-        value: systemTotal, 
-        color: '#ef4444',
-        percentage: ((systemTotal / total) * 100).toFixed(1)
-      });
-      
-      setOfficerPieData(pieData);
-      
-    } catch (error) {
-      console.error('Error fetching officer pie data:', error);
-    } finally {
-      setLoadingOfficerPie(false);
+// FETCH OFFICER PIE DATA (HUMAN VS SYSTEM) - DENGAN FILTER
+// ===========================================
+const fetchOfficerPieData = async () => {
+  try {
+    setLoadingOfficerPie(true);
+    
+    // Dapatkan date range berdasarkan filter
+    const { startDate, endDate } = getDateRangeForOfficerPie();
+    
+    // Query deposit dengan filter
+    let depositQuery = supabase
+      .from('deposit_transactions')
+      .select('handler')
+      .eq('status', 'Approved')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate);
+    
+    // Query withdrawal dengan filter
+    let withdrawalQuery = supabase
+      .from('withdrawal_transactions')
+      .select('handler')
+      .eq('status', 'Approved')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate);
+    
+    // Filter berdasarkan asset jika bukan 'all'
+    if (selectedAsset !== 'all') {
+      depositQuery = depositQuery.eq('brand', 'XLY'); // LUCKY77 = XLY
+      withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
     }
+    
+    const { data: depositData } = await depositQuery;
+    const { data: withdrawalData } = await withdrawalQuery;
+    
+    let humanTotal = 0;
+    let systemTotal = 0;
+    
+    depositData?.forEach(tx => {
+      if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
+      else humanTotal++;
+    });
+    
+    withdrawalData?.forEach(tx => {
+      if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
+      else humanTotal++;
+    });
+    
+    const total = humanTotal + systemTotal;
+    
+    const pieData = [];
+    if (humanTotal > 0) pieData.push({ 
+      name: 'Human', 
+      value: humanTotal, 
+      color: '#3b82f6',
+      percentage: ((humanTotal / total) * 100).toFixed(1)
+    });
+    if (systemTotal > 0) pieData.push({ 
+      name: 'System', 
+      value: systemTotal, 
+      color: '#ef4444',
+      percentage: ((systemTotal / total) * 100).toFixed(1)
+    });
+    
+    setOfficerPieData(pieData);
+    
+  } catch (error) {
+    console.error('Error fetching officer pie data:', error);
+  } finally {
+    setLoadingOfficerPie(false);
+  }
+};
+
+// ===========================================
+// GET DATE RANGE FOR OFFICER PIE
+// ===========================================
+const getDateRangeForOfficerPie = () => {
+  let startDate = '';
+  let endDate = '';
+
+  switch (timeFilter) {
+    case 'yesterday':
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      startDate = yesterday.toISOString().split('T')[0];
+      endDate = yesterday.toISOString().split('T')[0];
+      break;
+      
+    case 'monthly':
+      const monthIndex = fullMonthNames.indexOf(selectedMonth) + 1;
+      startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`;
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
+      endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`;
+      break;
+      
+    case 'custom':
+      startDate = customStartDate;
+      endDate = customEndDate;
+      break;
+      
+    default:
+      const yesterdayDefault = new Date();
+      yesterdayDefault.setDate(yesterdayDefault.getDate() - 1);
+      startDate = yesterdayDefault.toISOString().split('T')[0];
+      endDate = yesterdayDefault.toISOString().split('T')[0];
+  }
+
+  return { 
+    startDate: `${startDate} 00:00:00`, 
+    endDate: `${endDate} 23:59:59`
   };
+};
 
   // ===========================================
   // FETCH TRAFFIC METRICS DATA
@@ -947,95 +997,103 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // USE EFFECTS
-  // ===========================================
-  useEffect(() => {
-    const loadAllData = async () => {
-      await Promise.all([
-        fetchDashboardData(),
-        fetchRecentActivities(),
-        fetchTransactionMetricsData(),
-        fetchBankAccounts(),
-        fetchOfficerPerformance(),
-        fetchOfficerPieData()
-      ]);
-    };
-    loadAllData();
-  }, [chartFilter, chartYear, selectedAsset]);
+// USE EFFECTS - FINAL VERSION
+// ===========================================
 
-  useEffect(() => {
-    fetchTrafficMetricsData();
-  }, [trafficMetricsAsset, trafficMetricsFilter, 
-      trafficMetricsYear, trafficMetricsMonth, trafficMetricsPeriod]);
+// 1. LOAD ALL INITIAL DATA (pertama kali aja)
+useEffect(() => {
+  const loadAllData = async () => {
+    await Promise.all([
+      fetchDashboardData(),
+      fetchRecentActivities(),
+      fetchTransactionMetricsData(),
+      fetchBankAccounts(),
+      fetchOfficerPerformance(),
+      // fetchOfficerPieData() PANGGIL DI BAWAH AJA
+    ]);
+  };
+  loadAllData();
+}, [chartFilter, chartYear, selectedAsset]);
 
-  useEffect(() => {
-    fetchDashboardTransactionMetrics();
-  }, [selectedAsset, timeFilter, selectedMonth, selectedYear, customStartDate, customEndDate]);
+// 2. TRAFFIC METRICS - dengan filter sendiri
+useEffect(() => {
+  fetchTrafficMetricsData();
+}, [trafficMetricsAsset, trafficMetricsFilter, 
+    trafficMetricsYear, trafficMetricsMonth, trafficMetricsPeriod]);
 
-  useEffect(() => {
-    const savedDeposit = localStorage.getItem('depositMethods');
-    if (savedDeposit) setDepositMethods(JSON.parse(savedDeposit));
-    
-    const savedWithdrawal = localStorage.getItem('withdrawalMethods');
-    if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
-    
-    // SUPPORT LINES SUDAH PAKAI DATABASE, JANGAN AMBIL DARI LOCALSTORAGE
-    
+// 3. DASHBOARD TRANSACTION METRICS - dengan filter asset & waktu
+useEffect(() => {
+  fetchDashboardTransactionMetrics();
+}, [selectedAsset, timeFilter, selectedMonth, selectedYear, customStartDate, customEndDate]);
+
+// 4. OFFICER PIE DATA - dengan filter asset & waktu (BARU)
+useEffect(() => {
+  fetchOfficerPieData();
+}, [selectedAsset, timeFilter, selectedMonth, selectedYear, customStartDate, customEndDate]);
+
+// 5. LOAD LOCALSTORAGE (sekali aja)
+useEffect(() => {
+  const savedDeposit = localStorage.getItem('depositMethods');
+  if (savedDeposit) setDepositMethods(JSON.parse(savedDeposit));
+  
+  const savedWithdrawal = localStorage.getItem('withdrawalMethods');
+  if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
+  
+  const saved = localStorage.getItem('lastReadActivity');
+  if (saved) setLastReadTimestamp(saved);
+}, []);
+
+// 6. SAVE TO LOCALSTORAGE (setiap ada perubahan)
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
+    localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
+  }
+}, [depositMethods, withdrawalMethods]);
+
+// 7. CHECK NEW ACTIVITIES
+useEffect(() => {
+  if (activities.length > 0) {
+    const latestActivity = new Date(activities[0].timestamp).getTime();
+    const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
+    setHasNewActivity(latestActivity > lastRead);
+  }
+}, [activities, lastReadTimestamp]);
+
+// 8. EVENT LISTENER FOR ACTIVITY READ
+useEffect(() => {
+  const handleActivityRead = () => {
     const saved = localStorage.getItem('lastReadActivity');
     if (saved) setLastReadTimestamp(saved);
-  }, []);
+  };
+  window.addEventListener('activityRead', handleActivityRead);
+  return () => window.removeEventListener('activityRead', handleActivityRead);
+}, []);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
-      localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
-      // SUPPORT LINES JANGAN DISIMPAN KE LOCALSTORAGE (SUDAH VIA DB)
-    }
-  }, [depositMethods, withdrawalMethods]);
-
-  useEffect(() => {
-    if (activities.length > 0) {
-      const latestActivity = new Date(activities[0].timestamp).getTime();
-      const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
-      setHasNewActivity(latestActivity > lastRead);
-    }
-  }, [activities, lastReadTimestamp]);
-
-  useEffect(() => {
-    const handleActivityRead = () => {
-      const saved = localStorage.getItem('lastReadActivity');
-      if (saved) setLastReadTimestamp(saved);
+// 9. DEBUG: Export bankAccounts ke window
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    window.__bankAccounts = bankAccounts;
+    window.__debug = {
+      ...window.__debug,
+      bankAccounts: bankAccounts,
+      assetList: assetList,
+      timestamp: new Date().toISOString()
     };
-    window.addEventListener('activityRead', handleActivityRead);
-    return () => window.removeEventListener('activityRead', handleActivityRead);
-  }, []);
+  }
+}, [bankAccounts, assetList]);
 
-  // ===========================================
-  // DEBUG: Export ke window buat console
-  // ===========================================
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.__bankAccounts = bankAccounts;
-      window.__debug = {
-        ...window.__debug,
-        bankAccounts: bankAccounts,
-        assetList: assetList,
-        timestamp: new Date().toISOString()
-      };
-    }
-  }, [bankAccounts, assetList]);
-
-  // DEBUG: Manual fetch di console
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.__fetchBanks = fetchBankAccounts;
-      window.__testFetch = async () => {
-        const { data } = await supabase.from('bank_accounts').select('*');
-        console.log('Manual fetch:', data);
-        return data;
-      };
-    }
-  }, []);
+// 10. DEBUG: Manual fetch di console
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    window.__fetchBanks = fetchBankAccounts;
+    window.__testFetch = async () => {
+      const { data } = await supabase.from('bank_accounts').select('*');
+      console.log('Manual fetch:', data);
+      return data;
+    };
+  }
+}, []);
 
   // ===========================================
   // FUNGSI TOGGLE SERVICE (UNTUK DEPOSIT/WITHDRAWAL)
@@ -1779,94 +1837,177 @@ export default function DashboardContent() {
         </div>
 
         {/* KOLOM 3: OFFICER PERFORMANCE - MODIFIED WITH 3D EXPLODED PIE CHART */}
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <Link href="/dashboard/officers-performance" className="block group">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-[#FFD700] group-hover:text-[#FFD700] transition-colors">
-                📊 Officer & System Performance
-              </h3>
-              <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                </svg>
+<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+  {/* HEADER DENGAN LINK - TANPA FILTER DI DALEM LINK */}
+  <div className="flex items-center justify-between mb-2">
+    <Link href="/dashboard/officers-performance" className="block group flex-1">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-[#FFD700] group-hover:text-[#FFD700] transition-colors">
+          📊 Officer & System Performance
+        </h3>
+        <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </Link>
+  </div>
+
+  {/* FILTER SECTION - TERPISAH DARI LINK */}
+  <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
+    {/* Filter Asset */}
+    <select 
+      value={selectedAsset}
+      onChange={(e) => setSelectedAsset(e.target.value)}
+      className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+    >
+      <option value="all">All Asset</option>
+      {assetList.map(asset => (
+        <option key={asset} value={asset}>{asset}</option>
+      ))}
+    </select>
+
+    {/* Filter Periode - Yesterday, Monthly, Custom */}
+    <select 
+      value={timeFilter}
+      onChange={(e) => setTimeFilter(e.target.value)}
+      className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+    >
+      <option value="yesterday">Yesterday</option>
+      <option value="monthly">Monthly</option>
+      <option value="custom">Custom Range</option>
+    </select>
+
+    {/* Monthly Filter - Muncul jika pilih monthly */}
+    {timeFilter === 'monthly' && (
+      <>
+        <select 
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+        >
+          {fullMonthNames.map(month => (
+            <option key={month} value={month}>{month}</option>
+          ))}
+        </select>
+        
+        <select 
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+        >
+          {years.map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
+      </>
+    )}
+
+    {/* Custom Range Filter - Muncul jika pilih custom */}
+    {timeFilter === 'custom' && (
+      <>
+        <input
+          type="date"
+          value={customStartDate}
+          onChange={(e) => setCustomStartDate(e.target.value)}
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+        />
+        <span className="text-[#A7D8FF] text-xs">to</span>
+        <input
+          type="date"
+          value={customEndDate}
+          onChange={(e) => setCustomEndDate(e.target.value)}
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+        />
+      </>
+    )}
+  </div>
+  
+  <div className="h-64 flex flex-col">
+    {loadingOfficerPie ? (
+      <div className="h-full flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+      </div>
+    ) : officerPieData.length > 0 ? (
+      <>
+        <div className="flex-1 flex items-center justify-center">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={officerPieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={0}
+                outerRadius={70}
+                paddingAngle={4}
+                dataKey="value"
+                labelLine={false}
+                label={({ name, percent = 0 }) => {
+                  const percentage = (percent * 100).toFixed(1);
+                  return parseFloat(percentage) >= 5 ? `${percentage}%` : '';
+                }}
+              >
+                {officerPieData.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.color}
+                    stroke="#0B1A33"
+                    strokeWidth={2}
+                  />
+                ))}
+              </Pie>
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#0B1A33', 
+                  borderColor: '#FFD700',
+                  color: '#FFFFFF'
+                }}
+                itemStyle={{ 
+                  color: '#FFFFFF'
+                }}
+                labelStyle={{ 
+                  color: '#FFD700'
+                }}
+                formatter={(value, name, props) => {
+                  const total = officerPieData.reduce((sum, item) => sum + item.value, 0);
+                  const percentage = ((value / total) * 100).toFixed(1);
+                  return [`${value} transactions (${percentage}%)`, name];
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        
+        {/* Legend dengan persentase - 2 kolom */}
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          {officerPieData.map((item, index) => {
+            const total = officerPieData.reduce((sum, i) => sum + i.value, 0);
+            const percentage = ((item.value / total) * 100).toFixed(1);
+            return (
+              <div key={`legend-${index}`} className="flex items-center gap-1 text-[10px]">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                <span className="text-[#A7D8FF] truncate">{item.name}</span>
+                <span className="text-[#FFD700] font-bold ml-auto">{percentage}%</span>
               </div>
-            </div>
-            
-            <div className="h-64 flex flex-col">
-              {loadingOfficerPie ? (
-                <div className="h-full flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
-                </div>
-              ) : officerPieData.length > 0 ? (
-                <>
-                  <div className="flex-1 flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={officerPieData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={0}
-                          outerRadius={70}
-                          paddingAngle={4}
-                          dataKey="value"
-                          labelLine={false}
-                          label={({ name, percent = 0 }) => {
-                            const percentage = (percent * 100).toFixed(1);
-                            return parseFloat(percentage) >= 5 ? `${percentage}%` : '';
-                          }}
-                        >
-                          {officerPieData.map((entry, index) => (
-                            <Cell 
-                              key={`cell-${index}`} 
-                              fill={entry.color}
-                              stroke="#0B1A33"
-                              strokeWidth={2}
-                            />
-                          ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                          formatter={(value, name, props) => {
-                            const total = officerPieData.reduce((sum, item) => sum + item.value, 0);
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            return [`${value} transactions (${percentage}%)`, name];
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  
-                  {/* Legend dengan persentase - 2 kolom */}
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    {officerPieData.map((item, index) => {
-                      const total = officerPieData.reduce((sum, i) => sum + i.value, 0);
-                      const percentage = ((item.value / total) * 100).toFixed(1);
-                      return (
-                        <div key={`legend-${index}`} className="flex items-center gap-1 text-[10px]">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
-                          <span className="text-[#A7D8FF] truncate">{item.name}</span>
-                          <span className="text-[#FFD700] font-bold ml-auto">{percentage}%</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  <div className="text-center text-[10px] text-[#A7D8FF] mt-1">
-                    Total: {officerPieData.reduce((sum, item) => sum + item.value, 0)} transactions
-                  </div>
-                </>
-              ) : (
-                <div className="h-full flex items-center justify-center text-[#A7D8FF] text-sm text-center">
-                  No transaction data this month
-                </div>
-              )}
-            </div>
-            
-            <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
-              Click to see detailed performance →
-            </div>
-          </Link>
+            );
+          })}
+        </div>
+        
+        <div className="text-center text-[10px] text-[#A7D8FF] mt-1">
+          Total: {officerPieData.reduce((sum, item) => sum + item.value, 0)} transactions
+        </div>
+      </>
+    ) : (
+      <div className="h-full flex items-center justify-center text-[#A7D8FF] text-sm text-center">
+        No transaction data this month
+      </div>
+    )}
+  </div>
+  
+  <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
+    Click to see detailed performance →
+  </div>
         </div>
       </div>
 
