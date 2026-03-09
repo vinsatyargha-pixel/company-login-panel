@@ -153,25 +153,24 @@ const fetchOfficers = async () => {
         department: 'AUTOMATION',
         status: 'SYSTEM'
       },
-      // TAMBAHKAN MOZARTDP UNTUK DEPOSIT
+      // TAMBAHKAN MOZARTDP DAN MOZARTWD MANUAL
       {
         id: 'mozartdp',
         panel_id: 'MOZARTDP',
-        full_name: 'Mozart Deposit (AUTO)',
+        full_name: 'MOZARTDP (AUTO)',
         department: 'AUTOMATION',
         status: 'SYSTEM'
       },
-      // TAMBAHKAN MOZARTWD UNTUK WITHDRAWAL
       {
         id: 'mozartwd',
         panel_id: 'MOZARTWD',
-        full_name: 'Mozart Withdrawal (AUTO)',
+        full_name: 'MOZARTWD (AUTO)',
         department: 'AUTOMATION',
         status: 'SYSTEM'
       }
     ]
     
-    console.log('📊 Officers found:', allOfficers.length)
+    console.log('📊 Officers found:', allOfficers.length) // Sekarang jadi 9
     setOfficers(allOfficers)
     
   } catch (error: any) {
