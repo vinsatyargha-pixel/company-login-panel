@@ -812,53 +812,65 @@ const fetchKPI = async () => {
               </tr>
             </thead>
             <tbody>
-              {kpiData.length > 0 ? (
-                kpiData.map((item, idx) => (
-                  <tr 
-                    key={`dep-${item.panel_id}`} 
-                    className={`border-b border-blue-500/10 hover:bg-[#0B1A33]/50 ${
-                      item.panel_id === 'SYSTEM' ? 'bg-purple-900/20' : ''
-                    }`}
-                  >
-                    <td className="px-2 py-2">{idx + 1}</td>
-                    <td className="px-2 py-2 text-blue-400">{item.panel_id}</td>
-                    <td className="px-2 py-2">{item.officer_name}</td>
-                    <td className="px-2 py-2">{item.department}</td>
-                    <td className="px-2 py-2">
-                      <span className={`px-1 py-0.5 rounded text-[10px] ${
-                        item.panel_id === 'SYSTEM' 
-                          ? 'bg-purple-500/20 text-purple-400' 
-                          : 'bg-green-500/20 text-green-400'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    
-                    {/* Deposit Data */}
-                    <td className="px-2 py-2 font-bold text-blue-400">{item.dep_total}</td>
-                    <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
-                    <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
-                    <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
-                    <td className="px-2 py-2">{item.dep_approve_rate}%</td>
-                    <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
-                    <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
-                    <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
-                    <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
-                    <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
-                    
-                    {/* Human Error Deposit */}
-                    <td className="px-2 py-2 text-red-400">{item.dep_human_error}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
-                    <div className="text-4xl mb-2">📊</div>
-                    <p className="text-lg mb-1">Belum ada data deposit untuk {periodText}</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
+  {kpiData.length > 0 ? (
+    kpiData
+      .filter(item => {
+        // Deposit table: tampilkan semua kecuali MOZARTWD
+        return item.panel_id !== 'MOZARTWD'
+      })
+      .map((item, idx) => {
+        // Hitung ulang index setelah filter
+        const filteredIndex = kpiData
+          .filter(i => i.panel_id !== 'MOZARTWD')
+          .findIndex(i => i.panel_id === item.panel_id)
+        
+        return (
+          <tr 
+            key={`dep-${item.panel_id}`} 
+            className={`border-b border-blue-500/10 hover:bg-[#0B1A33]/50 ${
+              item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
+            }`}
+          >
+            <td className="px-2 py-2">{filteredIndex + 1}</td>
+            <td className="px-2 py-2 text-blue-400">{item.panel_id}</td>
+            <td className="px-2 py-2">{item.officer_name}</td>
+            <td className="px-2 py-2">{item.department}</td>
+            <td className="px-2 py-2">
+              <span className={`px-1 py-0.5 rounded text-[10px] ${
+                item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
+                  ? 'bg-purple-500/20 text-purple-400' 
+                  : 'bg-green-500/20 text-green-400'
+              }`}>
+                {item.status}
+              </span>
+            </td>
+            
+            {/* Deposit Data */}
+            <td className="px-2 py-2 font-bold text-blue-400">{item.dep_total}</td>
+            <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
+            <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
+            <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
+            <td className="px-2 py-2">{item.dep_approve_rate}%</td>
+            <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
+            <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
+            <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
+            <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
+            <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
+            
+            {/* Human Error Deposit */}
+            <td className="px-2 py-2 text-red-400">{item.dep_human_error}</td>
+          </tr>
+        )
+      })
+  ) : (
+    <tr>
+      <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
+        <div className="text-4xl mb-2">📊</div>
+        <p className="text-lg mb-1">Belum ada data deposit untuk {periodText}</p>
+      </td>
+    </tr>
+  )}
+</tbody>
           </table>
         </div>
       </div>
@@ -904,53 +916,65 @@ const fetchKPI = async () => {
               </tr>
             </thead>
             <tbody>
-              {kpiData.length > 0 ? (
-                kpiData.map((item, idx) => (
-                  <tr 
-                    key={`wd-${item.panel_id}`} 
-                    className={`border-b border-green-500/10 hover:bg-[#0B1A33]/50 ${
-                      item.panel_id === 'SYSTEM' ? 'bg-purple-900/20' : ''
-                    }`}
-                  >
-                    <td className="px-2 py-2">{idx + 1}</td>
-                    <td className="px-2 py-2 text-green-400">{item.panel_id}</td>
-                    <td className="px-2 py-2">{item.officer_name}</td>
-                    <td className="px-2 py-2">{item.department}</td>
-                    <td className="px-2 py-2">
-                      <span className={`px-1 py-0.5 rounded text-[10px] ${
-                        item.panel_id === 'SYSTEM' 
-                          ? 'bg-purple-500/20 text-purple-400' 
-                          : 'bg-green-500/20 text-green-400'
-                      }`}>
-                        {item.status}
-                      </span>
-                    </td>
-                    
-                    {/* Withdrawal Data */}
-                    <td className="px-2 py-2 font-bold text-green-400">{item.wd_total}</td>
-                    <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
-                    <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
-                    <td className="px-2 py-2 text-orange-400">{item.wd_failed}</td>
-                    <td className="px-2 py-2">{item.wd_approve_rate}%</td>
-                    <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
-                    <td className="px-2 py-2 text-red-400 font-mono">{item.wd_avg_reject}</td>
-                    <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_fail}</td>
-                    <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
-                    <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
-                    
-                    {/* Human Error Withdrawal */}
-                    <td className="px-2 py-2 text-red-400">{item.wd_human_error}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
-                    <div className="text-4xl mb-2">📊</div>
-                    <p className="text-lg mb-1">Belum ada data withdrawal untuk {periodText}</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
+  {kpiData.length > 0 ? (
+    kpiData
+      .filter(item => {
+        // Deposit table: tampilkan semua kecuali MOZARTWD
+        return item.panel_id !== 'MOZARTWD'
+      })
+      .map((item, idx) => {
+        // Hitung ulang index setelah filter
+        const filteredIndex = kpiData
+          .filter(i => i.panel_id !== 'MOZARTWD')
+          .findIndex(i => i.panel_id === item.panel_id)
+        
+        return (
+          <tr 
+            key={`dep-${item.panel_id}`} 
+            className={`border-b border-blue-500/10 hover:bg-[#0B1A33]/50 ${
+              item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
+            }`}
+          >
+            <td className="px-2 py-2">{filteredIndex + 1}</td>
+            <td className="px-2 py-2 text-blue-400">{item.panel_id}</td>
+            <td className="px-2 py-2">{item.officer_name}</td>
+            <td className="px-2 py-2">{item.department}</td>
+            <td className="px-2 py-2">
+              <span className={`px-1 py-0.5 rounded text-[10px] ${
+                item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
+                  ? 'bg-purple-500/20 text-purple-400' 
+                  : 'bg-green-500/20 text-green-400'
+              }`}>
+                {item.status}
+              </span>
+            </td>
+            
+            {/* Deposit Data */}
+            <td className="px-2 py-2 font-bold text-blue-400">{item.dep_total}</td>
+            <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
+            <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
+            <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
+            <td className="px-2 py-2">{item.dep_approve_rate}%</td>
+            <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
+            <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
+            <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
+            <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
+            <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
+            
+            {/* Human Error Deposit */}
+            <td className="px-2 py-2 text-red-400">{item.dep_human_error}</td>
+          </tr>
+        )
+      })
+  ) : (
+    <tr>
+      <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
+        <div className="text-4xl mb-2">📊</div>
+        <p className="text-lg mb-1">Belum ada data deposit untuk {periodText}</p>
+      </td>
+    </tr>
+  )}
+</tbody>
           </table>
         </div>
       </div>
