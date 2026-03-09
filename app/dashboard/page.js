@@ -34,7 +34,7 @@ export default function DashboardContent() {
   const [chartYear, setChartYear] = useState('2026');
 
   // ===========================================
-  // STATE UNTUK TRANSACTION METRICS (PIE CHART) - UBAH NAMA
+  // STATE UNTUK TRANSACTION METRICS - DITAMBAH
   // ===========================================
   const [transactionData, setTransactionData] = useState([
     { name: 'Deposit', value: 0 },
@@ -111,12 +111,34 @@ export default function DashboardContent() {
   const [officerPerformance, setOfficerPerformance] = useState([]);
   const [loadingOfficerData, setLoadingOfficerData] = useState(true);
 
+  // ===========================================
+  // STATE UNTUK FILTER TRANSACTION METRICS - DITAMBAH
+  // ===========================================
+  const [timeFilter, setTimeFilter] = useState('yesterday');
+  const [selectedMonth, setSelectedMonth] = useState('Januari');
+  const [selectedYear, setSelectedYear] = useState('2026');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
   const { user, userJobRole, isAdmin } = useAuth();
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const fullMonths = ['January', 'February', 'March', 'April', 'May', 'June', 
                       'July', 'August', 'September', 'October', 'November', 'December'];
+  const fullMonthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   const years = ['2024', '2025', '2026', '2027', '2028'];
+
+  // ===========================================
+  // SET DEFAULT CUSTOM RANGE - DITAMBAH
+  // ===========================================
+  useEffect(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 7);
+    setCustomStartDate(start.toISOString().split('T')[0]);
+    setCustomEndDate(end.toISOString().split('T')[0]);
+  }, []);
 
   // ===========================================
   // FUNGSI UNTUK GET GAMBAR BANK
@@ -138,20 +160,20 @@ export default function DashboardContent() {
   // FUNGSI MAPPING ASSET (NAMA PANJANG -> SINGKATAN)
   // ===========================================
   const getAssetCode = (assetName) => {
-  if (!assetName) return 'XLY';
-  const assetMap = {
-    'LUCKY77': 'XLY',
-    'LUCKY 77': 'XLY',
-    'LUCKY': 'XLY',
-  };
-  const upperName = assetName.toUpperCase();
-  for (const [key, value] of Object.entries(assetMap)) {
-    if (upperName.includes(key.toUpperCase())) {
-      return value;
+    if (!assetName) return 'XLY';
+    const assetMap = {
+      'LUCKY77': 'XLY',
+      'LUCKY 77': 'XLY',
+      'LUCKY': 'XLY',
+    };
+    const upperName = assetName.toUpperCase();
+    for (const [key, value] of Object.entries(assetMap)) {
+      if (upperName.includes(key.toUpperCase())) {
+        return value;
+      }
     }
-  }
-  return 'XLY'; // default XLY
-};
+    return 'XLY'; // default XLY
+  };
 
   // ===========================================
   // FETCH SUPPORT LINES DARI DATABASE
@@ -262,7 +284,7 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FETCH TRAFFIC METRICS DATA - UBAH NAMA FUNGSI
+  // FETCH TRAFFIC METRICS DATA
   // ===========================================
   const fetchTrafficMetricsData = async () => {
     try {
@@ -478,65 +500,65 @@ export default function DashboardContent() {
     }
   };
 
-// ===========================================
-// FETCH BANK ACCOUNTS - FIXED VERSION
-// ===========================================
-const fetchBankAccounts = async () => {
-  try {
-    setLoadingBanks(true);
-    console.log('🔍 Fetching bank accounts...');
-    
-    // AMBIL TOKEN DARI LOCALSTORAGE
-    const authToken = localStorage.getItem('sb-lrrghigbwxwxpvicbkos-auth-token');
-    let token = '';
-    if (authToken) {
-      try {
-        token = JSON.parse(authToken).access_token;
-      } catch (e) {
-        console.error('Token parse error:', e);
+  // ===========================================
+  // FETCH BANK ACCOUNTS - FIXED VERSION
+  // ===========================================
+  const fetchBankAccounts = async () => {
+    try {
+      setLoadingBanks(true);
+      console.log('🔍 Fetching bank accounts...');
+      
+      // AMBIL TOKEN DARI LOCALSTORAGE
+      const authToken = localStorage.getItem('sb-lrrghigbwxwxpvicbkos-auth-token');
+      let token = '';
+      if (authToken) {
+        try {
+          token = JSON.parse(authToken).access_token;
+        } catch (e) {
+          console.error('Token parse error:', e);
+        }
       }
-    }
-    
-    const apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxycmdoaWdid3h3eHB2aWNia29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MTE1NjEsImV4cCI6MjA4NjE4NzU2MX0.6v7pQtcfZsNEPRP622ZzHnKdGjaCX2ibgAIKUbvwC5g';
-    
-    // FETCH MANUAL (YANG UDAH TERBUKTI JALAN)
-    const response = await fetch('https://lrrghigbwxwxpvicbkos.supabase.co/rest/v1/bank_accounts?select=*', {
-      headers: {
-        'apikey': apikey,
-        'Authorization': `Bearer ${token}`
+      
+      const apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxycmdoaWdid3h3eHB2aWNia29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MTE1NjEsImV4cCI6MjA4NjE4NzU2MX0.6v7pQtcfZsNEPRP622ZzHnKdGjaCX2ibgAIKUbvwC5g';
+      
+      // FETCH MANUAL (YANG UDAH TERBUKTI JALAN)
+      const response = await fetch('https://lrrghigbwxwxpvicbkos.supabase.co/rest/v1/bank_accounts?select=*', {
+        headers: {
+          'apikey': apikey,
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    });
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const data = await response.json();
+      console.log('✅ Bank accounts fetched:', data.length, 'records');
+      
+      // SET STATE
+      setBankAccounts(data || []);
+      
+      // EXPORT KE WINDOW
+      if (typeof window !== 'undefined') {
+        window.__bankAccounts = data || [];
+      }
+      
+      // HITUNG ACTIVE BANKS
+      const activeBanks = data?.filter(b => 
+        (b.role?.toUpperCase() === 'DEPOSIT' || b.role?.toUpperCase() === 'WITHDRAW') && 
+        b.display_used === 'YES'
+      ) || [];
+      
+      const uniqueAssets = [...new Set(activeBanks.map(item => item.asset).filter(Boolean))];
+      setAssetList(uniqueAssets);
+      
+    } catch (error) {
+      console.error('❌ Fetch error:', error);
+    } finally {
+      setLoadingBanks(false);
     }
-    
-    const data = await response.json();
-    console.log('✅ Bank accounts fetched:', data.length, 'records');
-    
-    // SET STATE
-    setBankAccounts(data || []);
-    
-    // EXPORT KE WINDOW
-    if (typeof window !== 'undefined') {
-      window.__bankAccounts = data || [];
-    }
-    
-    // HITUNG ACTIVE BANKS
-    const activeBanks = data?.filter(b => 
-      (b.role?.toUpperCase() === 'DEPOSIT' || b.role?.toUpperCase() === 'WITHDRAW') && 
-      b.display_used === 'YES'
-    ) || [];
-    
-    const uniqueAssets = [...new Set(activeBanks.map(item => item.asset).filter(Boolean))];
-    setAssetList(uniqueAssets);
-    
-  } catch (error) {
-    console.error('❌ Fetch error:', error);
-  } finally {
-    setLoadingBanks(false);
-  }
-};
+  };
 
   // ===========================================
   // SYNC KE SUPABASE
@@ -601,7 +623,7 @@ const fetchBankAccounts = async () => {
   };
 
   // ===========================================
-  // FETCH TRANSACTION METRICS DATA - UBAH NAMA FUNGSI
+  // FETCH TRANSACTION METRICS DATA
   // ===========================================
   const fetchTransactionMetricsData = async () => {
     try {
@@ -750,7 +772,7 @@ const fetchBankAccounts = async () => {
       await Promise.all([
         fetchDashboardData(),
         fetchRecentActivities(),
-        fetchTransactionMetricsData(), // UBAH NAMA
+        fetchTransactionMetricsData(),
         fetchBankAccounts(),
         fetchOfficerPerformance(),
         fetchOfficerPieData()
@@ -760,7 +782,7 @@ const fetchBankAccounts = async () => {
   }, [chartFilter, chartYear, selectedAsset]);
 
   useEffect(() => {
-    fetchTrafficMetricsData(); // UBAH NAMA
+    fetchTrafficMetricsData();
   }, [trafficMetricsAsset, trafficMetricsFilter, 
       trafficMetricsYear, trafficMetricsMonth, trafficMetricsPeriod]);
 
@@ -962,7 +984,7 @@ const fetchBankAccounts = async () => {
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-                        {/* KOLOM 1: TRANSACTION METRICS - 4 BAR CHARTS */}
+        {/* KOLOM 1: TRANSACTION METRICS - 4 BAR CHARTS DENGAN FILTER LENGKAP */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 h-full">
           {/* HEADER DENGAN LINK */}
           <Link href="/dashboard/transaction-metrics" className="block group mb-4">
@@ -978,9 +1000,9 @@ const fetchBankAccounts = async () => {
             </div>
           </Link>
 
-          {/* FILTER SECTION */}
+          {/* FILTER SECTION - LENGKAP: Yesterday, Monthly, Custom */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {/* Filter Asset */}
+            {/* Filter Asset (untuk box ini) */}
             <select 
               value={selectedAsset}
               onChange={(e) => setSelectedAsset(e.target.value)}
@@ -992,20 +1014,65 @@ const fetchBankAccounts = async () => {
               ))}
             </select>
 
-            {/* Filter Periode */}
+            {/* Filter Periode - Yesterday, Monthly, Custom */}
             <select 
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
               className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
             >
-              <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
-              <option value="week">This Week</option>
-              <option value="month">This Month</option>
+              <option value="monthly">Monthly</option>
+              <option value="custom">Custom Range</option>
             </select>
+
+            {/* Monthly Filter - Muncul jika pilih monthly */}
+            {timeFilter === 'monthly' && (
+              <>
+                <select 
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                >
+                  {fullMonthNames.map(month => (
+                    <option key={month} value={month}>{month}</option>
+                  ))}
+                </select>
+                
+                <select 
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                >
+                  {years.map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {/* Custom Range Filter - Muncul jika pilih custom */}
+            {timeFilter === 'custom' && (
+              <>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                />
+                <span className="text-[#A7D8FF] text-xs">to</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                />
+              </>
+            )}
           </div>
 
           {/* 4 BAR CHARTS GRID */}
           <div className="grid grid-cols-2 gap-4">
-            {/* CHART 1: DEPOSIT */}
+            {/* CHART 1: DEPOSIT - Approved, Rejected, Failed */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
               <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
               <div className="h-24">
@@ -1038,7 +1105,7 @@ const fetchBankAccounts = async () => {
               </div>
             </div>
 
-            {/* CHART 2: WITHDRAWAL */}
+            {/* CHART 2: WITHDRAWAL - Approved, Rejected */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
               <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
               <div className="h-24">
@@ -1069,7 +1136,7 @@ const fetchBankAccounts = async () => {
               </div>
             </div>
 
-            {/* CHART 3: ADJUSTMENT */}
+            {/* CHART 3: ADJUSTMENT - Plus, Minus */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
               <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
               <div className="h-24">
@@ -1100,7 +1167,7 @@ const fetchBankAccounts = async () => {
               </div>
             </div>
 
-            {/* CHART 4: BONUS */}
+            {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
               <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
               <div className="h-24">
@@ -1161,7 +1228,7 @@ const fetchBankAccounts = async () => {
           </Link>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD */}
+        {/* KOLOM 2: DEPOSIT METHOD (TETAP SAMA) */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -1194,7 +1261,7 @@ const fetchBankAccounts = async () => {
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD */}
+        {/* KOLOM 3: WITHDRAWAL METHOD (TETAP SAMA) */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -1228,7 +1295,7 @@ const fetchBankAccounts = async () => {
         </div>
       </div>
 
-      {/* ROW 2 - GRID 3 KOLOM */}
+      {/* ROW 2 - GRID 3 KOLOM (SEMUA TETAP SAMA) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
         {/* KOLOM 1: CUSTOMER SUPPORT LINE - REALTIME VERSION */}
