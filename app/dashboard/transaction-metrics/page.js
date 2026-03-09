@@ -244,33 +244,33 @@ export default function TransactionMetricsPage() {
       })
 
       // ===========================================
-      // 5. UPDATE STATE
-      // ===========================================
-      setTotals({
-        // Main header
-        total_deposit: totalDeposit,
-        total_withdrawal: totalWithdrawal,
-        total_bonus: 0, // Kosong dulu
-        
-        // Deposit breakdown
-        deposit_approved: depositApproved,
-        deposit_rejected: depositRejected,
-        deposit_failed: depositFailed,
-        
-        // Withdrawal breakdown
-        withdrawal_approved: withdrawalApproved,
-        withdrawal_rejected: withdrawalRejected,
-        
-        // Adjustment (kosong dulu)
-        adjustment_plus: 0,
-        adjustment_minus: 0,
-        
-        // Bonus (kosong dulu)
-        bonus: 0,
-        cashback: 0,
-        commission: 0,
-        referral: 0
-      })
+// 5. UPDATE STATE
+// ===========================================
+setTotals({
+  // Main header
+  total_deposit: totalDeposit,
+  total_withdrawal: totalWithdrawal,
+  total_bonus: 0, // Kosong dulu
+  
+  // Deposit breakdown
+  deposit_approved: depositApproved,
+  deposit_rejected: depositRejected,
+  deposit_failed: depositFailed,
+  
+  // Withdrawal breakdown
+  withdrawal_approved: withdrawalApproved,
+  withdrawal_rejected: withdrawalRejected,
+  
+  // Adjustment (kosong dulu)
+  adjustment_plus: 0,
+  adjustment_minus: 0,
+  
+  // Bonus (kosong dulu)
+  bonus: 0,
+  cashback: 0,
+  commission: 0,
+  referral: 0
+})
       
     } catch (error) {
       console.error('❌ Error:', error)
@@ -600,29 +600,29 @@ export default function TransactionMetricsPage() {
       </div>
 
       {/* SUMMARY FOOTER */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-        {/* Net Flow Card */}
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="flex justify-between items-center">
-            <span className="text-[#A7D8FF]">Net Flow (Deposit - Withdrawal)</span>
-            <span className={`text-2xl font-bold ${totals.total_deposit - totals.total_withdrawal >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              {formatRupiah(totals.total_deposit - totals.total_withdrawal)}
-            </span>
-          </div>
-        </div>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  {/* Net Flow Card - Deposit Approved - Withdrawal Approved */}
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="flex justify-between items-center">
+      <span className="text-[#A7D8FF]">Net Flow (Deposit Approved - Withdrawal Approved)</span>
+      <span className={`text-2xl font-bold ${totals.deposit_approved - totals.withdrawal_approved >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+        {formatRupiah(totals.deposit_approved - totals.withdrawal_approved)}
+      </span>
+    </div>
+  </div>
 
-        {/* Info Card */}
-        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-[#A7D8FF]">Asset</span>
-            <span className="text-white font-bold">{selectedAsset === 'all' ? 'All Asset' : 'LUCKY77 (XLY)'}</span>
-          </div>
-          <div className="flex justify-between items-center text-sm mt-2">
-            <span className="text-[#A7D8FF]">Periode</span>
-            <span className="text-white">{periodText}</span>
-          </div>
-        </div>
-      </div>
+  {/* Info Card */}
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="flex justify-between items-center text-sm">
+      <span className="text-[#A7D8FF]">Asset</span>
+      <span className="text-white font-bold">{selectedAsset === 'all' ? 'All Asset' : 'LUCKY77 (XLY)'}</span>
+    </div>
+    <div className="flex justify-between items-center text-sm mt-2">
+      <span className="text-[#A7D8FF]">Periode</span>
+      <span className="text-white">{periodText}</span>
+    </div>
+  </div>
+</div>
     </div>
   )
 }
