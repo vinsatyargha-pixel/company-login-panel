@@ -34,7 +34,9 @@ export default function TransactionMetricsPage() {
   
   const [loading, setLoading] = useState(false)
   
-  // Data structure
+  // ===========================================
+  // DATA STRUCTURE - SEMUA 0
+  // ===========================================
   const [totals, setTotals] = useState({
     // Main header
     total_deposit: 0,
@@ -140,7 +142,7 @@ export default function TransactionMetricsPage() {
   }
 
   // ===========================================
-  // FETCH DATA (AKAN DIISI NANTI)
+  // FETCH DATA - SEMUA 0 (SIAP DIISI DATABASE)
   // ===========================================
 
   const fetchData = async () => {
@@ -154,33 +156,26 @@ export default function TransactionMetricsPage() {
         period: periodText
       })
       
-      // TODO: Ambil data dari database
+      // TODO: Ambil data dari database berdasarkan:
+      // - selectedAsset: 'all' atau 'LUCKY77'
+      // - startDate & endDate
       
-      // SEMENTARA: Data dummy untuk testing tampilan
+      // SEMENTARA: SEMUA DATA 0
       setTotals({
-        // Main header
-        total_deposit: 1250000000,
-        total_withdrawal: 875000000,
-        total_bonus: 125000000,
-        
-        // Deposit breakdown
-        deposit_approved: 1150000000,
-        deposit_rejected: 75000000,
-        deposit_failed: 25000000,
-        
-        // Withdrawal breakdown
-        withdrawal_approved: 800000000,
-        withdrawal_rejected: 75000000,
-        
-        // Adjustment
-        adjustment_plus: 15000000,
-        adjustment_minus: 5000000,
-        
-        // Bonus breakdown
-        bonus: 50000000,
-        cashback: 35000000,
-        commission: 25000000,
-        referral: 15000000
+        total_deposit: 0,
+        total_withdrawal: 0,
+        total_bonus: 0,
+        deposit_approved: 0,
+        deposit_rejected: 0,
+        deposit_failed: 0,
+        withdrawal_approved: 0,
+        withdrawal_rejected: 0,
+        adjustment_plus: 0,
+        adjustment_minus: 0,
+        bonus: 0,
+        cashback: 0,
+        commission: 0,
+        referral: 0
       })
       
     } catch (error) {
@@ -307,7 +302,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* MAIN HEADER CARDS - Total Semua */}
+      {/* MAIN HEADER CARDS - Total Semua (SEMUA 0) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Total Deposit */}
         <div className="bg-gradient-to-br from-blue-900/50 to-blue-950 p-6 rounded-lg border border-blue-500/30">
@@ -337,7 +332,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* DEPOSIT SECTION */}
+      {/* DEPOSIT SECTION (SEMUA 0) */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-blue-400 mb-3 flex items-center">
           <span className="bg-blue-500 w-1 h-6 rounded-full mr-2"></span>
@@ -391,7 +386,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* WITHDRAWAL SECTION */}
+      {/* WITHDRAWAL SECTION (SEMUA 0) */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-green-400 mb-3 flex items-center">
           <span className="bg-green-500 w-1 h-6 rounded-full mr-2"></span>
@@ -430,7 +425,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* ADJUSTMENT SECTION */}
+      {/* ADJUSTMENT SECTION (SEMUA 0) */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-purple-400 mb-3 flex items-center">
           <span className="bg-purple-500 w-1 h-6 rounded-full mr-2"></span>
@@ -469,7 +464,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* BONUS SECTION */}
+      {/* BONUS SECTION (SEMUA 0) */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-yellow-400 mb-3 flex items-center">
           <span className="bg-yellow-500 w-1 h-6 rounded-full mr-2"></span>
