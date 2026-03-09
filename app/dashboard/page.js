@@ -962,10 +962,11 @@ const fetchBankAccounts = async () => {
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-                {/* KOLOM 1: TRANSACTION METRICS - UBAH JUDUL - SEKARANG BISA DI KLIK */}
-        <Link href="/dashboard/transaction-metrics" className="block group">
-          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 hover:border-[#FFD700] hover:shadow-[0_0_25px_#FFD700]/20 transition-all">
-            <div className="flex items-center justify-between mb-2">
+                        {/* KOLOM 1: TRANSACTION METRICS - 4 BAR CHARTS */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 h-full">
+          {/* HEADER DENGAN LINK */}
+          <Link href="/dashboard/transaction-metrics" className="block group mb-4">
+            <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-[#FFD700] group-hover:text-[#FFD700] transition-colors">
                 📊 Transaction Metrics
               </h3>
@@ -975,34 +976,190 @@ const fetchBankAccounts = async () => {
                 </svg>
               </div>
             </div>
-            
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={transactionData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {transactionData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={TRANSACTION_COLORS[index % TRANSACTION_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+          </Link>
+
+          {/* FILTER SECTION */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {/* Filter Asset */}
+            <select 
+              value={selectedAsset}
+              onChange={(e) => setSelectedAsset(e.target.value)}
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+            >
+              <option value="all">All Asset</option>
+              {assetList.map(asset => (
+                <option key={asset} value={asset}>{asset}</option>
+              ))}
+            </select>
+
+            {/* Filter Periode */}
+            <select 
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+            >
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+            </select>
+          </div>
+
+          {/* 4 BAR CHARTS GRID */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* CHART 1: DEPOSIT */}
+            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
+              <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
+              <div className="h-24">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: 'App', value: 1150000000, color: '#10b981' },
+                    { name: 'Rej', value: 75000000, color: '#ef4444' },
+                    { name: 'Fail', value: 25000000, color: '#f59e0b' }
+                  ]}>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {[
+                        { name: 'App', value: 1150000000, color: '#10b981' },
+                        { name: 'Rej', value: 75000000, color: '#ef4444' },
+                        { name: 'Fail', value: 25000000, color: '#f59e0b' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                      formatter={(value) => [`Rp ${new Intl.NumberFormat('id-ID').format(value)}`, '']}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+                <span>✓ App</span>
+                <span>✗ Rej</span>
+                <span>⚠ Fail</span>
+              </div>
             </div>
-            
-            <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
-              Click to see detailed metrics →
+
+            {/* CHART 2: WITHDRAWAL */}
+            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
+              <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
+              <div className="h-24">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: 'App', value: 800000000, color: '#10b981' },
+                    { name: 'Rej', value: 75000000, color: '#ef4444' }
+                  ]}>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {[
+                        { name: 'App', value: 800000000, color: '#10b981' },
+                        { name: 'Rej', value: 75000000, color: '#ef4444' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                      formatter={(value) => [`Rp ${new Intl.NumberFormat('id-ID').format(value)}`, '']}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+                <span>✓ App</span>
+                <span>✗ Rej</span>
+                <span className="invisible">-</span>
+              </div>
+            </div>
+
+            {/* CHART 3: ADJUSTMENT */}
+            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
+              <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
+              <div className="h-24">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: '+', value: 15000000, color: '#10b981' },
+                    { name: '-', value: 5000000, color: '#ef4444' }
+                  ]}>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {[
+                        { name: '+', value: 15000000, color: '#10b981' },
+                        { name: '-', value: 5000000, color: '#ef4444' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                      formatter={(value) => [`Rp ${new Intl.NumberFormat('id-ID').format(value)}`, '']}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+                <span>+ Plus</span>
+                <span>- Minus</span>
+                <span className="invisible">-</span>
+              </div>
+            </div>
+
+            {/* CHART 4: BONUS */}
+            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
+              <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
+              <div className="h-24">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: 'Bonus', value: 50000000, color: '#FFD700' },
+                    { name: 'Cash', value: 35000000, color: '#3b82f6' },
+                    { name: 'Comm', value: 25000000, color: '#10b981' },
+                    { name: 'Ref', value: 15000000, color: '#8b5cf6' }
+                  ]}>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {[
+                        { name: 'Bonus', value: 50000000, color: '#FFD700' },
+                        { name: 'Cash', value: 35000000, color: '#3b82f6' },
+                        { name: 'Comm', value: 25000000, color: '#10b981' },
+                        { name: 'Ref', value: 15000000, color: '#8b5cf6' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                      formatter={(value) => [`Rp ${new Intl.NumberFormat('id-ID').format(value)}`, '']}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+                <span>Bonus</span>
+                <span>Cash</span>
+                <span>Comm</span>
+                <span>Ref</span>
+              </div>
             </div>
           </div>
-        </Link>
+
+          {/* TOTAL VALUE - RINGKASAN */}
+          <div className="mt-4 pt-3 border-t border-[#FFD700]/20">
+            <div className="flex justify-between text-xs">
+              <span className="text-[#A7D8FF]">Total Deposit:</span>
+              <span className="text-white font-bold">Rp 1.25M</span>
+            </div>
+            <div className="flex justify-between text-xs mt-1">
+              <span className="text-[#A7D8FF]">Total Withdrawal:</span>
+              <span className="text-white font-bold">Rp 875K</span>
+            </div>
+            <div className="flex justify-between text-xs mt-1">
+              <span className="text-[#A7D8FF]">Net Flow:</span>
+              <span className="text-green-400 font-bold">+ Rp 375K</span>
+            </div>
+          </div>
+
+          {/* LINK DETAIL */}
+          <Link href="/dashboard/transaction-metrics" className="block mt-3 text-right">
+            <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
+              Click to see detailed metrics →
+            </span>
+          </Link>
+        </div>
 
         {/* KOLOM 2: DEPOSIT METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
