@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
 // ===========================================
 // HELPER: Format currency Rupiah
@@ -35,7 +36,7 @@ export default function TransactionMetricsPage() {
   const [loading, setLoading] = useState(false)
   
   // ===========================================
-  // DATA STRUCTURE - SEMUA 0
+  // DATA STRUCTURE
   // ===========================================
   const [totals, setTotals] = useState({
     // Main header
@@ -52,11 +53,11 @@ export default function TransactionMetricsPage() {
     withdrawal_approved: 0,
     withdrawal_rejected: 0,
     
-    // Adjustment
+    // Adjustment (kosong dulu)
     adjustment_plus: 0,
     adjustment_minus: 0,
     
-    // Bonus breakdown
+    // Bonus (kosong dulu)
     bonus: 0,
     cashback: 0,
     commission: 0,
@@ -135,14 +136,14 @@ export default function TransactionMetricsPage() {
     }
 
     return { 
-      startDate, 
-      endDate, 
+      startDate: `${startDate} 00:00:00`, 
+      endDate: `${endDate} 23:59:59`, 
       periodText 
     }
   }
 
   // ===========================================
-  // FETCH DATA - SEMUA 0 (SIAP DIISI DATABASE)
+  // FETCH DATA FROM SUPABASE
   // ===========================================
 
   const fetchData = async () => {
@@ -155,23 +156,116 @@ export default function TransactionMetricsPage() {
         dateRange: { startDate, endDate },
         period: periodText
       })
-      
-      // TODO: Ambil data dari database berdasarkan:
-      // - selectedAsset: 'all' atau 'LUCKY77'
-      // - startDate & endDate
-      
-      // SEMENTARA: SEMUA DATA 0
+
+      // ===========================================
+      // 1. AMBIL DATA DEPOSIT
+      // ===========================================
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('deposit_amount, status')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate)
+
+      // Filter berdasarkan asset jika bukan 'all'
+      if (selectedAsset !== 'all') {
+        depositQuery = depositQuery.eq('brand', 'XLY') // LUCKY77 = XLY
+      }
+
+      const { data: depositData, error: depositError } = await depositQuery
+
+      if (depositError) throw depositError
+
+      // ===========================================
+      // 2. AMBIL DATA WITHDRAWAL
+      // ===========================================
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('withdrawal_amount, status')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate)
+
+      // Filter berdasarkan asset jika bukan 'all'
+      if (selectedAsset !== 'all') {
+        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY') // LUCKY77 = XLY
+      }
+
+      const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery
+
+      if (withdrawalError) throw withdrawalError
+
+      console.log('📊 Deposit data:', depositData?.length || 0)
+      console.log('📊 Withdrawal data:', withdrawalData?.length || 0)
+
+      // ===========================================
+      // 3. HITUNG TOTAL DEPOSIT
+      // ===========================================
+      let totalDeposit = 0
+      let depositApproved = 0
+      let depositRejected = 0
+      let depositFailed = 0
+
+      depositData?.forEach(tx => {
+        const amount = Number(tx.deposit_amount) || 0
+        totalDeposit += amount
+
+        const status = tx.status?.toLowerCase() || ''
+
+        if (status === 'approved') {
+          depositApproved += amount
+        } else if (status === 'rejected') {
+          depositRejected += amount
+        } else if (status.includes('fail')) {
+          depositFailed += amount
+        } else {
+          // Status lain (pending, dll) masuk ke total tapi tidak di breakdown
+        }
+      })
+
+      // ===========================================
+      // 4. HITUNG TOTAL WITHDRAWAL
+      // ===========================================
+      let totalWithdrawal = 0
+      let withdrawalApproved = 0
+      let withdrawalRejected = 0
+
+      withdrawalData?.forEach(tx => {
+        const amount = Number(tx.withdrawal_amount) || 0
+        totalWithdrawal += amount
+
+        const status = tx.status?.toLowerCase() || ''
+
+        if (status === 'approved') {
+          withdrawalApproved += amount
+        } else if (status === 'rejected') {
+          withdrawalRejected += amount
+        } else {
+          // Status lain (pending, fail, dll) masuk ke total tapi tidak di breakdown
+        }
+      })
+
+      // ===========================================
+      // 5. UPDATE STATE
+      // ===========================================
       setTotals({
-        total_deposit: 0,
-        total_withdrawal: 0,
-        total_bonus: 0,
-        deposit_approved: 0,
-        deposit_rejected: 0,
-        deposit_failed: 0,
-        withdrawal_approved: 0,
-        withdrawal_rejected: 0,
+        // Main header
+        total_deposit: totalDeposit,
+        total_withdrawal: totalWithdrawal,
+        total_bonus: 0, // Kosong dulu
+        
+        // Deposit breakdown
+        deposit_approved: depositApproved,
+        deposit_rejected: depositRejected,
+        deposit_failed: depositFailed,
+        
+        // Withdrawal breakdown
+        withdrawal_approved: withdrawalApproved,
+        withdrawal_rejected: withdrawalRejected,
+        
+        // Adjustment (kosong dulu)
         adjustment_plus: 0,
         adjustment_minus: 0,
+        
+        // Bonus (kosong dulu)
         bonus: 0,
         cashback: 0,
         commission: 0,
@@ -302,7 +396,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* MAIN HEADER CARDS - Total Semua (SEMUA 0) */}
+      {/* MAIN HEADER CARDS - Total Semua */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Total Deposit */}
         <div className="bg-gradient-to-br from-blue-900/50 to-blue-950 p-6 rounded-lg border border-blue-500/30">
@@ -332,7 +426,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* DEPOSIT SECTION (SEMUA 0) */}
+      {/* DEPOSIT SECTION */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-blue-400 mb-3 flex items-center">
           <span className="bg-blue-500 w-1 h-6 rounded-full mr-2"></span>
@@ -386,7 +480,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* WITHDRAWAL SECTION (SEMUA 0) */}
+      {/* WITHDRAWAL SECTION */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-green-400 mb-3 flex items-center">
           <span className="bg-green-500 w-1 h-6 rounded-full mr-2"></span>
@@ -425,7 +519,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* ADJUSTMENT SECTION (SEMUA 0) */}
+      {/* ADJUSTMENT SECTION (KOSONG) */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-purple-400 mb-3 flex items-center">
           <span className="bg-purple-500 w-1 h-6 rounded-full mr-2"></span>
@@ -464,7 +558,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* BONUS SECTION (SEMUA 0) */}
+      {/* BONUS SECTION (KOSONG) */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-yellow-400 mb-3 flex items-center">
           <span className="bg-yellow-500 w-1 h-6 rounded-full mr-2"></span>
