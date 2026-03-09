@@ -233,7 +233,7 @@ export default function DashboardContent() {
   }, []);
 
   // ===========================================
-  // FETCH OFFICER PIE DATA (HUMAN VS SYSTEM)
+  // FETCH OFFICER PIE DATA (HUMAN VS SYSTEM) - MODIFIED UNTUK 3D EXPLODED
   // ===========================================
   const fetchOfficerPieData = async () => {
     try {
@@ -270,9 +270,21 @@ export default function DashboardContent() {
         else humanTotal++;
       });
       
+      const total = humanTotal + systemTotal;
+      
       const pieData = [];
-      if (humanTotal > 0) pieData.push({ name: 'Human', value: humanTotal, color: '#3b82f6' });
-      if (systemTotal > 0) pieData.push({ name: 'System', value: systemTotal, color: '#ef4444' });
+      if (humanTotal > 0) pieData.push({ 
+        name: 'Human', 
+        value: humanTotal, 
+        color: '#3b82f6',
+        percentage: ((humanTotal / total) * 100).toFixed(1)
+      });
+      if (systemTotal > 0) pieData.push({ 
+        name: 'System', 
+        value: systemTotal, 
+        color: '#ef4444',
+        percentage: ((systemTotal / total) * 100).toFixed(1)
+      });
       
       setOfficerPieData(pieData);
       
@@ -1485,11 +1497,13 @@ export default function DashboardContent() {
           </Link>
         </div>
 
-        {/* KOLOM 3: OFFICER PERFORMANCE */}
+        {/* KOLOM 3: OFFICER PERFORMANCE - MODIFIED WITH 3D EXPLODED PIE CHART */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <Link href="/dashboard/officers-performance" className="block group">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-[#FFD700]">📊 Officer Performance</h3>
+              <h3 className="text-lg font-bold text-[#FFD700] group-hover:text-[#FFD700] transition-colors">
+                📊 Officer Performance
+              </h3>
               <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -1497,38 +1511,74 @@ export default function DashboardContent() {
               </div>
             </div>
             
-            <div className="h-64 flex flex-col items-center justify-center">
+            <div className="h-64 flex flex-col">
               {loadingOfficerPie ? (
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+                <div className="h-full flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+                </div>
               ) : officerPieData.length > 0 ? (
                 <>
-                  <ResponsiveContainer width="100%" height="70%">
-                    <PieChart>
-                      <Pie
-                        data={officerPieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={40}
-                        outerRadius={60}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {officerPieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                        formatter={(value, name) => [`${value} transactions`, name]}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="text-xs text-[#A7D8FF] mt-2">
+                  <div className="flex-1 flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={officerPieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={0}
+                          outerRadius={70}
+                          paddingAngle={4}
+                          dataKey="value"
+                          labelLine={false}
+                          label={({ name, percent = 0 }) => {
+                            const percentage = (percent * 100).toFixed(1);
+                            return parseFloat(percentage) >= 5 ? `${percentage}%` : '';
+                          }}
+                        >
+                          {officerPieData.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.color}
+                              stroke="#0B1A33"
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+                          formatter={(value, name, props) => {
+                            const total = officerPieData.reduce((sum, item) => sum + item.value, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return [`${value} transactions (${percentage}%)`, name];
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Legend dengan persentase - 2 kolom */}
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {officerPieData.map((item, index) => {
+                      const total = officerPieData.reduce((sum, i) => sum + i.value, 0);
+                      const percentage = ((item.value / total) * 100).toFixed(1);
+                      return (
+                        <div key={`legend-${index}`} className="flex items-center gap-1 text-[10px]">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                          <span className="text-[#A7D8FF] truncate">{item.name}</span>
+                          <span className="text-[#FFD700] font-bold ml-auto">{percentage}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="text-center text-[10px] text-[#A7D8FF] mt-1">
                     Total: {officerPieData.reduce((sum, item) => sum + item.value, 0)} transactions
                   </div>
                 </>
               ) : (
-                <div className="text-[#A7D8FF] text-sm text-center">No transaction data this month</div>
+                <div className="h-full flex items-center justify-center text-[#A7D8FF] text-sm text-center">
+                  No transaction data this month
+                </div>
               )}
             </div>
             
