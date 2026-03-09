@@ -128,41 +128,57 @@ export default function OfficersKPIPage() {
   }, [filterType, selectedMonth, selectedYear, customStartDate, customEndDate, officers])
 
   // ===========================================
-  // FETCH OFFICERS
-  // ===========================================
+// FETCH OFFICERS - MODIFIED: Tambah Mozartdp & Mozartwd
+// ===========================================
 
-  const fetchOfficers = async () => {
-    try {
-      setError(null)
-      console.log('🔍 Fetching officers...')
-      
-      const { data, error } = await supabase
-        .from('officers')
-        .select('id, panel_id, full_name, department, status')
-        .eq('department', 'CS DP WD')
-        .order('full_name')
+const fetchOfficers = async () => {
+  try {
+    setError(null)
+    console.log('🔍 Fetching officers...')
+    
+    const { data, error } = await supabase
+      .from('officers')
+      .select('id, panel_id, full_name, department, status')
+      .eq('department', 'CS DP WD')
+      .order('full_name')
 
-      if (error) throw error
-      
-      const allOfficers = [
-        ...(data || []),
-        {
-          id: 'system',
-          panel_id: 'SYSTEM',
-          full_name: 'SYSTEM (AUTO)',
-          department: 'AUTOMATION',
-          status: 'SYSTEM'
-        }
-      ]
-      
-      console.log('📊 Officers found:', allOfficers.length)
-      setOfficers(allOfficers)
-      
-    } catch (error: any) {
-      console.error('❌ Error fetching officers:', error)
-      setError(error.message)
-    }
+    if (error) throw error
+    
+    const allOfficers = [
+      ...(data || []),
+      {
+        id: 'system',
+        panel_id: 'SYSTEM',
+        full_name: 'SYSTEM (AUTO)',
+        department: 'AUTOMATION',
+        status: 'SYSTEM'
+      },
+      // TAMBAHKAN MOZARTDP UNTUK DEPOSIT
+      {
+        id: 'mozartdp',
+        panel_id: 'MOZARTDP',
+        full_name: 'Mozart Deposit (AUTO)',
+        department: 'AUTOMATION',
+        status: 'SYSTEM'
+      },
+      // TAMBAHKAN MOZARTWD UNTUK WITHDRAWAL
+      {
+        id: 'mozartwd',
+        panel_id: 'MOZARTWD',
+        full_name: 'Mozart Withdrawal (AUTO)',
+        department: 'AUTOMATION',
+        status: 'SYSTEM'
+      }
+    ]
+    
+    console.log('📊 Officers found:', allOfficers.length)
+    setOfficers(allOfficers)
+    
+  } catch (error: any) {
+    console.error('❌ Error fetching officers:', error)
+    setError(error.message)
   }
+}
 
   // ===========================================
   // GET DATE RANGE BASED ON FILTER (FIXED)
@@ -204,325 +220,333 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // FETCH KPI (FIXED QUERY)
-  // ===========================================
+// FETCH KPI - MODIFIED: Hapus redirect Mozart
+// ===========================================
 
-  const fetchKPI = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      
-      const { startDate, endDate, periodText } = getDateRange()
-      console.log('🔍 Filter:', { filterType, startDate, endDate, periodText })
+const fetchKPI = async () => {
+  try {
+    setLoading(true)
+    setError(null)
+    
+    const { startDate, endDate, periodText } = getDateRange()
+    console.log('🔍 Filter:', { filterType, startDate, endDate, periodText })
 
-      // Ambil data deposit
-      const { data: depositData, error: depositError } = await supabase
-        .from('deposit_transactions')
-        .select('handler, status, duration_minutes, reason')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
+    // Ambil data deposit
+    const { data: depositData, error: depositError } = await supabase
+      .from('deposit_transactions')
+      .select('handler, status, duration_minutes, reason')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate)
 
-      if (depositError) throw depositError
+    if (depositError) throw depositError
 
-      // Ambil data withdrawal
-      const { data: withdrawalData, error: withdrawalError } = await supabase
-        .from('withdrawal_transactions')
-        .select('handler, status, duration_minutes, reason')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
+    // Ambil data withdrawal
+    const { data: withdrawalData, error: withdrawalError } = await supabase
+      .from('withdrawal_transactions')
+      .select('handler, status, duration_minutes, reason')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate)
 
-      if (withdrawalError) throw withdrawalError
+    if (withdrawalError) throw withdrawalError
 
-      console.log('📊 Deposit:', depositData?.length || 0)
-      console.log('📊 Withdrawal:', withdrawalData?.length || 0)
+    console.log('📊 Deposit:', depositData?.length || 0)
+    console.log('📊 Withdrawal:', withdrawalData?.length || 0)
 
-      // Hitung KPI per officer
-      const kpiMap: { [key: string]: any } = {}
+    // Hitung KPI per officer
+    const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan SEMUA officer
-      officers.forEach(officer => {
-        kpiMap[officer.panel_id] = {
-          officer_id: officer.id,
-          panel_id: officer.panel_id,
-          officer_name: officer.full_name,
-          department: officer.department,
-          status: officer.status || 'REGULAR',
-          
-          // Deposit
-          dep_total: 0,
-          dep_approved: 0,
-          dep_rejected: 0,
-          dep_failed: 0,
-          dep_approve_minutes_sum: 0,
-          dep_reject_minutes_sum: 0,
-          dep_fail_minutes_sum: 0,
-          dep_approve_count: 0,
-          dep_reject_count: 0,
-          dep_fail_count: 0,
-          dep_sop: 0,
-          dep_non_sop: 0,
-          dep_human_error: 0,
-          
-          // Withdrawal
-          wd_total: 0,
-          wd_approved: 0,
-          wd_rejected: 0,
-          wd_failed: 0,
-          wd_approve_minutes_sum: 0,
-          wd_reject_minutes_sum: 0,
-          wd_fail_minutes_sum: 0,
-          wd_approve_count: 0,
-          wd_reject_count: 0,
-          wd_fail_count: 0,
-          wd_sop: 0,
-          wd_non_sop: 0,
-          wd_human_error: 0,
-        }
-      })
-
-      // Proses Deposit
-depositData?.forEach((tx: any) => {
-  if (!tx.handler || typeof tx.handler !== 'string') return
-  
-  // MODIFICATION: Handle Mozartdp untuk deposit
-  let handler = tx.handler
-  if (handler === 'Mozartdp' || handler === 'MOZARTDP' || handler === 'mozartdp') {
-    handler = 'SYSTEM' // Treat Mozartdp as SYSTEM/AUTO
-  }
-  
-  const officer = officers.find(o => 
-    o.panel_id?.toLowerCase() === handler.toLowerCase()
-  )
-  
-  const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
-  const kpi = kpiMap[targetPanelId]
-  
-  kpi.dep_total++
-
-  const status = tx.status?.toLowerCase()
-  const isSystem = targetPanelId === 'SYSTEM'
-  
-  if (isSystem) {
-    if (status === 'approved') {
-      kpi.dep_approved++
-      kpi.dep_approve_count++
-      kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
-      
-      if (tx.duration_minutes <= 3) {
-        kpi.dep_sop++
-      } else {
-        kpi.dep_non_sop++
-      }
-    } else {
-      kpi.dep_failed++
-      kpi.dep_fail_count++
-      kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
-    }
-  } else {
-    if (status === 'approved') {
-      kpi.dep_approved++
-      kpi.dep_approve_count++
-      kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
-      
-      if (tx.duration_minutes <= 3) {
-        kpi.dep_sop++
-      } else {
-        kpi.dep_non_sop++
-      }
-    } else if (status === 'rejected') {
-      kpi.dep_rejected++
-      kpi.dep_reject_count++
-      kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
-    } else if (status?.includes('fail')) {
-      kpi.dep_failed++
-      kpi.dep_fail_count++
-      kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
-    }
-  }
-
-  if (tx.reason?.toLowerCase().includes('mistake') ||
-      tx.reason?.toLowerCase().includes('crossbank') ||
-      tx.reason?.toLowerCase().includes('cross asset') ||
-      tx.reason?.toLowerCase().includes('wrong process')) {
-    kpi.dep_human_error++
-  }
-})
-
-// Proses Withdrawal
-withdrawalData?.forEach((tx: any) => {
-  if (!tx.handler || typeof tx.handler !== 'string') return
-  
-  // MODIFICATION: Handle Mozartwd untuk withdrawal
-  let handler = tx.handler
-  if (handler === 'Mozartwd' || handler === 'MOZARTWD' || handler === 'mozartwd') {
-    handler = 'SYSTEM' // Treat Mozartwd as SYSTEM/AUTO
-  }
-  
-  const officer = officers.find(o => 
-    o.panel_id?.toLowerCase() === handler.toLowerCase()
-  )
-  
-  const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
-  const kpi = kpiMap[targetPanelId]
-  
-  kpi.wd_total++
-
-  const status = tx.status?.toLowerCase()
-  const isSystem = targetPanelId === 'SYSTEM'
-  
-  if (isSystem) {
-    if (status === 'approved') {
-      kpi.wd_approved++
-      kpi.wd_approve_count++
-      kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
-      
-      if (tx.duration_minutes <= 5) {
-        kpi.wd_sop++
-      } else {
-        kpi.wd_non_sop++
-      }
-    } else {
-      kpi.wd_failed++
-      kpi.wd_fail_count++
-      kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
-    }
-  } else {
-    if (status === 'approved') {
-      kpi.wd_approved++
-      kpi.wd_approve_count++
-      kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
-      
-      if (tx.duration_minutes <= 5) {
-        kpi.wd_sop++
-      } else {
-        kpi.wd_non_sop++
-      }
-    } else if (status === 'rejected') {
-      kpi.wd_rejected++
-      kpi.wd_reject_count++
-      kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
-    } else if (status?.includes('fail')) {
-      kpi.wd_failed++
-      kpi.wd_fail_count++
-      kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
-    }
-  }
-
-  if (tx.reason?.toLowerCase().includes('mistake') ||
-      tx.reason?.toLowerCase().includes('crossbank') ||
-      tx.reason?.toLowerCase().includes('cross asset') ||
-      tx.reason?.toLowerCase().includes('wrong process')) {
-    kpi.wd_human_error++
-  }
-})
-
-      // Format data untuk tabel
-      const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
-        const dep_approve_rate = kpi.dep_total > 0 
-          ? ((kpi.dep_approved / kpi.dep_total) * 100).toFixed(2) : '0.00'
-        const dep_reject_rate = kpi.dep_total > 0 
-          ? ((kpi.dep_rejected / kpi.dep_total) * 100).toFixed(2) : '0.00'
-        const dep_fail_rate = kpi.dep_total > 0
-          ? ((kpi.dep_failed / kpi.dep_total) * 100).toFixed(2) : '0.00'
+    // Inisialisasi dengan SEMUA officer (termasuk Mozartdp & Mozartwd)
+    officers.forEach(officer => {
+      kpiMap[officer.panel_id] = {
+        officer_id: officer.id,
+        panel_id: officer.panel_id,
+        officer_name: officer.full_name,
+        department: officer.department,
+        status: officer.status || 'REGULAR',
         
-        const dep_avg_approve = kpi.dep_approve_count > 0 
-          ? minutesToHHMMSS(kpi.dep_approve_minutes_sum / kpi.dep_approve_count) : '-'
-        const dep_avg_reject = kpi.dep_reject_count > 0 
-          ? minutesToHHMMSS(kpi.dep_reject_minutes_sum / kpi.dep_reject_count) : '-'
-        const dep_avg_fail = kpi.dep_fail_count > 0
-          ? minutesToHHMMSS(kpi.dep_fail_minutes_sum / kpi.dep_fail_count) : '-'
-
-        const wd_approve_rate = kpi.wd_total > 0 
-          ? ((kpi.wd_approved / kpi.wd_total) * 100).toFixed(2) : '0.00'
-        const wd_reject_rate = kpi.wd_total > 0 
-          ? ((kpi.wd_rejected / kpi.wd_total) * 100).toFixed(2) : '0.00'
-        const wd_fail_rate = kpi.wd_total > 0
-          ? ((kpi.wd_failed / kpi.wd_total) * 100).toFixed(2) : '0.00'
+        // Deposit
+        dep_total: 0,
+        dep_approved: 0,
+        dep_rejected: 0,
+        dep_failed: 0,
+        dep_approve_minutes_sum: 0,
+        dep_reject_minutes_sum: 0,
+        dep_fail_minutes_sum: 0,
+        dep_approve_count: 0,
+        dep_reject_count: 0,
+        dep_fail_count: 0,
+        dep_sop: 0,
+        dep_non_sop: 0,
+        dep_human_error: 0,
         
-        const wd_avg_approve = kpi.wd_approve_count > 0 
-          ? minutesToHHMMSS(kpi.wd_approve_minutes_sum / kpi.wd_approve_count) : '-'
-        const wd_avg_reject = kpi.wd_reject_count > 0 
-          ? minutesToHHMMSS(kpi.wd_reject_minutes_sum / kpi.wd_reject_count) : '-'
-        const wd_avg_fail = kpi.wd_fail_count > 0
-          ? minutesToHHMMSS(kpi.wd_fail_minutes_sum / kpi.wd_fail_count) : '-'
+        // Withdrawal
+        wd_total: 0,
+        wd_approved: 0,
+        wd_rejected: 0,
+        wd_failed: 0,
+        wd_approve_minutes_sum: 0,
+        wd_reject_minutes_sum: 0,
+        wd_fail_minutes_sum: 0,
+        wd_approve_count: 0,
+        wd_reject_count: 0,
+        wd_fail_count: 0,
+        wd_sop: 0,
+        wd_non_sop: 0,
+        wd_human_error: 0,
+      }
+    })
 
-        return {
-          officer_id: kpi.officer_id,
-          panel_id: kpi.panel_id,
-          officer_name: kpi.officer_name,
-          department: kpi.department,
-          status: kpi.status,
+    // Proses Deposit - TANPA REDIRECT MOZARTDP
+    depositData?.forEach((tx: any) => {
+      if (!tx.handler || typeof tx.handler !== 'string') return
+      
+      // LANGSUNG PAKAI HANDLER ASLI (TANPA MODIFIKASI)
+      const handler = tx.handler
+      
+      const officer = officers.find(o => 
+        o.panel_id?.toLowerCase() === handler.toLowerCase()
+      )
+      
+      const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+      
+      // Skip kalau targetPanelId ga ada di kpiMap (harusnya ada)
+      if (!kpiMap[targetPanelId]) return
+      
+      const kpi = kpiMap[targetPanelId]
+      
+      kpi.dep_total++
+
+      const status = tx.status?.toLowerCase()
+      const isSystem = targetPanelId === 'SYSTEM'
+      
+      if (isSystem) {
+        if (status === 'approved') {
+          kpi.dep_approved++
+          kpi.dep_approve_count++
+          kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
           
-          dep_total: kpi.dep_total,
-          dep_approved: kpi.dep_approved,
-          dep_rejected: kpi.dep_rejected,
-          dep_failed: kpi.dep_failed,
-          dep_approve_rate,
-          dep_reject_rate,
-          dep_fail_rate,
-          dep_avg_approve,
-          dep_avg_reject,
-          dep_avg_fail,
-          dep_sop: kpi.dep_sop,
-          dep_non_sop: kpi.dep_non_sop,
-          dep_human_error: kpi.dep_human_error,
-          
-          wd_total: kpi.wd_total,
-          wd_approved: kpi.wd_approved,
-          wd_rejected: kpi.wd_rejected,
-          wd_failed: kpi.wd_failed,
-          wd_approve_rate,
-          wd_reject_rate,
-          wd_fail_rate,
-          wd_avg_approve,
-          wd_avg_reject,
-          wd_avg_fail,
-          wd_sop: kpi.wd_sop,
-          wd_non_sop: kpi.wd_non_sop,
-          wd_human_error: kpi.wd_human_error,
+          if (tx.duration_minutes <= 3) {
+            kpi.dep_sop++
+          } else {
+            kpi.dep_non_sop++
+          }
+        } else {
+          kpi.dep_failed++
+          kpi.dep_fail_count++
+          kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
         }
-      })
+      } else {
+        if (status === 'approved') {
+          kpi.dep_approved++
+          kpi.dep_approve_count++
+          kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
+          
+          if (tx.duration_minutes <= 3) {
+            kpi.dep_sop++
+          } else {
+            kpi.dep_non_sop++
+          }
+        } else if (status === 'rejected') {
+          kpi.dep_rejected++
+          kpi.dep_reject_count++
+          kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
+        } else if (status?.includes('fail')) {
+          kpi.dep_failed++
+          kpi.dep_fail_count++
+          kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
+        }
+      }
 
-      // Urutkan: officer biasa dulu, SYSTEM di paling bawah
-      const sortedData = [
-        ...formattedData.filter(item => item.panel_id !== 'SYSTEM'),
-        ...formattedData.filter(item => item.panel_id === 'SYSTEM')
-      ]
+      if (tx.reason?.toLowerCase().includes('mistake') ||
+          tx.reason?.toLowerCase().includes('crossbank') ||
+          tx.reason?.toLowerCase().includes('cross asset') ||
+          tx.reason?.toLowerCase().includes('wrong process')) {
+        kpi.dep_human_error++
+      }
+    })
+
+    // Proses Withdrawal - TANPA REDIRECT MOZARTWD
+    withdrawalData?.forEach((tx: any) => {
+      if (!tx.handler || typeof tx.handler !== 'string') return
       
-      console.log('✅ KPI Data:', sortedData)
-      setKpiData(sortedData)
-
-      // Buat data untuk pie chart (hanya yang memiliki approved > 0)
-      const depositPie = sortedData
-        .filter(item => item.dep_approved > 0)
-        .map((item, index) => ({
-          name: item.panel_id === 'SYSTEM' ? 'SYSTEM' : item.panel_id,
-          fullName: item.officer_name,
-          value: item.dep_approved,
-          color: COLORS[index % COLORS.length]
-        }))
-        .sort((a, b) => b.value - a.value)
-
-      const withdrawalPie = sortedData
-        .filter(item => item.wd_approved > 0)
-        .map((item, index) => ({
-          name: item.panel_id === 'SYSTEM' ? 'SYSTEM' : item.panel_id,
-          fullName: item.officer_name,
-          value: item.wd_approved,
-          color: COLORS[index % COLORS.length]
-        }))
-        .sort((a, b) => b.value - a.value)
-
-      setDepositPieData(depositPie)
-      setWithdrawalPieData(withdrawalPie)
+      // LANGSUNG PAKAI HANDLER ASLI (TANPA MODIFIKASI)
+      const handler = tx.handler
       
-    } catch (error: any) {
-      console.error('❌ Error:', error)
-      setError(error.message)
-    } finally {
-      setLoading(false)
-    }
+      const officer = officers.find(o => 
+        o.panel_id?.toLowerCase() === handler.toLowerCase()
+      )
+      
+      const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+      
+      // Skip kalau targetPanelId ga ada di kpiMap (harusnya ada)
+      if (!kpiMap[targetPanelId]) return
+      
+      const kpi = kpiMap[targetPanelId]
+      
+      kpi.wd_total++
+
+      const status = tx.status?.toLowerCase()
+      const isSystem = targetPanelId === 'SYSTEM'
+      
+      if (isSystem) {
+        if (status === 'approved') {
+          kpi.wd_approved++
+          kpi.wd_approve_count++
+          kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
+          
+          if (tx.duration_minutes <= 5) {
+            kpi.wd_sop++
+          } else {
+            kpi.wd_non_sop++
+          }
+        } else {
+          kpi.wd_failed++
+          kpi.wd_fail_count++
+          kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
+        }
+      } else {
+        if (status === 'approved') {
+          kpi.wd_approved++
+          kpi.wd_approve_count++
+          kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
+          
+          if (tx.duration_minutes <= 5) {
+            kpi.wd_sop++
+          } else {
+            kpi.wd_non_sop++
+          }
+        } else if (status === 'rejected') {
+          kpi.wd_rejected++
+          kpi.wd_reject_count++
+          kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
+        } else if (status?.includes('fail')) {
+          kpi.wd_failed++
+          kpi.wd_fail_count++
+          kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
+        }
+      }
+
+      if (tx.reason?.toLowerCase().includes('mistake') ||
+          tx.reason?.toLowerCase().includes('crossbank') ||
+          tx.reason?.toLowerCase().includes('cross asset') ||
+          tx.reason?.toLowerCase().includes('wrong process')) {
+        kpi.wd_human_error++
+      }
+    })
+
+    // Format data untuk tabel
+    const formattedData: KPIData[] = Object.values(kpiMap).map((kpi: any) => {
+      const dep_approve_rate = kpi.dep_total > 0 
+        ? ((kpi.dep_approved / kpi.dep_total) * 100).toFixed(2) : '0.00'
+      const dep_reject_rate = kpi.dep_total > 0 
+        ? ((kpi.dep_rejected / kpi.dep_total) * 100).toFixed(2) : '0.00'
+      const dep_fail_rate = kpi.dep_total > 0
+        ? ((kpi.dep_failed / kpi.dep_total) * 100).toFixed(2) : '0.00'
+      
+      const dep_avg_approve = kpi.dep_approve_count > 0 
+        ? minutesToHHMMSS(kpi.dep_approve_minutes_sum / kpi.dep_approve_count) : '-'
+      const dep_avg_reject = kpi.dep_reject_count > 0 
+        ? minutesToHHMMSS(kpi.dep_reject_minutes_sum / kpi.dep_reject_count) : '-'
+      const dep_avg_fail = kpi.dep_fail_count > 0
+        ? minutesToHHMMSS(kpi.dep_fail_minutes_sum / kpi.dep_fail_count) : '-'
+
+      const wd_approve_rate = kpi.wd_total > 0 
+        ? ((kpi.wd_approved / kpi.wd_total) * 100).toFixed(2) : '0.00'
+      const wd_reject_rate = kpi.wd_total > 0 
+        ? ((kpi.wd_rejected / kpi.wd_total) * 100).toFixed(2) : '0.00'
+      const wd_fail_rate = kpi.wd_total > 0
+        ? ((kpi.wd_failed / kpi.wd_total) * 100).toFixed(2) : '0.00'
+      
+      const wd_avg_approve = kpi.wd_approve_count > 0 
+        ? minutesToHHMMSS(kpi.wd_approve_minutes_sum / kpi.wd_approve_count) : '-'
+      const wd_avg_reject = kpi.wd_reject_count > 0 
+        ? minutesToHHMMSS(kpi.wd_reject_minutes_sum / kpi.wd_reject_count) : '-'
+      const wd_avg_fail = kpi.wd_fail_count > 0
+        ? minutesToHHMMSS(kpi.wd_fail_minutes_sum / kpi.wd_fail_count) : '-'
+
+      return {
+        officer_id: kpi.officer_id,
+        panel_id: kpi.panel_id,
+        officer_name: kpi.officer_name,
+        department: kpi.department,
+        status: kpi.status,
+        
+        dep_total: kpi.dep_total,
+        dep_approved: kpi.dep_approved,
+        dep_rejected: kpi.dep_rejected,
+        dep_failed: kpi.dep_failed,
+        dep_approve_rate,
+        dep_reject_rate,
+        dep_fail_rate,
+        dep_avg_approve,
+        dep_avg_reject,
+        dep_avg_fail,
+        dep_sop: kpi.dep_sop,
+        dep_non_sop: kpi.dep_non_sop,
+        dep_human_error: kpi.dep_human_error,
+        
+        wd_total: kpi.wd_total,
+        wd_approved: kpi.wd_approved,
+        wd_rejected: kpi.wd_rejected,
+        wd_failed: kpi.wd_failed,
+        wd_approve_rate,
+        wd_reject_rate,
+        wd_fail_rate,
+        wd_avg_approve,
+        wd_avg_reject,
+        wd_avg_fail,
+        wd_sop: kpi.wd_sop,
+        wd_non_sop: kpi.wd_non_sop,
+        wd_human_error: kpi.wd_human_error,
+      }
+    })
+
+    // Urutkan: officer biasa dulu, SYSTEM, MOZARTDP, MOZARTWD di paling bawah
+    const sortedData = [
+      ...formattedData.filter(item => 
+        item.panel_id !== 'SYSTEM' && 
+        item.panel_id !== 'MOZARTDP' && 
+        item.panel_id !== 'MOZARTWD'
+      ),
+      ...formattedData.filter(item => item.panel_id === 'MOZARTDP'),
+      ...formattedData.filter(item => item.panel_id === 'MOZARTWD'),
+      ...formattedData.filter(item => item.panel_id === 'SYSTEM')
+    ]
+    
+    console.log('✅ KPI Data:', sortedData)
+    setKpiData(sortedData)
+
+    // Buat data untuk pie chart
+    const depositPie = sortedData
+      .filter(item => item.dep_approved > 0)
+      .map((item, index) => ({
+        name: item.panel_id,
+        fullName: item.officer_name,
+        value: item.dep_approved,
+        color: COLORS[index % COLORS.length]
+      }))
+      .sort((a, b) => b.value - a.value)
+
+    const withdrawalPie = sortedData
+      .filter(item => item.wd_approved > 0)
+      .map((item, index) => ({
+        name: item.panel_id,
+        fullName: item.officer_name,
+        value: item.wd_approved,
+        color: COLORS[index % COLORS.length]
+      }))
+      .sort((a, b) => b.value - a.value)
+
+    setDepositPieData(depositPie)
+    setWithdrawalPieData(withdrawalPie)
+    
+  } catch (error: any) {
+    console.error('❌ Error:', error)
+    setError(error.message)
+  } finally {
+    setLoading(false)
   }
+}
 
   // ===========================================
   // RENDER
