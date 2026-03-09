@@ -1,26 +1,13 @@
-// app/dashboard/transaction-metrics/page.tsx
+// app/dashboard/transaction-metrics/page.js
 'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
 // ===========================================
-// TYPES
-// ===========================================
-
-type AssetType = 'all' | 'LUCKY77' | 'XLY'
-type TimeFilterType = 'yesterday' | 'daily' | 'monthly' | 'custom'
-
-type DateRange = {
-  startDate: string
-  endDate: string
-  periodText: string
-}
-
-// ===========================================
 // HELPER: Format currency Rupiah
 // ===========================================
-const formatRupiah = (amount: number): string => {
+const formatRupiah = (amount) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
@@ -35,8 +22,8 @@ const formatRupiah = (amount: number): string => {
 
 export default function TransactionMetricsPage() {
   // Filter states
-  const [selectedAsset, setSelectedAsset] = useState<AssetType>('all')
-  const [timeFilter, setTimeFilter] = useState<TimeFilterType>('daily')
+  const [selectedAsset, setSelectedAsset] = useState('all') // 'all' atau 'LUCKY77'
+  const [timeFilter, setTimeFilter] = useState('daily') // 'yesterday', 'daily', 'monthly', 'custom'
   
   // Date states
   const [selectedDate, setSelectedDate] = useState('')
@@ -47,9 +34,7 @@ export default function TransactionMetricsPage() {
   
   const [loading, setLoading] = useState(false)
   
-  // ===========================================
-  // DATA STRUCTURE (masih kosong, cangkang)
-  // ===========================================
+  // Data structure
   const [totals, setTotals] = useState({
     // Main header
     total_deposit: 0,
@@ -81,10 +66,11 @@ export default function TransactionMetricsPage() {
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ]
   const years = ['2024', '2025', '2026', '2027']
+  
+  // Asset options - LUCKY77 = XLY
   const assets = [
     { value: 'all', label: 'All Asset' },
-    { value: 'LUCKY77', label: 'LUCKY77' },
-    { value: 'XLY', label: 'XLY' }
+    { value: 'LUCKY77', label: 'LUCKY77 (XLY)' }
   ]
 
   // ===========================================
@@ -111,13 +97,10 @@ export default function TransactionMetricsPage() {
   // GET DATE RANGE BASED ON FILTER
   // ===========================================
 
-  const getDateRange = (): DateRange => {
+  const getDateRange = () => {
     let startDate = ''
     let endDate = ''
     let periodText = ''
-
-    const today = new Date()
-    const todayStr = today.toISOString().split('T')[0]
 
     switch (timeFilter) {
       case 'yesterday':
@@ -171,35 +154,33 @@ export default function TransactionMetricsPage() {
         period: periodText
       })
       
-      // TODO: Ambil data dari database berdasarkan:
-      // - selectedAsset (filter berdasarkan kolom asset/website)
-      // - startDate & endDate (filter berdasarkan tanggal)
+      // TODO: Ambil data dari database
       
       // SEMENTARA: Data dummy untuk testing tampilan
       setTotals({
         // Main header
-        total_deposit: 1_250_000_000,
-        total_withdrawal: 875_000_000,
-        total_bonus: 125_000_000,
+        total_deposit: 1250000000,
+        total_withdrawal: 875000000,
+        total_bonus: 125000000,
         
         // Deposit breakdown
-        deposit_approved: 1_150_000_000,
-        deposit_rejected: 75_000_000,
-        deposit_failed: 25_000_000,
+        deposit_approved: 1150000000,
+        deposit_rejected: 75000000,
+        deposit_failed: 25000000,
         
         // Withdrawal breakdown
-        withdrawal_approved: 800_000_000,
-        withdrawal_rejected: 75_000_000,
+        withdrawal_approved: 800000000,
+        withdrawal_rejected: 75000000,
         
         // Adjustment
-        adjustment_plus: 15_000_000,
-        adjustment_minus: 5_000_000,
+        adjustment_plus: 15000000,
+        adjustment_minus: 5000000,
         
         // Bonus breakdown
-        bonus: 50_000_000,
-        cashback: 35_000_000,
-        commission: 25_000_000,
-        referral: 15_000_000
+        bonus: 50000000,
+        cashback: 35000000,
+        commission: 25000000,
+        referral: 15000000
       })
       
     } catch (error) {
@@ -220,6 +201,14 @@ export default function TransactionMetricsPage() {
   // RENDER
   // ===========================================
 
+  if (loading) {
+    return (
+      <div className="p-6 min-h-screen bg-[#0B1A33] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
       {/* Header */}
@@ -235,13 +224,13 @@ export default function TransactionMetricsPage() {
       {/* FILTER SECTION */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex gap-4 items-center flex-wrap">
-          {/* Asset Filter */}
+          {/* Asset Filter - LUCKY77 = XLY */}
           <select 
             className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
             value={selectedAsset}
-            onChange={(e) => setSelectedAsset(e.target.value as AssetType)}
+            onChange={(e) => setSelectedAsset(e.target.value)}
           >
-            {assets.map(asset => (
+            {assets.map((asset) => (
               <option key={asset.value} value={asset.value}>{asset.label}</option>
             ))}
           </select>
@@ -250,7 +239,7 @@ export default function TransactionMetricsPage() {
           <select 
             className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
             value={timeFilter}
-            onChange={(e) => setTimeFilter(e.target.value as TimeFilterType)}
+            onChange={(e) => setTimeFilter(e.target.value)}
           >
             <option value="yesterday">Yesterday</option>
             <option value="daily">Daily</option>
@@ -276,7 +265,7 @@ export default function TransactionMetricsPage() {
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
               >
-                {months.map(month => (
+                {months.map((month) => (
                   <option key={month} value={month}>{month}</option>
                 ))}
               </select>
@@ -286,7 +275,7 @@ export default function TransactionMetricsPage() {
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
               >
-                {years.map(year => (
+                {years.map((year) => (
                   <option key={year} value={year}>{year}</option>
                 ))}
               </select>
@@ -313,7 +302,7 @@ export default function TransactionMetricsPage() {
           )}
 
           <div className="ml-auto text-[#A7D8FF]">
-            Periode: {periodText}
+            {selectedAsset === 'all' ? 'All Asset' : 'LUCKY77 (XLY)'} | {periodText}
           </div>
         </div>
       </div>
@@ -521,17 +510,28 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* NET FLOW CARD (Optional) */}
-      <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-        <div className="flex justify-between items-center">
-          <span className="text-[#A7D8FF]">Net Flow (Deposit - Withdrawal)</span>
-          <span className={`text-2xl font-bold ${totals.total_deposit - totals.total_withdrawal >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-            {formatRupiah(totals.total_deposit - totals.total_withdrawal)}
-          </span>
+      {/* SUMMARY FOOTER */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        {/* Net Flow Card */}
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="flex justify-between items-center">
+            <span className="text-[#A7D8FF]">Net Flow (Deposit - Withdrawal)</span>
+            <span className={`text-2xl font-bold ${totals.total_deposit - totals.total_withdrawal >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {formatRupiah(totals.total_deposit - totals.total_withdrawal)}
+            </span>
+          </div>
         </div>
-        <div className="flex justify-between items-center mt-2 text-xs text-[#A7D8FF]">
-          <span>Asset: {selectedAsset === 'all' ? 'All Asset' : selectedAsset}</span>
-          <span>Periode: {periodText}</span>
+
+        {/* Info Card */}
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-[#A7D8FF]">Asset</span>
+            <span className="text-white font-bold">{selectedAsset === 'all' ? 'All Asset' : 'LUCKY77 (XLY)'}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm mt-2">
+            <span className="text-[#A7D8FF]">Periode</span>
+            <span className="text-white">{periodText}</span>
+          </div>
         </div>
       </div>
     </div>
