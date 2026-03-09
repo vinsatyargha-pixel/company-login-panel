@@ -1783,7 +1783,7 @@ export default function DashboardContent() {
           <Link href="/dashboard/officers-performance" className="block group">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-lg font-bold text-[#FFD700] group-hover:text-[#FFD700] transition-colors">
-                📊 Officer Performance
+                📊 Officer & System Performance
               </h3>
               <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
