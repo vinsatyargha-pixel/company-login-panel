@@ -881,7 +881,7 @@ export default function DashboardContent() {
   // Menu items
   const menuItems = [
     {
-      title: '📊 ANALYTICS',
+      title: '📊 ANALYTICAL COMPARISON',
       description: 'Attendance & Division Overview',
       href: '/dashboard/analytics',
       icon: '📊',
@@ -1872,7 +1872,7 @@ export default function DashboardContent() {
 
       {/* MENU SECTION */}
       <div className="mt-8 pt-6 border-t border-[#FFD700]/20">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Performance & Settings Menu</h2>
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">Analytical & Settings Menu</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {menuItems.map((item, index) => {
             if (item.adminOnly && !isAdmin) return null;
