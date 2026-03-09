@@ -47,7 +47,7 @@ export default function DashboardCard({
 
   if (href) {
     return (
-      <Link href={href} className="block relative">
+      <Link href={href} className="block cursor-pointer">
         <CardContent />
       </Link>
     );
