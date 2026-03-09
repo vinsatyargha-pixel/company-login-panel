@@ -1257,138 +1257,231 @@ export default function DashboardContent() {
           </div>
 
           {/* 4 BAR CHARTS GRID - DENGAN DATA REAL */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* CHART 1: DEPOSIT - Approved, Rejected, Failed */}
-            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
-              <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
-              <div className="h-24">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: 'App', value: dashboardTransactionTotals.deposit_approved, color: '#10b981' },
-                    { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected, color: '#ef4444' },
-                    { name: 'Fail', value: dashboardTransactionTotals.deposit_failed, color: '#f59e0b' }
-                  ]}>
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: 'App', value: dashboardTransactionTotals.deposit_approved, color: '#10b981' },
-                        { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected, color: '#ef4444' },
-                        { name: 'Fail', value: dashboardTransactionTotals.deposit_failed, color: '#f59e0b' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                      formatter={(value) => [`Rp ${new Intl.NumberFormat('id-ID').format(value)}`, '']}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-green-400">✓ App</span>
-                <span className="text-red-400">✗ Rej</span>
-                <span className="text-orange-400">⚠ Fail</span>
-              </div>
-            </div>
+<div className="grid grid-cols-2 gap-4">
+  {/* CHART 1: DEPOSIT - Approved, Rejected, Failed */}
+  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
+    <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
+    <div className="h-24">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={[
+          { name: 'App', value: dashboardTransactionTotals.deposit_approved, color: '#10b981' },
+          { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected, color: '#ef4444' },
+          { name: 'Fail', value: dashboardTransactionTotals.deposit_failed, color: '#f59e0b' }
+        ]}>
+          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            {[
+              { name: 'App', value: dashboardTransactionTotals.deposit_approved, color: '#10b981' },
+              { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected, color: '#ef4444' },
+              { name: 'Fail', value: dashboardTransactionTotals.deposit_failed, color: '#f59e0b' }
+            ].map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Bar>
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: '#0B1A33', 
+              borderColor: '#FFD700',
+              color: '#FFFFFF'
+            }}
+            itemStyle={{ 
+              color: '#FFFFFF'
+            }}
+            labelStyle={{ 
+              color: '#FFD700'
+            }}
+            formatter={(value, name, props) => {
+              // Format value jadi Rupiah
+              const formattedValue = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              }).format(value);
+              
+              // Ubah nama dari 'App', 'Rej', 'Fail' jadi lebih deskriptif
+              let labelName = '';
+              if (name === 'App') labelName = 'Approved';
+              else if (name === 'Rej') labelName = 'Rejected';
+              else if (name === 'Fail') labelName = 'Failed';
+              else labelName = name;
+              
+              return [formattedValue, labelName];
+            }}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+      <span className="text-green-400">✓ App</span>
+      <span className="text-red-400">✗ Rej</span>
+      <span className="text-orange-400">⚠ Fail</span>
+    </div>
+  </div>
 
-            {/* CHART 2: WITHDRAWAL - Approved, Rejected */}
-            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
-              <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
-              <div className="h-24">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: 'App', value: dashboardTransactionTotals.withdrawal_approved, color: '#10b981' },
-                    { name: 'Rej', value: dashboardTransactionTotals.withdrawal_rejected, color: '#ef4444' }
-                  ]}>
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: 'App', value: dashboardTransactionTotals.withdrawal_approved, color: '#10b981' },
-                        { name: 'Rej', value: dashboardTransactionTotals.withdrawal_rejected, color: '#ef4444' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                      formatter={(value) => [`Rp ${new Intl.NumberFormat('id-ID').format(value)}`, '']}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-green-400">✓ App</span>
-                <span className="text-red-400">✗ Rej</span>
-                <span className="invisible">-</span>
-              </div>
-            </div>
+  {/* CHART 2: WITHDRAWAL - Approved, Rejected */}
+  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
+    <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
+    <div className="h-24">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={[
+          { name: 'App', value: dashboardTransactionTotals.withdrawal_approved, color: '#10b981' },
+          { name: 'Rej', value: dashboardTransactionTotals.withdrawal_rejected, color: '#ef4444' }
+        ]}>
+          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            {[
+              { name: 'App', value: dashboardTransactionTotals.withdrawal_approved, color: '#10b981' },
+              { name: 'Rej', value: dashboardTransactionTotals.withdrawal_rejected, color: '#ef4444' }
+            ].map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Bar>
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: '#0B1A33', 
+              borderColor: '#FFD700',
+              color: '#FFFFFF'
+            }}
+            itemStyle={{ 
+              color: '#FFFFFF'
+            }}
+            labelStyle={{ 
+              color: '#FFD700'
+            }}
+            formatter={(value, name, props) => {
+              const formattedValue = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              }).format(value);
+              
+              let labelName = '';
+              if (name === 'App') labelName = 'Approved';
+              else if (name === 'Rej') labelName = 'Rejected';
+              else labelName = name;
+              
+              return [formattedValue, labelName];
+            }}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+      <span className="text-green-400">✓ App</span>
+      <span className="text-red-400">✗ Rej</span>
+      <span className="invisible">-</span>
+    </div>
+  </div>
 
-            {/* CHART 3: ADJUSTMENT - Plus, Minus (KOSONG) */}
-            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
-              <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
-              <div className="h-24">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: '+', value: 0, color: '#10b981' },
-                    { name: '-', value: 0, color: '#ef4444' }
-                  ]}>
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: '+', value: 0, color: '#10b981' },
-                        { name: '-', value: 0, color: '#ef4444' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                      formatter={(value) => [`Rp ${new Intl.NumberFormat('id-ID').format(value)}`, '']}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-green-400">+ Plus</span>
-                <span className="text-red-400">- Minus</span>
-                <span className="invisible">-</span>
-              </div>
-            </div>
+  {/* CHART 3: ADJUSTMENT - Plus, Minus (KOSONG) */}
+  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
+    <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
+    <div className="h-24">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={[
+          { name: '+', value: 0, color: '#10b981' },
+          { name: '-', value: 0, color: '#ef4444' }
+        ]}>
+          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            {[
+              { name: '+', value: 0, color: '#10b981' },
+              { name: '-', value: 0, color: '#ef4444' }
+            ].map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Bar>
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: '#0B1A33', 
+              borderColor: '#FFD700',
+              color: '#FFFFFF'
+            }}
+            itemStyle={{ 
+              color: '#FFFFFF'
+            }}
+            labelStyle={{ 
+              color: '#FFD700'
+            }}
+            formatter={(value, name, props) => {
+              const formattedValue = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              }).format(value);
+              return [formattedValue, name === '+' ? 'Plus' : 'Minus'];
+            }}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+      <span className="text-green-400">+ Plus</span>
+      <span className="text-red-400">- Minus</span>
+      <span className="invisible">-</span>
+    </div>
+  </div>
 
-            {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral (KOSONG) */}
-            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
-              <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
-              <div className="h-24">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: 'Bonus', value: 0, color: '#FFD700' },
-                    { name: 'Cash', value: 0, color: '#3b82f6' },
-                    { name: 'Comm', value: 0, color: '#10b981' },
-                    { name: 'Ref', value: 0, color: '#8b5cf6' }
-                  ]}>
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: 'Bonus', value: 0, color: '#FFD700' },
-                        { name: 'Cash', value: 0, color: '#3b82f6' },
-                        { name: 'Comm', value: 0, color: '#10b981' },
-                        { name: 'Ref', value: 0, color: '#8b5cf6' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                      formatter={(value) => [`Rp ${new Intl.NumberFormat('id-ID').format(value)}`, '']}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-yellow-400">Bonus</span>
-                <span className="text-blue-400">Cash</span>
-                <span className="text-green-400">Comm</span>
-                <span className="text-purple-400">Ref</span>
-              </div>
-            </div>
-          </div>
+  {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral (KOSONG) */}
+  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
+    <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
+    <div className="h-24">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={[
+          { name: 'Bonus', value: 0, color: '#FFD700' },
+          { name: 'Cash', value: 0, color: '#3b82f6' },
+          { name: 'Comm', value: 0, color: '#10b981' },
+          { name: 'Ref', value: 0, color: '#8b5cf6' }
+        ]}>
+          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            {[
+              { name: 'Bonus', value: 0, color: '#FFD700' },
+              { name: 'Cash', value: 0, color: '#3b82f6' },
+              { name: 'Comm', value: 0, color: '#10b981' },
+              { name: 'Ref', value: 0, color: '#8b5cf6' }
+            ].map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Bar>
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: '#0B1A33', 
+              borderColor: '#FFD700',
+              color: '#FFFFFF'
+            }}
+            itemStyle={{ 
+              color: '#FFFFFF'
+            }}
+            labelStyle={{ 
+              color: '#FFD700'
+            }}
+            formatter={(value, name, props) => {
+              const formattedValue = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              }).format(value);
+              
+              let fullName = name;
+              if (name === 'Cash') fullName = 'Cashback';
+              if (name === 'Comm') fullName = 'Commission';
+              if (name === 'Ref') fullName = 'Referral';
+              
+              return [formattedValue, fullName];
+            }}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+      <span className="text-yellow-400">Bonus</span>
+      <span className="text-blue-400">Cash</span>
+      <span className="text-green-400">Comm</span>
+      <span className="text-purple-400">Ref</span>
+    </div>
+  </div>
+</div>
 
           {/* TOTAL VALUE - RINGKASAN DENGAN DATA REAL */}
           <div className="mt-4 pt-3 border-t border-[#FFD700]/20">
