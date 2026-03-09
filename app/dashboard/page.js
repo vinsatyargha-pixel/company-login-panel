@@ -962,31 +962,47 @@ const fetchBankAccounts = async () => {
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: TRANSACTION METRICS - UBAH JUDUL */}
-        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          <h3 className="text-lg font-bold text-[#FFD700] mb-4">📊 Transaction Metrics</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={transactionData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {transactionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={TRANSACTION_COLORS[index % TRANSACTION_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+                {/* KOLOM 1: TRANSACTION METRICS - UBAH JUDUL - SEKARANG BISA DI KLIK */}
+        <Link href="/dashboard/transaction-metrics" className="block group">
+          <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 hover:border-[#FFD700] hover:shadow-[0_0_25px_#FFD700]/20 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-[#FFD700] group-hover:text-[#FFD700] transition-colors">
+                📊 Transaction Metrics
+              </h3>
+              <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+            
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={transactionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {transactionData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={TRANSACTION_COLORS[index % TRANSACTION_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
+              Click to see detailed metrics →
+            </div>
           </div>
-        </div>
+        </Link>
 
         {/* KOLOM 2: DEPOSIT METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
