@@ -511,7 +511,7 @@ export default function OfficersKPIPage() {
       console.log('✅ KPI Data:', sortedData)
       setKpiData(sortedData)
 
-      // Buat data untuk pie chart
+      // Buat data untuk pie chart (termasuk Mozart)
       const depositPie = sortedData
         .filter(item => item.dep_approved > 0)
         .map((item, index) => ({
@@ -668,28 +668,38 @@ export default function OfficersKPIPage() {
         </div>
       </div>
 
-      {/* PIE CHARTS SECTION */}
+      {/* PIE CHARTS SECTION - 3D EXPLODED */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        {/* Deposit Pie Chart - 3D Exploded */}
         <div className="bg-[#1A2F4A] rounded-lg border border-blue-500/30 p-4">
           <h3 className="text-lg font-bold text-blue-400 mb-4 text-center">
             DEPOSIT APPROVED DISTRIBUTION
           </h3>
           {depositPieData.length > 0 ? (
-            <div className="h-64">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={depositPieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={2}
+                    innerRadius={0}
+                    outerRadius={100}
+                    paddingAngle={4}
                     dataKey="value"
-                    labelLine={false}
+                    labelLine={true}
+                    label={({ name, percent = 0 }) => {
+                      const percentage = (percent * 100).toFixed(1)
+                      return parseFloat(percentage) >= 3 ? `${percentage}%` : ''
+                    }}
                   >
                     {depositPieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color}
+                        stroke="#0B1A33"
+                        strokeWidth={2}
+                      />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -701,14 +711,37 @@ export default function OfficersKPIPage() {
                     itemStyle={{ color: '#FFFFFF' }}
                     labelStyle={{ color: '#FFD700' }}
                     formatter={(value: any, name: any, props: any) => {
-                      return [`${value} approved`, props.payload.fullName];
+                      const total = depositPieData.reduce((sum, item) => sum + item.value, 0)
+                      const percentage = ((value / total) * 100).toFixed(1)
+                      return [
+                        <span key="value">
+                          {value} approved <span className="text-[#FFD700]">({percentage}%)</span>
+                        </span>, 
+                        props.payload.fullName
+                      ]
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
+              
+              {/* Legend dengan persentase */}
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                {depositPieData.map((item, index) => {
+                  const total = depositPieData.reduce((sum, i) => sum + i.value, 0)
+                  const percentage = ((item.value / total) * 100).toFixed(1)
+                  return (
+                    <div key={`legend-${index}`} className="flex items-center gap-2 text-xs">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                      <span className="text-[#A7D8FF] truncate" title={item.fullName}>
+                        {item.fullName} <span className="text-[#FFD700]">{percentage}%</span>
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           ) : (
-            <div className="h-64 flex items-center justify-center text-[#A7D8FF]">
+            <div className="h-80 flex items-center justify-center text-[#A7D8FF]">
               No deposit approved data
             </div>
           )}
@@ -717,26 +750,36 @@ export default function OfficersKPIPage() {
           </div>
         </div>
 
+        {/* Withdrawal Pie Chart - 3D Exploded */}
         <div className="bg-[#1A2F4A] rounded-lg border border-green-500/30 p-4">
           <h3 className="text-lg font-bold text-green-400 mb-4 text-center">
             WITHDRAWAL APPROVED DISTRIBUTION
           </h3>
           {withdrawalPieData.length > 0 ? (
-            <div className="h-64">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={withdrawalPieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={2}
+                    innerRadius={0}
+                    outerRadius={100}
+                    paddingAngle={4}
                     dataKey="value"
-                    labelLine={false}
+                    labelLine={true}
+                    label={({ name, percent = 0 }) => {
+                      const percentage = (percent * 100).toFixed(1)
+                      return parseFloat(percentage) >= 3 ? `${percentage}%` : ''
+                    }}
                   >
                     {withdrawalPieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color}
+                        stroke="#0B1A33"
+                        strokeWidth={2}
+                      />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -748,14 +791,37 @@ export default function OfficersKPIPage() {
                     itemStyle={{ color: '#FFFFFF' }}
                     labelStyle={{ color: '#FFD700' }}
                     formatter={(value: any, name: any, props: any) => {
-                      return [`${value} approved`, props.payload.fullName];
+                      const total = withdrawalPieData.reduce((sum, item) => sum + item.value, 0)
+                      const percentage = ((value / total) * 100).toFixed(1)
+                      return [
+                        <span key="value">
+                          {value} approved <span className="text-[#FFD700]">({percentage}%)</span>
+                        </span>, 
+                        props.payload.fullName
+                      ]
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
+              
+              {/* Legend dengan persentase */}
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                {withdrawalPieData.map((item, index) => {
+                  const total = withdrawalPieData.reduce((sum, i) => sum + i.value, 0)
+                  const percentage = ((item.value / total) * 100).toFixed(1)
+                  return (
+                    <div key={`legend-${index}`} className="flex items-center gap-2 text-xs">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                      <span className="text-[#A7D8FF] truncate" title={item.fullName}>
+                        {item.fullName} <span className="text-[#FFD700]">{percentage}%</span>
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           ) : (
-            <div className="h-64 flex items-center justify-center text-[#A7D8FF]">
+            <div className="h-80 flex items-center justify-center text-[#A7D8FF]">
               No withdrawal approved data
             </div>
           )}
@@ -808,7 +874,7 @@ export default function OfficersKPIPage() {
             <tbody>
               {kpiData.length > 0 ? (
                 kpiData
-                  .filter(item => item.panel_id !== 'MOZARTWD') // Hanya filter MOZARTWD
+                  .filter(item => item.panel_id !== 'MOZARTWD')
                   .map((item, idx) => {
                     const filteredIndex = kpiData
                       .filter(i => i.panel_id !== 'MOZARTWD')
@@ -906,7 +972,7 @@ export default function OfficersKPIPage() {
             <tbody>
               {kpiData.length > 0 ? (
                 kpiData
-                  .filter(item => item.panel_id !== 'MOZARTDP') // Hanya filter MOZARTDP
+                  .filter(item => item.panel_id !== 'MOZARTDP')
                   .map((item, idx) => {
                     const filteredIndex = kpiData
                       .filter(i => i.panel_id !== 'MOZARTDP')
@@ -963,7 +1029,7 @@ export default function OfficersKPIPage() {
 
       {/* SUMMARY GABUNGAN */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF]">
-        <div className="flex justify-between">
+        <div className="flex justify-between flex-wrap gap-2">
           <span>Total Officers: {kpiData.filter(o => o.panel_id !== 'MOZARTDP' && o.panel_id !== 'MOZARTWD').length - 1} + SYSTEM + MOZART</span>
           <span>Total Transactions: {totalTransactions}</span>
           <span className="text-green-400">Approved: {totalApproved}</span>
