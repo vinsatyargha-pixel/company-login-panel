@@ -668,76 +668,82 @@ export default function OfficersKPIPage() {
         </div>
       </div>
 
-      {/* PIE CHARTS SECTION - 3D EXPLODED */}
+      {/* PIE CHARTS SECTION - 3D EXPLODED dengan layout baru */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Deposit Pie Chart - 3D Exploded */}
+        {/* Deposit Pie Chart - Geser ke kiri */}
         <div className="bg-[#1A2F4A] rounded-lg border border-blue-500/30 p-4">
           <h3 className="text-lg font-bold text-blue-400 mb-4 text-center">
             DEPOSIT APPROVED DISTRIBUTION
           </h3>
           {depositPieData.length > 0 ? (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={depositPieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={0}
-                    outerRadius={100}
-                    paddingAngle={4}
-                    dataKey="value"
-                    labelLine={true}
-                    label={({ name, percent = 0 }) => {
-                      const percentage = (percent * 100).toFixed(1)
-                      return parseFloat(percentage) >= 3 ? `${percentage}%` : ''
-                    }}
-                  >
-                    {depositPieData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.color}
-                        stroke="#0B1A33"
-                        strokeWidth={2}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#0B1A33', 
-                      borderColor: '#FFD700',
-                      color: '#FFFFFF'
-                    }}
-                    itemStyle={{ color: '#FFFFFF' }}
-                    labelStyle={{ color: '#FFD700' }}
-                    formatter={(value: any, name: any, props: any) => {
-                      const total = depositPieData.reduce((sum, item) => sum + item.value, 0)
-                      const percentage = ((value / total) * 100).toFixed(1)
-                      return [
-                        <span key="value">
-                          {value} approved <span className="text-[#FFD700]">({percentage}%)</span>
-                        </span>, 
-                        props.payload.fullName
-                      ]
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              {/* Pie Chart - Geser ke kiri dengan cx="40%" */}
+              <div className="w-full md:w-1/2 h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={depositPieData}
+                      cx="40%" // Digeser ke kiri
+                      cy="50%"
+                      innerRadius={0}
+                      outerRadius={100}
+                      paddingAngle={4}
+                      dataKey="value"
+                      labelLine={true}
+                      label={({ name, percent = 0 }) => {
+                        const percentage = (percent * 100).toFixed(1)
+                        return parseFloat(percentage) >= 3 ? `${percentage}%` : ''
+                      }}
+                    >
+                      {depositPieData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color}
+                          stroke="#0B1A33"
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#0B1A33', 
+                        borderColor: '#FFD700',
+                        color: '#FFFFFF'
+                      }}
+                      itemStyle={{ color: '#FFFFFF' }}
+                      labelStyle={{ color: '#FFD700' }}
+                      formatter={(value: any, name: any, props: any) => {
+                        const total = depositPieData.reduce((sum, item) => sum + item.value, 0)
+                        const percentage = ((value / total) * 100).toFixed(1)
+                        return [
+                          <span key="value">
+                            {value} approved <span className="text-[#FFD700]">({percentage}%)</span>
+                          </span>, 
+                          props.payload.fullName
+                        ]
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
               
-              {/* Legend dengan persentase */}
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                {depositPieData.map((item, index) => {
-                  const total = depositPieData.reduce((sum, i) => sum + i.value, 0)
-                  const percentage = ((item.value / total) * 100).toFixed(1)
-                  return (
-                    <div key={`legend-${index}`} className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                      <span className="text-[#A7D8FF] truncate" title={item.fullName}>
-                        {item.fullName} <span className="text-[#FFD700]">{percentage}%</span>
-                      </span>
-                    </div>
-                  )
-                })}
+              {/* Legend di kanan - 1 kolom biar muat nama panjang */}
+              <div className="w-full md:w-1/2 max-h-80 overflow-y-auto pr-2">
+                <div className="space-y-2">
+                  {depositPieData.map((item, index) => {
+                    const total = depositPieData.reduce((sum, i) => sum + i.value, 0)
+                    const percentage = ((item.value / total) * 100).toFixed(1)
+                    return (
+                      <div key={`legend-${index}`} className="flex items-center gap-2 text-xs">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }}></div>
+                        <span className="text-[#A7D8FF] truncate" title={item.fullName}>
+                          {item.fullName}
+                        </span>
+                        <span className="text-[#FFD700] font-bold ml-auto">{percentage}%</span>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           ) : (
@@ -750,74 +756,80 @@ export default function OfficersKPIPage() {
           </div>
         </div>
 
-        {/* Withdrawal Pie Chart - 3D Exploded */}
+        {/* Withdrawal Pie Chart - Geser ke kiri */}
         <div className="bg-[#1A2F4A] rounded-lg border border-green-500/30 p-4">
           <h3 className="text-lg font-bold text-green-400 mb-4 text-center">
             WITHDRAWAL APPROVED DISTRIBUTION
           </h3>
           {withdrawalPieData.length > 0 ? (
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={withdrawalPieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={0}
-                    outerRadius={100}
-                    paddingAngle={4}
-                    dataKey="value"
-                    labelLine={true}
-                    label={({ name, percent = 0 }) => {
-                      const percentage = (percent * 100).toFixed(1)
-                      return parseFloat(percentage) >= 3 ? `${percentage}%` : ''
-                    }}
-                  >
-                    {withdrawalPieData.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.color}
-                        stroke="#0B1A33"
-                        strokeWidth={2}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#0B1A33', 
-                      borderColor: '#FFD700',
-                      color: '#FFFFFF'
-                    }}
-                    itemStyle={{ color: '#FFFFFF' }}
-                    labelStyle={{ color: '#FFD700' }}
-                    formatter={(value: any, name: any, props: any) => {
-                      const total = withdrawalPieData.reduce((sum, item) => sum + item.value, 0)
-                      const percentage = ((value / total) * 100).toFixed(1)
-                      return [
-                        <span key="value">
-                          {value} approved <span className="text-[#FFD700]">({percentage}%)</span>
-                        </span>, 
-                        props.payload.fullName
-                      ]
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              {/* Pie Chart - Geser ke kiri dengan cx="40%" */}
+              <div className="w-full md:w-1/2 h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={withdrawalPieData}
+                      cx="40%" // Digeser ke kiri
+                      cy="50%"
+                      innerRadius={0}
+                      outerRadius={100}
+                      paddingAngle={4}
+                      dataKey="value"
+                      labelLine={true}
+                      label={({ name, percent = 0 }) => {
+                        const percentage = (percent * 100).toFixed(1)
+                        return parseFloat(percentage) >= 3 ? `${percentage}%` : ''
+                      }}
+                    >
+                      {withdrawalPieData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.color}
+                          stroke="#0B1A33"
+                          strokeWidth={2}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: '#0B1A33', 
+                        borderColor: '#FFD700',
+                        color: '#FFFFFF'
+                      }}
+                      itemStyle={{ color: '#FFFFFF' }}
+                      labelStyle={{ color: '#FFD700' }}
+                      formatter={(value: any, name: any, props: any) => {
+                        const total = withdrawalPieData.reduce((sum, item) => sum + item.value, 0)
+                        const percentage = ((value / total) * 100).toFixed(1)
+                        return [
+                          <span key="value">
+                            {value} approved <span className="text-[#FFD700]">({percentage}%)</span>
+                          </span>, 
+                          props.payload.fullName
+                        ]
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
               
-              {/* Legend dengan persentase */}
-              <div className="grid grid-cols-2 gap-2 mt-4">
-                {withdrawalPieData.map((item, index) => {
-                  const total = withdrawalPieData.reduce((sum, i) => sum + i.value, 0)
-                  const percentage = ((item.value / total) * 100).toFixed(1)
-                  return (
-                    <div key={`legend-${index}`} className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
-                      <span className="text-[#A7D8FF] truncate" title={item.fullName}>
-                        {item.fullName} <span className="text-[#FFD700]">{percentage}%</span>
-                      </span>
-                    </div>
-                  )
-                })}
+              {/* Legend di kanan - 1 kolom biar muat nama panjang */}
+              <div className="w-full md:w-1/2 max-h-80 overflow-y-auto pr-2">
+                <div className="space-y-2">
+                  {withdrawalPieData.map((item, index) => {
+                    const total = withdrawalPieData.reduce((sum, i) => sum + i.value, 0)
+                    const percentage = ((item.value / total) * 100).toFixed(1)
+                    return (
+                      <div key={`legend-${index}`} className="flex items-center gap-2 text-xs">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }}></div>
+                        <span className="text-[#A7D8FF] truncate" title={item.fullName}>
+                          {item.fullName}
+                        </span>
+                        <span className="text-[#FFD700] font-bold ml-auto">{percentage}%</span>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
             </div>
           ) : (
