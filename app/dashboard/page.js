@@ -45,6 +45,19 @@ export default function DashboardContent() {
   const TRANSACTION_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
 
   // ===========================================
+  // STATE UNTUK DASHBOARD TRANSACTION METRICS - DATA REAL
+  // ===========================================
+  const [dashboardTransactionTotals, setDashboardTransactionTotals] = useState({
+    total_deposit: 0,
+    total_withdrawal: 0,
+    deposit_approved: 0,
+    deposit_rejected: 0,
+    deposit_failed: 0,
+    withdrawal_approved: 0,
+    withdrawal_rejected: 0
+  });
+
+  // ===========================================
   // STATE UNTUK BANK ACCOUNTS (DARI SUPABASE)
   // ===========================================
   const [bankAccounts, setBankAccounts] = useState([]);
@@ -128,6 +141,20 @@ export default function DashboardContent() {
   const fullMonthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
                       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
   const years = ['2024', '2025', '2026', '2027', '2028'];
+
+  // ===========================================
+  // FORMATTER RUPIAH COMPACT
+  // ===========================================
+  const formatCompactRupiah = (amount) => {
+    return new Intl.NumberFormat('id-ID', { 
+      style: 'currency', 
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      notation: 'compact',
+      compactDisplay: 'short'
+    }).format(amount);
+  };
 
   // ===========================================
   // SET DEFAULT CUSTOM RANGE - DITAMBAH
@@ -513,6 +540,149 @@ export default function DashboardContent() {
   };
 
   // ===========================================
+  // FETCH DASHBOARD TRANSACTION METRICS DATA
+  // ===========================================
+  const fetchDashboardTransactionMetrics = async () => {
+    try {
+      // Get date range based on filters
+      const { startDate, endDate } = getDateRangeForDashboard();
+
+      // ===========================================
+      // 1. AMBIL DATA DEPOSIT
+      // ===========================================
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('deposit_amount, status')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+
+      // Filter berdasarkan asset jika bukan 'all'
+      if (selectedAsset !== 'all') {
+        depositQuery = depositQuery.eq('brand', 'XLY'); // LUCKY77 = XLY
+      }
+
+      const { data: depositData, error: depositError } = await depositQuery;
+      if (depositError) throw depositError;
+
+      // ===========================================
+      // 2. AMBIL DATA WITHDRAWAL
+      // ===========================================
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('withdrawal_amount, status')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+
+      // Filter berdasarkan asset jika bukan 'all'
+      if (selectedAsset !== 'all') {
+        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY'); // LUCKY77 = XLY
+      }
+
+      const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery;
+      if (withdrawalError) throw withdrawalError;
+
+      // ===========================================
+      // 3. HITUNG TOTAL DEPOSIT
+      // ===========================================
+      let totalDeposit = 0;
+      let depositApproved = 0;
+      let depositRejected = 0;
+      let depositFailed = 0;
+
+      depositData?.forEach(tx => {
+        const amount = Number(tx.deposit_amount) || 0;
+        totalDeposit += amount;
+
+        const status = tx.status?.toLowerCase() || '';
+
+        if (status === 'approved') {
+          depositApproved += amount;
+        } else if (status === 'rejected') {
+          depositRejected += amount;
+        } else if (status.includes('fail')) {
+          depositFailed += amount;
+        }
+      });
+
+      // ===========================================
+      // 4. HITUNG TOTAL WITHDRAWAL
+      // ===========================================
+      let totalWithdrawal = 0;
+      let withdrawalApproved = 0;
+      let withdrawalRejected = 0;
+
+      withdrawalData?.forEach(tx => {
+        const amount = Number(tx.withdrawal_amount) || 0;
+        totalWithdrawal += amount;
+
+        const status = tx.status?.toLowerCase() || '';
+
+        if (status === 'approved') {
+          withdrawalApproved += amount;
+        } else if (status === 'rejected') {
+          withdrawalRejected += amount;
+        }
+      });
+
+      // ===========================================
+      // 5. UPDATE STATE
+      // ===========================================
+      setDashboardTransactionTotals({
+        total_deposit: totalDeposit,
+        total_withdrawal: totalWithdrawal,
+        deposit_approved: depositApproved,
+        deposit_rejected: depositRejected,
+        deposit_failed: depositFailed,
+        withdrawal_approved: withdrawalApproved,
+        withdrawal_rejected: withdrawalRejected
+      });
+
+    } catch (error) {
+      console.error('Error fetching dashboard transaction metrics:', error);
+    }
+  };
+
+  // ===========================================
+  // GET DATE RANGE FOR DASHBOARD
+  // ===========================================
+  const getDateRangeForDashboard = () => {
+    let startDate = '';
+    let endDate = '';
+
+    switch (timeFilter) {
+      case 'yesterday':
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        startDate = yesterday.toISOString().split('T')[0];
+        endDate = yesterday.toISOString().split('T')[0];
+        break;
+        
+      case 'monthly':
+        const monthIndex = fullMonthNames.indexOf(selectedMonth) + 1;
+        startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`;
+        const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
+        endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`;
+        break;
+        
+      case 'custom':
+        startDate = customStartDate;
+        endDate = customEndDate;
+        break;
+        
+      default: // yesterday
+        const defYesterday = new Date();
+        defYesterday.setDate(defYesterday.getDate() - 1);
+        startDate = defYesterday.toISOString().split('T')[0];
+        endDate = defYesterday.toISOString().split('T')[0];
+    }
+
+    return { 
+      startDate: `${startDate} 00:00:00`, 
+      endDate: `${endDate} 23:59:59`
+    };
+  };
+
+  // ===========================================
   // FETCH BANK ACCOUNTS - FIXED VERSION
   // ===========================================
   const fetchBankAccounts = async () => {
@@ -799,6 +969,10 @@ export default function DashboardContent() {
       trafficMetricsYear, trafficMetricsMonth, trafficMetricsPeriod]);
 
   useEffect(() => {
+    fetchDashboardTransactionMetrics();
+  }, [selectedAsset, timeFilter, selectedMonth, selectedYear, customStartDate, customEndDate]);
+
+  useEffect(() => {
     const savedDeposit = localStorage.getItem('depositMethods');
     if (savedDeposit) setDepositMethods(JSON.parse(savedDeposit));
     
@@ -996,7 +1170,7 @@ export default function DashboardContent() {
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: TRANSACTION METRICS - 4 BAR CHARTS DENGAN FILTER LENGKAP */}
+        {/* KOLOM 1: TRANSACTION METRICS - 4 BAR CHARTS DENGAN DATA REAL */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 h-full">
           {/* HEADER DENGAN LINK */}
           <Link href="/dashboard/transaction-metrics" className="block group mb-4">
@@ -1082,7 +1256,7 @@ export default function DashboardContent() {
             )}
           </div>
 
-          {/* 4 BAR CHARTS GRID */}
+          {/* 4 BAR CHARTS GRID - DENGAN DATA REAL */}
           <div className="grid grid-cols-2 gap-4">
             {/* CHART 1: DEPOSIT - Approved, Rejected, Failed */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
@@ -1090,15 +1264,15 @@ export default function DashboardContent() {
               <div className="h-24">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: 'App', value: 1150000000, color: '#10b981' },
-                    { name: 'Rej', value: 75000000, color: '#ef4444' },
-                    { name: 'Fail', value: 25000000, color: '#f59e0b' }
+                    { name: 'App', value: dashboardTransactionTotals.deposit_approved, color: '#10b981' },
+                    { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected, color: '#ef4444' },
+                    { name: 'Fail', value: dashboardTransactionTotals.deposit_failed, color: '#f59e0b' }
                   ]}>
                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                       {[
-                        { name: 'App', value: 1150000000, color: '#10b981' },
-                        { name: 'Rej', value: 75000000, color: '#ef4444' },
-                        { name: 'Fail', value: 25000000, color: '#f59e0b' }
+                        { name: 'App', value: dashboardTransactionTotals.deposit_approved, color: '#10b981' },
+                        { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected, color: '#ef4444' },
+                        { name: 'Fail', value: dashboardTransactionTotals.deposit_failed, color: '#f59e0b' }
                       ].map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -1111,9 +1285,9 @@ export default function DashboardContent() {
                 </ResponsiveContainer>
               </div>
               <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span>✓ App</span>
-                <span>✗ Rej</span>
-                <span>⚠ Fail</span>
+                <span className="text-green-400">✓ App</span>
+                <span className="text-red-400">✗ Rej</span>
+                <span className="text-orange-400">⚠ Fail</span>
               </div>
             </div>
 
@@ -1123,13 +1297,13 @@ export default function DashboardContent() {
               <div className="h-24">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: 'App', value: 800000000, color: '#10b981' },
-                    { name: 'Rej', value: 75000000, color: '#ef4444' }
+                    { name: 'App', value: dashboardTransactionTotals.withdrawal_approved, color: '#10b981' },
+                    { name: 'Rej', value: dashboardTransactionTotals.withdrawal_rejected, color: '#ef4444' }
                   ]}>
                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                       {[
-                        { name: 'App', value: 800000000, color: '#10b981' },
-                        { name: 'Rej', value: 75000000, color: '#ef4444' }
+                        { name: 'App', value: dashboardTransactionTotals.withdrawal_approved, color: '#10b981' },
+                        { name: 'Rej', value: dashboardTransactionTotals.withdrawal_rejected, color: '#ef4444' }
                       ].map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -1142,25 +1316,25 @@ export default function DashboardContent() {
                 </ResponsiveContainer>
               </div>
               <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span>✓ App</span>
-                <span>✗ Rej</span>
+                <span className="text-green-400">✓ App</span>
+                <span className="text-red-400">✗ Rej</span>
                 <span className="invisible">-</span>
               </div>
             </div>
 
-            {/* CHART 3: ADJUSTMENT - Plus, Minus */}
+            {/* CHART 3: ADJUSTMENT - Plus, Minus (KOSONG) */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
               <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
               <div className="h-24">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: '+', value: 15000000, color: '#10b981' },
-                    { name: '-', value: 5000000, color: '#ef4444' }
+                    { name: '+', value: 0, color: '#10b981' },
+                    { name: '-', value: 0, color: '#ef4444' }
                   ]}>
                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                       {[
-                        { name: '+', value: 15000000, color: '#10b981' },
-                        { name: '-', value: 5000000, color: '#ef4444' }
+                        { name: '+', value: 0, color: '#10b981' },
+                        { name: '-', value: 0, color: '#ef4444' }
                       ].map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -1173,29 +1347,29 @@ export default function DashboardContent() {
                 </ResponsiveContainer>
               </div>
               <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span>+ Plus</span>
-                <span>- Minus</span>
+                <span className="text-green-400">+ Plus</span>
+                <span className="text-red-400">- Minus</span>
                 <span className="invisible">-</span>
               </div>
             </div>
 
-            {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral */}
+            {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral (KOSONG) */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
               <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
               <div className="h-24">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: 'Bonus', value: 50000000, color: '#FFD700' },
-                    { name: 'Cash', value: 35000000, color: '#3b82f6' },
-                    { name: 'Comm', value: 25000000, color: '#10b981' },
-                    { name: 'Ref', value: 15000000, color: '#8b5cf6' }
+                    { name: 'Bonus', value: 0, color: '#FFD700' },
+                    { name: 'Cash', value: 0, color: '#3b82f6' },
+                    { name: 'Comm', value: 0, color: '#10b981' },
+                    { name: 'Ref', value: 0, color: '#8b5cf6' }
                   ]}>
                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                       {[
-                        { name: 'Bonus', value: 50000000, color: '#FFD700' },
-                        { name: 'Cash', value: 35000000, color: '#3b82f6' },
-                        { name: 'Comm', value: 25000000, color: '#10b981' },
-                        { name: 'Ref', value: 15000000, color: '#8b5cf6' }
+                        { name: 'Bonus', value: 0, color: '#FFD700' },
+                        { name: 'Cash', value: 0, color: '#3b82f6' },
+                        { name: 'Comm', value: 0, color: '#10b981' },
+                        { name: 'Ref', value: 0, color: '#8b5cf6' }
                       ].map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -1208,27 +1382,41 @@ export default function DashboardContent() {
                 </ResponsiveContainer>
               </div>
               <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span>Bonus</span>
-                <span>Cash</span>
-                <span>Comm</span>
-                <span>Ref</span>
+                <span className="text-yellow-400">Bonus</span>
+                <span className="text-blue-400">Cash</span>
+                <span className="text-green-400">Comm</span>
+                <span className="text-purple-400">Ref</span>
               </div>
             </div>
           </div>
 
-          {/* TOTAL VALUE - RINGKASAN */}
+          {/* TOTAL VALUE - RINGKASAN DENGAN DATA REAL */}
           <div className="mt-4 pt-3 border-t border-[#FFD700]/20">
             <div className="flex justify-between text-xs">
               <span className="text-[#A7D8FF]">Total Deposit:</span>
-              <span className="text-white font-bold">Rp 1.25M</span>
+              <span className="text-white font-bold">
+                {formatCompactRupiah(dashboardTransactionTotals.total_deposit)}
+              </span>
             </div>
             <div className="flex justify-between text-xs mt-1">
               <span className="text-[#A7D8FF]">Total Withdrawal:</span>
-              <span className="text-white font-bold">Rp 875K</span>
+              <span className="text-white font-bold">
+                {formatCompactRupiah(dashboardTransactionTotals.total_withdrawal)}
+              </span>
             </div>
             <div className="flex justify-between text-xs mt-1">
               <span className="text-[#A7D8FF]">Net Flow:</span>
-              <span className="text-green-400 font-bold">+ Rp 375K</span>
+              <span className={`font-bold ${dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {new Intl.NumberFormat('id-ID', { 
+                  style: 'currency', 
+                  currency: 'IDR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                  notation: 'compact',
+                  compactDisplay: 'short',
+                  signDisplay: 'always'
+                }).format(dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved)}
+              </span>
             </div>
           </div>
 
