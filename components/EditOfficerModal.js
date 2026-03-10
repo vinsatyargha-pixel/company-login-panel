@@ -55,37 +55,63 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
   const handleSubmit = async (e) => {
   e.preventDefault();
   
+  console.log('🔍 Officer ID:', officer.id);
+  console.log('📤 Form Data:', formData);
+  
   if (!validateForm()) return;
   
   setLoading(true);
   
   try {
-    // 1. Update data
-    const { error } = await supabase
+    // 1. Cek dulu data officer sebelum update
+    const { data: beforeData, error: beforeError } = await supabase
+      .from('officers')
+      .select('*')
+      .eq('id', officer.id)
+      .maybeSingle();
+    
+    console.log('📦 Data sebelum update:', beforeData);
+    
+    if (!beforeData) {
+      console.error('❌ Officer tidak ditemukan dengan ID:', officer.id);
+      throw new Error('Officer tidak ditemukan');
+    }
+    
+    // 2. Lakukan update
+    const { data: updateData, error: updateError } = await supabase
       .from('officers')
       .update({
         ...formData,
         updated_at: new Date().toISOString()
       })
-      .eq('id', officer.id);  // <-- HAPUS .select() dan .maybeSingle()
+      .eq('id', officer.id)
+      .select();
 
-    if (error) throw error;
+    console.log('📦 Update response:', updateData);
+    console.log('❌ Update error:', updateError);
 
-    // 2. Ambil data terbaru
-    const { data: updatedOfficer, error: fetchError } = await supabase
+    if (updateError) throw updateError;
+
+    // 3. Cek data setelah update
+    const { data: afterData, error: afterError } = await supabase
       .from('officers')
       .select('*')
       .eq('id', officer.id)
-      .single();
+      .maybeSingle();
+    
+    console.log('📦 Data setelah update:', afterData);
 
-    if (fetchError) throw fetchError;
-
-    // 3. Kirim ke parent component
-    onUpdate(updatedOfficer);
+    if (afterData) {
+      onUpdate(afterData);
+    } else {
+      // Fallback ke formData kalo gagal fetch
+      onUpdate({ ...formData, id: officer.id });
+    }
+    
     onClose();
     
   } catch (error) {
-    console.error('Error:', error);
+    console.error('❌ Error:', error);
     alert(error.message || 'Gagal mengupdate officer');
   } finally {
     setLoading(false);
