@@ -1369,236 +1369,279 @@ useEffect(() => {
             )}
           </div>
 
-          {/* 4 BAR CHARTS GRID - DENGAN DATA REAL */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* CHART 1: DEPOSIT - Approved, Rejected, Failed */}
-            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
-              <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
-              {/* INI ANGKA BESAR - JUMLAH FORM */}
-              <div className="text-2xl font-bold text-white mb-1">
-                {(
-                  (dashboardTransactionTotals.deposit_approved_count || 0) + 
-                  (dashboardTransactionTotals.deposit_rejected_count || 0) + 
-                  (dashboardTransactionTotals.deposit_failed_count || 0)
-                ) || 0}
-              </div>
-              {/* INI VALUE RP - TOTAL UANG */}
-              <div className="text-xs text-[#A7D8FF] mb-2">
-                value : {new Intl.NumberFormat('id-ID', {
-                  style: 'currency',
-                  currency: 'IDR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
-                }).format(dashboardTransactionTotals.total_deposit || 0)}
-              </div>
-              <div className="h-20">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { 
-                      name: 'App', 
-                      count: dashboardTransactionTotals.deposit_approved_count || 0, 
-                      amount: dashboardTransactionTotals.deposit_approved || 0, 
-                      color: '#10b981' 
-                    },
-                    { 
-                      name: 'Rej', 
-                      count: dashboardTransactionTotals.deposit_rejected_count || 0, 
-                      amount: dashboardTransactionTotals.deposit_rejected || 0, 
-                      color: '#ef4444' 
-                    },
-                    { 
-                      name: 'Fail', 
-                      count: dashboardTransactionTotals.deposit_failed_count || 0, 
-                      amount: dashboardTransactionTotals.deposit_failed || 0, 
-                      color: '#f59e0b' 
-                    }
-                  ]}>
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: 'App', count: dashboardTransactionTotals.deposit_approved_count || 0, color: '#10b981' },
-                        { name: 'Rej', count: dashboardTransactionTotals.deposit_rejected_count || 0, color: '#ef4444' },
-                        { name: 'Fail', count: dashboardTransactionTotals.deposit_failed_count || 0, color: '#f59e0b' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                    <Tooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          let status = '';
-                          if (data.name === 'App') status = 'Approved';
-                          else if (data.name === 'Rej') status = 'Rejected';
-                          else if (data.name === 'Fail') status = 'Failed';
-                          
-                          const formattedAmount = new Intl.NumberFormat('id-ID', {
-                            style: 'currency',
-                            currency: 'IDR',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0
-                          }).format(data.amount);
-                          
-                          return (
-                            <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
-                              <p className="text-[#FFD700] font-bold text-xs">{status}</p>
-                              <p className="text-white text-xs">{data.count} forms</p>
-                              <p className="text-[#A7D8FF] text-[10px]">{formattedAmount}</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-green-400">✓ App: {dashboardTransactionTotals.deposit_approved_count || 0}</span>
-                <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.deposit_rejected_count || 0}</span>
-                <span className="text-orange-400">⚠ Fail: {dashboardTransactionTotals.deposit_failed_count || 0}</span>
-              </div>
-            </div>
+          {/* 4 BAR CHARTS GRID - DENGAN STACKED BAR */}
+<div className="grid grid-cols-2 gap-4">
+  {/* CHART 1: DEPOSIT - Stacked Bar (Approved, Rejected, Failed) */}
+  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
+    <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
+    {/* INI ANGKA BESAR - JUMLAH FORM */}
+    <div className="text-2xl font-bold text-white mb-1">
+      {(
+        (dashboardTransactionTotals.deposit_approved_count || 0) + 
+        (dashboardTransactionTotals.deposit_rejected_count || 0) + 
+        (dashboardTransactionTotals.deposit_failed_count || 0)
+      ) || 0}
+    </div>
+    {/* INI VALUE RP - TOTAL UANG */}
+    <div className="text-xs text-[#A7D8FF] mb-2">
+      value : {new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(dashboardTransactionTotals.total_deposit || 0)}
+    </div>
+    
+    {/* STACKED BAR CHART */}
+    <div className="h-16 mt-2">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={[{
+            name: 'Deposit',
+            approved: dashboardTransactionTotals.deposit_approved_count || 0,
+            rejected: dashboardTransactionTotals.deposit_rejected_count || 0,
+            failed: dashboardTransactionTotals.deposit_failed_count || 0,
+            approvedAmount: dashboardTransactionTotals.deposit_approved || 0,
+            rejectedAmount: dashboardTransactionTotals.deposit_rejected || 0,
+            failedAmount: dashboardTransactionTotals.deposit_failed || 0
+          }]}
+          layout="vertical"
+          barSize={30}
+        >
+          <Bar dataKey="approved" stackId="a" fill="#10b981" radius={[4, 0, 0, 4]}>
+            <LabelList 
+              dataKey="approved" 
+              position="insideLeft" 
+              fill="white" 
+              fontSize={10}
+              formatter={(value) => value > 0 ? `${((value / (dashboardTransactionTotals.deposit_approved_count + dashboardTransactionTotals.deposit_rejected_count + dashboardTransactionTotals.deposit_failed_count || 1)) * 100).toFixed(1)}%` : ''}
+            />
+          </Bar>
+          <Bar dataKey="rejected" stackId="a" fill="#ef4444">
+            <LabelList 
+              dataKey="rejected" 
+              position="inside" 
+              fill="white" 
+              fontSize={10}
+              formatter={(value) => value > 0 ? `${((value / (dashboardTransactionTotals.deposit_approved_count + dashboardTransactionTotals.deposit_rejected_count + dashboardTransactionTotals.deposit_failed_count || 1)) * 100).toFixed(1)}%` : ''}
+            />
+          </Bar>
+          <Bar dataKey="failed" stackId="a" fill="#f59e0b" radius={[0, 4, 4, 0]}>
+            <LabelList 
+              dataKey="failed" 
+              position="insideRight" 
+              fill="white" 
+              fontSize={10}
+              formatter={(value) => value > 0 ? `${((value / (dashboardTransactionTotals.deposit_approved_count + dashboardTransactionTotals.deposit_rejected_count + dashboardTransactionTotals.deposit_failed_count || 1)) * 100).toFixed(1)}%` : ''}
+            />
+          </Bar>
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                return (
+                  <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
+                    <p className="text-[#FFD700] font-bold text-xs mb-1">DEPOSIT</p>
+                    {payload.map((entry, index) => {
+                      let status = '';
+                      let color = '';
+                      if (entry.dataKey === 'approved') {
+                        status = 'Approved';
+                        color = '#10b981';
+                      } else if (entry.dataKey === 'rejected') {
+                        status = 'Rejected';
+                        color = '#ef4444';
+                      } else if (entry.dataKey === 'failed') {
+                        status = 'Failed';
+                        color = '#f59e0b';
+                      }
+                      
+                      let amount = 0;
+                      if (entry.dataKey === 'approved') amount = dashboardTransactionTotals.deposit_approved;
+                      else if (entry.dataKey === 'rejected') amount = dashboardTransactionTotals.deposit_rejected;
+                      else if (entry.dataKey === 'failed') amount = dashboardTransactionTotals.deposit_failed;
+                      
+                      const formattedAmount = new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }).format(amount);
+                      
+                      return (
+                        <div key={index} className="mb-1">
+                          <p className="text-white text-xs" style={{ color }}>
+                            {status}: {entry.value} forms
+                          </p>
+                          <p className="text-[#A7D8FF] text-[10px] pl-2">{formattedAmount}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    
+    {/* LEGEND DENGAN COUNT */}
+    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-3">
+      <span className="text-green-400">✓ App: {dashboardTransactionTotals.deposit_approved_count || 0}</span>
+      <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.deposit_rejected_count || 0}</span>
+      <span className="text-orange-400">⚠ Fail: {dashboardTransactionTotals.deposit_failed_count || 0}</span>
+    </div>
+  </div>
 
-            {/* CHART 2: WITHDRAWAL - Approved, Rejected */}
-            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
-              <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
-              {/* INI ANGKA BESAR - JUMLAH FORM */}
-              <div className="text-2xl font-bold text-white mb-1">
-                {(
-                  (dashboardTransactionTotals.withdrawal_approved_count || 0) + 
-                  (dashboardTransactionTotals.withdrawal_rejected_count || 0)
-                ) || 0}
-              </div>
-              {/* INI VALUE RP - TOTAL UANG */}
-              <div className="text-xs text-[#A7D8FF] mb-2">
-                value : {new Intl.NumberFormat('id-ID', {
-                  style: 'currency',
-                  currency: 'IDR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0
-                }).format(dashboardTransactionTotals.total_withdrawal || 0)}
-              </div>
-              <div className="h-20">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { 
-                      name: 'App', 
-                      count: dashboardTransactionTotals.withdrawal_approved_count || 0, 
-                      amount: dashboardTransactionTotals.withdrawal_approved || 0, 
-                      color: '#10b981' 
-                    },
-                    { 
-                      name: 'Rej', 
-                      count: dashboardTransactionTotals.withdrawal_rejected_count || 0, 
-                      amount: dashboardTransactionTotals.withdrawal_rejected || 0, 
-                      color: '#ef4444' 
-                    }
-                  ]}>
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: 'App', count: dashboardTransactionTotals.withdrawal_approved_count || 0, color: '#10b981' },
-                        { name: 'Rej', count: dashboardTransactionTotals.withdrawal_rejected_count || 0, color: '#ef4444' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                    <Tooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          let status = '';
-                          if (data.name === 'App') status = 'Approved';
-                          else if (data.name === 'Rej') status = 'Rejected';
-                          
-                          const formattedAmount = new Intl.NumberFormat('id-ID', {
-                            style: 'currency',
-                            currency: 'IDR',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0
-                          }).format(data.amount);
-                          
-                          return (
-                            <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
-                              <p className="text-[#FFD700] font-bold text-xs">{status}</p>
-                              <p className="text-white text-xs">{data.count} forms</p>
-                              <p className="text-[#A7D8FF] text-[10px]">{formattedAmount}</p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-green-400">✓ App: {dashboardTransactionTotals.withdrawal_approved_count || 0}</span>
-                <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.withdrawal_rejected_count || 0}</span>
-              </div>
-            </div>
+  {/* CHART 2: WITHDRAWAL - Stacked Bar (Approved, Rejected) */}
+  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
+    <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
+    {/* INI ANGKA BESAR - JUMLAH FORM */}
+    <div className="text-2xl font-bold text-white mb-1">
+      {(
+        (dashboardTransactionTotals.withdrawal_approved_count || 0) + 
+        (dashboardTransactionTotals.withdrawal_rejected_count || 0)
+      ) || 0}
+    </div>
+    {/* INI VALUE RP - TOTAL UANG */}
+    <div className="text-xs text-[#A7D8FF] mb-2">
+      value : {new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(dashboardTransactionTotals.total_withdrawal || 0)}
+    </div>
+    
+    {/* STACKED BAR CHART */}
+    <div className="h-16 mt-2">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart
+          data={[{
+            name: 'Withdrawal',
+            approved: dashboardTransactionTotals.withdrawal_approved_count || 0,
+            rejected: dashboardTransactionTotals.withdrawal_rejected_count || 0,
+            approvedAmount: dashboardTransactionTotals.withdrawal_approved || 0,
+            rejectedAmount: dashboardTransactionTotals.withdrawal_rejected || 0
+          }]}
+          layout="vertical"
+          barSize={30}
+        >
+          <Bar dataKey="approved" stackId="a" fill="#10b981" radius={[4, 0, 0, 4]}>
+            <LabelList 
+              dataKey="approved" 
+              position="insideLeft" 
+              fill="white" 
+              fontSize={10}
+              formatter={(value) => value > 0 ? `${((value / (dashboardTransactionTotals.withdrawal_approved_count + dashboardTransactionTotals.withdrawal_rejected_count || 1)) * 100).toFixed(1)}%` : ''}
+            />
+          </Bar>
+          <Bar dataKey="rejected" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]}>
+            <LabelList 
+              dataKey="rejected" 
+              position="insideRight" 
+              fill="white" 
+              fontSize={10}
+              formatter={(value) => value > 0 ? `${((value / (dashboardTransactionTotals.withdrawal_approved_count + dashboardTransactionTotals.withdrawal_rejected_count || 1)) * 100).toFixed(1)}%` : ''}
+            />
+          </Bar>
+          <Tooltip
+            content={({ active, payload }) => {
+              if (active && payload && payload.length) {
+                return (
+                  <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
+                    <p className="text-[#FFD700] font-bold text-xs mb-1">WITHDRAWAL</p>
+                    {payload.map((entry, index) => {
+                      let status = '';
+                      let color = '';
+                      if (entry.dataKey === 'approved') {
+                        status = 'Approved';
+                        color = '#10b981';
+                      } else if (entry.dataKey === 'rejected') {
+                        status = 'Rejected';
+                        color = '#ef4444';
+                      }
+                      
+                      let amount = 0;
+                      if (entry.dataKey === 'approved') amount = dashboardTransactionTotals.withdrawal_approved;
+                      else if (entry.dataKey === 'rejected') amount = dashboardTransactionTotals.withdrawal_rejected;
+                      
+                      const formattedAmount = new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0
+                      }).format(amount);
+                      
+                      return (
+                        <div key={index} className="mb-1">
+                          <p className="text-white text-xs" style={{ color }}>
+                            {status}: {entry.value} forms
+                          </p>
+                          <p className="text-[#A7D8FF] text-[10px] pl-2">{formattedAmount}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              return null;
+            }}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    
+    {/* LEGEND DENGAN COUNT */}
+    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-3">
+      <span className="text-green-400">✓ App: {dashboardTransactionTotals.withdrawal_approved_count || 0}</span>
+      <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.withdrawal_rejected_count || 0}</span>
+    </div>
+  </div>
 
-            {/* CHART 3: ADJUSTMENT - Plus, Minus (KOSONG) */}
-            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
-              <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
-              <div className="text-2xl font-bold text-white mb-1">0</div>
-              <div className="text-xs text-[#A7D8FF] mb-2">value : Rp 0</div>
-              <div className="h-20">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: '+', value: 0, color: '#10b981' },
-                    { name: '-', value: 0, color: '#ef4444' }
-                  ]}>
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: '+', value: 0, color: '#10b981' },
-                        { name: '-', value: 0, color: '#ef4444' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-green-400">+ Plus: 0</span>
-                <span className="text-red-400">- Minus: 0</span>
-              </div>
-            </div>
+  {/* CHART 3: ADJUSTMENT - Plus, Minus (KOSONG) */}
+  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
+    <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
+    <div className="text-2xl font-bold text-white mb-1">0</div>
+    <div className="text-xs text-[#A7D8FF] mb-2">value : Rp 0</div>
+    <div className="h-16 mt-2">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={[{ name: 'Adjustment', plus: 0, minus: 0 }]} layout="vertical" barSize={30}>
+          <Bar dataKey="plus" stackId="a" fill="#10b981" radius={[4, 0, 0, 4]} />
+          <Bar dataKey="minus" stackId="a" fill="#ef4444" radius={[0, 4, 4, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-3">
+      <span className="text-green-400">+ Plus: 0</span>
+      <span className="text-red-400">- Minus: 0</span>
+    </div>
+  </div>
 
-            {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral (KOSONG) */}
-            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
-              <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
-              <div className="text-2xl font-bold text-white mb-1">0</div>
-              <div className="text-xs text-[#A7D8FF] mb-2">value : Rp 0</div>
-              <div className="h-20">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { name: 'Bonus', value: 0, color: '#FFD700' },
-                    { name: 'Cash', value: 0, color: '#3b82f6' },
-                    { name: 'Comm', value: 0, color: '#10b981' },
-                    { name: 'Ref', value: 0, color: '#8b5cf6' }
-                  ]}>
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: 'Bonus', value: 0, color: '#FFD700' },
-                        { name: 'Cash', value: 0, color: '#3b82f6' },
-                        { name: 'Comm', value: 0, color: '#10b981' },
-                        { name: 'Ref', value: 0, color: '#8b5cf6' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-yellow-400">Bonus: 0</span>
-                <span className="text-blue-400">Cash: 0</span>
-                <span className="text-green-400">Comm: 0</span>
-                <span className="text-purple-400">Ref: 0</span>
-              </div>
-            </div>
-          </div>
+  {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral (KOSONG) */}
+  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
+    <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
+    <div className="text-2xl font-bold text-white mb-1">0</div>
+    <div className="text-xs text-[#A7D8FF] mb-2">value : Rp 0</div>
+    <div className="h-16 mt-2">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={[{ name: 'Bonus', bonus: 0, cash: 0, comm: 0, ref: 0 }]} layout="vertical" barSize={30}>
+          <Bar dataKey="bonus" stackId="a" fill="#FFD700" radius={[4, 0, 0, 0]} />
+          <Bar dataKey="cash" stackId="a" fill="#3b82f6" />
+          <Bar dataKey="comm" stackId="a" fill="#10b981" />
+          <Bar dataKey="ref" stackId="a" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-3">
+      <span className="text-yellow-400">Bonus: 0</span>
+      <span className="text-blue-400">Cash: 0</span>
+      <span className="text-green-400">Comm: 0</span>
+      <span className="text-purple-400">Ref: 0</span>
+    </div>
+  </div>
+</div>
 
           {/* TOTAL VALUE - RINGKASAN DENGAN DATA REAL */}
 <div className="mt-4 pt-3 border-t border-[#FFD700]/20">
