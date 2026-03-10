@@ -1601,34 +1601,34 @@ useEffect(() => {
           </div>
 
           {/* TOTAL VALUE - RINGKASAN DENGAN DATA REAL */}
-          <div className="mt-4 pt-3 border-t border-[#FFD700]/20">
-            <div className="flex justify-between text-xs">
-              <span className="text-[#A7D8FF]">Total Deposit:</span>
-              <span className="text-white font-bold">
-                {formatCompactRupiah(dashboardTransactionTotals.total_deposit)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span className="text-[#A7D8FF]">Total Withdrawal:</span>
-              <span className="text-white font-bold">
-                {formatCompactRupiah(dashboardTransactionTotals.total_withdrawal)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span className="text-[#A7D8FF]">Net Flow:</span>
-              <span className={`font-bold ${dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {new Intl.NumberFormat('id-ID', { 
-                  style: 'currency', 
-                  currency: 'IDR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                  notation: 'compact',
-                  compactDisplay: 'short',
-                  signDisplay: 'always'
-                }).format(dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved)}
-              </span>
-            </div>
-          </div>
+<div className="mt-4 pt-3 border-t border-[#FFD700]/20">
+  <div className="flex justify-between text-xs">
+    <span className="text-[#A7D8FF]">Total Deposit:</span>
+    <span className="text-white font-bold">
+      {formatCompactRupiah(dashboardTransactionTotals.deposit_approved)}
+    </span>
+  </div>
+  <div className="flex justify-between text-xs mt-1">
+    <span className="text-[#A7D8FF]">Total Withdrawal:</span>
+    <span className="text-white font-bold">
+      {formatCompactRupiah(dashboardTransactionTotals.withdrawal_approved)}
+    </span>
+  </div>
+  <div className="flex justify-between text-xs mt-1">
+    <span className="text-[#A7D8FF]">Net Flow:</span>
+    <span className={`font-bold ${dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+      {new Intl.NumberFormat('id-ID', { 
+        style: 'currency', 
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+        notation: 'compact',
+        compactDisplay: 'short',
+        signDisplay: 'always'
+      }).format(dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved)}
+    </span>
+  </div>
+</div>
 
           {/* LINK DETAIL */}
           <Link href="/dashboard/transaction-metrics" className="block mt-3 text-right">
