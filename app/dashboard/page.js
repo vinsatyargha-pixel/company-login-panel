@@ -45,16 +45,28 @@ export default function DashboardContent() {
   const TRANSACTION_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
 
   // ===========================================
-  // STATE UNTUK DASHBOARD TRANSACTION METRICS - DATA REAL
+  // STATE UNTUK DASHBOARD TRANSACTION METRICS - DATA REAL + COUNT
   // ===========================================
   const [dashboardTransactionTotals, setDashboardTransactionTotals] = useState({
+    // DEPOSIT - AMOUNT (uang)
     total_deposit: 0,
-    total_withdrawal: 0,
     deposit_approved: 0,
     deposit_rejected: 0,
     deposit_failed: 0,
+    
+    // DEPOSIT - COUNT (jumlah form)
+    deposit_approved_count: 0,
+    deposit_rejected_count: 0,
+    deposit_failed_count: 0,
+    
+    // WITHDRAWAL - AMOUNT (uang)
+    total_withdrawal: 0,
     withdrawal_approved: 0,
-    withdrawal_rejected: 0
+    withdrawal_rejected: 0,
+    
+    // WITHDRAWAL - COUNT (jumlah form)
+    withdrawal_approved_count: 0,
+    withdrawal_rejected_count: 0
   });
 
   // ===========================================
@@ -590,7 +602,7 @@ const getDateRangeForOfficerPie = () => {
   };
 
   // ===========================================
-  // FETCH DASHBOARD TRANSACTION METRICS DATA
+  // FETCH DASHBOARD TRANSACTION METRICS DATA - FIXED VERSION
   // ===========================================
   const fetchDashboardTransactionMetrics = async () => {
     try {
@@ -608,7 +620,7 @@ const getDateRangeForOfficerPie = () => {
 
       // Filter berdasarkan asset jika bukan 'all'
       if (selectedAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', 'XLY'); // LUCKY77 = XLY
+        depositQuery = depositQuery.eq('brand', 'XLY');
       }
 
       const { data: depositData, error: depositError } = await depositQuery;
@@ -625,19 +637,23 @@ const getDateRangeForOfficerPie = () => {
 
       // Filter berdasarkan asset jika bukan 'all'
       if (selectedAsset !== 'all') {
-        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY'); // LUCKY77 = XLY
+        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
       }
 
       const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery;
       if (withdrawalError) throw withdrawalError;
 
       // ===========================================
-      // 3. HITUNG TOTAL DEPOSIT
+      // 3. HITUNG DEPOSIT - AMOUNT + COUNT
       // ===========================================
       let totalDeposit = 0;
       let depositApproved = 0;
       let depositRejected = 0;
       let depositFailed = 0;
+      
+      let depositApprovedCount = 0;
+      let depositRejectedCount = 0;
+      let depositFailedCount = 0;
 
       depositData?.forEach(tx => {
         const amount = Number(tx.deposit_amount) || 0;
@@ -647,19 +663,27 @@ const getDateRangeForOfficerPie = () => {
 
         if (status === 'approved') {
           depositApproved += amount;
-        } else if (status === 'rejected') {
+          depositApprovedCount++;
+        } 
+        else if (status === 'rejected') {
           depositRejected += amount;
-        } else if (status.includes('fail')) {
+          depositRejectedCount++;
+        } 
+        else if (status === 'fail' || status.includes('fail')) {
           depositFailed += amount;
+          depositFailedCount++;
         }
       });
 
       // ===========================================
-      // 4. HITUNG TOTAL WITHDRAWAL
+      // 4. HITUNG WITHDRAWAL - AMOUNT + COUNT
       // ===========================================
       let totalWithdrawal = 0;
       let withdrawalApproved = 0;
       let withdrawalRejected = 0;
+      
+      let withdrawalApprovedCount = 0;
+      let withdrawalRejectedCount = 0;
 
       withdrawalData?.forEach(tx => {
         const amount = Number(tx.withdrawal_amount) || 0;
@@ -669,22 +693,53 @@ const getDateRangeForOfficerPie = () => {
 
         if (status === 'approved') {
           withdrawalApproved += amount;
-        } else if (status === 'rejected') {
+          withdrawalApprovedCount++;
+        } 
+        else if (status === 'rejected') {
           withdrawalRejected += amount;
+          withdrawalRejectedCount++;
         }
       });
 
       // ===========================================
-      // 5. UPDATE STATE
+      // 5. UPDATE STATE DENGAN AMOUNT + COUNT
       // ===========================================
       setDashboardTransactionTotals({
+        // DEPOSIT AMOUNT
         total_deposit: totalDeposit,
-        total_withdrawal: totalWithdrawal,
         deposit_approved: depositApproved,
         deposit_rejected: depositRejected,
         deposit_failed: depositFailed,
+        
+        // DEPOSIT COUNT
+        deposit_approved_count: depositApprovedCount,
+        deposit_rejected_count: depositRejectedCount,
+        deposit_failed_count: depositFailedCount,
+        
+        // WITHDRAWAL AMOUNT
+        total_withdrawal: totalWithdrawal,
         withdrawal_approved: withdrawalApproved,
-        withdrawal_rejected: withdrawalRejected
+        withdrawal_rejected: withdrawalRejected,
+        
+        // WITHDRAWAL COUNT
+        withdrawal_approved_count: withdrawalApprovedCount,
+        withdrawal_rejected_count: withdrawalRejectedCount
+      });
+
+      // DEBUG: Cek hasilnya di console
+      console.log('📊 DEPOSIT:', {
+        approved: { amount: depositApproved, count: depositApprovedCount },
+        rejected: { amount: depositRejected, count: depositRejectedCount },
+        failed: { amount: depositFailed, count: depositFailedCount },
+        total_amount: totalDeposit,
+        total_forms: depositApprovedCount + depositRejectedCount + depositFailedCount
+      });
+      
+      console.log('📊 WITHDRAWAL:', {
+        approved: { amount: withdrawalApproved, count: withdrawalApprovedCount },
+        rejected: { amount: withdrawalRejected, count: withdrawalRejectedCount },
+        total_amount: totalWithdrawal,
+        total_forms: withdrawalApprovedCount + withdrawalRejectedCount
       });
 
     } catch (error) {
@@ -1315,291 +1370,235 @@ useEffect(() => {
           </div>
 
           {/* 4 BAR CHARTS GRID - DENGAN DATA REAL */}
-<div className="grid grid-cols-2 gap-4">
-  {/* CHART 1: DEPOSIT - Approved, Rejected, Failed */}
-<div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
-  <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
-  <div className="h-24">
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={[
-        { 
-          name: 'App', 
-          count: dashboardTransactionTotals.deposit_approved_count || 0, 
-          amount: dashboardTransactionTotals.deposit_approved || 0, 
-          color: '#10b981' 
-        },
-        { 
-          name: 'Rej', 
-          count: dashboardTransactionTotals.deposit_rejected_count || 0, 
-          amount: dashboardTransactionTotals.deposit_rejected || 0, 
-          color: '#ef4444' 
-        },
-        { 
-          name: 'Fail', 
-          count: dashboardTransactionTotals.deposit_failed_count || 0, 
-          amount: dashboardTransactionTotals.deposit_failed || 0, 
-          color: '#f59e0b' 
-        }
-      ]}>
-        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-          {[
-            { name: 'App', count: dashboardTransactionTotals.deposit_approved_count || 0, color: '#10b981' },
-            { name: 'Rej', count: dashboardTransactionTotals.deposit_rejected_count || 0, color: '#ef4444' },
-            { name: 'Fail', count: dashboardTransactionTotals.deposit_failed_count || 0, color: '#f59e0b' }
-          ].map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Bar>
-        <Tooltip 
-          contentStyle={{ 
-            backgroundColor: '#0B1A33', 
-            borderColor: '#FFD700',
-            color: '#FFFFFF',
-            padding: '8px 12px'
-          }}
-          itemStyle={{ 
-            color: '#FFFFFF'
-          }}
-          labelStyle={{ 
-            color: '#FFD700',
-            fontWeight: 'bold',
-            marginBottom: '4px'
-          }}
-          formatter={(value, name, props) => {
-            // Props ini berisi seluruh data item (count dan amount)
-            const payload = props.payload;
-            
-            // Tergantung statusnya (App/Rej/Fail)
-            let status = '';
-            if (payload.name === 'App') status = 'Approved';
-            else if (payload.name === 'Rej') status = 'Rejected';
-            else if (payload.name === 'Fail') status = 'Failed';
-            
-            // Format amount ke Rupiah
-            const formattedAmount = new Intl.NumberFormat('id-ID', {
-              style: 'currency',
-              currency: 'IDR',
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0
-            }).format(payload.amount);
-            
-            // Return array untuk ditampilkan di tooltip
-            return [
-              <div key="tooltip">
-                <div style={{ color: '#FFD700', fontWeight: 'bold' }}>{status}</div>
-                <div style={{ color: '#FFFFFF' }}>{payload.count} forms</div>
-                <div style={{ color: '#A7D8FF', fontSize: '11px' }}>{formattedAmount}</div>
+          <div className="grid grid-cols-2 gap-4">
+            {/* CHART 1: DEPOSIT - Approved, Rejected, Failed */}
+            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
+              <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
+              {/* INI ANGKA BESAR - JUMLAH FORM */}
+              <div className="text-2xl font-bold text-white mb-1">
+                {(
+                  (dashboardTransactionTotals.deposit_approved_count || 0) + 
+                  (dashboardTransactionTotals.deposit_rejected_count || 0) + 
+                  (dashboardTransactionTotals.deposit_failed_count || 0)
+                ) || 0}
               </div>
-            ];
-          }}
-          // Alternative: pake content custom
-          content={({ active, payload }) => {
-            if (active && payload && payload.length) {
-              const data = payload[0].payload;
-              let status = '';
-              if (data.name === 'App') status = 'Approved';
-              else if (data.name === 'Rej') status = 'Rejected';
-              else if (data.name === 'Fail') status = 'Failed';
-              
-              const formattedAmount = new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-              }).format(data.amount);
-              
-              return (
-                <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
-                  <p className="text-[#FFD700] font-bold text-xs">{status}</p>
-                  <p className="text-white text-xs">{data.count} forms</p>
-                  <p className="text-[#A7D8FF] text-[10px]">{formattedAmount}</p>
-                </div>
-              );
-            }
-            return null;
-          }}
-        />
-      </BarChart>
-    </ResponsiveContainer>
-  </div>
-  <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-    <span className="text-green-400">✓ App: {dashboardTransactionTotals.deposit_approved_count || 0}</span>
-    <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.deposit_rejected_count || 0}</span>
-    <span className="text-orange-400">⚠ Fail: {dashboardTransactionTotals.deposit_failed_count || 0}</span>
-  </div>
-</div>
+              {/* INI VALUE RP - TOTAL UANG */}
+              <div className="text-xs text-[#A7D8FF] mb-2">
+                value : {new Intl.NumberFormat('id-ID', {
+                  style: 'currency',
+                  currency: 'IDR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                }).format(dashboardTransactionTotals.total_deposit || 0)}
+              </div>
+              <div className="h-20">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { 
+                      name: 'App', 
+                      count: dashboardTransactionTotals.deposit_approved_count || 0, 
+                      amount: dashboardTransactionTotals.deposit_approved || 0, 
+                      color: '#10b981' 
+                    },
+                    { 
+                      name: 'Rej', 
+                      count: dashboardTransactionTotals.deposit_rejected_count || 0, 
+                      amount: dashboardTransactionTotals.deposit_rejected || 0, 
+                      color: '#ef4444' 
+                    },
+                    { 
+                      name: 'Fail', 
+                      count: dashboardTransactionTotals.deposit_failed_count || 0, 
+                      amount: dashboardTransactionTotals.deposit_failed || 0, 
+                      color: '#f59e0b' 
+                    }
+                  ]}>
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {[
+                        { name: 'App', count: dashboardTransactionTotals.deposit_approved_count || 0, color: '#10b981' },
+                        { name: 'Rej', count: dashboardTransactionTotals.deposit_rejected_count || 0, color: '#ef4444' },
+                        { name: 'Fail', count: dashboardTransactionTotals.deposit_failed_count || 0, color: '#f59e0b' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          let status = '';
+                          if (data.name === 'App') status = 'Approved';
+                          else if (data.name === 'Rej') status = 'Rejected';
+                          else if (data.name === 'Fail') status = 'Failed';
+                          
+                          const formattedAmount = new Intl.NumberFormat('id-ID', {
+                            style: 'currency',
+                            currency: 'IDR',
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                          }).format(data.amount);
+                          
+                          return (
+                            <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
+                              <p className="text-[#FFD700] font-bold text-xs">{status}</p>
+                              <p className="text-white text-xs">{data.count} forms</p>
+                              <p className="text-[#A7D8FF] text-[10px]">{formattedAmount}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+                <span className="text-green-400">✓ App: {dashboardTransactionTotals.deposit_approved_count || 0}</span>
+                <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.deposit_rejected_count || 0}</span>
+                <span className="text-orange-400">⚠ Fail: {dashboardTransactionTotals.deposit_failed_count || 0}</span>
+              </div>
+            </div>
 
-{/* CHART 2: WITHDRAWAL - Approved, Rejected */}
-<div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
-  <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
-  <div className="h-24">
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={[
-        { 
-          name: 'App', 
-          count: dashboardTransactionTotals.withdrawal_approved_count || 0, 
-          amount: dashboardTransactionTotals.withdrawal_approved || 0, 
-          color: '#10b981' 
-        },
-        { 
-          name: 'Rej', 
-          count: dashboardTransactionTotals.withdrawal_rejected_count || 0, 
-          amount: dashboardTransactionTotals.withdrawal_rejected || 0, 
-          color: '#ef4444' 
-        }
-      ]}>
-        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-          {[
-            { name: 'App', count: dashboardTransactionTotals.withdrawal_approved_count || 0, color: '#10b981' },
-            { name: 'Rej', count: dashboardTransactionTotals.withdrawal_rejected_count || 0, color: '#ef4444' }
-          ].map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Bar>
-        <Tooltip 
-          content={({ active, payload }) => {
-            if (active && payload && payload.length) {
-              const data = payload[0].payload;
-              let status = '';
-              if (data.name === 'App') status = 'Approved';
-              else if (data.name === 'Rej') status = 'Rejected';
-              
-              const formattedAmount = new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-              }).format(data.amount);
-              
-              return (
-                <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
-                  <p className="text-[#FFD700] font-bold text-xs">{status}</p>
-                  <p className="text-white text-xs">{data.count} forms</p>
-                  <p className="text-[#A7D8FF] text-[10px]">{formattedAmount}</p>
-                </div>
-              );
-            }
-            return null;
-          }}
-        />
-      </BarChart>
-    </ResponsiveContainer>
-  </div>
-  <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-    <span className="text-green-400">✓ App: {dashboardTransactionTotals.withdrawal_approved_count || 0}</span>
-    <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.withdrawal_rejected_count || 0}</span>
-  </div>
-</div>
+            {/* CHART 2: WITHDRAWAL - Approved, Rejected */}
+            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
+              <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
+              {/* INI ANGKA BESAR - JUMLAH FORM */}
+              <div className="text-2xl font-bold text-white mb-1">
+                {(
+                  (dashboardTransactionTotals.withdrawal_approved_count || 0) + 
+                  (dashboardTransactionTotals.withdrawal_rejected_count || 0)
+                ) || 0}
+              </div>
+              {/* INI VALUE RP - TOTAL UANG */}
+              <div className="text-xs text-[#A7D8FF] mb-2">
+                value : {new Intl.NumberFormat('id-ID', {
+                  style: 'currency',
+                  currency: 'IDR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                }).format(dashboardTransactionTotals.total_withdrawal || 0)}
+              </div>
+              <div className="h-20">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { 
+                      name: 'App', 
+                      count: dashboardTransactionTotals.withdrawal_approved_count || 0, 
+                      amount: dashboardTransactionTotals.withdrawal_approved || 0, 
+                      color: '#10b981' 
+                    },
+                    { 
+                      name: 'Rej', 
+                      count: dashboardTransactionTotals.withdrawal_rejected_count || 0, 
+                      amount: dashboardTransactionTotals.withdrawal_rejected || 0, 
+                      color: '#ef4444' 
+                    }
+                  ]}>
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {[
+                        { name: 'App', count: dashboardTransactionTotals.withdrawal_approved_count || 0, color: '#10b981' },
+                        { name: 'Rej', count: dashboardTransactionTotals.withdrawal_rejected_count || 0, color: '#ef4444' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          let status = '';
+                          if (data.name === 'App') status = 'Approved';
+                          else if (data.name === 'Rej') status = 'Rejected';
+                          
+                          const formattedAmount = new Intl.NumberFormat('id-ID', {
+                            style: 'currency',
+                            currency: 'IDR',
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                          }).format(data.amount);
+                          
+                          return (
+                            <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
+                              <p className="text-[#FFD700] font-bold text-xs">{status}</p>
+                              <p className="text-white text-xs">{data.count} forms</p>
+                              <p className="text-[#A7D8FF] text-[10px]">{formattedAmount}</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+                <span className="text-green-400">✓ App: {dashboardTransactionTotals.withdrawal_approved_count || 0}</span>
+                <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.withdrawal_rejected_count || 0}</span>
+              </div>
+            </div>
 
-  {/* CHART 3: ADJUSTMENT - Plus, Minus (KOSONG) */}
-  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
-    <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
-    <div className="h-24">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={[
-          { name: '+', value: 0, color: '#10b981' },
-          { name: '-', value: 0, color: '#ef4444' }
-        ]}>
-          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-            {[
-              { name: '+', value: 0, color: '#10b981' },
-              { name: '-', value: 0, color: '#ef4444' }
-            ].map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Bar>
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: '#0B1A33', 
-              borderColor: '#FFD700',
-              color: '#FFFFFF'
-            }}
-            itemStyle={{ 
-              color: '#FFFFFF'
-            }}
-            labelStyle={{ 
-              color: '#FFD700'
-            }}
-            formatter={(value, name, props) => {
-              const formattedValue = new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-              }).format(value);
-              return [formattedValue, name === '+' ? 'Plus' : 'Minus'];
-            }}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-      <span className="text-green-400">+ Plus</span>
-      <span className="text-red-400">- Minus</span>
-      <span className="invisible">-</span>
-    </div>
-  </div>
+            {/* CHART 3: ADJUSTMENT - Plus, Minus (KOSONG) */}
+            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
+              <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
+              <div className="text-2xl font-bold text-white mb-1">0</div>
+              <div className="text-xs text-[#A7D8FF] mb-2">value : Rp 0</div>
+              <div className="h-20">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: '+', value: 0, color: '#10b981' },
+                    { name: '-', value: 0, color: '#ef4444' }
+                  ]}>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {[
+                        { name: '+', value: 0, color: '#10b981' },
+                        { name: '-', value: 0, color: '#ef4444' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+                <span className="text-green-400">+ Plus: 0</span>
+                <span className="text-red-400">- Minus: 0</span>
+              </div>
+            </div>
 
-  {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral (KOSONG) */}
-  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
-    <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
-    <div className="h-24">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={[
-          { name: 'Bonus', value: 0, color: '#FFD700' },
-          { name: 'Cash', value: 0, color: '#3b82f6' },
-          { name: 'Comm', value: 0, color: '#10b981' },
-          { name: 'Ref', value: 0, color: '#8b5cf6' }
-        ]}>
-          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-            {[
-              { name: 'Bonus', value: 0, color: '#FFD700' },
-              { name: 'Cash', value: 0, color: '#3b82f6' },
-              { name: 'Comm', value: 0, color: '#10b981' },
-              { name: 'Ref', value: 0, color: '#8b5cf6' }
-            ].map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Bar>
-          <Tooltip 
-            contentStyle={{ 
-              backgroundColor: '#0B1A33', 
-              borderColor: '#FFD700',
-              color: '#FFFFFF'
-            }}
-            itemStyle={{ 
-              color: '#FFFFFF'
-            }}
-            labelStyle={{ 
-              color: '#FFD700'
-            }}
-            formatter={(value, name, props) => {
-              const formattedValue = new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-              }).format(value);
-              
-              let fullName = name;
-              if (name === 'Cash') fullName = 'Cashback';
-              if (name === 'Comm') fullName = 'Commission';
-              if (name === 'Ref') fullName = 'Referral';
-              
-              return [formattedValue, fullName];
-            }}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-      <span className="text-yellow-400">Bonus</span>
-      <span className="text-blue-400">Cash</span>
-      <span className="text-green-400">Comm</span>
-      <span className="text-purple-400">Ref</span>
-    </div>
-  </div>
-</div>
+            {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral (KOSONG) */}
+            <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
+              <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
+              <div className="text-2xl font-bold text-white mb-1">0</div>
+              <div className="text-xs text-[#A7D8FF] mb-2">value : Rp 0</div>
+              <div className="h-20">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[
+                    { name: 'Bonus', value: 0, color: '#FFD700' },
+                    { name: 'Cash', value: 0, color: '#3b82f6' },
+                    { name: 'Comm', value: 0, color: '#10b981' },
+                    { name: 'Ref', value: 0, color: '#8b5cf6' }
+                  ]}>
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {[
+                        { name: 'Bonus', value: 0, color: '#FFD700' },
+                        { name: 'Cash', value: 0, color: '#3b82f6' },
+                        { name: 'Comm', value: 0, color: '#10b981' },
+                        { name: 'Ref', value: 0, color: '#8b5cf6' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+                <span className="text-yellow-400">Bonus: 0</span>
+                <span className="text-blue-400">Cash: 0</span>
+                <span className="text-green-400">Comm: 0</span>
+                <span className="text-purple-400">Ref: 0</span>
+              </div>
+            </div>
+          </div>
 
           {/* TOTAL VALUE - RINGKASAN DENGAN DATA REAL */}
           <div className="mt-4 pt-3 border-t border-[#FFD700]/20">
@@ -1897,177 +1896,177 @@ useEffect(() => {
         </div>
 
         {/* KOLOM 3: OFFICER PERFORMANCE - MODIFIED WITH 3D EXPLODED PIE CHART */}
-<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-  {/* HEADER DENGAN LINK - TANPA FILTER DI DALEM LINK */}
-  <div className="flex items-center justify-between mb-2">
-    <Link href="/dashboard/officers-performance" className="block group flex-1">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-[#FFD700] group-hover:text-[#FFD700] transition-colors">
-          📊 Officer & System Performance
-        </h3>
-        <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </div>
-    </Link>
-  </div>
-
-  {/* FILTER SECTION - TERPISAH DARI LINK */}
-  <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
-    {/* Filter Asset */}
-    <select 
-      value={selectedAsset}
-      onChange={(e) => setSelectedAsset(e.target.value)}
-      className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
-    >
-      <option value="all">All Asset</option>
-      {assetList.map(asset => (
-        <option key={asset} value={asset}>{asset}</option>
-      ))}
-    </select>
-
-    {/* Filter Periode - Yesterday, Monthly, Custom */}
-    <select 
-      value={timeFilter}
-      onChange={(e) => setTimeFilter(e.target.value)}
-      className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
-    >
-      <option value="yesterday">Yesterday</option>
-      <option value="monthly">Monthly</option>
-      <option value="custom">Custom Range</option>
-    </select>
-
-    {/* Monthly Filter - Muncul jika pilih monthly */}
-    {timeFilter === 'monthly' && (
-      <>
-        <select 
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
-        >
-          {fullMonthNames.map(month => (
-            <option key={month} value={month}>{month}</option>
-          ))}
-        </select>
-        
-        <select 
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(e.target.value)}
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
-        >
-          {years.map(year => (
-            <option key={year} value={year}>{year}</option>
-          ))}
-        </select>
-      </>
-    )}
-
-    {/* Custom Range Filter - Muncul jika pilih custom */}
-    {timeFilter === 'custom' && (
-      <>
-        <input
-          type="date"
-          value={customStartDate}
-          onChange={(e) => setCustomStartDate(e.target.value)}
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
-        />
-        <span className="text-[#A7D8FF] text-xs">to</span>
-        <input
-          type="date"
-          value={customEndDate}
-          onChange={(e) => setCustomEndDate(e.target.value)}
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
-        />
-      </>
-    )}
-  </div>
-  
-  <div className="h-64 flex flex-col">
-    {loadingOfficerPie ? (
-      <div className="h-full flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
-      </div>
-    ) : officerPieData.length > 0 ? (
-      <>
-        <div className="flex-1 flex items-center justify-center">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={officerPieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={0}
-                outerRadius={70}
-                paddingAngle={4}
-                dataKey="value"
-                labelLine={false}
-                label={({ name, percent = 0 }) => {
-                  const percentage = (percent * 100).toFixed(1);
-                  return parseFloat(percentage) >= 5 ? `${percentage}%` : '';
-                }}
-              >
-                {officerPieData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={entry.color}
-                    stroke="#0B1A33"
-                    strokeWidth={2}
-                  />
-                ))}
-              </Pie>
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#0B1A33', 
-                  borderColor: '#FFD700',
-                  color: '#FFFFFF'
-                }}
-                itemStyle={{ 
-                  color: '#FFFFFF'
-                }}
-                labelStyle={{ 
-                  color: '#FFD700'
-                }}
-                formatter={(value, name, props) => {
-                  const total = officerPieData.reduce((sum, item) => sum + item.value, 0);
-                  const percentage = ((value / total) * 100).toFixed(1);
-                  return [`${value} transactions (${percentage}%)`, name];
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-        
-        {/* Legend dengan persentase - 2 kolom */}
-        <div className="grid grid-cols-2 gap-2 mt-2">
-          {officerPieData.map((item, index) => {
-            const total = officerPieData.reduce((sum, i) => sum + i.value, 0);
-            const percentage = ((item.value / total) * 100).toFixed(1);
-            return (
-              <div key={`legend-${index}`} className="flex items-center gap-1 text-[10px]">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
-                <span className="text-[#A7D8FF] truncate">{item.name}</span>
-                <span className="text-[#FFD700] font-bold ml-auto">{percentage}%</span>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          {/* HEADER DENGAN LINK - TANPA FILTER DI DALEM LINK */}
+          <div className="flex items-center justify-between mb-2">
+            <Link href="/dashboard/officers-performance" className="block group flex-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-[#FFD700] group-hover:text-[#FFD700] transition-colors">
+                  📊 Officer & System Performance
+                </h3>
+                <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
               </div>
-            );
-          })}
-        </div>
-        
-        <div className="text-center text-[10px] text-[#A7D8FF] mt-1">
-          Total: {officerPieData.reduce((sum, item) => sum + item.value, 0)} transactions
-        </div>
-      </>
-    ) : (
-      <div className="h-full flex items-center justify-center text-[#A7D8FF] text-sm text-center">
-        No transaction data this month
-      </div>
-    )}
-  </div>
-  
-  <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
-    Click to see detailed performance →
-  </div>
+            </Link>
+          </div>
+
+          {/* FILTER SECTION - TERPISAH DARI LINK */}
+          <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
+            {/* Filter Asset */}
+            <select 
+              value={selectedAsset}
+              onChange={(e) => setSelectedAsset(e.target.value)}
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+            >
+              <option value="all">All Asset</option>
+              {assetList.map(asset => (
+                <option key={asset} value={asset}>{asset}</option>
+              ))}
+            </select>
+
+            {/* Filter Periode - Yesterday, Monthly, Custom */}
+            <select 
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+            >
+              <option value="yesterday">Yesterday</option>
+              <option value="monthly">Monthly</option>
+              <option value="custom">Custom Range</option>
+            </select>
+
+            {/* Monthly Filter - Muncul jika pilih monthly */}
+            {timeFilter === 'monthly' && (
+              <>
+                <select 
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                >
+                  {fullMonthNames.map(month => (
+                    <option key={month} value={month}>{month}</option>
+                  ))}
+                </select>
+                
+                <select 
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                >
+                  {years.map(year => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {/* Custom Range Filter - Muncul jika pilih custom */}
+            {timeFilter === 'custom' && (
+              <>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                />
+                <span className="text-[#A7D8FF] text-xs">to</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white"
+                />
+              </>
+            )}
+          </div>
+          
+          <div className="h-64 flex flex-col">
+            {loadingOfficerPie ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+              </div>
+            ) : officerPieData.length > 0 ? (
+              <>
+                <div className="flex-1 flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={officerPieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={0}
+                        outerRadius={70}
+                        paddingAngle={4}
+                        dataKey="value"
+                        labelLine={false}
+                        label={({ name, percent = 0 }) => {
+                          const percentage = (percent * 100).toFixed(1);
+                          return parseFloat(percentage) >= 5 ? `${percentage}%` : '';
+                        }}
+                      >
+                        {officerPieData.map((entry, index) => (
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.color}
+                            stroke="#0B1A33"
+                            strokeWidth={2}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#0B1A33', 
+                          borderColor: '#FFD700',
+                          color: '#FFFFFF'
+                        }}
+                        itemStyle={{ 
+                          color: '#FFFFFF'
+                        }}
+                        labelStyle={{ 
+                          color: '#FFD700'
+                        }}
+                        formatter={(value, name, props) => {
+                          const total = officerPieData.reduce((sum, item) => sum + item.value, 0);
+                          const percentage = ((value / total) * 100).toFixed(1);
+                          return [`${value} transactions (${percentage}%)`, name];
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Legend dengan persentase - 2 kolom */}
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {officerPieData.map((item, index) => {
+                    const total = officerPieData.reduce((sum, i) => sum + i.value, 0);
+                    const percentage = ((item.value / total) * 100).toFixed(1);
+                    return (
+                      <div key={`legend-${index}`} className="flex items-center gap-1 text-[10px]">
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                        <span className="text-[#A7D8FF] truncate">{item.name}</span>
+                        <span className="text-[#FFD700] font-bold ml-auto">{percentage}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                <div className="text-center text-[10px] text-[#A7D8FF] mt-1">
+                  Total: {officerPieData.reduce((sum, item) => sum + item.value, 0)} transactions
+                </div>
+              </>
+            ) : (
+              <div className="h-full flex items-center justify-center text-[#A7D8FF] text-sm text-center">
+                No transaction data this month
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
+            Click to see detailed performance →
+          </div>
         </div>
       </div>
 
