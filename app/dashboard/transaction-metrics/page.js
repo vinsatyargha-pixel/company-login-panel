@@ -18,13 +18,20 @@ const formatRupiah = (amount) => {
 }
 
 // ===========================================
+// HELPER: Format date untuk display
+// ===========================================
+const formatDate = (date) => {
+  return date.toISOString().split('T')[0]
+}
+
+// ===========================================
 // MAIN COMPONENT
 // ===========================================
 
 export default function TransactionMetricsPage() {
   // Filter states
-  const [selectedAsset, setSelectedAsset] = useState('all') // 'all' atau 'LUCKY77'
-  const [timeFilter, setTimeFilter] = useState('daily') // 'yesterday', 'daily', 'monthly', 'custom'
+  const [selectedAsset, setSelectedAsset] = useState('all')
+  const [timeFilter, setTimeFilter] = useState('daily')
   
   // Date states
   const [selectedDate, setSelectedDate] = useState('')
@@ -33,31 +40,25 @@ export default function TransactionMetricsPage() {
   const [customStartDate, setCustomStartDate] = useState('')
   const [customEndDate, setCustomEndDate] = useState('')
   
+  // Cache tanggal yesterday biar konsisten
+  const [yesterdayDate, setYesterdayDate] = useState('')
+  
   const [loading, setLoading] = useState(false)
   
   // ===========================================
   // DATA STRUCTURE
   // ===========================================
   const [totals, setTotals] = useState({
-    // Main header
     total_deposit: 0,
     total_withdrawal: 0,
     total_bonus: 0,
-    
-    // Deposit breakdown
     deposit_approved: 0,
     deposit_rejected: 0,
     deposit_failed: 0,
-    
-    // Withdrawal breakdown
     withdrawal_approved: 0,
     withdrawal_rejected: 0,
-    
-    // Adjustment (kosong dulu)
     adjustment_plus: 0,
     adjustment_minus: 0,
-    
-    // Bonus (kosong dulu)
     bonus: 0,
     cashback: 0,
     commission: 0,
@@ -70,7 +71,6 @@ export default function TransactionMetricsPage() {
   ]
   const years = ['2024', '2025', '2026', '2027']
   
-  // Asset options - LUCKY77 = XLY
   const assets = [
     { value: 'all', label: 'All Asset' },
     { value: 'LUCKY77', label: 'LUCKY77 (XLY)' }
@@ -82,18 +82,22 @@ export default function TransactionMetricsPage() {
 
   useEffect(() => {
     const today = new Date()
-    const todayStr = today.toISOString().split('T')[0]
+    const todayStr = formatDate(today)
+    
+    // Hitung yesterday SEKALI dan simpan di state
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    setYesterdayDate(formatDate(yesterday))
     
     setSelectedDate(todayStr)
     setSelectedMonth(months[today.getMonth()])
     setSelectedYear(today.getFullYear().toString())
     
-    // Set default custom range (7 hari terakhir)
     const end = new Date()
     const start = new Date()
     start.setDate(end.getDate() - 7)
-    setCustomStartDate(start.toISOString().split('T')[0])
-    setCustomEndDate(end.toISOString().split('T')[0])
+    setCustomStartDate(formatDate(start))
+    setCustomEndDate(formatDate(end))
   }, [])
 
   // ===========================================
@@ -107,10 +111,9 @@ export default function TransactionMetricsPage() {
 
     switch (timeFilter) {
       case 'yesterday':
-        const yesterday = new Date()
-        yesterday.setDate(yesterday.getDate() - 1)
-        startDate = yesterday.toISOString().split('T')[0]
-        endDate = yesterday.toISOString().split('T')[0]
+        // PAKAI YANG SUDAH DI-CACHE, bukan new Date() baru
+        startDate = yesterdayDate
+        endDate = yesterdayDate
         periodText = `Yesterday (${startDate})`
         break
         
@@ -166,13 +169,11 @@ export default function TransactionMetricsPage() {
         .gte('approved_date', startDate)
         .lte('approved_date', endDate)
 
-      // Filter berdasarkan asset jika bukan 'all'
       if (selectedAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', 'XLY') // LUCKY77 = XLY
+        depositQuery = depositQuery.eq('brand', 'XLY')
       }
 
       const { data: depositData, error: depositError } = await depositQuery
-
       if (depositError) throw depositError
 
       // ===========================================
@@ -184,20 +185,15 @@ export default function TransactionMetricsPage() {
         .gte('approved_date', startDate)
         .lte('approved_date', endDate)
 
-      // Filter berdasarkan asset jika bukan 'all'
       if (selectedAsset !== 'all') {
-        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY') // LUCKY77 = XLY
+        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY')
       }
 
       const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery
-
       if (withdrawalError) throw withdrawalError
 
-      console.log('📊 Deposit data:', depositData?.length || 0)
-      console.log('📊 Withdrawal data:', withdrawalData?.length || 0)
-
       // ===========================================
-      // 3. HITUNG TOTAL DEPOSIT
+      // 3. HITUNG DEPOSIT
       // ===========================================
       let totalDeposit = 0
       let depositApproved = 0
@@ -216,13 +212,11 @@ export default function TransactionMetricsPage() {
           depositRejected += amount
         } else if (status.includes('fail')) {
           depositFailed += amount
-        } else {
-          // Status lain (pending, dll) masuk ke total tapi tidak di breakdown
         }
       })
 
       // ===========================================
-      // 4. HITUNG TOTAL WITHDRAWAL
+      // 4. HITUNG WITHDRAWAL
       // ===========================================
       let totalWithdrawal = 0
       let withdrawalApproved = 0
@@ -238,39 +232,28 @@ export default function TransactionMetricsPage() {
           withdrawalApproved += amount
         } else if (status === 'rejected') {
           withdrawalRejected += amount
-        } else {
-          // Status lain (pending, fail, dll) masuk ke total tapi tidak di breakdown
         }
       })
 
       // ===========================================
-// 5. UPDATE STATE
-// ===========================================
-setTotals({
-  // Main header
-  total_deposit: totalDeposit,
-  total_withdrawal: totalWithdrawal,
-  total_bonus: 0, // Kosong dulu
-  
-  // Deposit breakdown
-  deposit_approved: depositApproved,
-  deposit_rejected: depositRejected,
-  deposit_failed: depositFailed,
-  
-  // Withdrawal breakdown
-  withdrawal_approved: withdrawalApproved,
-  withdrawal_rejected: withdrawalRejected,
-  
-  // Adjustment (kosong dulu)
-  adjustment_plus: 0,
-  adjustment_minus: 0,
-  
-  // Bonus (kosong dulu)
-  bonus: 0,
-  cashback: 0,
-  commission: 0,
-  referral: 0
-})
+      // 5. UPDATE STATE
+      // ===========================================
+      setTotals({
+        total_deposit: totalDeposit,
+        total_withdrawal: totalWithdrawal,
+        total_bonus: 0,
+        deposit_approved: depositApproved,
+        deposit_rejected: depositRejected,
+        deposit_failed: depositFailed,
+        withdrawal_approved: withdrawalApproved,
+        withdrawal_rejected: withdrawalRejected,
+        adjustment_plus: 0,
+        adjustment_minus: 0,
+        bonus: 0,
+        cashback: 0,
+        commission: 0,
+        referral: 0
+      })
       
     } catch (error) {
       console.error('❌ Error:', error)
@@ -282,14 +265,13 @@ setTotals({
   // Trigger fetch when filters change
   useEffect(() => {
     fetchData()
-  }, [selectedAsset, timeFilter, selectedDate, selectedMonth, selectedYear, customStartDate, customEndDate])
+  }, [selectedAsset, timeFilter, selectedDate, selectedMonth, selectedYear, customStartDate, customEndDate, yesterdayDate])
 
   const { periodText } = getDateRange()
 
   // ===========================================
-  // RENDER
+  // RENDER (SAMA PERSIS SEPERTI PUNYA LO)
   // ===========================================
-
   if (loading) {
     return (
       <div className="p-6 min-h-screen bg-[#0B1A33] flex items-center justify-center">
@@ -310,10 +292,9 @@ setTotals({
         <p className="text-[#A7D8FF] mt-2">Nilai transaksi deposit, withdrawal, bonus, dan adjustment</p>
       </div>
 
-      {/* FILTER SECTION */}
+      {/* FILTER SECTION - SAMA PERSIS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex gap-4 items-center flex-wrap">
-          {/* Asset Filter - LUCKY77 = XLY */}
           <select 
             className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
             value={selectedAsset}
@@ -324,7 +305,6 @@ setTotals({
             ))}
           </select>
 
-          {/* Time Filter Type */}
           <select 
             className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
             value={timeFilter}
@@ -336,7 +316,6 @@ setTotals({
             <option value="custom">Custom Range</option>
           </select>
 
-          {/* Daily Filter */}
           {timeFilter === 'daily' && (
             <input
               type="date"
@@ -346,7 +325,6 @@ setTotals({
             />
           )}
 
-          {/* Monthly Filter */}
           {timeFilter === 'monthly' && (
             <>
               <select 
@@ -371,7 +349,6 @@ setTotals({
             </>
           )}
 
-          {/* Custom Range Filter */}
           {timeFilter === 'custom' && (
             <>
               <input
@@ -396,9 +373,8 @@ setTotals({
         </div>
       </div>
 
-      {/* MAIN HEADER CARDS - Total Semua */}
+      {/* MAIN HEADER CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* Total Deposit */}
         <div className="bg-gradient-to-br from-blue-900/50 to-blue-950 p-6 rounded-lg border border-blue-500/30">
           <div className="text-blue-400 text-sm font-bold uppercase tracking-wider">Total Deposit</div>
           <div className="text-3xl font-bold text-white mt-2">
@@ -407,7 +383,6 @@ setTotals({
           <div className="text-blue-300 text-xs mt-1">Semua status</div>
         </div>
 
-        {/* Total Withdrawal */}
         <div className="bg-gradient-to-br from-green-900/50 to-green-950 p-6 rounded-lg border border-green-500/30">
           <div className="text-green-400 text-sm font-bold uppercase tracking-wider">Total Withdrawal</div>
           <div className="text-3xl font-bold text-white mt-2">
@@ -416,7 +391,6 @@ setTotals({
           <div className="text-green-300 text-xs mt-1">Semua status</div>
         </div>
 
-        {/* Total Bonus */}
         <div className="bg-gradient-to-br from-yellow-900/50 to-yellow-950 p-6 rounded-lg border border-yellow-500/30">
           <div className="text-yellow-400 text-sm font-bold uppercase tracking-wider">Total Bonus</div>
           <div className="text-3xl font-bold text-white mt-2">
@@ -426,14 +400,13 @@ setTotals({
         </div>
       </div>
 
-      {/* DEPOSIT SECTION */}
+      {/* DEPOSIT BREAKDOWN */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-blue-400 mb-3 flex items-center">
           <span className="bg-blue-500 w-1 h-6 rounded-full mr-2"></span>
           DEPOSIT BREAKDOWN
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Approved Deposit */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-green-500/30">
             <div className="flex items-center justify-between">
               <div>
@@ -448,7 +421,6 @@ setTotals({
             </div>
           </div>
 
-          {/* Rejected Deposit */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-red-500/30">
             <div className="flex items-center justify-between">
               <div>
@@ -463,7 +435,6 @@ setTotals({
             </div>
           </div>
 
-          {/* Failed Deposit */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-orange-500/30">
             <div className="flex items-center justify-between">
               <div>
@@ -480,14 +451,13 @@ setTotals({
         </div>
       </div>
 
-      {/* WITHDRAWAL SECTION */}
+      {/* WITHDRAWAL BREAKDOWN */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-green-400 mb-3 flex items-center">
           <span className="bg-green-500 w-1 h-6 rounded-full mr-2"></span>
           WITHDRAWAL BREAKDOWN
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Approved Withdrawal */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-green-500/30">
             <div className="flex items-center justify-between">
               <div>
@@ -502,7 +472,6 @@ setTotals({
             </div>
           </div>
 
-          {/* Rejected Withdrawal */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-red-500/30">
             <div className="flex items-center justify-between">
               <div>
@@ -519,14 +488,13 @@ setTotals({
         </div>
       </div>
 
-      {/* ADJUSTMENT SECTION (KOSONG) */}
+      {/* ADJUSTMENT SECTION */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-purple-400 mb-3 flex items-center">
           <span className="bg-purple-500 w-1 h-6 rounded-full mr-2"></span>
           ADJUSTMENT
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Adjustment + */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-green-500/30">
             <div className="flex items-center justify-between">
               <div>
@@ -541,7 +509,6 @@ setTotals({
             </div>
           </div>
 
-          {/* Adjustment - */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-red-500/30">
             <div className="flex items-center justify-between">
               <div>
@@ -558,38 +525,31 @@ setTotals({
         </div>
       </div>
 
-      {/* BONUS SECTION (KOSONG) */}
+      {/* BONUS SECTION */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-yellow-400 mb-3 flex items-center">
           <span className="bg-yellow-500 w-1 h-6 rounded-full mr-2"></span>
           BONUS BREAKDOWN
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Bonus */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-yellow-500/30">
             <div className="text-yellow-400 text-sm font-medium">Bonus</div>
             <div className="text-xl font-bold text-white mt-1">
               {formatRupiah(totals.bonus)}
             </div>
           </div>
-
-          {/* Cashback */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-yellow-500/30">
             <div className="text-yellow-400 text-sm font-medium">Cashback</div>
             <div className="text-xl font-bold text-white mt-1">
               {formatRupiah(totals.cashback)}
             </div>
           </div>
-
-          {/* Commission */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-yellow-500/30">
             <div className="text-yellow-400 text-sm font-medium">Commission</div>
             <div className="text-xl font-bold text-white mt-1">
               {formatRupiah(totals.commission)}
             </div>
           </div>
-
-          {/* Referral */}
           <div className="bg-[#1A2F4A] p-5 rounded-lg border border-yellow-500/30">
             <div className="text-yellow-400 text-sm font-medium">Referral</div>
             <div className="text-xl font-bold text-white mt-1">
@@ -600,29 +560,27 @@ setTotals({
       </div>
 
       {/* SUMMARY FOOTER */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  {/* Net Flow Card - Deposit Approved - Withdrawal Approved */}
-  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-    <div className="flex justify-between items-center">
-      <span className="text-[#A7D8FF]">Net Flow (Deposit Approved - Withdrawal Approved)</span>
-      <span className={`text-2xl font-bold ${totals.deposit_approved - totals.withdrawal_approved >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-        {formatRupiah(totals.deposit_approved - totals.withdrawal_approved)}
-      </span>
-    </div>
-  </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="flex justify-between items-center">
+            <span className="text-[#A7D8FF]">Net Flow (Deposit Approved - Withdrawal Approved)</span>
+            <span className={`text-2xl font-bold ${totals.deposit_approved - totals.withdrawal_approved >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {formatRupiah(totals.deposit_approved - totals.withdrawal_approved)}
+            </span>
+          </div>
+        </div>
 
-  {/* Info Card */}
-  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-    <div className="flex justify-between items-center text-sm">
-      <span className="text-[#A7D8FF]">Asset</span>
-      <span className="text-white font-bold">{selectedAsset === 'all' ? 'All Asset' : 'LUCKY77 (XLY)'}</span>
-    </div>
-    <div className="flex justify-between items-center text-sm mt-2">
-      <span className="text-[#A7D8FF]">Periode</span>
-      <span className="text-white">{periodText}</span>
-    </div>
-  </div>
-</div>
+        <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-[#A7D8FF]">Asset</span>
+            <span className="text-white font-bold">{selectedAsset === 'all' ? 'All Asset' : 'LUCKY77 (XLY)'}</span>
+          </div>
+          <div className="flex justify-between items-center text-sm mt-2">
+            <span className="text-[#A7D8FF]">Periode</span>
+            <span className="text-white">{periodText}</span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
