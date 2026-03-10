@@ -1392,99 +1392,77 @@ useEffect(() => {
       }).format(dashboardTransactionTotals.total_deposit || 0)}
     </div>
     
-    {/* STACKED BAR CHART */}
-    <div className="h-16 mt-2">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={[{
-            name: 'Deposit',
-            approved: dashboardTransactionTotals.deposit_approved_count || 0,
-            rejected: dashboardTransactionTotals.deposit_rejected_count || 0,
-            failed: dashboardTransactionTotals.deposit_failed_count || 0,
-            approvedAmount: dashboardTransactionTotals.deposit_approved || 0,
-            rejectedAmount: dashboardTransactionTotals.deposit_rejected || 0,
-            failedAmount: dashboardTransactionTotals.deposit_failed || 0
-          }]}
-          layout="vertical"
-          barSize={30}
-        >
-          <Bar dataKey="approved" stackId="a" fill="#10b981" radius={[4, 0, 0, 4]}>
-            <LabelList 
-              dataKey="approved" 
-              position="insideLeft" 
-              fill="white" 
-              fontSize={10}
-              formatter={(value) => value > 0 ? `${((value / (dashboardTransactionTotals.deposit_approved_count + dashboardTransactionTotals.deposit_rejected_count + dashboardTransactionTotals.deposit_failed_count || 1)) * 100).toFixed(1)}%` : ''}
-            />
-          </Bar>
-          <Bar dataKey="rejected" stackId="a" fill="#ef4444">
-            <LabelList 
-              dataKey="rejected" 
-              position="inside" 
-              fill="white" 
-              fontSize={10}
-              formatter={(value) => value > 0 ? `${((value / (dashboardTransactionTotals.deposit_approved_count + dashboardTransactionTotals.deposit_rejected_count + dashboardTransactionTotals.deposit_failed_count || 1)) * 100).toFixed(1)}%` : ''}
-            />
-          </Bar>
-          <Bar dataKey="failed" stackId="a" fill="#f59e0b" radius={[0, 4, 4, 0]}>
-            <LabelList 
-              dataKey="failed" 
-              position="insideRight" 
-              fill="white" 
-              fontSize={10}
-              formatter={(value) => value > 0 ? `${((value / (dashboardTransactionTotals.deposit_approved_count + dashboardTransactionTotals.deposit_rejected_count + dashboardTransactionTotals.deposit_failed_count || 1)) * 100).toFixed(1)}%` : ''}
-            />
-          </Bar>
-          <Tooltip
-            content={({ active, payload }) => {
-              if (active && payload && payload.length) {
-                return (
-                  <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
-                    <p className="text-[#FFD700] font-bold text-xs mb-1">DEPOSIT</p>
-                    {payload.map((entry, index) => {
-                      let status = '';
-                      let color = '';
-                      if (entry.dataKey === 'approved') {
-                        status = 'Approved';
-                        color = '#10b981';
-                      } else if (entry.dataKey === 'rejected') {
-                        status = 'Rejected';
-                        color = '#ef4444';
-                      } else if (entry.dataKey === 'failed') {
-                        status = 'Failed';
-                        color = '#f59e0b';
-                      }
-                      
-                      let amount = 0;
-                      if (entry.dataKey === 'approved') amount = dashboardTransactionTotals.deposit_approved;
-                      else if (entry.dataKey === 'rejected') amount = dashboardTransactionTotals.deposit_rejected;
-                      else if (entry.dataKey === 'failed') amount = dashboardTransactionTotals.deposit_failed;
-                      
-                      const formattedAmount = new Intl.NumberFormat('id-ID', {
-                        style: 'currency',
-                        currency: 'IDR',
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0
-                      }).format(amount);
-                      
-                      return (
-                        <div key={index} className="mb-1">
-                          <p className="text-white text-xs" style={{ color }}>
-                            {status}: {entry.value} forms
-                          </p>
-                          <p className="text-[#A7D8FF] text-[10px] pl-2">{formattedAmount}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              }
-              return null;
-            }}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
+    {/* STACKED BAR CHART - VERSION TANPA LABELLIST */}
+<div className="h-16 mt-2">
+  <ResponsiveContainer width="100%" height="100%">
+    <BarChart
+      data={[{
+        name: 'Deposit',
+        approved: dashboardTransactionTotals.deposit_approved_count || 0,
+        rejected: dashboardTransactionTotals.deposit_rejected_count || 0,
+        failed: dashboardTransactionTotals.deposit_failed_count || 0
+      }]}
+      layout="vertical"
+      barSize={30}
+    >
+      <Bar dataKey="approved" stackId="a" fill="#10b981" radius={[4, 0, 0, 4]} />
+      <Bar dataKey="rejected" stackId="a" fill="#ef4444" />
+      <Bar dataKey="failed" stackId="a" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+      <Tooltip
+        content={({ active, payload }) => {
+          if (active && payload && payload.length) {
+            const total = (dashboardTransactionTotals.deposit_approved_count || 0) + 
+                         (dashboardTransactionTotals.deposit_rejected_count || 0) + 
+                         (dashboardTransactionTotals.deposit_failed_count || 0);
+            
+            return (
+              <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
+                <p className="text-[#FFD700] font-bold text-xs mb-1">DEPOSIT</p>
+                {payload.map((entry, index) => {
+                  let status = '';
+                  let color = '';
+                  let amount = 0;
+                  
+                  if (entry.dataKey === 'approved') {
+                    status = 'Approved';
+                    color = '#10b981';
+                    amount = dashboardTransactionTotals.deposit_approved;
+                  } else if (entry.dataKey === 'rejected') {
+                    status = 'Rejected';
+                    color = '#ef4444';
+                    amount = dashboardTransactionTotals.deposit_rejected;
+                  } else if (entry.dataKey === 'failed') {
+                    status = 'Failed';
+                    color = '#f59e0b';
+                    amount = dashboardTransactionTotals.deposit_failed;
+                  }
+                  
+                  const percentage = total > 0 ? ((entry.value / total) * 100).toFixed(1) : '0';
+                  const formattedAmount = new Intl.NumberFormat('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR',
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0
+                  }).format(amount);
+                  
+                  return (
+                    <div key={index} className="mb-1">
+                      <p className="text-white text-xs" style={{ color }}>
+                        {status}: {entry.value} forms ({percentage}%)
+                      </p>
+                      <p className="text-[#A7D8FF] text-[10px] pl-2">{formattedAmount}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }
+          return null;
+        }}
+      />
+    </BarChart>
+  </ResponsiveContainer>
+</div>
     
     {/* LEGEND DENGAN COUNT */}
     <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-3">
