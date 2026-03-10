@@ -590,135 +590,107 @@ const getDateRangeForOfficerPie = () => {
   };
 
   // ===========================================
-// FETCH DASHBOARD TRANSACTION METRICS DATA - FIXED VERSION
-// ===========================================
-const fetchDashboardTransactionMetrics = async () => {
-  try {
-    // Get date range based on filters
-    const { startDate, endDate } = getDateRangeForDashboard();
+  // FETCH DASHBOARD TRANSACTION METRICS DATA
+  // ===========================================
+  const fetchDashboardTransactionMetrics = async () => {
+    try {
+      // Get date range based on filters
+      const { startDate, endDate } = getDateRangeForDashboard();
 
-    // ===========================================
-    // 1. AMBIL DATA DEPOSIT
-    // ===========================================
-    let depositQuery = supabase
-      .from('deposit_transactions')
-      .select('deposit_amount, status')
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
+      // ===========================================
+      // 1. AMBIL DATA DEPOSIT
+      // ===========================================
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('deposit_amount, status')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
 
-    // Filter berdasarkan asset jika bukan 'all'
-    if (selectedAsset !== 'all') {
-      depositQuery = depositQuery.eq('brand', 'XLY');
-    }
-
-    const { data: depositData, error: depositError } = await depositQuery;
-    if (depositError) throw depositError;
-
-    // ===========================================
-    // 2. AMBIL DATA WITHDRAWAL
-    // ===========================================
-    let withdrawalQuery = supabase
-      .from('withdrawal_transactions')
-      .select('withdrawal_amount, status')
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-
-    // Filter berdasarkan asset jika bukan 'all'
-    if (selectedAsset !== 'all') {
-      withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
-    }
-
-    const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery;
-    if (withdrawalError) throw withdrawalError;
-
-    // ===========================================
-    // 3. HITUNG DEPOSIT (AMOUNT + COUNT)
-    // ===========================================
-    let totalDepositAmount = 0;
-    let depositApprovedAmount = 0;
-    let depositRejectedAmount = 0;
-    let depositFailedAmount = 0;
-    
-    let depositApprovedCount = 0;
-    let depositRejectedCount = 0;
-    let depositFailedCount = 0;
-
-    depositData?.forEach(tx => {
-      const amount = Number(tx.deposit_amount) || 0;
-      totalDepositAmount += amount;
-
-      const status = tx.status?.toLowerCase() || '';
-
-      if (status === 'approved') {
-        depositApprovedAmount += amount;
-        depositApprovedCount++;
-      } else if (status === 'rejected') {
-        depositRejectedAmount += amount;
-        depositRejectedCount++;
-      } else if (status.includes('fail')) {
-        depositFailedAmount += amount;
-        depositFailedCount++;
+      // Filter berdasarkan asset jika bukan 'all'
+      if (selectedAsset !== 'all') {
+        depositQuery = depositQuery.eq('brand', 'XLY'); // LUCKY77 = XLY
       }
-    });
 
-    // ===========================================
-    // 4. HITUNG WITHDRAWAL (AMOUNT + COUNT)
-    // ===========================================
-    let totalWithdrawalAmount = 0;
-    let withdrawalApprovedAmount = 0;
-    let withdrawalRejectedAmount = 0;
-    
-    let withdrawalApprovedCount = 0;
-    let withdrawalRejectedCount = 0;
+      const { data: depositData, error: depositError } = await depositQuery;
+      if (depositError) throw depositError;
 
-    withdrawalData?.forEach(tx => {
-      const amount = Number(tx.withdrawal_amount) || 0;
-      totalWithdrawalAmount += amount;
+      // ===========================================
+      // 2. AMBIL DATA WITHDRAWAL
+      // ===========================================
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('withdrawal_amount, status')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
 
-      const status = tx.status?.toLowerCase() || '';
-
-      if (status === 'approved') {
-        withdrawalApprovedAmount += amount;
-        withdrawalApprovedCount++;
-      } else if (status === 'rejected') {
-        withdrawalRejectedAmount += amount;
-        withdrawalRejectedCount++;
+      // Filter berdasarkan asset jika bukan 'all'
+      if (selectedAsset !== 'all') {
+        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY'); // LUCKY77 = XLY
       }
-    });
 
-    // ===========================================
-    // 5. UPDATE STATE DENGAN KEDUANYA (AMOUNT + COUNT)
-    // ===========================================
-    setDashboardTransactionTotals({
-      // AMOUNT (untuk value Rp)
-      total_deposit: totalDepositAmount,
-      total_withdrawal: totalWithdrawalAmount,
-      deposit_approved: depositApprovedAmount,
-      deposit_rejected: depositRejectedAmount,
-      deposit_failed: depositFailedAmount,
-      withdrawal_approved: withdrawalApprovedAmount,
-      withdrawal_rejected: withdrawalRejectedAmount,
-      
-      // COUNT (untuk jumlah form - yang tadinya 0)
-      deposit_approved_count: depositApprovedCount,
-      deposit_rejected_count: depositRejectedCount,
-      deposit_failed_count: depositFailedCount,
-      withdrawal_approved_count: withdrawalApprovedCount,
-      withdrawal_rejected_count: withdrawalRejectedCount
-    });
+      const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery;
+      if (withdrawalError) throw withdrawalError;
 
-    // DEBUG: Cek hasilnya
-    console.log('📊 DEPOSIT:', {
-      approved_amount: depositApprovedAmount,
-      approved_count: depositApprovedCount,
-      rejected_count: depositRejectedCount,
-      failed_count: depositFailedCount
-    });
+      // ===========================================
+      // 3. HITUNG TOTAL DEPOSIT
+      // ===========================================
+      let totalDeposit = 0;
+      let depositApproved = 0;
+      let depositRejected = 0;
+      let depositFailed = 0;
 
-  } catch (error) {
-    console.error('Error fetching dashboard transaction metrics:', error);
-  }
-};
+      depositData?.forEach(tx => {
+        const amount = Number(tx.deposit_amount) || 0;
+        totalDeposit += amount;
+
+        const status = tx.status?.toLowerCase() || '';
+
+        if (status === 'approved') {
+          depositApproved += amount;
+        } else if (status === 'rejected') {
+          depositRejected += amount;
+        } else if (status.includes('fail')) {
+          depositFailed += amount;
+        }
+      });
+
+      // ===========================================
+      // 4. HITUNG TOTAL WITHDRAWAL
+      // ===========================================
+      let totalWithdrawal = 0;
+      let withdrawalApproved = 0;
+      let withdrawalRejected = 0;
+
+      withdrawalData?.forEach(tx => {
+        const amount = Number(tx.withdrawal_amount) || 0;
+        totalWithdrawal += amount;
+
+        const status = tx.status?.toLowerCase() || '';
+
+        if (status === 'approved') {
+          withdrawalApproved += amount;
+        } else if (status === 'rejected') {
+          withdrawalRejected += amount;
+        }
+      });
+
+      // ===========================================
+      // 5. UPDATE STATE
+      // ===========================================
+      setDashboardTransactionTotals({
+        total_deposit: totalDeposit,
+        total_withdrawal: totalWithdrawal,
+        deposit_approved: depositApproved,
+        deposit_rejected: depositRejected,
+        deposit_failed: depositFailed,
+        withdrawal_approved: withdrawalApproved,
+        withdrawal_rejected: withdrawalRejected
+      });
+
+    } catch (error) {
+      console.error('Error fetching dashboard transaction metrics:', error);
+    }
+  };
 
   // ===========================================
   // GET DATE RANGE FOR DASHBOARD
@@ -1345,92 +1317,64 @@ useEffect(() => {
           {/* 4 BAR CHARTS GRID - DENGAN DATA REAL */}
 <div className="grid grid-cols-2 gap-4">
   {/* CHART 1: DEPOSIT - Approved, Rejected, Failed */}
-<div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
-  <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
-  <div className="text-2xl font-bold text-white mb-1">
-    {/* INI YANG TADINYA 0, SEKARANG ISI COUNT */}
-    {(
-      (dashboardTransactionTotals.deposit_approved_count || 0) + 
-      (dashboardTransactionTotals.deposit_rejected_count || 0) + 
-      (dashboardTransactionTotals.deposit_failed_count || 0)
-    ) || 0}
+  <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
+    <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
+    <div className="h-24">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={[
+          { name: 'App', value: dashboardTransactionTotals.deposit_approved, color: '#10b981' },
+          { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected, color: '#ef4444' },
+          { name: 'Fail', value: dashboardTransactionTotals.deposit_failed, color: '#f59e0b' }
+        ]}>
+          <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+            {[
+              { name: 'App', value: dashboardTransactionTotals.deposit_approved, color: '#10b981' },
+              { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected, color: '#ef4444' },
+              { name: 'Fail', value: dashboardTransactionTotals.deposit_failed, color: '#f59e0b' }
+            ].map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Bar>
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: '#0B1A33', 
+              borderColor: '#FFD700',
+              color: '#FFFFFF'
+            }}
+            itemStyle={{ 
+              color: '#FFFFFF'
+            }}
+            labelStyle={{ 
+              color: '#FFD700'
+            }}
+            formatter={(value, name, props) => {
+              // Format value jadi Rupiah
+              const formattedValue = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+              }).format(value);
+              
+              // Ubah nama dari 'App', 'Rej', 'Fail' jadi lebih deskriptif
+              let labelName = '';
+              if (name === 'App') labelName = 'Approved';
+              else if (name === 'Rej') labelName = 'Rejected';
+              else if (name === 'Fail') labelName = 'Failed';
+              else labelName = name;
+              
+              return [formattedValue, labelName];
+            }}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+    <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
+      <span className="text-green-400">✓ App</span>
+      <span className="text-red-400">✗ Rej</span>
+      <span className="text-orange-400">⚠ Fail</span>
+    </div>
   </div>
-  <div className="text-xs text-[#A7D8FF] mb-2">
-    {/* INI VALUE YANG SUDAH ADA Rp 27jt */}
-    value : {new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(dashboardTransactionTotals.total_deposit || 0)}
-  </div>
-  <div className="h-20">
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={[
-        { name: 'App', value: dashboardTransactionTotals.deposit_approved_count || 0, color: '#10b981' },
-        { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected_count || 0, color: '#ef4444' },
-        { name: 'Fail', value: dashboardTransactionTotals.deposit_failed_count || 0, color: '#f59e0b' }
-      ]}>
-        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-          {[
-            { name: 'App', value: dashboardTransactionTotals.deposit_approved_count || 0, color: '#10b981' },
-            { name: 'Rej', value: dashboardTransactionTotals.deposit_rejected_count || 0, color: '#ef4444' },
-            { name: 'Fail', value: dashboardTransactionTotals.deposit_failed_count || 0, color: '#f59e0b' }
-          ].map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  </div>
-  <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-    <span className="text-green-400">✓ App: {dashboardTransactionTotals.deposit_approved_count || 0}</span>
-    <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.deposit_rejected_count || 0}</span>
-    <span className="text-orange-400">⚠ Fail: {dashboardTransactionTotals.deposit_failed_count || 0}</span>
-  </div>
-</div>
-
-{/* CHART 2: WITHDRAWAL - Approved, Rejected */}
-<div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
-  <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
-  <div className="text-2xl font-bold text-white mb-1">
-    {/* INI JUMLAH FORM WITHDRAWAL */}
-    {(
-      (dashboardTransactionTotals.withdrawal_approved_count || 0) + 
-      (dashboardTransactionTotals.withdrawal_rejected_count || 0)
-    ) || 0}
-  </div>
-  <div className="text-xs text-[#A7D8FF] mb-2">
-    {/* INI VALUE WITHDRAWAL */}
-    value : {new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(dashboardTransactionTotals.total_withdrawal || 0)}
-  </div>
-  <div className="h-20">
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={[
-        { name: 'App', value: dashboardTransactionTotals.withdrawal_approved_count || 0, color: '#10b981' },
-        { name: 'Rej', value: dashboardTransactionTotals.withdrawal_rejected_count || 0, color: '#ef4444' }
-      ]}>
-        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-          {[
-            { name: 'App', value: dashboardTransactionTotals.withdrawal_approved_count || 0, color: '#10b981' },
-            { name: 'Rej', value: dashboardTransactionTotals.withdrawal_rejected_count || 0, color: '#ef4444' }
-          ].map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={entry.color} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  </div>
-  <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-    <span className="text-green-400">✓ App: {dashboardTransactionTotals.withdrawal_approved_count || 0}</span>
-    <span className="text-red-400">✗ Rej: {dashboardTransactionTotals.withdrawal_rejected_count || 0}</span>
-  </div>
-</div>
 
   {/* CHART 2: WITHDRAWAL - Approved, Rejected */}
   <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
