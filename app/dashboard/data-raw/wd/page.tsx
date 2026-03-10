@@ -50,7 +50,7 @@ type WithdrawalTransaction = {
   own_referral_code: string | null
   last_balance: number | null
   file_name: string
-  duration_minutes: number | null  // <-- TAMBAHIN TYPE!
+  duration_minutes: number | null
 }
 
 // ===========================================
@@ -123,7 +123,7 @@ export default function WDDataRawPage() {
     setSelectedMonth(months[today.getMonth()])
     setSelectedYear(today.getFullYear().toString())
     fetchAssets()
-    setSessionVariable()  // <-- TAMBAHKAN INI!
+    setSessionVariable()
   }, [])
 
   useEffect(() => {
@@ -388,7 +388,7 @@ export default function WDDataRawPage() {
           own_referral_code: row[idx.ownReferralCode] || null,
           last_balance: row[idx.lastBalance] ? parseFloat(row[idx.lastBalance]) || null : null,
           file_name: selectedFile.name,
-          duration_minutes: durationMinutes  // <-- INI YANG DITAMBAH!
+          duration_minutes: durationMinutes
         })
       }
 
@@ -423,6 +423,30 @@ export default function WDDataRawPage() {
             total_rows: transactions.length,
             status: 'completed'
           })
+      }
+
+      // 🔥 TAMBAHKAN LOG KE AUDIT_LOGS
+      try {
+        // Ambil user langsung dari supabase
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        await supabase.from('audit_logs').insert({
+          table_name: 'withdrawal_transactions',
+          action: 'UPLOAD',
+          new_data: { 
+            count: validTransactions.length,
+            filename: selectedFile.name,
+            dates: Array.from(transactionDates)
+          },
+          changed_by: user?.id,
+          changed_at: new Date().toISOString(),
+          module: 'WITHDRAWAL',
+          description: `Uploaded ${validTransactions.length} withdrawal transactions from ${selectedFile.name}`
+        });
+        console.log('✅ Upload logged to audit_logs');
+      } catch (logError) {
+        console.error('❌ Error logging to audit_logs:', logError);
+        // Jangan throw, biar upload tetap sukses
       }
 
       alert(`✅ Berhasil! ${validTransactions.length} data dari ${Object.keys(transactionsByDate).length} tanggal`)
