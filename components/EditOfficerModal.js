@@ -53,35 +53,35 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-    
-    setLoading(true);
-    
-    try {
-      const { data, error } = await supabase
-        .from('officers')
-        .update({
-          ...formData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', officer.id)
-        .select()
-        .single();
+  e.preventDefault();
+  
+  if (!validateForm()) return;
+  
+  setLoading(true);
+  
+  try {
+    const { data, error } = await supabase
+      .from('officers')
+      .update({
+        ...formData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', officer.id)
+      .select()
+      .maybeSingle();  // <-- FIX: .single() → .maybeSingle()
 
-      if (error) throw error;
-      
-      onUpdate(data);
-      onClose();
-      
-    } catch (error) {
-      console.error('Error:', error);
-      alert(error.message || 'Gagal mengupdate officer');
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (error) throw error;
+    
+    onUpdate(data);
+    onClose();
+    
+  } catch (error) {
+    console.error('Error:', error);
+    alert(error.message || 'Gagal mengupdate officer');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
