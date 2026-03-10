@@ -60,19 +60,28 @@ export default function EditOfficerModal({ officer, onClose, onUpdate }) {
   setLoading(true);
   
   try {
-    const { data, error } = await supabase
+    // 1. Update data
+    const { error } = await supabase
       .from('officers')
       .update({
         ...formData,
         updated_at: new Date().toISOString()
       })
-      .eq('id', officer.id)
-      .select()
-      .maybeSingle();  // <-- FIX: .single() → .maybeSingle()
+      .eq('id', officer.id);  // <-- HAPUS .select() dan .maybeSingle()
 
     if (error) throw error;
-    
-    onUpdate(data);
+
+    // 2. Ambil data terbaru
+    const { data: updatedOfficer, error: fetchError } = await supabase
+      .from('officers')
+      .select('*')
+      .eq('id', officer.id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // 3. Kirim ke parent component
+    onUpdate(updatedOfficer);
     onClose();
     
   } catch (error) {
