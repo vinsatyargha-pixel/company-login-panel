@@ -121,41 +121,41 @@ export default function ActiveOfficersPage() {
   };
 
   const handleOfficerUpdated = async (updatedOfficer) => {
-    try {
-      // 1. Cari data LAMA sebelum diupdate
-      const oldOfficer = officers.find(o => o.id === updatedOfficer.id);
+  try {
+    // 1. Cari data LAMA sebelum diupdate
+    const oldOfficer = officers.find(o => o.id === updatedOfficer.id);
+    
+    console.log('📦 Old data:', oldOfficer);
+    console.log('📦 New data:', updatedOfficer);
+    
+    // 2. Update state
+    setOfficers(officers.map(o => o.id === updatedOfficer.id ? updatedOfficer : o));
+    
+    // 3. Simpan ke audit logs dengan old_data
+    if (adminId) {
+      const { error } = await supabase
+        .from('audit_logs')
+        .insert({
+          table_name: 'officers',
+          record_id: updatedOfficer.id,
+          action: 'UPDATE',
+          old_data: oldOfficer,
+          new_data: updatedOfficer,
+          changed_by: adminId,
+          changed_at: new Date().toISOString()
+        });
       
-      console.log('📦 Old data:', oldOfficer);
-      console.log('📦 New data:', updatedOfficer);
-      
-      // 2. Update state
-      setOfficers(officers.map(o => o.id === updatedOfficer.id ? updatedOfficer : o));
-      
-      // 3. Simpan ke audit logs dengan old_data
-      if (adminId) {
-        const { error } = await supabase
-          .from('audit_logs')
-          .insert({
-            table_name: 'officers',
-            record_id: updatedOfficer.id,
-            action: 'UPDATE',
-            old_data: oldOfficer,
-            new_data: updatedOfficer,
-            changed_by: adminId,
-            changed_at: new Date().toISOString()
-          });
-        
-        if (error) console.error('Error saving audit log:', error);
-      }
-      
-      setShowEditModal(false);
-      showNotification('success', 'Data officer berhasil diupdate');
-      
-    } catch (error) {
-      console.error('Error in handleOfficerUpdated:', error);
-      showNotification('error', 'Gagal mengupdate data officer');
+      if (error) console.error('Error saving audit log:', error);
     }
-  };
+    
+    setShowEditModal(false);
+    showNotification('success', 'Data officer berhasil diupdate');
+    
+  } catch (error) {
+    console.error('Error in handleOfficerUpdated:', error);
+    showNotification('error', 'Gagal mengupdate data officer');
+  }
+};
 
   const handleDeleteClick = (officer, e) => {
     e.preventDefault();
