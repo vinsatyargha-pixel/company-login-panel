@@ -1606,40 +1606,56 @@ export default function DashboardContent() {
           </div>
 
           {/* TOTAL VALUE - RINGKASAN DENGAN ADJUSTMENT */}
-          <div className="mt-4 pt-3 border-t border-[#FFD700]/20">
-            <div className="flex justify-between text-xs">
-              <span className="text-[#A7D8FF]">Total Deposit:</span>
-              <span className="text-white font-bold">
-                {formatCompactRupiah(dashboardTransactionTotals.deposit_approved)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span className="text-[#A7D8FF]">Adjustment Plus:</span>
-              <span className="text-green-400 font-bold">
-                {formatCompactRupiah(dashboardTransactionTotals.adjustment_plus)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs mt-1">
-              <span className="text-[#A7D8FF]">Adjustment Minus:</span>
-              <span className="text-red-400 font-bold">
-                {formatCompactRupiah(dashboardTransactionTotals.adjustment_minus)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs mt-1 border-t border-[#FFD700]/10 pt-1">
-              <span className="text-[#A7D8FF]">Net Flow:</span>
-              <span className={`font-bold ${dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {new Intl.NumberFormat('id-ID', { 
-                  style: 'currency', 
-                  currency: 'IDR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                  notation: 'compact',
-                  compactDisplay: 'short',
-                  signDisplay: 'always'
-                }).format(dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved)}
-              </span>
-            </div>
-          </div>
+<div className="mt-4 pt-3 border-t border-[#FFD700]/20">
+  <div className="flex justify-between text-xs">
+    <span className="text-[#A7D8FF]">Total Deposit:</span>
+    <span className="text-white font-bold">
+      {formatCompactRupiah(dashboardTransactionTotals.deposit_approved)}
+    </span>
+  </div>
+  <div className="flex justify-between text-xs mt-1">
+    <span className="text-[#A7D8FF]">Total Withdrawal:</span>
+    <span className="text-white font-bold">
+      {formatCompactRupiah(dashboardTransactionTotals.withdrawal_approved)}
+    </span>
+  </div>
+  <div className="flex justify-between text-xs mt-1">
+    <span className="text-[#A7D8FF]">Adjustment Plus:</span>
+    <span className="text-green-400 font-bold">
+      {formatCompactRupiah(dashboardTransactionTotals.adjustment_plus)}
+    </span>
+  </div>
+  <div className="flex justify-between text-xs mt-1">
+    <span className="text-[#A7D8FF]">Adjustment Minus:</span>
+    <span className="text-red-400 font-bold">
+      {formatCompactRupiah(dashboardTransactionTotals.adjustment_minus)}
+    </span>
+  </div>
+  <div className="flex justify-between text-xs mt-1 border-t border-[#FFD700]/10 pt-1">
+    <span className="text-[#A7D8FF]">Net Flow:</span>
+    <span className={`font-bold ${
+      (dashboardTransactionTotals.deposit_approved - 
+       dashboardTransactionTotals.withdrawal_approved + 
+       dashboardTransactionTotals.adjustment_plus - 
+       dashboardTransactionTotals.adjustment_minus) >= 0 ? 'text-green-400' : 'text-red-400'
+    }`}>
+      {new Intl.NumberFormat('id-ID', { 
+        style: 'currency', 
+        currency: 'IDR',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+        notation: 'compact',
+        compactDisplay: 'short',
+        signDisplay: 'always'
+      }).format(
+        dashboardTransactionTotals.deposit_approved - 
+        dashboardTransactionTotals.withdrawal_approved + 
+        dashboardTransactionTotals.adjustment_plus - 
+        dashboardTransactionTotals.adjustment_minus
+      )}
+    </span>
+  </div>
+</div>
 
           <Link href="/dashboard/transaction-metrics" className="block mt-3 text-right">
             <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
