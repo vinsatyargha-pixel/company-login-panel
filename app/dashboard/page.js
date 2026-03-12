@@ -34,7 +34,7 @@ export default function DashboardContent() {
   const [chartYear, setChartYear] = useState('2026');
 
   // ===========================================
-  // STATE UNTUK TRANSACTION METRICS - DITAMBAH
+  // STATE UNTUK TRANSACTION METRICS
   // ===========================================
   const [transactionData, setTransactionData] = useState([
     { name: 'Deposit', value: 0 },
@@ -45,7 +45,7 @@ export default function DashboardContent() {
   const TRANSACTION_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
 
   // ===========================================
-  // STATE UNTUK DASHBOARD TRANSACTION METRICS - DATA REAL + COUNT + ADJUSTMENT
+  // STATE UNTUK DASHBOARD TRANSACTION METRICS - DATA REAL + COUNT + ADJUSTMENT (PLUS/MINUS)
   // ===========================================
   const [dashboardTransactionTotals, setDashboardTransactionTotals] = useState({
     // DEPOSIT - AMOUNT (uang)
@@ -68,12 +68,14 @@ export default function DashboardContent() {
     withdrawal_approved_count: 0,
     withdrawal_rejected_count: 0,
     
-    // ADJUSTMENT - AMOUNT (uang)
+    // ADJUSTMENT - AMOUNT (uang) - PLUS & MINUS
     total_adjustment: 0,
-    adjustment_approved: 0,
+    adjustment_plus: 0,
+    adjustment_minus: 0,
     
-    // ADJUSTMENT - COUNT (jumlah form)
-    adjustment_approved_count: 0
+    // ADJUSTMENT - COUNT (jumlah form) - PLUS & MINUS
+    adjustment_plus_count: 0,
+    adjustment_minus_count: 0
   });
 
   // ===========================================
@@ -123,7 +125,7 @@ export default function DashboardContent() {
   });
 
   // ===========================================
-  // STATE UNTUK TRAFFIC METRICS - UBAH NAMA
+  // STATE UNTUK TRAFFIC METRICS
   // ===========================================
   const [trafficMetrics, setTrafficMetrics] = useState([]);
   const [trafficMetricsFilter, setTrafficMetricsFilter] = useState('daily');
@@ -144,7 +146,7 @@ export default function DashboardContent() {
   const [loadingOfficerData, setLoadingOfficerData] = useState(true);
 
   // ===========================================
-  // STATE UNTUK FILTER TRANSACTION METRICS - DITAMBAH
+  // STATE UNTUK FILTER TRANSACTION METRICS
   // ===========================================
   const [timeFilter, setTimeFilter] = useState('yesterday');
   const [selectedMonth, setSelectedMonth] = useState('Januari');
@@ -176,7 +178,7 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // SET DEFAULT CUSTOM RANGE - DITAMBAH
+  // SET DEFAULT CUSTOM RANGE
   // ===========================================
   useEffect(() => {
     const end = new Date();
@@ -605,7 +607,7 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FETCH DASHBOARD TRANSACTION METRICS DATA - DENGAN ADJUSTMENT
+  // FETCH DASHBOARD TRANSACTION METRICS DATA - DENGAN ADJUSTMENT PLUS/MINUS
   // ===========================================
   const fetchDashboardTransactionMetrics = async () => {
     try {
@@ -639,7 +641,7 @@ export default function DashboardContent() {
       const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery;
       if (withdrawalError) throw withdrawalError;
 
-      // ADJUSTMENT - HANYA APPROVED
+      // ADJUSTMENT - HANYA APPROVED (DENGAN PLUS/MINUS)
       let adjustmentQuery = supabase
         .from('adjustment_transactions')
         .select('adjustment_amount, status')
@@ -708,16 +710,24 @@ export default function DashboardContent() {
         }
       });
 
-      // HITUNG ADJUSTMENT
+      // HITUNG ADJUSTMENT - PISAHKAN PLUS DAN MINUS
       let totalAdjustment = 0;
-      let adjustmentApproved = 0;
-      let adjustmentApprovedCount = 0;
+      let adjustmentPlus = 0;
+      let adjustmentMinus = 0;
+      let adjustmentPlusCount = 0;
+      let adjustmentMinusCount = 0;
 
       adjustmentData?.forEach(tx => {
         const amount = Number(tx.adjustment_amount) || 0;
-        totalAdjustment += amount;
-        adjustmentApproved += amount;
-        adjustmentApprovedCount++;
+        totalAdjustment += Math.abs(amount);
+        
+        if (amount > 0) {
+          adjustmentPlus += amount;
+          adjustmentPlusCount++;
+        } else if (amount < 0) {
+          adjustmentMinus += Math.abs(amount);
+          adjustmentMinusCount++;
+        }
       });
 
       // UPDATE STATE
@@ -737,23 +747,10 @@ export default function DashboardContent() {
         withdrawal_rejected_count: withdrawalRejectedCount,
         
         total_adjustment: totalAdjustment,
-        adjustment_approved: adjustmentApproved,
-        adjustment_approved_count: adjustmentApprovedCount
-      });
-
-      console.log('📊 DEPOSIT:', {
-        approved: { amount: depositApproved, count: depositApprovedCount },
-        rejected: { amount: depositRejected, count: depositRejectedCount },
-        failed: { amount: depositFailed, count: depositFailedCount }
-      });
-      
-      console.log('📊 WITHDRAWAL:', {
-        approved: { amount: withdrawalApproved, count: withdrawalApprovedCount },
-        rejected: { amount: withdrawalRejected, count: withdrawalRejectedCount }
-      });
-
-      console.log('📊 ADJUSTMENT (Approved Only):', {
-        approved: { amount: adjustmentApproved, count: adjustmentApprovedCount }
+        adjustment_plus: adjustmentPlus,
+        adjustment_minus: adjustmentMinus,
+        adjustment_plus_count: adjustmentPlusCount,
+        adjustment_minus_count: adjustmentMinusCount
       });
 
     } catch (error) {
@@ -807,7 +804,6 @@ export default function DashboardContent() {
   const fetchBankAccounts = async () => {
     try {
       setLoadingBanks(true);
-      console.log('🔍 Fetching bank accounts...');
       
       const authToken = localStorage.getItem('sb-lrrghigbwxwxpvicbkos-auth-token');
       let token = '';
@@ -833,7 +829,6 @@ export default function DashboardContent() {
       }
       
       const data = await response.json();
-      console.log('✅ Bank accounts fetched:', data.length, 'records');
       
       setBankAccounts(data || []);
       
@@ -1484,11 +1479,11 @@ export default function DashboardContent() {
               </div>
             </div>
 
-            {/* CHART 3: ADJUSTMENT - DENGAN DATA REAL */}
+            {/* CHART 3: ADJUSTMENT - PLUS & MINUS */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
               <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
               <div className="text-2xl font-bold text-white mb-1">
-                {dashboardTransactionTotals.adjustment_approved_count || 0}
+                {(dashboardTransactionTotals.adjustment_plus_count || 0) + (dashboardTransactionTotals.adjustment_minus_count || 0)}
               </div>
               <div className="text-xs text-[#A7D8FF] mb-2">
                 value : {new Intl.NumberFormat('id-ID', {
@@ -1496,24 +1491,41 @@ export default function DashboardContent() {
                   currency: 'IDR',
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 0
-                }).format(dashboardTransactionTotals.adjustment_approved || 0)}
+                }).format(dashboardTransactionTotals.total_adjustment || 0)}
               </div>
               <div className="h-20">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: '+ Adj', count: dashboardTransactionTotals.adjustment_approved_count || 0, amount: dashboardTransactionTotals.adjustment_approved || 0, color: '#8b5cf6' }
+                    { 
+                      name: '+ Plus', 
+                      count: dashboardTransactionTotals.adjustment_plus_count || 0, 
+                      amount: dashboardTransactionTotals.adjustment_plus || 0, 
+                      color: '#10b981' 
+                    },
+                    { 
+                      name: '- Minus', 
+                      count: dashboardTransactionTotals.adjustment_minus_count || 0, 
+                      amount: dashboardTransactionTotals.adjustment_minus || 0, 
+                      color: '#ef4444' 
+                    }
                   ]}>
-                    <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#8b5cf6">
-                      <Cell fill="#8b5cf6" />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {[
+                        { name: '+ Plus', count: dashboardTransactionTotals.adjustment_plus_count || 0, color: '#10b981' },
+                        { name: '- Minus', count: dashboardTransactionTotals.adjustment_minus_count || 0, color: '#ef4444' }
+                      ].map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
                     </Bar>
                     <Tooltip 
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
+                          const type = data.name === '+ Plus' ? 'Plus' : 'Minus';
                           
                           return (
                             <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
-                              <p className="text-[#FFD700] font-bold text-xs">Approved</p>
+                              <p className="text-[#FFD700] font-bold text-xs">{type}</p>
                               <p className="text-white text-xs">{data.count} forms</p>
                               <p className="text-[#A7D8FF] text-[10px]">
                                 {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.amount)}
@@ -1528,7 +1540,8 @@ export default function DashboardContent() {
                 </ResponsiveContainer>
               </div>
               <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-purple-400">✓ Approved: {dashboardTransactionTotals.adjustment_approved_count || 0}</span>
+                <span className="text-green-400">+ Plus: {dashboardTransactionTotals.adjustment_plus_count || 0}</span>
+                <span className="text-red-400">- Minus: {dashboardTransactionTotals.adjustment_minus_count || 0}</span>
               </div>
             </div>
 
@@ -1576,15 +1589,15 @@ export default function DashboardContent() {
               </span>
             </div>
             <div className="flex justify-between text-xs mt-1">
-              <span className="text-[#A7D8FF]">Total Withdrawal:</span>
-              <span className="text-white font-bold">
-                {formatCompactRupiah(dashboardTransactionTotals.withdrawal_approved)}
+              <span className="text-[#A7D8FF]">Adjustment Plus:</span>
+              <span className="text-green-400 font-bold">
+                {formatCompactRupiah(dashboardTransactionTotals.adjustment_plus)}
               </span>
             </div>
             <div className="flex justify-between text-xs mt-1">
-              <span className="text-[#A7D8FF]">Total Adjustment:</span>
-              <span className="text-purple-400 font-bold">
-                {formatCompactRupiah(dashboardTransactionTotals.adjustment_approved)}
+              <span className="text-[#A7D8FF]">Adjustment Minus:</span>
+              <span className="text-red-400 font-bold">
+                {formatCompactRupiah(dashboardTransactionTotals.adjustment_minus)}
               </span>
             </div>
             <div className="flex justify-between text-xs mt-1 border-t border-[#FFD700]/10 pt-1">
