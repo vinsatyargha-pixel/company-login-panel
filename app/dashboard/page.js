@@ -358,10 +358,17 @@ export default function DashboardContent() {
 
     switch (timeFilter) {
       case 'yesterday':
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        startDate = yesterday.toISOString().split('T')[0];
-        endDate = yesterday.toISOString().split('T')[0];
+        // FORMAT PAKSA GMT+7 (JAKARTA)
+        const now = new Date();
+        const jakartaDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+        jakartaDate.setDate(jakartaDate.getDate() - 1);
+        
+        const year = jakartaDate.getFullYear();
+        const month = String(jakartaDate.getMonth() + 1).padStart(2, '0');
+        const day = String(jakartaDate.getDate()).padStart(2, '0');
+        
+        startDate = `${year}-${month}-${day}`;
+        endDate = `${year}-${month}-${day}`;
         break;
         
       case 'monthly':
@@ -377,10 +384,15 @@ export default function DashboardContent() {
         break;
         
       default:
-        const yesterdayDefault = new Date();
-        yesterdayDefault.setDate(yesterdayDefault.getDate() - 1);
-        startDate = yesterdayDefault.toISOString().split('T')[0];
-        endDate = yesterdayDefault.toISOString().split('T')[0];
+        const defJakarta = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+        defJakarta.setDate(defJakarta.getDate() - 1);
+        
+        const defYear = defJakarta.getFullYear();
+        const defMonth = String(defJakarta.getMonth() + 1).padStart(2, '0');
+        const defDay = String(defJakarta.getDate()).padStart(2, '0');
+        
+        startDate = `${defYear}-${defMonth}-${defDay}`;
+        endDate = `${defYear}-${defMonth}-${defDay}`;
     }
 
     return { 
@@ -759,7 +771,7 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // GET DATE RANGE FOR DASHBOARD
+  // GET DATE RANGE FOR DASHBOARD - PAKSA GMT+7 (JAKARTA)
   // ===========================================
   const getDateRangeForDashboard = () => {
     let startDate = '';
@@ -767,11 +779,18 @@ export default function DashboardContent() {
 
     switch (timeFilter) {
       case 'yesterday':
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  startDate = yesterday.toISOString().split('T')[0];
-  endDate = yesterday.toISOString().split('T')[0];
-  break;
+        // FORMAT PAKSA GMT+7 (JAKARTA)
+        const now = new Date();
+        const jakartaDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+        jakartaDate.setDate(jakartaDate.getDate() - 1);
+        
+        const year = jakartaDate.getFullYear();
+        const month = String(jakartaDate.getMonth() + 1).padStart(2, '0');
+        const day = String(jakartaDate.getDate()).padStart(2, '0');
+        
+        startDate = `${year}-${month}-${day}`;
+        endDate = `${year}-${month}-${day}`;
+        break;
         
       case 'monthly':
         const monthIndex = fullMonthNames.indexOf(selectedMonth) + 1;
@@ -786,10 +805,16 @@ export default function DashboardContent() {
         break;
         
       default:
-        const defYesterday = new Date();
-        defYesterday.setDate(defYesterday.getDate() - 1);
-        startDate = defYesterday.toISOString().split('T')[0];
-        endDate = defYesterday.toISOString().split('T')[0];
+        const defNow = new Date();
+        const defJakarta = new Date(defNow.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+        defJakarta.setDate(defJakarta.getDate() - 1);
+        
+        const defYear = defJakarta.getFullYear();
+        const defMonth = String(defJakarta.getMonth() + 1).padStart(2, '0');
+        const defDay = String(defJakarta.getDate()).padStart(2, '0');
+        
+        startDate = `${defYear}-${defMonth}-${defDay}`;
+        endDate = `${defYear}-${defMonth}-${defDay}`;
     }
 
     return { 
