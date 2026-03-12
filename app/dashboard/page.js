@@ -45,7 +45,7 @@ export default function DashboardContent() {
   const TRANSACTION_COLORS = ['#10b981', '#ef4444', '#f59e0b'];
 
   // ===========================================
-  // STATE UNTUK DASHBOARD TRANSACTION METRICS - DATA REAL + COUNT
+  // STATE UNTUK DASHBOARD TRANSACTION METRICS - DATA REAL + COUNT + ADJUSTMENT
   // ===========================================
   const [dashboardTransactionTotals, setDashboardTransactionTotals] = useState({
     // DEPOSIT - AMOUNT (uang)
@@ -66,7 +66,14 @@ export default function DashboardContent() {
     
     // WITHDRAWAL - COUNT (jumlah form)
     withdrawal_approved_count: 0,
-    withdrawal_rejected_count: 0
+    withdrawal_rejected_count: 0,
+    
+    // ADJUSTMENT - AMOUNT (uang)
+    total_adjustment: 0,
+    adjustment_approved: 0,
+    
+    // ADJUSTMENT - COUNT (jumlah form)
+    adjustment_approved_count: 0
   });
 
   // ===========================================
@@ -211,7 +218,7 @@ export default function DashboardContent() {
         return value;
       }
     }
-    return 'XLY'; // default XLY
+    return 'XLY';
   };
 
   // ===========================================
@@ -272,117 +279,113 @@ export default function DashboardContent() {
   }, []);
 
   // ===========================================
-// FETCH OFFICER PIE DATA (HUMAN VS SYSTEM) - DENGAN FILTER
-// ===========================================
-const fetchOfficerPieData = async () => {
-  try {
-    setLoadingOfficerPie(true);
-    
-    // Dapatkan date range berdasarkan filter
-    const { startDate, endDate } = getDateRangeForOfficerPie();
-    
-    // Query deposit dengan filter
-    let depositQuery = supabase
-      .from('deposit_transactions')
-      .select('handler')
-      .eq('status', 'Approved')
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    // Query withdrawal dengan filter
-    let withdrawalQuery = supabase
-      .from('withdrawal_transactions')
-      .select('handler')
-      .eq('status', 'Approved')
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    // Filter berdasarkan asset jika bukan 'all'
-    if (selectedAsset !== 'all') {
-      depositQuery = depositQuery.eq('brand', 'XLY'); // LUCKY77 = XLY
-      withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
+  // FETCH OFFICER PIE DATA (HUMAN VS SYSTEM) - DENGAN FILTER
+  // ===========================================
+  const fetchOfficerPieData = async () => {
+    try {
+      setLoadingOfficerPie(true);
+      
+      const { startDate, endDate } = getDateRangeForOfficerPie();
+      
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('handler')
+        .eq('status', 'Approved')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('handler')
+        .eq('status', 'Approved')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (selectedAsset !== 'all') {
+        depositQuery = depositQuery.eq('brand', 'XLY');
+        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
+      }
+      
+      const { data: depositData } = await depositQuery;
+      const { data: withdrawalData } = await withdrawalQuery;
+      
+      let humanTotal = 0;
+      let systemTotal = 0;
+      
+      depositData?.forEach(tx => {
+        if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
+        else humanTotal++;
+      });
+      
+      withdrawalData?.forEach(tx => {
+        if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
+        else humanTotal++;
+      });
+      
+      const total = humanTotal + systemTotal;
+      
+      const pieData = [];
+      if (humanTotal > 0) pieData.push({ 
+        name: 'Human', 
+        value: humanTotal, 
+        color: '#3b82f6',
+        percentage: ((humanTotal / total) * 100).toFixed(1)
+      });
+      if (systemTotal > 0) pieData.push({ 
+        name: 'System', 
+        value: systemTotal, 
+        color: '#ef4444',
+        percentage: ((systemTotal / total) * 100).toFixed(1)
+      });
+      
+      setOfficerPieData(pieData);
+      
+    } catch (error) {
+      console.error('Error fetching officer pie data:', error);
+    } finally {
+      setLoadingOfficerPie(false);
     }
-    
-    const { data: depositData } = await depositQuery;
-    const { data: withdrawalData } = await withdrawalQuery;
-    
-    let humanTotal = 0;
-    let systemTotal = 0;
-    
-    depositData?.forEach(tx => {
-      if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
-      else humanTotal++;
-    });
-    
-    withdrawalData?.forEach(tx => {
-      if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
-      else humanTotal++;
-    });
-    
-    const total = humanTotal + systemTotal;
-    
-    const pieData = [];
-    if (humanTotal > 0) pieData.push({ 
-      name: 'Human', 
-      value: humanTotal, 
-      color: '#3b82f6',
-      percentage: ((humanTotal / total) * 100).toFixed(1)
-    });
-    if (systemTotal > 0) pieData.push({ 
-      name: 'System', 
-      value: systemTotal, 
-      color: '#ef4444',
-      percentage: ((systemTotal / total) * 100).toFixed(1)
-    });
-    
-    setOfficerPieData(pieData);
-    
-  } catch (error) {
-    console.error('Error fetching officer pie data:', error);
-  } finally {
-    setLoadingOfficerPie(false);
-  }
-};
-
-// ===========================================
-// GET DATE RANGE FOR OFFICER PIE
-// ===========================================
-const getDateRangeForOfficerPie = () => {
-  let startDate = '';
-  let endDate = '';
-
-  switch (timeFilter) {
-    case 'yesterday':
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      startDate = yesterday.toISOString().split('T')[0];
-      endDate = yesterday.toISOString().split('T')[0];
-      break;
-      
-    case 'monthly':
-      const monthIndex = fullMonthNames.indexOf(selectedMonth) + 1;
-      startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`;
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
-      endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`;
-      break;
-      
-    case 'custom':
-      startDate = customStartDate;
-      endDate = customEndDate;
-      break;
-      
-    default:
-      const yesterdayDefault = new Date();
-      yesterdayDefault.setDate(yesterdayDefault.getDate() - 1);
-      startDate = yesterdayDefault.toISOString().split('T')[0];
-      endDate = yesterdayDefault.toISOString().split('T')[0];
-  }
-
-  return { 
-    startDate: `${startDate} 00:00:00`, 
-    endDate: `${endDate} 23:59:59`
   };
-};
+
+  // ===========================================
+  // GET DATE RANGE FOR OFFICER PIE
+  // ===========================================
+  const getDateRangeForOfficerPie = () => {
+    let startDate = '';
+    let endDate = '';
+
+    switch (timeFilter) {
+      case 'yesterday':
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        startDate = yesterday.toISOString().split('T')[0];
+        endDate = yesterday.toISOString().split('T')[0];
+        break;
+        
+      case 'monthly':
+        const monthIndex = fullMonthNames.indexOf(selectedMonth) + 1;
+        startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`;
+        const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
+        endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`;
+        break;
+        
+      case 'custom':
+        startDate = customStartDate;
+        endDate = customEndDate;
+        break;
+        
+      default:
+        const yesterdayDefault = new Date();
+        yesterdayDefault.setDate(yesterdayDefault.getDate() - 1);
+        startDate = yesterdayDefault.toISOString().split('T')[0];
+        endDate = yesterdayDefault.toISOString().split('T')[0];
+    }
+
+    return { 
+      startDate: `${startDate} 00:00:00`, 
+      endDate: `${endDate} 23:59:59`
+    };
+  };
 
   // ===========================================
   // FETCH TRAFFIC METRICS DATA
@@ -602,23 +605,19 @@ const getDateRangeForOfficerPie = () => {
   };
 
   // ===========================================
-  // FETCH DASHBOARD TRANSACTION METRICS DATA - FIXED VERSION
+  // FETCH DASHBOARD TRANSACTION METRICS DATA - DENGAN ADJUSTMENT
   // ===========================================
   const fetchDashboardTransactionMetrics = async () => {
     try {
-      // Get date range based on filters
       const { startDate, endDate } = getDateRangeForDashboard();
 
-      // ===========================================
-      // 1. AMBIL DATA DEPOSIT
-      // ===========================================
+      // DEPOSIT
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('deposit_amount, status')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
 
-      // Filter berdasarkan asset jika bukan 'all'
       if (selectedAsset !== 'all') {
         depositQuery = depositQuery.eq('brand', 'XLY');
       }
@@ -626,16 +625,13 @@ const getDateRangeForOfficerPie = () => {
       const { data: depositData, error: depositError } = await depositQuery;
       if (depositError) throw depositError;
 
-      // ===========================================
-      // 2. AMBIL DATA WITHDRAWAL
-      // ===========================================
+      // WITHDRAWAL
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('withdrawal_amount, status')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
 
-      // Filter berdasarkan asset jika bukan 'all'
       if (selectedAsset !== 'all') {
         withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
       }
@@ -643,9 +639,22 @@ const getDateRangeForOfficerPie = () => {
       const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery;
       if (withdrawalError) throw withdrawalError;
 
-      // ===========================================
-      // 3. HITUNG DEPOSIT - AMOUNT + COUNT
-      // ===========================================
+      // ADJUSTMENT - HANYA APPROVED
+      let adjustmentQuery = supabase
+        .from('adjustment_transactions')
+        .select('adjustment_amount, status')
+        .eq('status', 'Approved')
+        .gte('adjustment_date', startDate)
+        .lte('adjustment_date', endDate);
+
+      if (selectedAsset !== 'all') {
+        adjustmentQuery = adjustmentQuery.eq('brand', 'XLY');
+      }
+
+      const { data: adjustmentData, error: adjustmentError } = await adjustmentQuery;
+      if (adjustmentError) throw adjustmentError;
+
+      // HITUNG DEPOSIT
       let totalDeposit = 0;
       let depositApproved = 0;
       let depositRejected = 0;
@@ -675,9 +684,7 @@ const getDateRangeForOfficerPie = () => {
         }
       });
 
-      // ===========================================
-      // 4. HITUNG WITHDRAWAL - AMOUNT + COUNT
-      // ===========================================
+      // HITUNG WITHDRAWAL
       let totalWithdrawal = 0;
       let withdrawalApproved = 0;
       let withdrawalRejected = 0;
@@ -701,45 +708,52 @@ const getDateRangeForOfficerPie = () => {
         }
       });
 
-      // ===========================================
-      // 5. UPDATE STATE DENGAN AMOUNT + COUNT
-      // ===========================================
+      // HITUNG ADJUSTMENT
+      let totalAdjustment = 0;
+      let adjustmentApproved = 0;
+      let adjustmentApprovedCount = 0;
+
+      adjustmentData?.forEach(tx => {
+        const amount = Number(tx.adjustment_amount) || 0;
+        totalAdjustment += amount;
+        adjustmentApproved += amount;
+        adjustmentApprovedCount++;
+      });
+
+      // UPDATE STATE
       setDashboardTransactionTotals({
-        // DEPOSIT AMOUNT
         total_deposit: totalDeposit,
         deposit_approved: depositApproved,
         deposit_rejected: depositRejected,
         deposit_failed: depositFailed,
-        
-        // DEPOSIT COUNT
         deposit_approved_count: depositApprovedCount,
         deposit_rejected_count: depositRejectedCount,
         deposit_failed_count: depositFailedCount,
         
-        // WITHDRAWAL AMOUNT
         total_withdrawal: totalWithdrawal,
         withdrawal_approved: withdrawalApproved,
         withdrawal_rejected: withdrawalRejected,
-        
-        // WITHDRAWAL COUNT
         withdrawal_approved_count: withdrawalApprovedCount,
-        withdrawal_rejected_count: withdrawalRejectedCount
+        withdrawal_rejected_count: withdrawalRejectedCount,
+        
+        total_adjustment: totalAdjustment,
+        adjustment_approved: adjustmentApproved,
+        adjustment_approved_count: adjustmentApprovedCount
       });
 
-      // DEBUG: Cek hasilnya di console
       console.log('📊 DEPOSIT:', {
         approved: { amount: depositApproved, count: depositApprovedCount },
         rejected: { amount: depositRejected, count: depositRejectedCount },
-        failed: { amount: depositFailed, count: depositFailedCount },
-        total_amount: totalDeposit,
-        total_forms: depositApprovedCount + depositRejectedCount + depositFailedCount
+        failed: { amount: depositFailed, count: depositFailedCount }
       });
       
       console.log('📊 WITHDRAWAL:', {
         approved: { amount: withdrawalApproved, count: withdrawalApprovedCount },
-        rejected: { amount: withdrawalRejected, count: withdrawalRejectedCount },
-        total_amount: totalWithdrawal,
-        total_forms: withdrawalApprovedCount + withdrawalRejectedCount
+        rejected: { amount: withdrawalRejected, count: withdrawalRejectedCount }
+      });
+
+      console.log('📊 ADJUSTMENT (Approved Only):', {
+        approved: { amount: adjustmentApproved, count: adjustmentApprovedCount }
       });
 
     } catch (error) {
@@ -774,7 +788,7 @@ const getDateRangeForOfficerPie = () => {
         endDate = customEndDate;
         break;
         
-      default: // yesterday
+      default:
         const defYesterday = new Date();
         defYesterday.setDate(defYesterday.getDate() - 1);
         startDate = defYesterday.toISOString().split('T')[0];
@@ -788,14 +802,13 @@ const getDateRangeForOfficerPie = () => {
   };
 
   // ===========================================
-  // FETCH BANK ACCOUNTS - FIXED VERSION
+  // FETCH BANK ACCOUNTS
   // ===========================================
   const fetchBankAccounts = async () => {
     try {
       setLoadingBanks(true);
       console.log('🔍 Fetching bank accounts...');
       
-      // AMBIL TOKEN DARI LOCALSTORAGE
       const authToken = localStorage.getItem('sb-lrrghigbwxwxpvicbkos-auth-token');
       let token = '';
       if (authToken) {
@@ -808,7 +821,6 @@ const getDateRangeForOfficerPie = () => {
       
       const apikey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxycmdoaWdid3h3eHB2aWNia29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2MTE1NjEsImV4cCI6MjA4NjE4NzU2MX0.6v7pQtcfZsNEPRP622ZzHnKdGjaCX2ibgAIKUbvwC5g';
       
-      // FETCH MANUAL (YANG UDAH TERBUKTI JALAN)
       const response = await fetch('https://lrrghigbwxwxpvicbkos.supabase.co/rest/v1/bank_accounts?select=*', {
         headers: {
           'apikey': apikey,
@@ -823,15 +835,12 @@ const getDateRangeForOfficerPie = () => {
       const data = await response.json();
       console.log('✅ Bank accounts fetched:', data.length, 'records');
       
-      // SET STATE
       setBankAccounts(data || []);
       
-      // EXPORT KE WINDOW
       if (typeof window !== 'undefined') {
         window.__bankAccounts = data || [];
       }
       
-      // HITUNG ACTIVE BANKS
       const activeBanks = data?.filter(b => 
         (b.role?.toUpperCase() === 'DEPOSIT' || b.role?.toUpperCase() === 'WITHDRAW') && 
         b.display_used === 'YES'
@@ -1041,8 +1050,6 @@ const getDateRangeForOfficerPie = () => {
       
       if (error) throw error;
       
-      // State akan otomatis ke-update via subscription
-      
     } catch (error) {
       console.error('Error updating support line:', error);
       alert('Gagal update status support line');
@@ -1052,106 +1059,94 @@ const getDateRangeForOfficerPie = () => {
   };
 
   // ===========================================
-// USE EFFECTS - FINAL VERSION
-// ===========================================
+  // USE EFFECTS
+  // ===========================================
 
-// 1. LOAD ALL INITIAL DATA (pertama kali aja)
-useEffect(() => {
-  const loadAllData = async () => {
-    await Promise.all([
-      fetchDashboardData(),
-      fetchRecentActivities(),
-      fetchTransactionMetricsData(),
-      fetchBankAccounts(),
-      fetchOfficerPerformance(),
-      // fetchOfficerPieData() PANGGIL DI BAWAH AJA
-    ]);
-  };
-  loadAllData();
-}, [chartFilter, chartYear, selectedAsset]);
+  useEffect(() => {
+    const loadAllData = async () => {
+      await Promise.all([
+        fetchDashboardData(),
+        fetchRecentActivities(),
+        fetchTransactionMetricsData(),
+        fetchBankAccounts(),
+        fetchOfficerPerformance(),
+      ]);
+    };
+    loadAllData();
+  }, [chartFilter, chartYear, selectedAsset]);
 
-// 2. TRAFFIC METRICS - dengan filter sendiri
-useEffect(() => {
-  fetchTrafficMetricsData();
-}, [trafficMetricsAsset, trafficMetricsFilter, 
-    trafficMetricsYear, trafficMetricsMonth, trafficMetricsPeriod]);
+  useEffect(() => {
+    fetchTrafficMetricsData();
+  }, [trafficMetricsAsset, trafficMetricsFilter, trafficMetricsYear, trafficMetricsMonth, trafficMetricsPeriod]);
 
-// 3. DASHBOARD TRANSACTION METRICS - dengan filter asset & waktu
-useEffect(() => {
-  fetchDashboardTransactionMetrics();
-}, [selectedAsset, timeFilter, selectedMonth, selectedYear, customStartDate, customEndDate]);
+  useEffect(() => {
+    fetchDashboardTransactionMetrics();
+  }, [selectedAsset, timeFilter, selectedMonth, selectedYear, customStartDate, customEndDate]);
 
-// 4. OFFICER PIE DATA - dengan filter asset & waktu (BARU)
-useEffect(() => {
-  fetchOfficerPieData();
-}, [selectedAsset, timeFilter, selectedMonth, selectedYear, customStartDate, customEndDate]);
+  useEffect(() => {
+    fetchOfficerPieData();
+  }, [selectedAsset, timeFilter, selectedMonth, selectedYear, customStartDate, customEndDate]);
 
-// 5. LOAD LOCALSTORAGE (sekali aja)
-useEffect(() => {
-  const savedDeposit = localStorage.getItem('depositMethods');
-  if (savedDeposit) setDepositMethods(JSON.parse(savedDeposit));
-  
-  const savedWithdrawal = localStorage.getItem('withdrawalMethods');
-  if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
-  
-  const saved = localStorage.getItem('lastReadActivity');
-  if (saved) setLastReadTimestamp(saved);
-}, []);
-
-// 6. SAVE TO LOCALSTORAGE (setiap ada perubahan)
-useEffect(() => {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
-    localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
-  }
-}, [depositMethods, withdrawalMethods]);
-
-// 7. CHECK NEW ACTIVITIES
-useEffect(() => {
-  if (activities.length > 0) {
-    const latestActivity = new Date(activities[0].timestamp).getTime();
-    const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
-    setHasNewActivity(latestActivity > lastRead);
-  }
-}, [activities, lastReadTimestamp]);
-
-// 8. EVENT LISTENER FOR ACTIVITY READ
-useEffect(() => {
-  const handleActivityRead = () => {
+  useEffect(() => {
+    const savedDeposit = localStorage.getItem('depositMethods');
+    if (savedDeposit) setDepositMethods(JSON.parse(savedDeposit));
+    
+    const savedWithdrawal = localStorage.getItem('withdrawalMethods');
+    if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
+    
     const saved = localStorage.getItem('lastReadActivity');
     if (saved) setLastReadTimestamp(saved);
-  };
-  window.addEventListener('activityRead', handleActivityRead);
-  return () => window.removeEventListener('activityRead', handleActivityRead);
-}, []);
+  }, []);
 
-// 9. DEBUG: Export bankAccounts ke window
-useEffect(() => {
-  if (typeof window !== 'undefined') {
-    window.__bankAccounts = bankAccounts;
-    window.__debug = {
-      ...window.__debug,
-      bankAccounts: bankAccounts,
-      assetList: assetList,
-      timestamp: new Date().toISOString()
-    };
-  }
-}, [bankAccounts, assetList]);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
+      localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
+    }
+  }, [depositMethods, withdrawalMethods]);
 
-// 10. DEBUG: Manual fetch di console
-useEffect(() => {
-  if (typeof window !== 'undefined') {
-    window.__fetchBanks = fetchBankAccounts;
-    window.__testFetch = async () => {
-      const { data } = await supabase.from('bank_accounts').select('*');
-      console.log('Manual fetch:', data);
-      return data;
+  useEffect(() => {
+    if (activities.length > 0) {
+      const latestActivity = new Date(activities[0].timestamp).getTime();
+      const lastRead = lastReadTimestamp ? new Date(lastReadTimestamp).getTime() : 0;
+      setHasNewActivity(latestActivity > lastRead);
+    }
+  }, [activities, lastReadTimestamp]);
+
+  useEffect(() => {
+    const handleActivityRead = () => {
+      const saved = localStorage.getItem('lastReadActivity');
+      if (saved) setLastReadTimestamp(saved);
     };
-  }
-}, []);
+    window.addEventListener('activityRead', handleActivityRead);
+    return () => window.removeEventListener('activityRead', handleActivityRead);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__bankAccounts = bankAccounts;
+      window.__debug = {
+        ...window.__debug,
+        bankAccounts: bankAccounts,
+        assetList: assetList,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }, [bankAccounts, assetList]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__fetchBanks = fetchBankAccounts;
+      window.__testFetch = async () => {
+        const { data } = await supabase.from('bank_accounts').select('*');
+        console.log('Manual fetch:', data);
+        return data;
+      };
+    }
+  }, []);
 
   // ===========================================
-  // FUNGSI TOGGLE SERVICE (UNTUK DEPOSIT/WITHDRAWAL)
+  // FUNGSI TOGGLE SERVICE
   // ===========================================
   const handleToggleService = async (type, serviceName, newStatus) => {
     try {
@@ -1283,7 +1278,7 @@ useEffect(() => {
       {/* MAIN DASHBOARD GRID - 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: TRANSACTION METRICS - 4 BAR CHARTS DENGAN DATA REAL */}
+        {/* KOLOM 1: TRANSACTION METRICS - 4 BAR CHARTS DENGAN DATA REAL + ADJUSTMENT */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6 h-full">
           {/* HEADER DENGAN LINK */}
           <Link href="/dashboard/transaction-metrics" className="block group mb-4">
@@ -1299,9 +1294,8 @@ useEffect(() => {
             </div>
           </Link>
 
-          {/* FILTER SECTION - LENGKAP: Yesterday, Monthly, Custom */}
+          {/* FILTER SECTION */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {/* Filter Asset (untuk box ini) */}
             <select 
               value={selectedAsset}
               onChange={(e) => setSelectedAsset(e.target.value)}
@@ -1313,7 +1307,6 @@ useEffect(() => {
               ))}
             </select>
 
-            {/* Filter Periode - Yesterday, Monthly, Custom */}
             <select 
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value)}
@@ -1324,7 +1317,6 @@ useEffect(() => {
               <option value="custom">Custom Range</option>
             </select>
 
-            {/* Monthly Filter - Muncul jika pilih monthly */}
             {timeFilter === 'monthly' && (
               <>
                 <select 
@@ -1349,7 +1341,6 @@ useEffect(() => {
               </>
             )}
 
-            {/* Custom Range Filter - Muncul jika pilih custom */}
             {timeFilter === 'custom' && (
               <>
                 <input
@@ -1369,12 +1360,11 @@ useEffect(() => {
             )}
           </div>
 
-          {/* 4 BAR CHARTS GRID - DENGAN DATA REAL */}
+          {/* 4 BAR CHARTS GRID */}
           <div className="grid grid-cols-2 gap-4">
-            {/* CHART 1: DEPOSIT - Approved, Rejected, Failed */}
+            {/* CHART 1: DEPOSIT */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-blue-500/30">
               <h4 className="text-sm font-bold text-blue-400 mb-2">DEPOSIT</h4>
-              {/* INI ANGKA BESAR - JUMLAH FORM */}
               <div className="text-2xl font-bold text-white mb-1">
                 {(
                   (dashboardTransactionTotals.deposit_approved_count || 0) + 
@@ -1382,7 +1372,6 @@ useEffect(() => {
                   (dashboardTransactionTotals.deposit_failed_count || 0)
                 ) || 0}
               </div>
-              {/* INI VALUE RP - TOTAL UANG */}
               <div className="text-xs text-[#A7D8FF] mb-2">
                 value : {new Intl.NumberFormat('id-ID', {
                   style: 'currency',
@@ -1394,24 +1383,9 @@ useEffect(() => {
               <div className="h-20">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { 
-                      name: 'App', 
-                      count: dashboardTransactionTotals.deposit_approved_count || 0, 
-                      amount: dashboardTransactionTotals.deposit_approved || 0, 
-                      color: '#10b981' 
-                    },
-                    { 
-                      name: 'Rej', 
-                      count: dashboardTransactionTotals.deposit_rejected_count || 0, 
-                      amount: dashboardTransactionTotals.deposit_rejected || 0, 
-                      color: '#ef4444' 
-                    },
-                    { 
-                      name: 'Fail', 
-                      count: dashboardTransactionTotals.deposit_failed_count || 0, 
-                      amount: dashboardTransactionTotals.deposit_failed || 0, 
-                      color: '#f59e0b' 
-                    }
+                    { name: 'App', count: dashboardTransactionTotals.deposit_approved_count || 0, amount: dashboardTransactionTotals.deposit_approved || 0, color: '#10b981' },
+                    { name: 'Rej', count: dashboardTransactionTotals.deposit_rejected_count || 0, amount: dashboardTransactionTotals.deposit_rejected || 0, color: '#ef4444' },
+                    { name: 'Fail', count: dashboardTransactionTotals.deposit_failed_count || 0, amount: dashboardTransactionTotals.deposit_failed || 0, color: '#f59e0b' }
                   ]}>
                     <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                       {[
@@ -1426,23 +1400,15 @@ useEffect(() => {
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
-                          let status = '';
-                          if (data.name === 'App') status = 'Approved';
-                          else if (data.name === 'Rej') status = 'Rejected';
-                          else if (data.name === 'Fail') status = 'Failed';
-                          
-                          const formattedAmount = new Intl.NumberFormat('id-ID', {
-                            style: 'currency',
-                            currency: 'IDR',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0
-                          }).format(data.amount);
+                          let status = data.name === 'App' ? 'Approved' : data.name === 'Rej' ? 'Rejected' : 'Failed';
                           
                           return (
                             <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
                               <p className="text-[#FFD700] font-bold text-xs">{status}</p>
                               <p className="text-white text-xs">{data.count} forms</p>
-                              <p className="text-[#A7D8FF] text-[10px]">{formattedAmount}</p>
+                              <p className="text-[#A7D8FF] text-[10px]">
+                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.amount)}
+                              </p>
                             </div>
                           );
                         }
@@ -1459,17 +1425,15 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* CHART 2: WITHDRAWAL - Approved, Rejected */}
+            {/* CHART 2: WITHDRAWAL */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-green-500/30">
               <h4 className="text-sm font-bold text-green-400 mb-2">WITHDRAWAL</h4>
-              {/* INI ANGKA BESAR - JUMLAH FORM */}
               <div className="text-2xl font-bold text-white mb-1">
                 {(
                   (dashboardTransactionTotals.withdrawal_approved_count || 0) + 
                   (dashboardTransactionTotals.withdrawal_rejected_count || 0)
                 ) || 0}
               </div>
-              {/* INI VALUE RP - TOTAL UANG */}
               <div className="text-xs text-[#A7D8FF] mb-2">
                 value : {new Intl.NumberFormat('id-ID', {
                   style: 'currency',
@@ -1481,18 +1445,8 @@ useEffect(() => {
               <div className="h-20">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { 
-                      name: 'App', 
-                      count: dashboardTransactionTotals.withdrawal_approved_count || 0, 
-                      amount: dashboardTransactionTotals.withdrawal_approved || 0, 
-                      color: '#10b981' 
-                    },
-                    { 
-                      name: 'Rej', 
-                      count: dashboardTransactionTotals.withdrawal_rejected_count || 0, 
-                      amount: dashboardTransactionTotals.withdrawal_rejected || 0, 
-                      color: '#ef4444' 
-                    }
+                    { name: 'App', count: dashboardTransactionTotals.withdrawal_approved_count || 0, amount: dashboardTransactionTotals.withdrawal_approved || 0, color: '#10b981' },
+                    { name: 'Rej', count: dashboardTransactionTotals.withdrawal_rejected_count || 0, amount: dashboardTransactionTotals.withdrawal_rejected || 0, color: '#ef4444' }
                   ]}>
                     <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                       {[
@@ -1506,22 +1460,15 @@ useEffect(() => {
                       content={({ active, payload }) => {
                         if (active && payload && payload.length) {
                           const data = payload[0].payload;
-                          let status = '';
-                          if (data.name === 'App') status = 'Approved';
-                          else if (data.name === 'Rej') status = 'Rejected';
-                          
-                          const formattedAmount = new Intl.NumberFormat('id-ID', {
-                            style: 'currency',
-                            currency: 'IDR',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0
-                          }).format(data.amount);
+                          let status = data.name === 'App' ? 'Approved' : 'Rejected';
                           
                           return (
                             <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
                               <p className="text-[#FFD700] font-bold text-xs">{status}</p>
                               <p className="text-white text-xs">{data.count} forms</p>
-                              <p className="text-[#A7D8FF] text-[10px]">{formattedAmount}</p>
+                              <p className="text-[#A7D8FF] text-[10px]">
+                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.amount)}
+                              </p>
                             </div>
                           );
                         }
@@ -1537,35 +1484,55 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* CHART 3: ADJUSTMENT - Plus, Minus (KOSONG) */}
+            {/* CHART 3: ADJUSTMENT - DENGAN DATA REAL */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-purple-500/30">
               <h4 className="text-sm font-bold text-purple-400 mb-2">ADJUSTMENT</h4>
-              <div className="text-2xl font-bold text-white mb-1">0</div>
-              <div className="text-xs text-[#A7D8FF] mb-2">value : Rp 0</div>
+              <div className="text-2xl font-bold text-white mb-1">
+                {dashboardTransactionTotals.adjustment_approved_count || 0}
+              </div>
+              <div className="text-xs text-[#A7D8FF] mb-2">
+                value : {new Intl.NumberFormat('id-ID', {
+                  style: 'currency',
+                  currency: 'IDR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0
+                }).format(dashboardTransactionTotals.adjustment_approved || 0)}
+              </div>
               <div className="h-20">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={[
-                    { name: '+', value: 0, color: '#10b981' },
-                    { name: '-', value: 0, color: '#ef4444' }
+                    { name: '+ Adj', count: dashboardTransactionTotals.adjustment_approved_count || 0, amount: dashboardTransactionTotals.adjustment_approved || 0, color: '#8b5cf6' }
                   ]}>
-                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                      {[
-                        { name: '+', value: 0, color: '#10b981' },
-                        { name: '-', value: 0, color: '#ef4444' }
-                      ].map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#8b5cf6">
+                      <Cell fill="#8b5cf6" />
                     </Bar>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          
+                          return (
+                            <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
+                              <p className="text-[#FFD700] font-bold text-xs">Approved</p>
+                              <p className="text-white text-xs">{data.count} forms</p>
+                              <p className="text-[#A7D8FF] text-[10px]">
+                                {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(data.amount)}
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
               <div className="flex justify-between text-[10px] text-[#A7D8FF] mt-1">
-                <span className="text-green-400">+ Plus: 0</span>
-                <span className="text-red-400">- Minus: 0</span>
+                <span className="text-purple-400">✓ Approved: {dashboardTransactionTotals.adjustment_approved_count || 0}</span>
               </div>
             </div>
 
-            {/* CHART 4: BONUS - Bonus, Cashback, Commission, Referral (KOSONG) */}
+            {/* CHART 4: BONUS - KOSONG UNTUK SEKARANG */}
             <div className="bg-[#0B1A33]/50 p-3 rounded-lg border border-yellow-500/30">
               <h4 className="text-sm font-bold text-yellow-400 mb-2">BONUS</h4>
               <div className="text-2xl font-bold text-white mb-1">0</div>
@@ -1600,37 +1567,42 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* TOTAL VALUE - RINGKASAN DENGAN DATA REAL */}
-<div className="mt-4 pt-3 border-t border-[#FFD700]/20">
-  <div className="flex justify-between text-xs">
-    <span className="text-[#A7D8FF]">Total Deposit:</span>
-    <span className="text-white font-bold">
-      {formatCompactRupiah(dashboardTransactionTotals.deposit_approved)}
-    </span>
-  </div>
-  <div className="flex justify-between text-xs mt-1">
-    <span className="text-[#A7D8FF]">Total Withdrawal:</span>
-    <span className="text-white font-bold">
-      {formatCompactRupiah(dashboardTransactionTotals.withdrawal_approved)}
-    </span>
-  </div>
-  <div className="flex justify-between text-xs mt-1">
-    <span className="text-[#A7D8FF]">Net Flow:</span>
-    <span className={`font-bold ${dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-      {new Intl.NumberFormat('id-ID', { 
-        style: 'currency', 
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-        notation: 'compact',
-        compactDisplay: 'short',
-        signDisplay: 'always'
-      }).format(dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved)}
-    </span>
-  </div>
-</div>
+          {/* TOTAL VALUE - RINGKASAN DENGAN ADJUSTMENT */}
+          <div className="mt-4 pt-3 border-t border-[#FFD700]/20">
+            <div className="flex justify-between text-xs">
+              <span className="text-[#A7D8FF]">Total Deposit:</span>
+              <span className="text-white font-bold">
+                {formatCompactRupiah(dashboardTransactionTotals.deposit_approved)}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs mt-1">
+              <span className="text-[#A7D8FF]">Total Withdrawal:</span>
+              <span className="text-white font-bold">
+                {formatCompactRupiah(dashboardTransactionTotals.withdrawal_approved)}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs mt-1">
+              <span className="text-[#A7D8FF]">Total Adjustment:</span>
+              <span className="text-purple-400 font-bold">
+                {formatCompactRupiah(dashboardTransactionTotals.adjustment_approved)}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs mt-1 border-t border-[#FFD700]/10 pt-1">
+              <span className="text-[#A7D8FF]">Net Flow:</span>
+              <span className={`font-bold ${dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {new Intl.NumberFormat('id-ID', { 
+                  style: 'currency', 
+                  currency: 'IDR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                  notation: 'compact',
+                  compactDisplay: 'short',
+                  signDisplay: 'always'
+                }).format(dashboardTransactionTotals.deposit_approved - dashboardTransactionTotals.withdrawal_approved)}
+              </span>
+            </div>
+          </div>
 
-          {/* LINK DETAIL */}
           <Link href="/dashboard/transaction-metrics" className="block mt-3 text-right">
             <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
               Click to see detailed metrics →
@@ -1638,7 +1610,7 @@ useEffect(() => {
           </Link>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD (TETAP SAMA) */}
+        {/* KOLOM 2: DEPOSIT METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -1671,7 +1643,7 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD (TETAP SAMA) */}
+        {/* KOLOM 3: WITHDRAWAL METHOD */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method</h3>
           <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -1705,10 +1677,10 @@ useEffect(() => {
         </div>
       </div>
 
-      {/* ROW 2 - GRID 3 KOLOM (SEMUA TETAP SAMA) */}
+      {/* ROW 2 - GRID 3 KOLOM */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         
-        {/* KOLOM 1: CUSTOMER SUPPORT LINE - REALTIME VERSION */}
+        {/* KOLOM 1: CUSTOMER SUPPORT LINE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💬 Customer Service Support Line</h3>
           <div className="space-y-4">
@@ -1752,7 +1724,7 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* WhatsApp (opsional) */}
+            {/* WhatsApp */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${supportLines.whatsapp ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
@@ -1772,7 +1744,7 @@ useEffect(() => {
               </div>
             </div>
 
-            {/* LINE (opsional) */}
+            {/* LINE */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${supportLines.line ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
@@ -1794,118 +1766,116 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* KOLOM 2: TRAFFIC METRICS - UBAH JUDUL */}
-<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-  <div className="flex items-center justify-between mb-2">
-    <Link href="/dashboard/traffic-metrics" className="block group flex-1">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-[#FFD700]">📊 Traffic Metrics</h3>
-        <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </div>
-    </Link>
-    
-    <button
-      onClick={async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setLoadingTrafficMetrics(true);
-        await fetchTrafficMetricsData();
-      }}
-      disabled={loadingTrafficMetrics}
-      className="ml-2 p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex-shrink-0"
-      title="Refresh traffic data"
-    >
-      <svg className={`w-4 h-4 text-white ${loadingTrafficMetrics ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-    </button>
-  </div>
-  
-  <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
-    <select 
-      value={trafficMetricsAsset} 
-      onChange={(e) => setTrafficMetricsAsset(e.target.value)}
-      className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
-    >
-      <option value="all">ALL</option>
-      {assetList.length > 0 ? (
-        assetList.map(asset => {
-          const assetCode = getAssetCode(asset);
-          return <option key={asset} value={assetCode}>{assetCode}</option>;
-        })
-      ) : (
-        <option value="XLY">XLY</option>
-      )}
-    </select>
-
-    <select value={trafficMetricsFilter} onChange={(e) => setTrafficMetricsFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-      <option value="daily">Daily</option>
-      <option value="monthly">Monthly</option>
-    </select>
-    
-    {trafficMetricsFilter === 'daily' ? (
-      <>
-        <select value={trafficMetricsMonth} onChange={(e) => setTrafficMetricsMonth(parseInt(e.target.value))} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-          {fullMonths.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
-        </select>
-        <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-          {years.map(year => <option key={year} value={year}>{year}</option>)}
-        </select>
-      </>
-    ) : (
-      <>
-        <select value={trafficMetricsPeriod} onChange={(e) => setTrafficMetricsPeriod(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-          <option value="jan-jun">Jan-Jun</option>
-          <option value="jul-dec">Jul-Dec</option>
-        </select>
-        <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-          {years.map(year => <option key={year} value={year}>{year}</option>)}
-        </select>
-      </>
-    )}
-  </div>
-  
-  <div className="h-64">
-    {loadingTrafficMetrics ? (
-      <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
-    ) : (
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={trafficMetrics}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-          <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
-          <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
-          <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-          <Legend 
-            formatter={(value) => {
-              // Tambah keterangan (All Status) di samping setiap label
-              if (value === 'CS') return 'CS (All Status)';
-              if (value === 'Deposit') return 'Deposit (All Status)';
-              if (value === 'Withdrawal') return 'Withdrawal (All Status)';
-              return value;
-            }}
-          />
-          <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
-          <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
-          <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
-        </LineChart>
-      </ResponsiveContainer>
-    )}
-  </div>
-  
-  <Link href="/dashboard/traffic-metrics" className="block mt-2 text-right">
-    <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
-      Click to see detailed breakdown →
-    </span>
-  </Link>
-</div>
-
-        {/* KOLOM 3: OFFICER PERFORMANCE - MODIFIED WITH 3D EXPLODED PIE CHART */}
+        {/* KOLOM 2: TRAFFIC METRICS */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-          {/* HEADER DENGAN LINK - TANPA FILTER DI DALEM LINK */}
+          <div className="flex items-center justify-between mb-2">
+            <Link href="/dashboard/traffic-metrics" className="block group flex-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-[#FFD700]">📊 Traffic Metrics</h3>
+                <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </Link>
+            
+            <button
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setLoadingTrafficMetrics(true);
+                await fetchTrafficMetricsData();
+              }}
+              disabled={loadingTrafficMetrics}
+              className="ml-2 p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex-shrink-0"
+              title="Refresh traffic data"
+            >
+              <svg className={`w-4 h-4 text-white ${loadingTrafficMetrics ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
+            <select 
+              value={trafficMetricsAsset} 
+              onChange={(e) => setTrafficMetricsAsset(e.target.value)}
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
+            >
+              <option value="all">ALL</option>
+              {assetList.length > 0 ? (
+                assetList.map(asset => {
+                  const assetCode = getAssetCode(asset);
+                  return <option key={asset} value={assetCode}>{assetCode}</option>;
+                })
+              ) : (
+                <option value="XLY">XLY</option>
+              )}
+            </select>
+
+            <select value={trafficMetricsFilter} onChange={(e) => setTrafficMetricsFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+              <option value="daily">Daily</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            
+            {trafficMetricsFilter === 'daily' ? (
+              <>
+                <select value={trafficMetricsMonth} onChange={(e) => setTrafficMetricsMonth(parseInt(e.target.value))} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                  {fullMonths.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+                </select>
+                <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                  {years.map(year => <option key={year} value={year}>{year}</option>)}
+                </select>
+              </>
+            ) : (
+              <>
+                <select value={trafficMetricsPeriod} onChange={(e) => setTrafficMetricsPeriod(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                  <option value="jan-jun">Jan-Jun</option>
+                  <option value="jul-dec">Jul-Dec</option>
+                </select>
+                <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                  {years.map(year => <option key={year} value={year}>{year}</option>)}
+                </select>
+              </>
+            )}
+          </div>
+          
+          <div className="h-64">
+            {loadingTrafficMetrics ? (
+              <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trafficMetrics}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                  <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+                  <Legend 
+                    formatter={(value) => {
+                      if (value === 'CS') return 'CS (All Status)';
+                      if (value === 'Deposit') return 'Deposit (All Status)';
+                      if (value === 'Withdrawal') return 'Withdrawal (All Status)';
+                      return value;
+                    }}
+                  />
+                  <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          
+          <Link href="/dashboard/traffic-metrics" className="block mt-2 text-right">
+            <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
+              Click to see detailed breakdown →
+            </span>
+          </Link>
+        </div>
+
+        {/* KOLOM 3: OFFICER PERFORMANCE */}
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <div className="flex items-center justify-between mb-2">
             <Link href="/dashboard/officers-performance" className="block group flex-1">
               <div className="flex items-center justify-between">
@@ -1921,9 +1891,7 @@ useEffect(() => {
             </Link>
           </div>
 
-          {/* FILTER SECTION - TERPISAH DARI LINK */}
           <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
-            {/* Filter Asset */}
             <select 
               value={selectedAsset}
               onChange={(e) => setSelectedAsset(e.target.value)}
@@ -1935,7 +1903,6 @@ useEffect(() => {
               ))}
             </select>
 
-            {/* Filter Periode - Yesterday, Monthly, Custom */}
             <select 
               value={timeFilter}
               onChange={(e) => setTimeFilter(e.target.value)}
@@ -1946,7 +1913,6 @@ useEffect(() => {
               <option value="custom">Custom Range</option>
             </select>
 
-            {/* Monthly Filter - Muncul jika pilih monthly */}
             {timeFilter === 'monthly' && (
               <>
                 <select 
@@ -1971,7 +1937,6 @@ useEffect(() => {
               </>
             )}
 
-            {/* Custom Range Filter - Muncul jika pilih custom */}
             {timeFilter === 'custom' && (
               <>
                 <input
@@ -2025,17 +1990,7 @@ useEffect(() => {
                         ))}
                       </Pie>
                       <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#0B1A33', 
-                          borderColor: '#FFD700',
-                          color: '#FFFFFF'
-                        }}
-                        itemStyle={{ 
-                          color: '#FFFFFF'
-                        }}
-                        labelStyle={{ 
-                          color: '#FFD700'
-                        }}
+                        contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
                         formatter={(value, name, props) => {
                           const total = officerPieData.reduce((sum, item) => sum + item.value, 0);
                           const percentage = ((value / total) * 100).toFixed(1);
@@ -2046,7 +2001,6 @@ useEffect(() => {
                   </ResponsiveContainer>
                 </div>
                 
-                {/* Legend dengan persentase - 2 kolom */}
                 <div className="grid grid-cols-2 gap-2 mt-2">
                   {officerPieData.map((item, index) => {
                     const total = officerPieData.reduce((sum, i) => sum + i.value, 0);
