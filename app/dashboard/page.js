@@ -1632,29 +1632,29 @@ export default function DashboardContent() {
     </span>
   </div>
   <div className="flex justify-between text-xs mt-1 border-t border-[#FFD700]/10 pt-1">
-    <span className="text-[#A7D8FF]">Net Flow:</span>
-    <span className={`font-bold ${
-      (dashboardTransactionTotals.deposit_approved - 
-       dashboardTransactionTotals.withdrawal_approved + 
-       dashboardTransactionTotals.adjustment_plus - 
-       dashboardTransactionTotals.adjustment_minus) >= 0 ? 'text-green-400' : 'text-red-400'
-    }`}>
-      {new Intl.NumberFormat('id-ID', { 
-        style: 'currency', 
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-        notation: 'compact',
-        compactDisplay: 'short',
-        signDisplay: 'always'
-      }).format(
-        dashboardTransactionTotals.deposit_approved - 
-        dashboardTransactionTotals.withdrawal_approved + 
-        dashboardTransactionTotals.adjustment_plus - 
-        dashboardTransactionTotals.adjustment_minus
-      )}
-    </span>
-  </div>
+  <span className="text-[#A7D8FF]">Net Flow:</span>
+  <span className={`font-bold ${
+    (dashboardTransactionTotals.deposit_approved - 
+     dashboardTransactionTotals.withdrawal_approved - 
+     dashboardTransactionTotals.adjustment_plus + 
+     dashboardTransactionTotals.adjustment_minus) >= 0 ? 'text-green-400' : 'text-red-400'
+  }`}>
+    {new Intl.NumberFormat('id-ID', { 
+      style: 'currency', 
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      notation: 'compact',
+      compactDisplay: 'short',
+      signDisplay: 'always'
+    }).format(
+      dashboardTransactionTotals.deposit_approved - 
+      dashboardTransactionTotals.withdrawal_approved - 
+      dashboardTransactionTotals.adjustment_plus + 
+      dashboardTransactionTotals.adjustment_minus
+    )}
+  </span>
+</div>
 </div>
 
           <Link href="/dashboard/transaction-metrics" className="block mt-3 text-right">
