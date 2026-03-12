@@ -193,7 +193,24 @@ export default function TransactionMetricsPage() {
       if (withdrawalError) throw withdrawalError
 
       // ===========================================
-      // 3. HITUNG DEPOSIT
+      // 3. AMBIL DATA ADJUSTMENT (HANYA APPROVED)
+      // ===========================================
+      let adjustmentQuery = supabase
+        .from('adjustment_transactions')
+        .select('adjustment_amount, status')
+        .eq('status', 'Approved')
+        .gte('adjustment_date', startDate)
+        .lte('adjustment_date', endDate)
+
+      if (selectedAsset !== 'all') {
+        adjustmentQuery = adjustmentQuery.eq('brand', 'XLY')
+      }
+
+      const { data: adjustmentData, error: adjustmentError } = await adjustmentQuery
+      if (adjustmentError) throw adjustmentError
+
+      // ===========================================
+      // 4. HITUNG DEPOSIT
       // ===========================================
       let totalDeposit = 0
       let depositApproved = 0
@@ -216,7 +233,7 @@ export default function TransactionMetricsPage() {
       })
 
       // ===========================================
-      // 4. HITUNG WITHDRAWAL
+      // 5. HITUNG WITHDRAWAL
       // ===========================================
       let totalWithdrawal = 0
       let withdrawalApproved = 0
@@ -236,7 +253,23 @@ export default function TransactionMetricsPage() {
       })
 
       // ===========================================
-      // 5. UPDATE STATE
+      // 6. HITUNG ADJUSTMENT - PISAHKAN PLUS DAN MINUS
+      // ===========================================
+      let adjustmentPlus = 0
+      let adjustmentMinus = 0
+
+      adjustmentData?.forEach(tx => {
+        const amount = Number(tx.adjustment_amount) || 0
+        
+        if (amount > 0) {
+          adjustmentPlus += amount
+        } else if (amount < 0) {
+          adjustmentMinus += Math.abs(amount) // Simpan sebagai positif
+        }
+      })
+
+      // ===========================================
+      // 7. UPDATE STATE
       // ===========================================
       setTotals({
         total_deposit: totalDeposit,
@@ -247,12 +280,17 @@ export default function TransactionMetricsPage() {
         deposit_failed: depositFailed,
         withdrawal_approved: withdrawalApproved,
         withdrawal_rejected: withdrawalRejected,
-        adjustment_plus: 0,
-        adjustment_minus: 0,
+        adjustment_plus: adjustmentPlus,
+        adjustment_minus: adjustmentMinus,
         bonus: 0,
         cashback: 0,
         commission: 0,
         referral: 0
+      })
+
+      console.log('📊 ADJUSTMENT (Approved Only):', {
+        plus: adjustmentPlus,
+        minus: adjustmentMinus
       })
       
     } catch (error) {
@@ -270,7 +308,7 @@ export default function TransactionMetricsPage() {
   const { periodText } = getDateRange()
 
   // ===========================================
-  // RENDER (SAMA PERSIS SEPERTI PUNYA LO)
+  // RENDER
   // ===========================================
   if (loading) {
     return (
@@ -292,7 +330,7 @@ export default function TransactionMetricsPage() {
         <p className="text-[#A7D8FF] mt-2">Nilai transaksi deposit, withdrawal, bonus, dan adjustment</p>
       </div>
 
-      {/* FILTER SECTION - SAMA PERSIS */}
+      {/* FILTER SECTION */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex gap-4 items-center flex-wrap">
           <select 
@@ -488,7 +526,7 @@ export default function TransactionMetricsPage() {
         </div>
       </div>
 
-      {/* ADJUSTMENT SECTION */}
+      {/* ADJUSTMENT SECTION - SEKARANG DENGAN DATA REAL */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-purple-400 mb-3 flex items-center">
           <span className="bg-purple-500 w-1 h-6 rounded-full mr-2"></span>
