@@ -767,11 +767,11 @@ export default function DashboardContent() {
 
     switch (timeFilter) {
       case 'yesterday':
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        startDate = yesterday.toISOString().split('T')[0];
-        endDate = yesterday.toISOString().split('T')[0];
-        break;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  startDate = yesterday.toISOString().split('T')[0];
+  endDate = yesterday.toISOString().split('T')[0];
+  break;
         
       case 'monthly':
         const monthIndex = fullMonthNames.indexOf(selectedMonth) + 1;
