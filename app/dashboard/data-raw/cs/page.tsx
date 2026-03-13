@@ -230,50 +230,58 @@ export default function ChatCSPage() {
       const uploadDates = new Set<string>()
       
       for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i]
-        if (!row || row.length === 0) continue
-        
-        const started = parseExcelDate(row[idx.started])
-        if (!started) continue
-        
-        const dateOnly = started.split(' ')[0]
-        uploadDates.add(dateOnly)
-        
-        const botStr = row[idx.replied_by_bot]?.toString() || ''
-        const agentStr = row[idx.replied_by_agent]?.toString() || ''
-        
-        const botMatch = botStr.match(/(\d+)/)
-        const agentMatch = agentStr.match(/(\d+)/)
-        
-        const replied_by_bot = botMatch ? parseInt(botMatch[1]) : 0
-        const replied_by_agent = agentMatch ? parseInt(agentMatch[1]) : 0
-        
-        validData.push({
-          account: row[idx.account] || null,
-          group: row[idx.group] || null,
-          website: row[idx.website] || 'XLY',
-          conversation_id: row[idx.conversation_id] || null,
-          started: started,
-          ended: parseExcelDate(row[idx.ended]),
-          chat_duration: row[idx.chat_duration] || null,
-          username: row[idx.username] || null,
-          total_replies: parseInt(row[idx.total_replies]) || 0,
-          replied_by_bot: replied_by_bot,
-          replied_by_agent: replied_by_agent,
-          bot_percentage: parsePercentage(botStr),
-          agent_percentage: parsePercentage(agentStr),
-          status: row[idx.status] || null,
-          agent_alias: row[idx.agent_alias] || null,
-          agent_email: row[idx.agent_email] || null,
-          agent_name: row[idx.agent_name] || null,
-          resolve_duration: row[idx.resolve_duration] || null,
-          chat_prompt_id: row[idx.chat_prompt_id] ? parseInt(row[idx.chat_prompt_id]) : null,
-          intents: parseArrayField(row[idx.intents]),
-          emotional_sentiment: parseArrayField(row[idx.emotional_sentiment]),
-          agent_real_name: row[idx.agent_real_name] || null,
-          file_name: selectedFile.name
-        })
-      }
+  const row = dataRows[i]
+  if (!row || row.length === 0) continue
+  
+  const started = parseExcelDate(row[idx.started])
+  if (!started) continue
+  
+  // CEK BULAN DAN TAHUN
+  const startedDate = new Date(started)
+  const startedMonth = startedDate.getMonth() + 1
+  const startedYear = startedDate.getFullYear()
+  
+  // HANYA TERIMA DATA MARET 2026
+  if (startedYear === 2026 && startedMonth === 3) {
+    const dateOnly = started.split(' ')[0]
+    uploadDates.add(dateOnly)
+    
+    const botStr = row[idx.replied_by_bot]?.toString() || ''
+    const agentStr = row[idx.replied_by_agent]?.toString() || ''
+    
+    const botMatch = botStr.match(/(\d+)/)
+    const agentMatch = agentStr.match(/(\d+)/)
+    
+    const replied_by_bot = botMatch ? parseInt(botMatch[1]) : 0
+    const replied_by_agent = agentMatch ? parseInt(agentMatch[1]) : 0
+    
+    validData.push({
+      account: row[idx.account] || null,
+      group: row[idx.group] || null,
+      website: row[idx.website] || 'XLY',
+      conversation_id: row[idx.conversation_id] || null,
+      started: started,
+      ended: parseExcelDate(row[idx.ended]),
+      chat_duration: row[idx.chat_duration] || null,
+      username: row[idx.username] || null,
+      total_replies: parseInt(row[idx.total_replies]) || 0,
+      replied_by_bot: replied_by_bot,
+      replied_by_agent: replied_by_agent,
+      bot_percentage: parsePercentage(botStr),
+      agent_percentage: parsePercentage(agentStr),
+      status: row[idx.status] || null,
+      agent_alias: row[idx.agent_alias] || null,
+      agent_email: row[idx.agent_email] || null,
+      agent_name: row[idx.agent_name] || null,
+      resolve_duration: row[idx.resolve_duration] || null,
+      chat_prompt_id: row[idx.chat_prompt_id] ? parseInt(row[idx.chat_prompt_id]) : null,
+      intents: parseArrayField(row[idx.intents]),
+      emotional_sentiment: parseArrayField(row[idx.emotional_sentiment]),
+      agent_real_name: row[idx.agent_real_name] || null,
+      file_name: selectedFile.name
+    })
+  }
+}
 
       if (validData.length === 0) throw new Error('Tidak ada data valid')
 
