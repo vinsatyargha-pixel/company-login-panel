@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
+import { supabase } from '../../../../lib/supabase'  // <-- GANTI
+import { useAuth } from '../../../../hooks/useAuth'  // <-- GANTI
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 
