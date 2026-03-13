@@ -24,7 +24,14 @@ export default function MealAllowancePage() {
     kasbon: 0,
     cuti: 0,
     etc: 0,
-    etc_note: ''
+    etc_note: '',
+    // Tambahan untuk Prorate dan OFF
+    off_manual: false,
+    off_count_manual: 0,
+    prorate_manual: false,
+    prorate_value_manual: 0,
+    base_amount_manual: false,
+    base_amount_value_manual: 0
   });
   const [lastSync, setLastSync] = useState(new Date());
 
@@ -294,9 +301,9 @@ export default function MealAllowancePage() {
           full_name: officer.full_name,
           department: officer.department,
           join_date: officer.join_date,
-          baseAmount: rate?.base_amount || 0,
-          prorate: rate?.prorate_per_day || 0,
-          offCount: usia.off,
+          baseAmount: snapshot?.base_amount_manual ? snapshot.base_amount_value_manual : (rate?.base_amount || 0),
+          prorate: snapshot?.prorate_manual ? snapshot.prorate_value_manual : (rate?.prorate_per_day || 0),
+          offCount: snapshot?.off_manual ? snapshot.off_count_manual : (usia.off || 0),
           sakitCount: usia.sakit,
           izinCount: usia.izin,
           unpaidCount: usia.unpaid,
@@ -305,6 +312,13 @@ export default function MealAllowancePage() {
           kasbon: snapshot?.kasbon || 0,
           etc: snapshot?.etc || 0,
           etc_note: snapshot?.etc_note || '',
+          // Tambahan field untuk manual override
+          off_manual: snapshot?.off_manual || false,
+          off_count_manual: snapshot?.off_count_manual || 0,
+          prorate_manual: snapshot?.prorate_manual || false,
+          prorate_value_manual: snapshot?.prorate_value_manual || 0,
+          base_amount_manual: snapshot?.base_amount_manual || false,
+          base_amount_value_manual: snapshot?.base_amount_value_manual || 0,
           bank: bank,
           rek: rek,
           link: link,
@@ -380,7 +394,13 @@ export default function MealAllowancePage() {
       kasbon: officer.kasbon || 0,
       cuti: officer.cutiCount || 0,
       etc: officer.etc || 0,
-      etc_note: officer.etc_note || ''
+      etc_note: officer.etc_note || '',
+      off_manual: officer.off_manual || false,
+      off_count_manual: officer.off_count_manual || officer.offCount || 0,
+      prorate_manual: officer.prorate_manual || false,
+      prorate_value_manual: officer.prorate_value_manual || officer.prorate || 0,
+      base_amount_manual: officer.base_amount_manual || false,
+      base_amount_value_manual: officer.base_amount_value_manual || officer.baseAmount || 0
     });
   };
 
@@ -402,17 +422,21 @@ export default function MealAllowancePage() {
       const officer = editingOfficer;
       const prev = getPreviousMonthData(selectedMonth, selectedYear);
       
-      // Hitung ulang - Hanya CS DP WD yang dapat prorate
+      // Hitung ulang dengan mempertimbangkan manual override
       let uangProrate = 0;
+      let offRemaining = 0;
+      let baseAmount = editForm.base_amount_manual ? editForm.base_amount_value_manual : officer.baseAmount;
+      let prorateValue = editForm.prorate_manual ? editForm.prorate_value_manual : officer.prorate;
+      let offCount = editForm.off_manual ? editForm.off_count_manual : officer.offCount;
+      
       if (officer.department === 'CS DP WD') {
-        const offDiambil = officer.offCount || 0;
-        const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
-        uangProrate = offTidakDiambil * officer.prorate;
+        offRemaining = Math.max(0, JATAH_OFF_PER_PERIODE - offCount);
+        uangProrate = offRemaining * prorateValue;
       }
       
-      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
+      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * prorateValue;
       const denda = officer.alphaCount * 50;
-      const umNetBaru = Math.max(0, officer.baseAmount + uangProrate - potongan - denda);
+      const umNetBaru = Math.max(0, baseAmount + uangProrate - potongan - denda);
       const finalNetBaru = Math.max(0, umNetBaru - editForm.kasbon + editForm.etc);
       
       let adminName = 'Unknown';
@@ -441,9 +465,9 @@ export default function MealAllowancePage() {
         bulan: bulan,
         periode_start: prev.start,
         periode_end: prev.end,
-        base_amount: officer.baseAmount,
-        prorate: officer.prorate,
-        off_count: officer.offCount || 0,
+        base_amount: baseAmount,
+        prorate: prorateValue,
+        off_count: offCount,
         sakit_count: officer.sakitCount || 0,
         cuti_count: editForm.cuti,
         izin_count: officer.izinCount || 0,
@@ -453,6 +477,13 @@ export default function MealAllowancePage() {
         kasbon: editForm.kasbon,
         etc: editForm.etc || 0,
         etc_note: editForm.etc_note,
+        // Tambahan field untuk manual override
+        off_manual: editForm.off_manual,
+        off_count_manual: editForm.off_manual ? editForm.off_count_manual : null,
+        prorate_manual: editForm.prorate_manual,
+        prorate_value_manual: editForm.prorate_manual ? editForm.prorate_value_manual : null,
+        base_amount_manual: editForm.base_amount_manual,
+        base_amount_value_manual: editForm.base_amount_manual ? editForm.base_amount_value_manual : null,
         last_edited_by: adminId,
         last_edited_at: new Date().toISOString(),
         is_paid: officer.is_paid,
@@ -755,6 +786,23 @@ export default function MealAllowancePage() {
                   <div className="flex flex-col">
                     <span className="font-bold text-[#FFD700]">{officer.full_name}</span>
                     
+                    {/* Tanda manual override */}
+                    {officer.off_manual && (
+                      <span className="text-[10px] text-yellow-400 mt-0.5">
+                        ✏️ OFF Manual: {officer.off_count_manual} hari
+                      </span>
+                    )}
+                    {officer.prorate_manual && (
+                      <span className="text-[10px] text-yellow-400 mt-0.5">
+                        ✏️ Prorate Manual: ${officer.prorate_value_manual}/hari
+                      </span>
+                    )}
+                    {officer.base_amount_manual && (
+                      <span className="text-[10px] text-yellow-400 mt-0.5">
+                        ✏️ Base Manual: ${officer.base_amount_value_manual}
+                      </span>
+                    )}
+                    
                     {/* Info prorate hanya untuk CS DP WD */}
                     {officer.department === 'CS DP WD' && officer.offRemaining > 0 && (
                       <span className="text-[10px] text-green-400 mt-1 animate-pulse">
@@ -881,6 +929,9 @@ export default function MealAllowancePage() {
           <span className="flex items-center gap-1 text-[#FFD700]">
             <span>⬇️</span> Refresh sync
           </span>
+          <span className="flex items-center gap-1 text-yellow-400">
+            <span>✏️</span> Manual override
+          </span>
         </div>
         <div className="flex gap-4 items-center">
           <span>Last sync: {lastSync.toLocaleString()}</span>
@@ -900,55 +951,208 @@ export default function MealAllowancePage() {
       {/* Edit Modal */}
       {editingOfficer && isAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
-          <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full transform scale-100 transition-all duration-300">
+          <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-2xl w-full transform scale-100 transition-all duration-300 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-[#FFD700] mb-4">Edit {editingOfficer.full_name}</h3>
             
-            <div className="space-y-4">
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">KASBON ( - )</label>
-                <input 
-                  type="number" 
-                  value={editForm.kasbon} 
-                  onChange={(e) => setEditForm({...editForm, kasbon: parseInt(e.target.value) || 0})} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
-                  min="0"
-                />
-              </div>
-              
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">CUTI (hari)</label>
-                <input 
-                  type="number" 
-                  value={editForm.cuti} 
-                  onChange={(e) => setEditForm({...editForm, cuti: parseInt(e.target.value) || 0})} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
-                  min="0"
-                />
-                <div className="flex gap-4 mt-1 text-[10px] text-[#A7D8FF]">
-                  <span>OFF diambil: {editingOfficer.offCount || 0}/{JATAH_OFF_PER_PERIODE}</span>
-                  <span>Sisa off: {Math.max(0, JATAH_OFF_PER_PERIODE - (editingOfficer.offCount || 0))}</span>
+            <div className="space-y-6">
+              {/* Section: Manual Override untuk Prorate dan OFF */}
+              <div className="border border-[#FFD700]/30 rounded-lg p-4 bg-[#1A2F4A]">
+                <h4 className="text-[#FFD700] font-semibold mb-3">⚙️ MANUAL OVERRIDE</h4>
+                
+                {/* Base Amount Manual */}
+                <div className="mb-4 p-3 bg-[#0B1A33] rounded-lg">
+                  <label className="flex items-center gap-2 text-[#A7D8FF] text-sm mb-2">
+                    <input 
+                      type="checkbox" 
+                      checked={editForm.base_amount_manual} 
+                      onChange={(e) => setEditForm({...editForm, base_amount_manual: e.target.checked})} 
+                      className="w-4 h-4 accent-[#FFD700]"
+                    />
+                    <span>Manual Base Amount (default: {editingOfficer.baseAmount})</span>
+                  </label>
+                  
+                  {editForm.base_amount_manual && (
+                    <input 
+                      type="number" 
+                      value={editForm.base_amount_value_manual} 
+                      onChange={(e) => setEditForm({...editForm, base_amount_value_manual: parseInt(e.target.value) || 0})} 
+                      className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+                      min="0"
+                      placeholder="Masukkan base amount"
+                    />
+                  )}
+                </div>
+                
+                {/* Prorate Manual */}
+                <div className="mb-4 p-3 bg-[#0B1A33] rounded-lg">
+                  <label className="flex items-center gap-2 text-[#A7D8FF] text-sm mb-2">
+                    <input 
+                      type="checkbox" 
+                      checked={editForm.prorate_manual} 
+                      onChange={(e) => setEditForm({...editForm, prorate_manual: e.target.checked})} 
+                      className="w-4 h-4 accent-[#FFD700]"
+                    />
+                    <span>Manual Prorate/hari (default: {editingOfficer.prorate})</span>
+                  </label>
+                  
+                  {editForm.prorate_manual && (
+                    <input 
+                      type="number" 
+                      value={editForm.prorate_value_manual} 
+                      onChange={(e) => setEditForm({...editForm, prorate_value_manual: parseInt(e.target.value) || 0})} 
+                      className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+                      min="0"
+                      placeholder="Masukkan nilai prorate per hari"
+                    />
+                  )}
+                </div>
+                
+                {/* OFF Manual */}
+                <div className="p-3 bg-[#0B1A33] rounded-lg">
+                  <label className="flex items-center gap-2 text-[#A7D8FF] text-sm mb-2">
+                    <input 
+                      type="checkbox" 
+                      checked={editForm.off_manual} 
+                      onChange={(e) => setEditForm({...editForm, off_manual: e.target.checked})} 
+                      className="w-4 h-4 accent-[#FFD700]"
+                    />
+                    <span>Manual OFF Count (default dari schedule: {editingOfficer.offCount})</span>
+                  </label>
+                  
+                  {editForm.off_manual && (
+                    <div>
+                      <input 
+                        type="number" 
+                        value={editForm.off_count_manual} 
+                        onChange={(e) => setEditForm({...editForm, off_count_manual: parseInt(e.target.value) || 0})} 
+                        className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+                        min="0"
+                        max={JATAH_OFF_PER_PERIODE}
+                        placeholder={`Maksimal ${JATAH_OFF_PER_PERIODE} hari`}
+                      />
+                      <p className="text-[10px] text-[#A7D8FF] mt-1">
+                        * Jatah OFF per periode: {JATAH_OFF_PER_PERIODE} hari
+                      </p>
+                    </div>
+                  )}
+                  
+                  {!editForm.off_manual && (
+                    <div className="flex gap-4 mt-1 text-[12px] text-[#A7D8FF]">
+                      <span>OFF diambil: {editingOfficer.offCount || 0}/{JATAH_OFF_PER_PERIODE}</span>
+                      <span>Sisa off: {Math.max(0, JATAH_OFF_PER_PERIODE - (editingOfficer.offCount || 0))}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">ETC (+/-)</label>
-                <input 
-                  type="number" 
-                  value={editForm.etc} 
-                  onChange={(e) => setEditForm({...editForm, etc: parseInt(e.target.value) || 0})} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
-                />
+              {/* Section: Data yang bisa diedit */}
+              <div className="border border-[#FFD700]/30 rounded-lg p-4 bg-[#1A2F4A]">
+                <h4 className="text-[#FFD700] font-semibold mb-3">📝 DATA EDIT</h4>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[#A7D8FF] text-sm block mb-1">KASBON ( - )</label>
+                    <input 
+                      type="number" 
+                      value={editForm.kasbon} 
+                      onChange={(e) => setEditForm({...editForm, kasbon: parseInt(e.target.value) || 0})} 
+                      className="w-full bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+                      min="0"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[#A7D8FF] text-sm block mb-1">CUTI (hari)</label>
+                    <input 
+                      type="number" 
+                      value={editForm.cuti} 
+                      onChange={(e) => setEditForm({...editForm, cuti: parseInt(e.target.value) || 0})} 
+                      className="w-full bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+                      min="0"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[#A7D8FF] text-sm block mb-1">ETC (+/-)</label>
+                    <input 
+                      type="number" 
+                      value={editForm.etc} 
+                      onChange={(e) => setEditForm({...editForm, etc: parseInt(e.target.value) || 0})} 
+                      className="w-full bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="text-[#A7D8FF] text-sm block mb-1">Keterangan</label>
+                    <input 
+                      type="text" 
+                      value={editForm.etc_note} 
+                      onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})} 
+                      className="w-full bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+                      placeholder="Misal: Koreksi, Bonus, Denda"
+                    />
+                  </div>
+                </div>
               </div>
               
-              <div>
-                <label className="text-[#A7D8FF] text-sm block mb-1">Keterangan</label>
-                <input 
-                  type="text" 
-                  value={editForm.etc_note} 
-                  onChange={(e) => setEditForm({...editForm, etc_note: e.target.value})} 
-                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
-                  placeholder="Misal: Koreksi, Bonus, Denda"
-                />
+              {/* Preview hasil perhitungan */}
+              <div className="border border-[#FFD700]/30 rounded-lg p-4 bg-[#1A2F4A]">
+                <h4 className="text-[#FFD700] font-semibold mb-3">🔍 PREVIEW</h4>
+                
+                {(() => {
+                  // Hitung preview dengan data yang diinput
+                  const baseAmount = editForm.base_amount_manual ? editForm.base_amount_value_manual : editingOfficer.baseAmount;
+                  const prorateValue = editForm.prorate_manual ? editForm.prorate_value_manual : editingOfficer.prorate;
+                  const offCount = editForm.off_manual ? editForm.off_count_manual : editingOfficer.offCount;
+                  
+                  let uangProrate = 0;
+                  if (editingOfficer.department === 'CS DP WD') {
+                    const offRemaining = Math.max(0, JATAH_OFF_PER_PERIODE - offCount);
+                    uangProrate = offRemaining * prorateValue;
+                  }
+                  
+                  const potongan = (editingOfficer.sakitCount + editForm.cuti + editingOfficer.izinCount + editingOfficer.unpaidCount) * prorateValue;
+                  const denda = editingOfficer.alphaCount * 50;
+                  const umNetPreview = Math.max(0, baseAmount + uangProrate - potongan - denda);
+                  const finalNetPreview = Math.max(0, umNetPreview - editForm.kasbon + editForm.etc);
+                  
+                  return (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-[#A7D8FF]">Base Amount:</span>
+                        <span className="text-white font-medium">${baseAmount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#A7D8FF]">Prorate/hari:</span>
+                        <span className="text-white font-medium">${prorateValue}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#A7D8FF]">OFF Count:</span>
+                        <span className="text-white font-medium">{offCount} hari</span>
+                      </div>
+                      {editingOfficer.department === 'CS DP WD' && (
+                        <div className="flex justify-between text-green-400">
+                          <span>Uang Prorate (+):</span>
+                          <span>+${uangProrate}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-red-400">
+                        <span>Total Potongan (-):</span>
+                        <span>-${potongan + denda}</span>
+                      </div>
+                      <div className="border-t border-[#FFD700]/30 my-2 pt-2">
+                        <div className="flex justify-between font-bold">
+                          <span className="text-[#FFD700]">UM NET:</span>
+                          <span className="text-[#FFD700]">${umNetPreview}</span>
+                        </div>
+                        <div className="flex justify-between font-bold text-lg mt-1">
+                          <span className="text-[#FFD700]">FINAL NET:</span>
+                          <span className="text-[#FFD700]">${finalNetPreview}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               
               <div className="flex gap-2 pt-4">
