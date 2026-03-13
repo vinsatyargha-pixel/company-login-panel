@@ -1,66 +1,743 @@
-// Ini adalah halaman DP Data Raw lo yang udah ada
-// Kita tambahin komponen import di bagian atas atau sebagai modal/tab
+'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import Link from 'next/link'
+import * as XLSX from 'xlsx'
 
-export default function DPDataRawPage() {
-  const [showImport, setShowImport] = useState(false)
-  const [data, setData] = useState([]) // data deposit lo yang existing
+// ===========================================
+// TYPES
+// ===========================================
+
+type Asset = {
+  id: string
+  asset_name: string
+  asset_code: string
+}
+
+type ChatUpload = {
+  id: string
+  upload_date: string
+  file_name: string
+  total_rows: number
+  status: string
+  website?: string
+}
+
+type ChatData = {
+  account: string | null
+  group: string | null
+  website: string | null
+  conversation_id: string | null
+  started: string | null
+  ended: string | null
+  chat_duration: string | null
+  username: string | null
+  total_replies: number
+  replied_by_bot: number
+  replied_by_agent: number
+  bot_percentage: number | null
+  agent_percentage: number | null
+  status: string | null
+  agent_alias: string | null
+  agent_email: string | null
+  agent_name: string | null
+  resolve_duration: string | null
+  chat_prompt_id: number | null
+  intents: string[] | null
+  emotional_sentiment: string[] | null
+  agent_real_name: string | null
+  file_name: string
+}
+
+// ===========================================
+// SET SESSION VARIABLE FUNCTION
+// ===========================================
+const setSessionVariable = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const username = user.email?.split('@')[0] || user.user_metadata?.username;
+      
+      if (!username) {
+        console.warn('⚠️ Username tidak ditemukan');
+        return;
+      }
+      
+      console.log('🔧 Setting session variable:', username);
+      
+      const { error } = await supabase.rpc('set_config', {
+        name: 'app.panel_id',
+        value: username,
+        bypass: false
+      });
+      
+      if (error) {
+        console.error('❌ Gagal set session:', error);
+      } else {
+        console.log('✅ Session variable set:', username);
+      }
+    }
+  } catch (err) {
+    console.error('❌ Error set session:', err);
+  }
+};
+
+// ===========================================
+// HELPER FUNCTIONS
+// ===========================================
+
+const parseExcelDate = (value: any): string | null => {
+  if (!value) return null
+
+  try {
+    // Handle Excel serial number
+    if (typeof value === 'number') {
+      const date = XLSX.SSF.parse_date_code(value)
+      if (!date) return null
+      const hour = date.H?.toString().padStart(2, '0') || '00'
+      const minute = date.M?.toString().padStart(2, '0') || '00'
+      const second = date.S?.toString().padStart(2, '0') || '00'
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
+    }
+
+    // Handle string date
+    const str = value.toString().trim()
+    
+    // Format: 2026-12-03 23:50:00
+    if (str.includes('-') && str.includes(':')) {
+      const [datePart, timePart] = str.split(' ')
+      if (datePart && timePart) {
+        const [year, month, day] = datePart.split('-')
+        if (year && month && day) {
+          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+        }
+      }
+    }
+    
+    // Format: 13/03/26 09:32 (DD/MM/YY)
+    if (str.includes('/')) {
+      const parts = str.split(' ')
+      if (parts.length >= 2) {
+        const [datePart, timePart] = parts
+        const [day, month, year] = datePart.split('/')
+        if (day && month && year) {
+          const fullYear = year.length === 2 ? '20' + year : year
+          return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+        }
+      }
+    }
+    
+    return null
+  } catch {
+    return null
+  }
+}
+
+const parseDurationToISO = (duration: string): string | null => {
+  if (!duration) return null
   
-  return (
-    <div className="p-6">
-      {/* Header dengan Breadcrumb sesuai struktur lo */}
-      <div className="mb-6">
-        <div className="text-sm breadcrumbs">
-          <ul className="flex space-x-2 text-gray-500">
-            <li><a href="/dashboard">Dashboard</a></li>
-            <li><a href="/dashboard/data-raw">Data Raw</a></li>
-            <li className="text-blue-600 font-semibold">DP Data Raw</li>
-          </ul>
-        </div>
+  // Format: HH:MM:SS
+  const parts = duration.split(':')
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts
+    return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${seconds.padStart(2, '0')}`
+  }
+  
+  // Format: 10:19:01 (sudah benar)
+  if (duration.includes(':')) {
+    return duration
+  }
+  
+  return null
+}
+
+const parsePercentage = (value: string): number | null => {
+  if (!value) return null
+  const match = value.match(/(\d+(?:\.\d+)?)%/)
+  return match ? parseFloat(match[1]) : null
+}
+
+const parseArrayField = (value: string): string[] | null => {
+  if (!value || value === '-' || value === ' -') return null
+  return value.split(',').map(item => item.trim()).filter(item => item)
+}
+
+// ===========================================
+// MAIN COMPONENT
+// ===========================================
+
+export default function ChatCSDataRawPage() {
+  const { user } = useAuth()
+  
+  // Data states
+  const [uploads, setUploads] = useState<ChatUpload[]>([])
+  const [assets, setAssets] = useState<Asset[]>([])
+  const [loading, setLoading] = useState(true)
+  
+  // Filter states
+  const [selectedMonth, setSelectedMonth] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
+  const [selectedAsset, setSelectedAsset] = useState('all')
+  
+  // Upload modal states
+  const [showModal, setShowModal] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState('')
+
+  const months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ]
+  const years = ['2025', '2026', '2027']
+
+  // ===========================================
+  // INITIAL DATA
+  // ===========================================
+
+  useEffect(() => {
+    const today = new Date()
+    setSelectedMonth(months[today.getMonth()])
+    setSelectedYear(today.getFullYear().toString())
+    fetchAssets()
+    setSessionVariable()
+  }, [])
+
+  useEffect(() => {
+    if (selectedMonth && selectedYear) {
+      fetchUploads()
+    }
+  }, [selectedMonth, selectedYear, selectedAsset])
+
+  // ===========================================
+  // FETCH FUNCTIONS
+  // ===========================================
+
+  const fetchAssets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('assets')
+        .select('id, asset_name, asset_code')
+        .order('asset_name')
+      
+      if (error) throw error
+      setAssets(data || [])
+    } catch (error) {
+      console.error('Error fetching assets:', error)
+    }
+  }
+
+  const fetchUploads = async () => {
+    try {
+      setLoading(true)
+      
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+
+      let query = supabase
+        .from('chat_uploads')
+        .select('*')
+        .gte('upload_date', startDate)
+        .lte('upload_date', endDate)
+        .order('upload_date', { ascending: true })
+
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset)
+        if (asset) {
+          query = query.eq('website', asset.asset_code)
+        }
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+      
+      console.log('📅 Data uploads:', data)
+      setUploads(data || [])
+    } catch (error) {
+      console.error('Error fetching uploads:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ===========================================
+  // DRAG & DROP HANDLERS
+  // ===========================================
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true)
+    } else if (e.type === 'dragleave') {
+      setDragActive(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    
+    const files = e.dataTransfer.files
+    if (files && files[0]) {
+      const file = files[0]
+      const validTypes = ['.xlsx', '.xls', '.csv']
+      const fileExt = file.name.split('.').pop()?.toLowerCase()
+      
+      if (!fileExt || !validTypes.includes(`.${fileExt}`)) {
+        alert('Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv')
+        return
+      }
+      
+      setSelectedFile(file)
+    }
+  }, [])
+
+  // ===========================================
+  // UPLOAD PROCESS
+  // ===========================================
+
+  const processFile = async () => {
+    if (!selectedFile) return
+    
+    setUploading(true)
+    setUploadProgress('Membaca file...')
+    
+    try {
+      const arrayBuffer = await selectedFile.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer)
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      
+      const rows = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        defval: '',
+        blankrows: false
+      }) as any[][]
+      
+      console.log('📋 Total baris:', rows.length)
+      
+      // Header sudah di baris pertama
+      const headers = rows[0]
+      const dataRows = rows.slice(1)
+      
+      console.log('📊 Jumlah baris data:', dataRows.length)
+      
+      // Mapping kolom berdasarkan file Excel
+      const findIndex = (keyword: string) => {
+        return headers.findIndex((h: string) => 
+          h && h.toString().toLowerCase().includes(keyword.toLowerCase())
+        )
+      }
+      
+      const idx = {
+        account: findIndex('account'),
+        group: findIndex('group'),
+        website: findIndex('website'),
+        conversation_id: findIndex('conversation id'),
+        started: findIndex('started'),
+        ended: findIndex('ended'),
+        chat_duration: findIndex('chat duration'),
+        username: findIndex('username'),
+        total_replies: findIndex('total replies'),
+        replied_by_bot: findIndex('replied by bot'),
+        replied_by_agent: findIndex('replied by agent'),
+        status: findIndex('status'),
+        agent_alias: findIndex('agent alias'),
+        agent_email: findIndex('agent email'),
+        agent_name: findIndex('agent name'),
+        resolve_duration: findIndex('resolve duration'),
+        chat_prompt_id: findIndex('chat prompt id'),
+        intents: findIndex('intent(s)'),
+        emotional_sentiment: findIndex('emotional sentiment'),
+        agent_real_name: findIndex('agent real name')
+      }
+      
+      setUploadProgress('Memvalidasi data...')
+      
+      // Transform data
+      const validData: ChatData[] = []
+      const uploadDates = new Set<string>()
+      
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i]
+        if (!row || row.length === 0) continue
         
-        <div className="flex justify-between items-center mt-4">
-          <h1 className="text-2xl font-bold">Deposit Data Raw</h1>
-          
-          {/* Tombol Import yang muncul di halaman DP */}
-          <button
-            onClick={() => setShowImport(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            Import Data Deposit
-          </button>
+        // Parse tanggal started (kolom E) sebagai patokan
+        const started = parseExcelDate(row[idx.started])
+        if (!started) continue
+        
+        // Ambil tanggal saja untuk tracking upload
+        const dateOnly = started.split(' ')[0]
+        uploadDates.add(dateOnly)
+        
+        // Parse replied_by_bot dan replied_by_agent dari string seperti "5 (100%)"
+        const botStr = row[idx.replied_by_bot]?.toString() || ''
+        const agentStr = row[idx.replied_by_agent]?.toString() || ''
+        
+        const botMatch = botStr.match(/(\d+)/)
+        const agentMatch = agentStr.match(/(\d+)/)
+        
+        const replied_by_bot = botMatch ? parseInt(botMatch[1]) : 0
+        const replied_by_agent = agentMatch ? parseInt(agentMatch[1]) : 0
+        
+        validData.push({
+          account: row[idx.account] || null,
+          group: row[idx.group] || null,
+          website: row[idx.website] || 'X',
+          conversation_id: row[idx.conversation_id] || null,
+          started: started,
+          ended: parseExcelDate(row[idx.ended]),
+          chat_duration: parseDurationToISO(row[idx.chat_duration]?.toString()),
+          username: row[idx.username] || null,
+          total_replies: parseInt(row[idx.total_replies]) || 0,
+          replied_by_bot: replied_by_bot,
+          replied_by_agent: replied_by_agent,
+          bot_percentage: parsePercentage(botStr),
+          agent_percentage: parsePercentage(agentStr),
+          status: row[idx.status] || null,
+          agent_alias: row[idx.agent_alias] || null,
+          agent_email: row[idx.agent_email] || null,
+          agent_name: row[idx.agent_name] || null,
+          resolve_duration: parseDurationToISO(row[idx.resolve_duration]?.toString()),
+          chat_prompt_id: row[idx.chat_prompt_id] ? parseInt(row[idx.chat_prompt_id]) : null,
+          intents: parseArrayField(row[idx.intents]),
+          emotional_sentiment: parseArrayField(row[idx.emotional_sentiment]),
+          agent_real_name: row[idx.agent_real_name] || null,
+          file_name: selectedFile.name
+        })
+      }
+
+      console.log('✅ Data valid:', validData.length)
+      console.log('📅 Tanggal dalam file:', Array.from(uploadDates))
+      
+      if (validData.length === 0) {
+        throw new Error('Tidak ada data valid dalam file')
+      }
+
+      setUploadProgress(`Menyimpan ${validData.length} data chat...`)
+      
+      // Insert ke chat_cs_data
+      const { error } = await supabase
+        .from('chat_cs_data')
+        .insert(validData)
+
+      if (error) {
+        console.error('❌ Error detail:', error)
+        throw error
+      }
+
+      // Insert ke chat_uploads untuk tracking
+      setUploadProgress('Menyimpan tracking upload...')
+      
+      const dataByDate: { [key: string]: ChatData[] } = {}
+      validData.forEach(d => {
+        const date = d.started?.split(' ')[0]
+        if (!date) return
+        if (!dataByDate[date]) {
+          dataByDate[date] = []
+        }
+        dataByDate[date].push(d)
+      })
+
+      for (const [date, data] of Object.entries(dataByDate)) {
+        const { error: uploadError } = await supabase
+          .from('chat_uploads')
+          .insert({
+            upload_date: date,
+            file_name: selectedFile.name,
+            total_rows: data.length,
+            status: 'completed',
+            website: data[0]?.website || 'X'
+          })
+        
+        if (uploadError) {
+          console.error('❌ Error insert upload:', uploadError)
+        }
+      }
+
+      // Log ke audit_logs
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        await supabase.from('audit_logs').insert({
+          table_name: 'chat_cs_data',
+          action: 'UPLOAD',
+          new_data: { 
+            count: validData.length,
+            filename: selectedFile.name,
+            dates: Array.from(uploadDates)
+          },
+          changed_by: user?.id,
+          changed_at: new Date().toISOString(),
+          module: 'CHAT_CS',
+          description: `Uploaded ${validData.length} chat CS data from ${selectedFile.name}`
+        });
+        console.log('✅ Upload logged to audit_logs');
+      } catch (logError) {
+        console.error('❌ Error logging to audit_logs:', logError);
+      }
+
+      alert(`✅ Berhasil! ${validData.length} data chat dari ${Object.keys(dataByDate).length} tanggal`)
+      
+      setShowModal(false)
+      setSelectedFile(null)
+      fetchUploads()
+      
+    } catch (error: any) {
+      console.error('❌ Error:', error)
+      alert('❌ Gagal: ' + error.message)
+    } finally {
+      setUploading(false)
+      setUploadProgress('')
+    }
+  }
+
+  // ===========================================
+  // HELPER FUNCTIONS
+  // ===========================================
+
+  const getDayFromDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr)
+      return date.getDate()
+    } catch {
+      return 1
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch(status?.toLowerCase()) {
+      case 'completed': return 'bg-green-500/20 text-green-400'
+      case 'processing': return 'bg-yellow-500/20 text-yellow-400'
+      case 'failed': return 'bg-red-500/20 text-red-400'
+      default: return 'bg-gray-500/20 text-gray-400'
+    }
+  }
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr)
+      return date.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    } catch {
+      return dateStr
+    }
+  }
+
+  // ===========================================
+  // RENDER
+  // ===========================================
+
+  if (loading) {
+    return (
+      <div className="p-6 min-h-screen bg-[#0B1A33] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
+      {/* Header */}
+      <div className="mb-6 flex justify-between items-center">
+        <Link href="/dashboard/data-raw" className="text-[#FFD700] hover:underline">
+          ← BACK TO DATA RAW
+        </Link>
+        
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-[#FFD700] text-[#0B1A33] px-6 py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          UPLOAD EXCEL
+        </button>
+      </div>
+
+      <h1 className="text-3xl font-bold text-[#FFD700] mb-6">CHAT CS DATA RAW</h1>
+
+      {/* INFO PENTING */}
+      <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
+        <p className="text-sm text-[#A7D8FF]">
+          <span className="text-[#FFD700] font-bold">📌 PATOKAN:</span> Kolom <span className="text-[#FFD700]">M (Username)</span> = 1 chat per officer, 
+          Kolom <span className="text-[#FFD700]">E (Started)</span> = filter tanggal
+        </p>
+      </div>
+
+      {/* FILTERS */}
+      <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
+        <select 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+        >
+          {months.map(month => (
+            <option key={month} value={month}>{month}</option>
+          ))}
+        </select>
+        
+        <select 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+        >
+          {years.map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
+        
+        <select 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+          value={selectedAsset}
+          onChange={(e) => setSelectedAsset(e.target.value)}
+        >
+          <option value="all">SEMUA WEBSITE</option>
+          {assets.map(asset => (
+            <option key={asset.id} value={asset.id}>
+              {asset.asset_name}
+            </option>
+          ))}
+        </select>
+
+        <div className="ml-auto text-[#A7D8FF]">
+          Total: <span className="text-[#FFD700] font-bold">{uploads.length}</span> file
         </div>
       </div>
 
-      {/* Modal/Tab Import (kode dari sebelumnya bisa dimasukin sini) */}
-      {showImport && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            {/* Close button */}
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Import Data Deposit</h2>
-              <button onClick={() => setShowImport(false)} className="text-gray-500 hover:text-gray-700">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+      {/* TABLE UPLOADS */}
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
+            <tr>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal Upload</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Chat</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {uploads.length > 0 ? (
+              uploads.map((item) => {
+                const day = getDayFromDate(item.upload_date)
+                
+                return (
+                  <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                    <td className="px-4 py-3">
+                      {day} {selectedMonth} {selectedYear}
+                    </td>
+                    <td className="px-4 py-3 text-[#FFD700]">{item.website || '-'}</td>
+                    <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                    <td className="px-4 py-3">{item.total_rows} chat</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
+                        {item.status}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })
+            ) : (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                  Tidak ada data untuk periode ini
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* UPLOAD MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
+            <h2 className="text-xl font-bold text-[#FFD700] mb-4">Upload File Chat CS</h2>
+            <p className="text-sm text-[#A7D8FF] mb-4">
+              Geser file Excel ke area di bawah, atau klik untuk memilih
+            </p>
+            
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer transition-colors
+                ${dragActive 
+                  ? 'border-[#FFD700] bg-[#FFD700]/10' 
+                  : 'border-[#FFD700]/30 hover:border-[#FFD700] hover:bg-[#FFD700]/5'
+                }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById('fileInput')?.click()}
+            >
+              <input
+                id="fileInput"
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              />
+              
+              {selectedFile ? (
+                <div className="text-green-400">
+                  <p className="text-lg mb-2">✓ {selectedFile.name}</p>
+                  <p className="text-sm text-[#A7D8FF]">
+                    {(selectedFile.size / 1024).toFixed(2)} KB
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="text-4xl mb-2">💬</div>
+                  <p className="text-[#FFD700] font-medium">Geser file ke sini</p>
+                  <p className="text-sm text-[#A7D8FF] mt-2">atau klik untuk memilih</p>
+                  <p className="text-xs text-gray-400 mt-4">Format: .xlsx, .xls, .csv</p>
+                </>
+              )}
             </div>
             
-            {/* MASUKIN KODE IMPORT DARI SEBELUMNYA DI SINI */}
-            {/* ... (kode upload file, dll yang udah gue kasih) ... */}
+            {uploadProgress && (
+              <div className="mb-4 text-sm text-[#A7D8FF] text-center">
+                {uploadProgress}
+              </div>
+            )}
             
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setShowModal(false)
+                  setSelectedFile(null)
+                  setUploadProgress('')
+                }}
+                className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                onClick={processFile}
+                disabled={!selectedFile || uploading}
+                className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded font-bold hover:bg-[#FFD700]/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {uploading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-[#0B1A33] border-t-transparent rounded-full animate-spin"></div>
+                    Uploading...
+                  </span>
+                ) : 'Upload'}
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Tabel Data Deposit yang udah ada */}
-      <div className="bg-white rounded-lg shadow">
-        {/* ... tabel existing lo ... */}
-      </div>
     </div>
   )
 }
