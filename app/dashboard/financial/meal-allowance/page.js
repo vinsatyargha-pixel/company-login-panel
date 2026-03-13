@@ -25,7 +25,7 @@ export default function MealAllowancePage() {
     cuti: 0,
     etc: 0,
     etc_note: '',
-    prorate: 0 // <--- PRORATE DITAMBAH DISINI
+    prorate: 0 // <--- TAMBAHIN INI (KAYA ETC)
   });
   const [lastSync, setLastSync] = useState(new Date());
 
@@ -295,7 +295,7 @@ export default function MealAllowancePage() {
           department: officer.department,
           join_date: officer.join_date,
           baseAmount: rate?.base_amount || 0,
-          prorate: snapshot?.prorate || rate?.prorate_per_day || 0, // <--- AMBIL DARI SNAPSHOT KALAU ADA
+          prorate: snapshot?.prorate || rate?.prorate_per_day || 0, // <--- PAKAI DARI SNAPSHOT KALAU ADA
           offCount: usia.off,
           sakitCount: usia.sakit,
           izinCount: usia.izin,
@@ -327,7 +327,7 @@ export default function MealAllowancePage() {
           if (o.department === 'CS DP WD') {
             const offDiambil = o.offCount || 0;
             offRemaining = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
-            uangProrate = offRemaining * o.prorate;
+            uangProrate = offRemaining * o.prorate; // <--- PAKAI PRORATE DARI SNAPSHOT
           }
           
           // Potongan dari ketidakhadiran (sakit, izin, unpaid, cuti)
@@ -381,7 +381,7 @@ export default function MealAllowancePage() {
       cuti: officer.cutiCount || 0,
       etc: officer.etc || 0,
       etc_note: officer.etc_note || '',
-      prorate: officer.prorate || 0 // <--- PRORATE DITAMBAH DISINI
+      prorate: officer.prorate || 0 // <--- TAMBAHIN INI
     });
   };
 
@@ -443,7 +443,7 @@ export default function MealAllowancePage() {
         periode_start: prev.start,
         periode_end: prev.end,
         base_amount: officer.baseAmount,
-        prorate: editForm.prorate, // <--- UPDATE PRORATE KE DATABASE
+        prorate: editForm.prorate, // <--- UPDATE PRORATE DI DATABASE
         off_count: officer.offCount || 0,
         sakit_count: officer.sakitCount || 0,
         cuti_count: editForm.cuti,
@@ -898,14 +898,14 @@ export default function MealAllowancePage() {
         </div>
       </div>
 
-      {/* Edit Modal - PRORATE SUDAH DITAMBAH DISINI */}
+      {/* Edit Modal - TAMBAHAN PRORATE KAYA ETC */}
       {editingOfficer && isAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
           <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full transform scale-100 transition-all duration-300">
             <h3 className="text-xl font-bold text-[#FFD700] mb-4">Edit {editingOfficer.full_name}</h3>
             
             <div className="space-y-4">
-              {/* PRORATE - INPUT BARU */}
+              {/* PRORATE - TAMBAHAN BARU (KAYA ETC) */}
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">PRORATE (per hari)</label>
                 <input 
@@ -917,10 +917,10 @@ export default function MealAllowancePage() {
                   step="1"
                 />
                 <p className="text-[10px] text-[#A7D8FF] mt-1">
-                  * Nilai prorate untuk perhitungan potongan dan bonus OFF
+                  * Nilai prorate untuk hitung uang prorate dan potongan
                 </p>
               </div>
-              
+
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">KASBON ( - )</label>
                 <input 
