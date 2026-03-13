@@ -24,7 +24,8 @@ export default function MealAllowancePage() {
     kasbon: 0,
     cuti: 0,
     etc: 0,
-    etc_note: ''
+    etc_note: '',
+    prorate_hari: 0 // <--- INI YANG LO MAU: jumlah hari prorate tambahan
   });
   const [lastSync, setLastSync] = useState(new Date());
 
@@ -32,7 +33,7 @@ export default function MealAllowancePage() {
                   'July', 'August', 'September', 'October', 'November', 'December'];
   const years = ['2025', '2026', '2027'];
 
-  // Jatah OFF per periode (21 - 20) - HANYA UNTUK CS DP WD
+  // Jatah OFF per periode (21 - 20)
   const JATAH_OFF_PER_PERIODE = 4;
 
   // ===========================================
@@ -243,7 +244,6 @@ export default function MealAllowancePage() {
       setLoading(true);
       setDataLoaded(false);
       
-      // Tambahkan artificial delay untuk memastikan loading terlihat
       await new Promise(resolve => setTimeout(resolve, 800));
       
       if (selectedMonth === 'January') {
@@ -295,7 +295,8 @@ export default function MealAllowancePage() {
           department: officer.department,
           join_date: officer.join_date,
           baseAmount: rate?.base_amount || 0,
-          prorate: rate?.prorate_per_day || 0,
+          tarif_per_hari: rate?.prorate_per_day || 0, // <-- tarif per hari (10,11,12,13,15)
+          prorate_hari: snapshot?.prorate_hari || 0, // <-- jumlah hari prorate tambahan
           offCount: usia.off,
           sakitCount: usia.sakit,
           izinCount: usia.izin,
@@ -317,7 +318,7 @@ export default function MealAllowancePage() {
         };
       });
       
-      // 🧮 HITUNG dengan LOGIC PRORATE - HANYA UNTUK CS DP WD
+      // 🧮 HITUNG dengan LOGIC PRORATE
       const withUmNet = officersWithStats
         .map((o, index) => {
           let uangProrate = 0;
@@ -326,12 +327,13 @@ export default function MealAllowancePage() {
           // Hanya CS DP WD yang dapat prorate
           if (o.department === 'CS DP WD') {
             const offDiambil = o.offCount || 0;
-            offRemaining = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
-            uangProrate = offRemaining * o.prorate;
+            // Sisa OFF = Jatah - OFF diambil + prorate_hari (tambahan)
+            offRemaining = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil + (o.prorate_hari || 0));
+            uangProrate = offRemaining * o.tarif_per_hari;
           }
           
           // Potongan dari ketidakhadiran (sakit, izin, unpaid, cuti)
-          const potongan = (o.sakitCount + o.izinCount + o.unpaidCount + o.cutiCount) * o.prorate;
+          const potongan = (o.sakitCount + o.izinCount + o.unpaidCount + o.cutiCount) * o.tarif_per_hari;
           
           // Denda absen
           const denda = o.alphaCount * 50;
@@ -380,7 +382,8 @@ export default function MealAllowancePage() {
       kasbon: officer.kasbon || 0,
       cuti: officer.cutiCount || 0,
       etc: officer.etc || 0,
-      etc_note: officer.etc_note || ''
+      etc_note: officer.etc_note || '',
+      prorate_hari: officer.prorate_hari || 0 // <-- jumlah hari prorate tambahan
     });
   };
 
@@ -393,8 +396,8 @@ export default function MealAllowancePage() {
     }
     
     try {
-      if (editForm.kasbon < 0 || editForm.cuti < 0) {
-        alert('⚠️ Kasbon dan Cuti tidak boleh negatif');
+      if (editForm.kasbon < 0 || editForm.cuti < 0 || editForm.prorate_hari < 0) {
+        alert('⚠️ Kasbon, Cuti, dan Prorate Hari tidak boleh negatif');
         return;
       }
       
@@ -402,15 +405,15 @@ export default function MealAllowancePage() {
       const officer = editingOfficer;
       const prev = getPreviousMonthData(selectedMonth, selectedYear);
       
-      // Hitung ulang - Hanya CS DP WD yang dapat prorate
+      // Hitung ulang
       let uangProrate = 0;
       if (officer.department === 'CS DP WD') {
         const offDiambil = officer.offCount || 0;
-        const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
-        uangProrate = offTidakDiambil * officer.prorate;
+        const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil + (editForm.prorate_hari || 0));
+        uangProrate = offTidakDiambil * officer.tarif_per_hari;
       }
       
-      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
+      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.tarif_per_hari;
       const denda = officer.alphaCount * 50;
       const umNetBaru = Math.max(0, officer.baseAmount + uangProrate - potongan - denda);
       const finalNetBaru = Math.max(0, umNetBaru - editForm.kasbon + editForm.etc);
@@ -442,7 +445,8 @@ export default function MealAllowancePage() {
         periode_start: prev.start,
         periode_end: prev.end,
         base_amount: officer.baseAmount,
-        prorate: officer.prorate,
+        prorate: officer.tarif_per_hari, // tarif per hari
+        prorate_hari: editForm.prorate_hari, // <-- jumlah hari prorate tambahan
         off_count: officer.offCount || 0,
         sakit_count: officer.sakitCount || 0,
         cuti_count: editForm.cuti,
@@ -727,7 +731,7 @@ export default function MealAllowancePage() {
             </tr>
             <tr className="border-b border-[#FFD700]/30">
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">/ DAY</th>
-              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">PRORATE</th>
+              <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">PRORATE HARI</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">OFF</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">CUTI</th>
               <th className="px-3 py-2 text-center text-[#A7D8FF] text-xs border-r border-[#FFD700]/30">UNPAID</th>
@@ -756,7 +760,7 @@ export default function MealAllowancePage() {
                     <span className="font-bold text-[#FFD700]">{officer.full_name}</span>
                     
                     {/* Info prorate hanya untuk CS DP WD */}
-                    {officer.department === 'CS DP WD' && officer.offRemaining > 0 && (
+                    {officer.department === 'CS DP WD' && officer.uangProrate > 0 && (
                       <span className="text-[10px] text-green-400 mt-1 animate-pulse">
                         +${officer.uangProrate} (prorate {officer.offRemaining} hari)
                       </span>
@@ -803,19 +807,12 @@ export default function MealAllowancePage() {
                   </span>
                 </td>
                 
-                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.prorate}</td>
+                <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.tarif_per_hari}</td>
                 
-                {/* PRORATE - HANYA UNTUK CS DP WD */}
+                {/* PRORATE HARI */}
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center">
-                  {officer.department === 'CS DP WD' && officer.offRemaining > 0 ? (
-                    <div className="flex flex-col items-center">
-                      <span className="text-green-400 font-bold">
-                        +${officer.offRemaining * officer.prorate}
-                      </span>
-                      <span className="text-[9px] text-[#A7D8FF]">
-                        ({officer.offRemaining} hari)
-                      </span>
-                    </div>
+                  {officer.prorate_hari > 0 ? (
+                    <span className="text-green-400 font-bold">+{officer.prorate_hari}</span>
                   ) : (
                     <span className="text-gray-400">-</span>
                   )}
@@ -829,16 +826,16 @@ export default function MealAllowancePage() {
                 <td className="px-3 py-2 text-white border-r border-[#FFD700]/10 text-center">{officer.alphaCount}</td>
                 
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
-                  {officer.cutiCount > 0 ? officer.cutiCount * officer.prorate : ''}
+                  {officer.cutiCount > 0 ? officer.cutiCount * officer.tarif_per_hari : ''}
                 </td>
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
-                  {officer.unpaidCount > 0 ? officer.unpaidCount * officer.prorate : ''}
+                  {officer.unpaidCount > 0 ? officer.unpaidCount * officer.tarif_per_hari : ''}
                 </td>
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
-                  {officer.sakitCount > 0 ? officer.sakitCount * officer.prorate : ''}
+                  {officer.sakitCount > 0 ? officer.sakitCount * officer.tarif_per_hari : ''}
                 </td>
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
-                  {officer.izinCount > 0 ? officer.izinCount * officer.prorate : ''}
+                  {officer.izinCount > 0 ? officer.izinCount * officer.tarif_per_hari : ''}
                 </td>
                 <td className="px-3 py-2 border-r border-[#FFD700]/10 text-center text-red-400">
                   {officer.alphaCount > 0 ? officer.alphaCount * 50 : ''}
@@ -904,6 +901,25 @@ export default function MealAllowancePage() {
             <h3 className="text-xl font-bold text-[#FFD700] mb-4">Edit {editingOfficer.full_name}</h3>
             
             <div className="space-y-4">
+              {/* PRORATE HARI - YANG LO MAU */}
+              <div>
+                <label className="text-[#A7D8FF] text-sm block mb-1">PRORATE (jumlah hari tambahan)</label>
+                <input 
+                  type="number" 
+                  value={editForm.prorate_hari} 
+                  onChange={(e) => setEditForm({...editForm, prorate_hari: parseInt(e.target.value) || 0})} 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+                  min="0"
+                  step="1"
+                />
+                <p className="text-[10px] text-[#A7D8FF] mt-1">
+                  * Jatah OFF 4 hari. Saat ini OFF diambil: {editingOfficer.offCount} hari
+                </p>
+                <p className="text-[10px] text-green-400">
+                  * Uang prorate = (4 - {editingOfficer.offCount} + prorate) × ${editingOfficer.tarif_per_hari}
+                </p>
+              </div>
+
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">KASBON ( - )</label>
                 <input 
@@ -924,10 +940,6 @@ export default function MealAllowancePage() {
                   className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
                   min="0"
                 />
-                <div className="flex gap-4 mt-1 text-[10px] text-[#A7D8FF]">
-                  <span>OFF diambil: {editingOfficer.offCount || 0}/{JATAH_OFF_PER_PERIODE}</span>
-                  <span>Sisa off: {Math.max(0, JATAH_OFF_PER_PERIODE - (editingOfficer.offCount || 0))}</span>
-                </div>
               </div>
               
               <div>
