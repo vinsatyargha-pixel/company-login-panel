@@ -24,7 +24,8 @@ export default function MealAllowancePage() {
     kasbon: 0,
     cuti: 0,
     etc: 0,
-    etc_note: ''
+    etc_note: '',
+    prorate: 0 // <--- PRORATE DITAMBAH DISINI
   });
   const [lastSync, setLastSync] = useState(new Date());
 
@@ -243,7 +244,6 @@ export default function MealAllowancePage() {
       setLoading(true);
       setDataLoaded(false);
       
-      // Tambahkan artificial delay untuk memastikan loading terlihat
       await new Promise(resolve => setTimeout(resolve, 800));
       
       if (selectedMonth === 'January') {
@@ -295,7 +295,7 @@ export default function MealAllowancePage() {
           department: officer.department,
           join_date: officer.join_date,
           baseAmount: rate?.base_amount || 0,
-          prorate: rate?.prorate_per_day || 0,
+          prorate: snapshot?.prorate || rate?.prorate_per_day || 0, // <--- AMBIL DARI SNAPSHOT KALAU ADA
           offCount: usia.off,
           sakitCount: usia.sakit,
           izinCount: usia.izin,
@@ -380,7 +380,8 @@ export default function MealAllowancePage() {
       kasbon: officer.kasbon || 0,
       cuti: officer.cutiCount || 0,
       etc: officer.etc || 0,
-      etc_note: officer.etc_note || ''
+      etc_note: officer.etc_note || '',
+      prorate: officer.prorate || 0 // <--- PRORATE DITAMBAH DISINI
     });
   };
 
@@ -393,8 +394,8 @@ export default function MealAllowancePage() {
     }
     
     try {
-      if (editForm.kasbon < 0 || editForm.cuti < 0) {
-        alert('⚠️ Kasbon dan Cuti tidak boleh negatif');
+      if (editForm.kasbon < 0 || editForm.cuti < 0 || editForm.prorate < 0) {
+        alert('⚠️ Kasbon, Cuti, dan Prorate tidak boleh negatif');
         return;
       }
       
@@ -407,10 +408,10 @@ export default function MealAllowancePage() {
       if (officer.department === 'CS DP WD') {
         const offDiambil = officer.offCount || 0;
         const offTidakDiambil = Math.max(0, JATAH_OFF_PER_PERIODE - offDiambil);
-        uangProrate = offTidakDiambil * officer.prorate;
+        uangProrate = offTidakDiambil * editForm.prorate; // <--- PAKAI PRORATE DARI EDIT FORM
       }
       
-      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * officer.prorate;
+      const potongan = (officer.sakitCount + editForm.cuti + officer.izinCount + officer.unpaidCount) * editForm.prorate; // <--- PAKAI PRORATE DARI EDIT FORM
       const denda = officer.alphaCount * 50;
       const umNetBaru = Math.max(0, officer.baseAmount + uangProrate - potongan - denda);
       const finalNetBaru = Math.max(0, umNetBaru - editForm.kasbon + editForm.etc);
@@ -442,7 +443,7 @@ export default function MealAllowancePage() {
         periode_start: prev.start,
         periode_end: prev.end,
         base_amount: officer.baseAmount,
-        prorate: officer.prorate,
+        prorate: editForm.prorate, // <--- UPDATE PRORATE KE DATABASE
         off_count: officer.offCount || 0,
         sakit_count: officer.sakitCount || 0,
         cuti_count: editForm.cuti,
@@ -897,13 +898,29 @@ export default function MealAllowancePage() {
         </div>
       </div>
 
-      {/* Edit Modal */}
+      {/* Edit Modal - PRORATE SUDAH DITAMBAH DISINI */}
       {editingOfficer && isAdmin && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
           <div className="bg-[#0B1A33] border-2 border-[#FFD700] rounded-xl p-6 max-w-md w-full transform scale-100 transition-all duration-300">
             <h3 className="text-xl font-bold text-[#FFD700] mb-4">Edit {editingOfficer.full_name}</h3>
             
             <div className="space-y-4">
+              {/* PRORATE - INPUT BARU */}
+              <div>
+                <label className="text-[#A7D8FF] text-sm block mb-1">PRORATE (per hari)</label>
+                <input 
+                  type="number" 
+                  value={editForm.prorate} 
+                  onChange={(e) => setEditForm({...editForm, prorate: parseInt(e.target.value) || 0})} 
+                  className="w-full bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#FFD700]/50 transition-all duration-300" 
+                  min="0"
+                  step="1"
+                />
+                <p className="text-[10px] text-[#A7D8FF] mt-1">
+                  * Nilai prorate untuk perhitungan potongan dan bonus OFF
+                </p>
+              </div>
+              
               <div>
                 <label className="text-[#A7D8FF] text-sm block mb-1">KASBON ( - )</label>
                 <input 
