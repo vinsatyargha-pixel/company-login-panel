@@ -1,0 +1,491 @@
+[33m49af6f7[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add CS data raw page
+[33m162eea6[m page upload CS2
+[33m1cd27be[m Add CS data raw upload page
+[33m43d6241[m cs page upload try1
+[33m84591ff[m try to input data CS
+[33mc16c9f7[m try8
+[33m60e4a4d[m cancel7
+[33mb84a185[m try7
+[33m03a788a[m cancel6
+[33m7b9f89e[m try6
+[33mab63699[m try5
+[33m330ceb9[m cancel try4
+[33m58cb708[m meal allowance try4
+[33m7288ffe[m cancel redeploy lah
+[33m4efa7a2[m meal allowance calculate edit
+[33mc1cc03a[m cancel commit
+[33m55ff9af[m meal allowance page edit feature
+[33mf30f8a1[m fixing kalkulasi transaction metrics
+[33m0c78b92[m fixing kalkulasi transaction metrics box
+[33m689778f[m benerin filter yesterday UTC
+[33ma7d9aad[m perbaiki filter date yesterday
+[33m817ff7d[m input data real adjusment + and -
+[33m20425f5[m fix adjusment to + and -
+[33mec70ba4[m add adjusment value in box 1
+[33mb6ee2f3[m tambah adjusment menu di data-raw
+[33m649a125[m ya allah tolong saya
+[33m5f504a6[m hasbiyallah wa ni mal wakil
+[33m3f31809[m edit officer modal step 2
+[33mb33be42[m edit officer modal
+[33m0bfbbc0[m audit log wd page data raw
+[33m4a2f257[m audit log to data dp raw page
+[33mc15a357[m activity-log function update
+[33m491a30b[m cancel dah
+[33mc4fc4df[m fixing transaction metrics box
+[33m8d86ee5[m fix bar transaction metrics
+[33m8530985[m traffic metrics edit box
+[33md2293f3[m fix legend transaction metrics box
+[33ma8ff5d6[m transaction metrics box edit
+[33mad0e652[m try to fixing box transaction metrics info tooltip
+[33mc6c7483[m fix canceled
+[33md430d85[m fix counting form in box transaction metrics
+[33mbb08b20[m transaction-metrics filter fix
+[33m371b350[m gasss
+[33m6d88a87[m edit tampilan dashboard header name
+[33medd93f1[m officer & System performance edit header
+[33m0574e55[m fix tulisan jangan item
+[33mbf9b9ae[m diagram transaction metrics dashboard
+[33m42c2fb8[m fix calculation net-flow
+[33m1f6f5aa[m transaction metrics data input
+[33m45b8ff3[m pie chart dashboard page
+[33mcc9c7bc[m pie chart ver 2
+[33mcc09b76[m pie model
+[33m85918ae[m mozart pisah brok
+[33mae622fa[m pisah jangan gabung mozartnya
+[33m0b99331[m add mozart to table
+[33mf344fd0[m input mozat to table
+[33m5cd5b98[m transaction metrics delete dummy data
+[33m7ab7819[m transaction metrics display
+[33m5e27da2[m diagram transaction metrics
+[33m9946897[m fix page transaction metrics
+[33m5d5bcf7[m dashboard card + transaction metrics
+[33m43432e5[m edit page trans metric
+[33m8ee8a7e[m add page Transaction metrics
+[33m49b4d14[m mozart input table
+[33m3e9d964[m trafic metrics
+[33m8b4fa5c[m salah ketik
+[33mfd4aacf[m test
+[33maa5ce0f[m traffic metrics3
+[33m6bf1b52[m traffic metrics2
+[33mf128bc5[m traffic metrics
+[33m91b6989[m edit header
+[33m2cb2027[m count duration WD page
+[33mee4420f[m itung durasi dp
+[33m4be8dde[m fixing dashboard page support line view
+[33m4feeef7[m dp upload
+[33m042d9c7[m anticlickjacking
+[33mb719ff6[m try8
+[33m6e038ed[m Try7
+[33md634515[m fixing lagi
+[33m65de0c7[m fixing lagi
+[33m415576c[m benerin RLS $ policy 2
+[33mb0edf20[m fixing RLS & policy
+[33m7954ab3[m login page use ID panel
+[33mab879e8[m fix useauth authguard
+[33m457f12b[m balik ke deploy sebelumnya
+[33m50399bc[m fix login with username
+[33m3cbc760[m fix login page lagi
+[33mee7e6a2[m login page fix
+[33m0507743[m login page fix
+[33m4555284[m install react-icons for password toggle
+[33m2e7e270[m new interface login page
+[33m89700b0[m login page edit
+[33m6e6dca8[m login pake user ID panel
+[33m3faa622[m try fix user login
+[33m155aadd[m count achieve & precentage
+[33m8c0241d[m fix target formula
+[33m6eb9300[m balik ke sebelomnya
+[33m73bdae1[m counting target - offday
+[33m3a7b767[m target attendance count formula
+[33m7f38b83[m suka ngide
+[33m5a7ed99[m fix data attendance fetch
+[33m22db372[m add attendance data try3
+[33m93735e6[m add attendance data try2
+[33mf63301f[m add data attendance try1
+[33m0ed27c6[m buat acuan ke filter bulan
+[33mbb5a588[m fix interval interface
+[33m5551e88[m fix SOP NON SOP DP WD
+[33m38b463e[m fetch data SOP dan NON SOP
+[33m2746e1b[m pengurangan menu TM
+[33m257af82[m kurang react cenah
+[33m5f88025[m fix tarik data TE try3
+[33m9a93270[m fix tarik data total app try3
+[33mf005f18[m tarik data total app try2
+[33mcf9120b[m tarik data app 1
+[33ma5f3071[m tarik data real kpi TE 1
+[33m20979ad[m fix main header CS
+[33m674c378[m try7
+[33m48506eb[m officers-kpi page try4
+[33mbeef783[m officers-kpi page edit main header
+[33mc5667cb[m summary-kpi
+[33m16150af[m edit page summary-kpi try3
+[33m4a18bb4[m summary-kpi page ulang
+[33m9707712[m summary-kpi page edit try2
+[33m33d6e53[m page summary-kpi tarik data officer id panel
+[33m0463f7f[m summary-kpi page fetch data edit
+[33m926b2b4[m summary-kpi page tarik data officers
+[33m4b585a9[m edit page summary-kpi
+[33mc859bc4[m summary-kpi page try1
+[33mad21a6a[m efek kaca dashboard
+[33m8af5739[m summary-kpi page edit
+[33m5987d02[m add page summary-kpi
+[33m4b9624a[m officers - page
+[33m6c4522f[m officers-kpi menu edit
+[33mafcd862[m officers-kpi page
+[33m9a54577[m officers-kpi page
+[33ma100c98[m fix auth.js
+[33mae0c949[m tabel samping ga usah
+[33mf64743a[m page officers-kpi
+[33m3456d5e[m fix page officers-kpi
+[33m856df23[m adding page officers-KPI
+[33m0093060[m officers KPI PAGE
+[33mf9faf8c[m tambahin filter all asset di box asset performance
+[33m6e7e7d5[m mapping asset WLB
+[33mfb3eafe[m add picture nexus
+[33me7e540a[m try add image bank1
+[33mf9eeb7a[m cancel fixing foto
+[33ma145c76[m fixing piccture bank
+[33meae2897[m masukin foto bank
+[33mcc82efa[m foto bank
+[33mbe03df6[m balik
+[33m742fa61[m pulang
+[33m1858079[m asset performance refresh button
+[33mb81b1fd[m tolol
+[33m2bf1a51[m dashboard page
+[33m00f1ca9[m udah
+[33m5e25b6f[m 100
+[33mfc79223[m try99
+[33m8addd93[m try88
+[33m024d488[m try77
+[33ma2bdaf9[m try23
+[33mb98021a[m try again
+[33m5736296[m cancel
+[33m6536f16[m test
+[33m5c00fa6[m cancel
+[33mda8e041[m performance officer
+[33mffb4217[m try18
+[33m32043fd[m try17
+[33m76f0568[m add page officers performance
+[33mb7d4893[m try13
+[33ma9201e2[m dashboard page asset performance
+[33m6842c65[m asset performance diagram
+[33m5bd52c2[m try4
+[33mca9185c[m try3
+[33mc00a002[m daily monthly filterisation real
+[33mb4ac66c[m masukin data real breakdown page try1
+[33mbcb6d86[m breakdown page
+[33m37239fe[m pagi dunia
+[33m6d71480[m performace officers
+[33m682bcb0[m good morning world
+[33m0ae3f99[m dashboard
+[33m3ac9359[m dashboard page
+[33m6091e8e[m try42
+[33m0ab8af4[m try39
+[33m8950e98[m try38
+[33mc3e1e58[m try36
+[33m5e73132[m try35
+[33m10657b7[m try34
+[33m569dcc5[m try34
+[33md4ff2ce[m try31
+[33ma8f9f86[m try30
+[33md80c751[m try28
+[33meb456d3[m try17
+[33mf451800[m try24
+[33m4703a60[m try23
+[33md6f99a8[m try22
+[33me3218fc[m try22
+[33mbce2d28[m try21
+[33m21762bc[m try20
+[33ma7d34ee[m try18
+[33mc34fa0d[m try17
+[33m36983f0[m try19
+[33md80a05d[m try16
+[33md7bb04c[m try15
+[33mb9eacd5[m try13
+[33m4f7d089[m try12
+[33m30dc3cf[m try11
+[33m8f2d089[m try10
+[33mcd65e1c[m try9
+[33m8dc1e09[m try8
+[33m0624879[m try7
+[33m7a1a7d0[m try
+[33m8eb27f0[m try5
+[33m646b26e[m try4
+[33m986b131[m try3
+[33m424aa55[m try2
+[33m4879e70[m try1
+[33mdddf8fd[m asset performance page
+[33m634c12b[m KPI SUMMARY OFFICERS tittle
+[33m08a5b85[m fix meal-allowance page loading issue
+[33mf727cc3[m fix loading issue laundry-allowance page
+[33m55da9f8[m kpi summary officers
+[33mce64a33[m kpi officers PAGE
+[33mfb3be43[m system not reject
+[33m8f25c75[m pisah page di dalam
+[33mc85adb5[m bismillah
+[33m1c0fbc6[m fail interval
+[33md5cc635[m kpi page toucn 1
+[33m5019c5c[m kpi summary officers
+[33m78720fb[m input fail transaction
+[33mff97a0d[m page KPI yuk bisa yuk
+[33m66e2661[m kpi page try3
+[33m778a323[m kpi page try2
+[33mb45d5e0[m kpi page try1
+[33m4ab4dda[m cape deh
+[33mb7e7204[m ngantuk berat
+[33mf9d969f[m ngantuk gue
+[33m803c6fb[m semangat1
+[33m1b60eb8[m kpi page try 1
+[33m992818c[m kpi officers page step 2
+[33ma71364e[m kpi page step 1
+[33m5cc91a4[m 27
+[33m99d9b3d[m try19
+[33ma380e07[m try18
+[33m99a46d3[m try16
+[33m39824e8[m KPI page
+[33m98ec79d[m 15
+[33m96d93e1[m try15
+[33m0fd8c16[m try13
+[33m9abb380[m try 12
+[33m98cd481[m try12
+[33mc7bfc01[m try10
+[33mc5e73fb[m try8
+[33m61b5636[m try7
+[33m10ed90c[m rty6
+[33m99371a6[m try4
+[33m2637377[m try3
+[33m827b03e[m wd page try3
+[33m1e8a2c3[m wd page try 2
+[33m932322f[m wd page
+[33m21183f6[m ty 23
+[33mea95332[m dp page
+[33m9796e43[m 16
+[33m7900bd7[m 15
+[33m4a979ac[m try14
+[33m33fe492[m try12
+[33m5092603[m try11
+[33mb1c1f43[m try10
+[33m95a1616[m try9
+[33m81c78ff[m try8
+[33m30f4044[m try7
+[33m56abbd8[m try6
+[33mc5862c0[m try5
+[33me428b09[m try3
+[33m7087bd9[m try2
+[33m1044aaa[m fix page wd
+[33mf4fcd33[m 8
+[33m1628476[m 7
+[33m74fe9d4[m 6
+[33mbffd72a[m 5
+[33m857c4e5[m 4
+[33mb81f572[m o3
+[33mc3a23f4[m 02
+[33m371b684[m 1
+[33m7c4ffa9[m wd page dataraw
+[33mcaf03de[m 38
+[33m079cee0[m 37
+[33mfa01465[m 36
+[33md13c07a[m 36
+[33me324240[m 35
+[33m2dc88f7[m 34
+[33m9ce66c3[m 33
+[33m456deaa[m 32
+[33m72b78c5[m 31
+[33m4cfacfc[m 30
+[33m58a9662[m 25
+[33m3dc9f65[m 29
+[33ma984e3c[m try25
+[33mfab482c[m 24
+[33m550005e[m try27
+[33m89f6e69[m try24
+[33mfb04e52[m try23
+[33mbb9b558[m try22
+[33m8f70822[m try21
+[33m41762cd[m try21
+[33mb3ad4ce[m final: dp page with filters and upload
+[33m9acb0e2[m try19
+[33mf809f1b[m try18
+[33m87d7bab[m try17
+[33m01de37b[m try16
+[33me318fc9[m try15
+[33m32273d2[m try14
+[33m8b677f9[m feat: add bulk upload with grouping by approved_date
+[33m1b53246[m try13
+[33mcbf587d[m fix: update imports to use @/lib/supabase
+[33mb57ca23[m try13
+[33m05a6ea9[m 12
+[33m969201e[m try11
+[33m12d85b6[m Add tsconfig alias @lib and supabase setup
+[33m51b3839[m try10
+[33mc93fbeb[m try9
+[33m2729460[m fix: dp page with simple display
+[33m168bf46[m try8
+[33m70dcdda[m feat: add upload modal and Excel reader to DP page
+[33md159b2a[m try7
+[33m4748a2d[m try4
+[33m624add8[m final: fix route.js and update dp page
+[33mac7d2c3[m try2
+[33m5cf81d1[m add dp dataraw
+[33m1122c04[m add data-raw page DP with upload tracking
+[33m74f778b[m add page data-raw try1
+[33mee34ce7[m try8
+[33m775497a[m try8
+[33md8e2a9f[m try7
+[33m3b7d466[m try6
+[33mef1276c[m try 5
+[33meee544b[m try4
+[33m1c1732e[m try3
+[33m1bd2b72[m try2
+[33m46d2675[m prorate count fix try 1
+[33mbc9000c[m try7
+[33m1b5c0f6[m try6
+[33mdb55f8e[m try 5
+[33m3cbcd9f[m try4
+[33mcaf36ee[m try3
+[33m36152ac[m try2
+[33me0e7e1b[m try to fix interface meal allowance try 1
+[33m6900e10[m change size top 5 card
+[33m62c7702[m add refresh mode to databank page
+[33m762a162[m sync bank method live
+[33me602c4a[m add sync button above active method
+[33m888ede0[m remove sync button databank page.js
+[33m2798eb2[m add midas logo
+[33m634e08d[m input bank logo to active method display
+[33me826bbf[m fixing route.js to sync to supabase
+[33m239f926[m editing route.js to sync try 1
+[33m7ca4442[m edit and add sync mode in data-bank page
+[33m3fefefe[m add filter to method bank try1
+[33m789f0c7[m add logo nexus and xen at login page
+[33m87aa6ba[m add logo in login page
+[33m921a673[m add logo login page
+[33md71d70b[m change nexus logo
+[33m6bd168f[m change logo nexus size
+[33me2a0f47[m change logo nexus size
+[33m37606b3[m add all bank logo
+[33md867faf[m add logo bank all
+[33ma68ed31[m add image bank logo all
+[33mecbd10c[m add nexus LOGO
+[33md66a165[m fixing sync nexuspay in data bank try 1
+[33m8dfcb51[m add status display and used
+[33mbf477f7[m add searchbox by asset try1
+[33m1c88787[m add asset and search column try 1
+[33m41cf168[m capex1000
+[33m165ba99[m dahlah
+[33m3c95334[m cape2
+[33m803eab8[m CAPE
+[33m9260543[m bisa dong
+[33m8a1558a[m peler
+[33m9e78bee[m NN
+[33m88607d9[m B
+[33m15abcbe[m A
+[33m24c984c[m z
+[33m447bc92[m Q
+[33m8330955[m P
+[33mca4ecaf[m O
+[33mb477984[m N
+[33m7bd5014[m M
+[33mbde66d7[m K
+[33m3c5ccf6[m I
+[33md886c90[m k
+[33ma078fd6[m J
+[33mde6f224[m H
+[33m55db040[m G
+[33m5e8295f[m F
+[33mec171e0[m F
+[33m74b1785[m E
+[33m48b239f[m D
+[33m90823f0[m C
+[33mb300b9f[m B
+[33m53a3bcb[m A
+[33maa671a4[m sync data bank
+[33mddfc365[m sync data bank lagi
+[33m051d77c[m fix sync databank
+[33m7cd8e1c[m sync data bank
+[33m36125ea[m sync data bank pasti berhasil katanya
+[33m60f8a47[m sync data bank test
+[33mc6842df[m sync data bank
+[33me76bf8a[m fix sync function
+[33m1f9d283[m sync sukses
+[33m69bb9bc[m sync8
+[33m83c9d61[m sync7
+[33m4614909[m sync6
+[33ma69b661[m sync4
+[33md8511a3[m sync3
+[33maa4a508[m sync2
+[33m1179778[m sync
+[33m1359270[m fixing data bank
+[33mdbfb828[m fixing takedown status
+[33m8227729[m fixing takedown status
+[33m028f5bd[m fixing takedown status again
+[33mb27d555[m takedown bank set to takedown
+[33m3ffe4d8[m fixing status takedown ya takedown
+[33m72c6029[m fixing takedown info to takedown
+[33mb03f18a[m takedown = takedown
+[33m3dd5efc[m fixing status takedown used
+[33ma45a79c[m fixing status takedown = takedown
+[33m6a22b8e[m sync method fixing
+[33m321ec0f[m fix sync data
+[33m23fe881[m try to fix fetch API
+[33m4bacd6c[m cek debug sync function
+[33m50092fb[m fix sync function
+[33mf3a6635[m sync function fix
+[33m93bf1ec[m fixing sync button function
+[33m0d34999[m test api route.js
+[33m4411879[m try to fix sync function
+[33mfcdeda9[m test route.js to sync
+[33mc8e2a3c[m fixing sync button function
+[33m3a034aa[m add pictrure withdrawal method
+[33m8240e49[m add logo bank at dashboard page
+[33mfda5f04[m add BRI logo
+[33m695089b[m input image bank
+[33md90c99e[m alaya-vijnana system
+[33md472de5[m fix lagi
+[33m017da78[m data bank
+[33me20c857[m terakhir dong
+[33mfd80dd9[m fix tanpa email dan nomer HP
+[33m3c43b8a[m final yuk bisa yuk
+[33mad0c88b[m yuk bisa yuk
+[33m2da7905[m fix: add login_info to sync
+[33m0c9e95a[m pop up info bank input
+[33m2108a23[m menyala abangku
+[33m259a2d1[m bismillah
+[33m0676ee1[m fix: simplify API response to prevent client error
+[33mede1ee4[m feat: ambil tipe dari kolom W
+[33m6a393e0[m feat: ambil semua data dari kolom AD (TEXT JOIN)
+[33ma865328[m feat: ambil data dari sheet DATABASE bank (kolom AD)
+[33me0da30f[m rollback to stable version
+[33mda99299[m fix: deposit/withdrawal type
+[33m3ca47c4[m fix: simplest version
+[33meac5d91[m fix: handle BCA dengan baris terpotong
+[33mbf31c55[m rollback: stable sync version with 4 banks
+[33mf94301e[m fix: manual CSV parsing for BCA
+[33mef85bf6[m fix: final fix for BCA and newline handling
+[33m71e2383[m fix: BCA and status detection
+[33m2c4965e[m fix: use anon key instead of service role key
+[33m6a4a7e8[m feat: add bank sync endpoint with csv-parse
+[33m388ed9d[m fix data bank API fetch
+[33mf56baf3[m fix: rename folder from 'bank' to 'banks' for API endpoint consistency
+[33me7d23fa[m add data bank file
+[33m9979b70[m add data bank menu dand delete filter
+[33m589f32e[m add DANA
+[33m6edc4eb[m fix dashboard page tampilan
+[33md5f2d06[m fix dashboardpage layout
+[33m278a1a1[m kasi switch on off
+[33m443e176[m fix method list
+[33m44ce3fb[m recent activity ilang
+[33me448e43[m change diagram style dashboard page
+[33m61a14d2[m rechart style
+[33m9c07498[m schedule page with red date
+[33mba88c6c[m fix dashboard overview
+[33m75f71b5[m recent activity update script
+[33m8140bda[m fix recent activity notice to reset
+[33m38b598d[m fix recent activity notif
+[33m66335bc[m recent activity moved
+[33mb21e723[m analytics page edit
+[33m46ea83c[m yuk bisa yuk
+[33mf1f08bc[m Fix all settings pages export
+[33mcf4deb7[m bismilah lagi
+[33mb8f0aa5[m Fix attendance page export
+[33mc032e8a[m division page.js added
+[33m3424735[m Update dashboard with new menu
+[33mca21de0[m bismillah

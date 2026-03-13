@@ -25,145 +25,6 @@ type ChatUpload = {
   website?: string
 }
 
-type ChatData = {
-  account: string | null
-  group: string | null
-  website: string | null
-  conversation_id: string | null
-  started: string | null
-  ended: string | null
-  chat_duration: string | null
-  username: string | null
-  total_replies: number
-  replied_by_bot: number
-  replied_by_agent: number
-  bot_percentage: number | null
-  agent_percentage: number | null
-  status: string | null
-  agent_alias: string | null
-  agent_email: string | null
-  agent_name: string | null
-  resolve_duration: string | null
-  chat_prompt_id: number | null
-  intents: string[] | null
-  emotional_sentiment: string[] | null
-  agent_real_name: string | null
-  file_name: string
-}
-
-// ===========================================
-// SET SESSION VARIABLE FUNCTION
-// ===========================================
-const setSessionVariable = async () => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const username = user.email?.split('@')[0] || user.user_metadata?.username;
-      
-      if (!username) {
-        console.warn('⚠️ Username tidak ditemukan');
-        return;
-      }
-      
-      console.log('🔧 Setting session variable:', username);
-      
-      const { error } = await supabase.rpc('set_config', {
-        name: 'app.panel_id',
-        value: username,
-        bypass: false
-      });
-      
-      if (error) {
-        console.error('❌ Gagal set session:', error);
-      } else {
-        console.log('✅ Session variable set:', username);
-      }
-    }
-  } catch (err) {
-    console.error('❌ Error set session:', err);
-  }
-};
-
-// ===========================================
-// HELPER FUNCTIONS
-// ===========================================
-
-const parseExcelDate = (value: any): string | null => {
-  if (!value) return null
-
-  try {
-    // Handle Excel serial number
-    if (typeof value === 'number') {
-      const date = XLSX.SSF.parse_date_code(value)
-      if (!date) return null
-      const hour = date.H?.toString().padStart(2, '0') || '00'
-      const minute = date.M?.toString().padStart(2, '0') || '00'
-      const second = date.S?.toString().padStart(2, '0') || '00'
-      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
-    }
-
-    // Handle string date
-    const str = value.toString().trim()
-    
-    // Format: 2026-12-03 23:50:00
-    if (str.includes('-') && str.includes(':')) {
-      const [datePart, timePart] = str.split(' ')
-      if (datePart && timePart) {
-        const [year, month, day] = datePart.split('-')
-        if (year && month && day) {
-          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
-        }
-      }
-    }
-    
-    // Format: 13/03/26 09:32 (DD/MM/YY)
-    if (str.includes('/')) {
-      const parts = str.split(' ')
-      if (parts.length >= 2) {
-        const [datePart, timePart] = parts
-        const [day, month, year] = datePart.split('/')
-        if (day && month && year) {
-          const fullYear = year.length === 2 ? '20' + year : year
-          return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
-        }
-      }
-    }
-    
-    return null
-  } catch {
-    return null
-  }
-}
-
-const parseDurationToISO = (duration: string): string | null => {
-  if (!duration) return null
-  
-  // Format: HH:MM:SS
-  const parts = duration.split(':')
-  if (parts.length === 3) {
-    const [hours, minutes, seconds] = parts
-    return `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}:${seconds.padStart(2, '0')}`
-  }
-  
-  // Format: 10:19:01 (sudah benar)
-  if (duration.includes(':')) {
-    return duration
-  }
-  
-  return null
-}
-
-const parsePercentage = (value: string): number | null => {
-  if (!value) return null
-  const match = value.match(/(\d+(?:\.\d+)?)%/)
-  return match ? parseFloat(match[1]) : null
-}
-
-const parseArrayField = (value: string): string[] | null => {
-  if (!value || value === '-' || value === ' -') return null
-  return value.split(',').map(item => item.trim()).filter(item => item)
-}
-
 // ===========================================
 // MAIN COMPONENT
 // ===========================================
@@ -203,7 +64,6 @@ export default function ChatCSDataRawPage() {
     setSelectedMonth(months[today.getMonth()])
     setSelectedYear(today.getFullYear().toString())
     fetchAssets()
-    setSessionVariable()
   }, [])
 
   useEffect(() => {
@@ -256,7 +116,6 @@ export default function ChatCSDataRawPage() {
       const { data, error } = await query
       if (error) throw error
       
-      console.log('📅 Data uploads:', data)
       setUploads(data || [])
     } catch (error) {
       console.error('Error fetching uploads:', error)
@@ -300,6 +159,27 @@ export default function ChatCSDataRawPage() {
   }, [])
 
   // ===========================================
+  // PARSE TANGGAL EXCEL
+  // ===========================================
+
+  const parseExcelDate = (value: any): string | null => {
+    if (!value) return null
+    try {
+      if (typeof value === 'number') {
+        const date = XLSX.SSF.parse_date_code(value)
+        if (!date) return null
+        const hour = date.H?.toString().padStart(2, '0') || '00'
+        const minute = date.M?.toString().padStart(2, '0') || '00'
+        const second = date.S?.toString().padStart(2, '0') || '00'
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
+      }
+      return value.toString().trim()
+    } catch {
+      return null
+    }
+  }
+
+  // ===========================================
   // UPLOAD PROCESS
   // ===========================================
 
@@ -321,15 +201,11 @@ export default function ChatCSDataRawPage() {
         blankrows: false
       }) as any[][]
       
-      console.log('📋 Total baris:', rows.length)
-      
-      // Header sudah di baris pertama
+      // Header di baris pertama
       const headers = rows[0]
       const dataRows = rows.slice(1)
       
-      console.log('📊 Jumlah baris data:', dataRows.length)
-      
-      // Mapping kolom berdasarkan file Excel
+      // Mapping kolom
       const findIndex = (keyword: string) => {
         return headers.findIndex((h: string) => 
           h && h.toString().toLowerCase().includes(keyword.toLowerCase())
@@ -362,30 +238,18 @@ export default function ChatCSDataRawPage() {
       setUploadProgress('Memvalidasi data...')
       
       // Transform data
-      const validData: ChatData[] = []
+      const validData: any[] = []
       const uploadDates = new Set<string>()
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
         if (!row || row.length === 0) continue
         
-        // Parse tanggal started (kolom E) sebagai patokan
         const started = parseExcelDate(row[idx.started])
         if (!started) continue
         
-        // Ambil tanggal saja untuk tracking upload
         const dateOnly = started.split(' ')[0]
         uploadDates.add(dateOnly)
-        
-        // Parse replied_by_bot dan replied_by_agent dari string seperti "5 (100%)"
-        const botStr = row[idx.replied_by_bot]?.toString() || ''
-        const agentStr = row[idx.replied_by_agent]?.toString() || ''
-        
-        const botMatch = botStr.match(/(\d+)/)
-        const agentMatch = agentStr.match(/(\d+)/)
-        
-        const replied_by_bot = botMatch ? parseInt(botMatch[1]) : 0
-        const replied_by_agent = agentMatch ? parseInt(agentMatch[1]) : 0
         
         validData.push({
           account: row[idx.account] || null,
@@ -394,29 +258,24 @@ export default function ChatCSDataRawPage() {
           conversation_id: row[idx.conversation_id] || null,
           started: started,
           ended: parseExcelDate(row[idx.ended]),
-          chat_duration: parseDurationToISO(row[idx.chat_duration]?.toString()),
+          chat_duration: row[idx.chat_duration] || null,
           username: row[idx.username] || null,
           total_replies: parseInt(row[idx.total_replies]) || 0,
-          replied_by_bot: replied_by_bot,
-          replied_by_agent: replied_by_agent,
-          bot_percentage: parsePercentage(botStr),
-          agent_percentage: parsePercentage(agentStr),
+          replied_by_bot: parseInt(row[idx.replied_by_bot]) || 0,
+          replied_by_agent: parseInt(row[idx.replied_by_agent]) || 0,
           status: row[idx.status] || null,
           agent_alias: row[idx.agent_alias] || null,
           agent_email: row[idx.agent_email] || null,
           agent_name: row[idx.agent_name] || null,
-          resolve_duration: parseDurationToISO(row[idx.resolve_duration]?.toString()),
+          resolve_duration: row[idx.resolve_duration] || null,
           chat_prompt_id: row[idx.chat_prompt_id] ? parseInt(row[idx.chat_prompt_id]) : null,
-          intents: parseArrayField(row[idx.intents]),
-          emotional_sentiment: parseArrayField(row[idx.emotional_sentiment]),
+          intents: row[idx.intents] || null,
+          emotional_sentiment: row[idx.emotional_sentiment] || null,
           agent_real_name: row[idx.agent_real_name] || null,
           file_name: selectedFile.name
         })
       }
 
-      console.log('✅ Data valid:', validData.length)
-      console.log('📅 Tanggal dalam file:', Array.from(uploadDates))
-      
       if (validData.length === 0) {
         throw new Error('Tidak ada data valid dalam file')
       }
@@ -428,15 +287,12 @@ export default function ChatCSDataRawPage() {
         .from('chat_cs_data')
         .insert(validData)
 
-      if (error) {
-        console.error('❌ Error detail:', error)
-        throw error
-      }
+      if (error) throw error
 
-      // Insert ke chat_uploads untuk tracking
+      // Insert ke chat_uploads
       setUploadProgress('Menyimpan tracking upload...')
       
-      const dataByDate: { [key: string]: ChatData[] } = {}
+      const dataByDate: { [key: string]: any[] } = {}
       validData.forEach(d => {
         const date = d.started?.split(' ')[0]
         if (!date) return
@@ -447,7 +303,7 @@ export default function ChatCSDataRawPage() {
       })
 
       for (const [date, data] of Object.entries(dataByDate)) {
-        const { error: uploadError } = await supabase
+        await supabase
           .from('chat_uploads')
           .insert({
             upload_date: date,
@@ -456,35 +312,9 @@ export default function ChatCSDataRawPage() {
             status: 'completed',
             website: data[0]?.website || 'X'
           })
-        
-        if (uploadError) {
-          console.error('❌ Error insert upload:', uploadError)
-        }
       }
 
-      // Log ke audit_logs
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        await supabase.from('audit_logs').insert({
-          table_name: 'chat_cs_data',
-          action: 'UPLOAD',
-          new_data: { 
-            count: validData.length,
-            filename: selectedFile.name,
-            dates: Array.from(uploadDates)
-          },
-          changed_by: user?.id,
-          changed_at: new Date().toISOString(),
-          module: 'CHAT_CS',
-          description: `Uploaded ${validData.length} chat CS data from ${selectedFile.name}`
-        });
-        console.log('✅ Upload logged to audit_logs');
-      } catch (logError) {
-        console.error('❌ Error logging to audit_logs:', logError);
-      }
-
-      alert(`✅ Berhasil! ${validData.length} data chat dari ${Object.keys(dataByDate).length} tanggal`)
+      alert(`✅ Berhasil! ${validData.length} data chat`)
       
       setShowModal(false)
       setSelectedFile(null)
@@ -515,22 +345,7 @@ export default function ChatCSDataRawPage() {
   const getStatusColor = (status: string) => {
     switch(status?.toLowerCase()) {
       case 'completed': return 'bg-green-500/20 text-green-400'
-      case 'processing': return 'bg-yellow-500/20 text-yellow-400'
-      case 'failed': return 'bg-red-500/20 text-red-400'
       default: return 'bg-gray-500/20 text-gray-400'
-    }
-  }
-
-  const formatDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr)
-      return date.toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      })
-    } catch {
-      return dateStr
     }
   }
 
@@ -566,14 +381,6 @@ export default function ChatCSDataRawPage() {
       </div>
 
       <h1 className="text-3xl font-bold text-[#FFD700] mb-6">CHAT CS DATA RAW</h1>
-
-      {/* INFO PENTING */}
-      <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
-        <p className="text-sm text-[#A7D8FF]">
-          <span className="text-[#FFD700] font-bold">📌 PATOKAN:</span> Kolom <span className="text-[#FFD700]">M (Username)</span> = 1 chat per officer, 
-          Kolom <span className="text-[#FFD700]">E (Started)</span> = filter tanggal
-        </p>
-      </div>
 
       {/* FILTERS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
@@ -620,7 +427,7 @@ export default function ChatCSDataRawPage() {
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal Upload</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Chat</th>
@@ -629,25 +436,21 @@ export default function ChatCSDataRawPage() {
           </thead>
           <tbody>
             {uploads.length > 0 ? (
-              uploads.map((item) => {
-                const day = getDayFromDate(item.upload_date)
-                
-                return (
-                  <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                    <td className="px-4 py-3">
-                      {day} {selectedMonth} {selectedYear}
-                    </td>
-                    <td className="px-4 py-3 text-[#FFD700]">{item.website || '-'}</td>
-                    <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                    <td className="px-4 py-3">{item.total_rows} chat</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
-                        {item.status}
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })
+              uploads.map((item) => (
+                <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                  <td className="px-4 py-3">
+                    {new Date(item.upload_date).getDate()} {selectedMonth} {selectedYear}
+                  </td>
+                  <td className="px-4 py-3 text-[#FFD700]">{item.website || '-'}</td>
+                  <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                  <td className="px-4 py-3">{item.total_rows} chat</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
+                      {item.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
             ) : (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
@@ -664,9 +467,6 @@ export default function ChatCSDataRawPage() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
             <h2 className="text-xl font-bold text-[#FFD700] mb-4">Upload File Chat CS</h2>
-            <p className="text-sm text-[#A7D8FF] mb-4">
-              Geser file Excel ke area di bawah, atau klik untuk memilih
-            </p>
             
             <div
               className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer transition-colors
@@ -697,7 +497,7 @@ export default function ChatCSDataRawPage() {
                 </div>
               ) : (
                 <>
-                  <div className="text-4xl mb-2">💬</div>
+                  <div className="text-4xl mb-2">📂</div>
                   <p className="text-[#FFD700] font-medium">Geser file ke sini</p>
                   <p className="text-sm text-[#A7D8FF] mt-2">atau klik untuk memilih</p>
                   <p className="text-xs text-gray-400 mt-4">Format: .xlsx, .xls, .csv</p>
