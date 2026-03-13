@@ -2044,13 +2044,15 @@ export default function DashboardContent() {
                         ))}
                       </Pie>
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                        formatter={(value, name, props) => {
-                          const total = officerPieData.reduce((sum, item) => sum + item.value, 0);
-                          const percentage = ((value / total) * 100).toFixed(1);
-                          return [`${value} transactions (${percentage}%)`, name];
-                        }}
-                      />
+  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700', color: '#FFFFFF' }}
+  itemStyle={{ color: '#FFFFFF' }}
+  labelStyle={{ color: '#FFD700' }}
+  formatter={(value, name, props) => {
+    const total = officerPieData.reduce((sum, item) => sum + item.value, 0);
+    const percentage = ((value / total) * 100).toFixed(1);
+    return [`${value} transactions (${percentage}%)`, name];
+  }}
+/>
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
