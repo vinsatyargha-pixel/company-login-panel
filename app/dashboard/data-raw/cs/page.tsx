@@ -159,6 +159,7 @@ export default function ChatCSPage() {
           const [day, month, year] = datePart.split('/')
           if (day && month && year) {
             const fullYear = year.length === 2 ? '20' + year : year
+            // INI YANG BENER: YYYY-MM-DD (bukan YYYY-DD-MM)
             return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
           }
         }
