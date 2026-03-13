@@ -126,21 +126,51 @@ export default function ChatCSPage() {
   }, [])
 
   const parseExcelDate = (value: any): string | null => {
-    if (!value) return null
-    try {
-      if (typeof value === 'number') {
-        const date = XLSX.SSF.parse_date_code(value)
-        if (!date) return null
-        const hour = date.H?.toString().padStart(2, '0') || '00'
-        const minute = date.M?.toString().padStart(2, '0') || '00'
-        const second = date.S?.toString().padStart(2, '0') || '00'
-        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
-      }
-      return value.toString().trim()
-    } catch {
-      return null
+  if (!value) return null
+  try {
+    // Handle Excel serial number
+    if (typeof value === 'number') {
+      const date = XLSX.SSF.parse_date_code(value)
+      if (!date) return null
+      const hour = date.H?.toString().padStart(2, '0') || '00'
+      const minute = date.M?.toString().padStart(2, '0') || '00'
+      const second = date.S?.toString().padStart(2, '0') || '00'
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
     }
+    
+    // Handle string date
+    const str = value.toString().trim()
+    
+    // Format: 2026-12-03 23:50:00 (ISO)
+    if (str.includes('-') && str.includes(':')) {
+      const [datePart, timePart] = str.split(' ')
+      if (datePart && timePart) {
+        const [year, month, day] = datePart.split('-')
+        if (year && month && day) {
+          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+        }
+      }
+    }
+    
+    // Format: 13/03/26 09:32 (DD/MM/YY) <-- TAMBAH INI!
+    if (str.includes('/')) {
+      const parts = str.split(' ')
+      if (parts.length >= 2) {
+        const [datePart, timePart] = parts
+        const [day, month, year] = datePart.split('/')
+        if (day && month && year) {
+          // Convert YY to YYYY (26 -> 2026)
+          const fullYear = year.length === 2 ? '20' + year : year
+          return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+        }
+      }
+    }
+    
+    return str
+  } catch {
+    return null
   }
+}
 
   const parsePercentage = (value: string): number | null => {
     if (!value) return null
