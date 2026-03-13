@@ -142,6 +142,17 @@ export default function ChatCSPage() {
     }
   }
 
+  const parsePercentage = (value: string): number | null => {
+    if (!value) return null
+    const match = value.match(/(\d+(?:\.\d+)?)%/)
+    return match ? parseFloat(match[1]) : null
+  }
+
+  const parseArrayField = (value: string): string[] | null => {
+    if (!value || value === '-' || value === ' -') return null
+    return value.split(',').map(item => item.trim()).filter(item => item)
+  }
+
   const processFile = async () => {
     if (!selectedFile) return
     
@@ -161,9 +172,26 @@ export default function ChatCSPage() {
       const findIndex = (keyword: string) => headers.findIndex(h => h && h.toString().toLowerCase().includes(keyword.toLowerCase()))
       
       const idx = {
+        account: findIndex('account'),
+        group: findIndex('group'),
+        website: findIndex('website'),
+        conversation_id: findIndex('conversation id'),
         started: findIndex('started'),
+        ended: findIndex('ended'),
+        chat_duration: findIndex('chat duration'),
         username: findIndex('username'),
-        website: findIndex('website')
+        total_replies: findIndex('total replies'),
+        replied_by_bot: findIndex('replied by bot'),
+        replied_by_agent: findIndex('replied by agent'),
+        status: findIndex('status'),
+        agent_alias: findIndex('agent alias'),
+        agent_email: findIndex('agent email'),
+        agent_name: findIndex('agent name'),
+        resolve_duration: findIndex('resolve duration'),
+        chat_prompt_id: findIndex('chat prompt id'),
+        intents: findIndex('intent(s)'),
+        emotional_sentiment: findIndex('emotional sentiment'),
+        agent_real_name: findIndex('agent real name')
       }
       
       setUploadProgress('Memvalidasi data...')
@@ -181,10 +209,38 @@ export default function ChatCSPage() {
         const dateOnly = started.split(' ')[0]
         uploadDates.add(dateOnly)
         
+        const botStr = row[idx.replied_by_bot]?.toString() || ''
+        const agentStr = row[idx.replied_by_agent]?.toString() || ''
+        
+        const botMatch = botStr.match(/(\d+)/)
+        const agentMatch = agentStr.match(/(\d+)/)
+        
+        const replied_by_bot = botMatch ? parseInt(botMatch[1]) : 0
+        const replied_by_agent = agentMatch ? parseInt(agentMatch[1]) : 0
+        
         validData.push({
-          started: started,
-          username: row[idx.username] || null,
+          account: row[idx.account] || null,
+          group: row[idx.group] || null,
           website: row[idx.website] || 'XLY',
+          conversation_id: row[idx.conversation_id] || null,
+          started: started,
+          ended: parseExcelDate(row[idx.ended]),
+          chat_duration: row[idx.chat_duration] || null,
+          username: row[idx.username] || null,
+          total_replies: parseInt(row[idx.total_replies]) || 0,
+          replied_by_bot: replied_by_bot,
+          replied_by_agent: replied_by_agent,
+          bot_percentage: parsePercentage(botStr),
+          agent_percentage: parsePercentage(agentStr),
+          status: row[idx.status] || null,
+          agent_alias: row[idx.agent_alias] || null,
+          agent_email: row[idx.agent_email] || null,
+          agent_name: row[idx.agent_name] || null,
+          resolve_duration: row[idx.resolve_duration] || null,
+          chat_prompt_id: row[idx.chat_prompt_id] ? parseInt(row[idx.chat_prompt_id]) : null,
+          intents: parseArrayField(row[idx.intents]),
+          emotional_sentiment: parseArrayField(row[idx.emotional_sentiment]),
+          agent_real_name: row[idx.agent_real_name] || null,
           file_name: selectedFile.name
         })
       }
@@ -264,7 +320,6 @@ export default function ChatCSPage() {
 
       <h1 className="text-3xl font-bold text-[#FFD700] mb-6">CHAT CS DATA RAW</h1>
 
-      {/* FILTERS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
           className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
@@ -296,7 +351,6 @@ export default function ChatCSPage() {
         </div>
       </div>
 
-      {/* TABLE UPLOADS */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
@@ -326,7 +380,6 @@ export default function ChatCSPage() {
         </table>
       </div>
 
-      {/* UPLOAD MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
