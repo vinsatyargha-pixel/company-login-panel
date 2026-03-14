@@ -401,8 +401,8 @@ export default function DashboardContent() {
     };
   };
 
-  // ===========================================
-// FETCH TRAFFIC METRICS DATA - TOTAL SEMUA CHAT (BOT + HUMAN)
+// ===========================================
+// FETCH TRAFFIC METRICS DATA - PAKE TABLE CHAT_CS_DATA
 // ===========================================
 const fetchTrafficMetricsData = async () => {
   try {
@@ -421,22 +421,21 @@ const fetchTrafficMetricsData = async () => {
       
       // AMBIL WITHDRAWAL  
       let withdrawalQuery = supabase
-        .from('withdrawal_transactions')
+        .from('wallet_withdrawal_transactions')  // GANTI INI JUGA
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      // AMBIL CHAT - SEMUA (BOT + HUMAN) - GA PAKE FILTER
+      // AMBIL CHAT - DARI TABLE CHAT_CS_DATA, PAKE KOLOM STARTED
       let chatQuery = supabase
-        .from('chat')
-        .select('created_at')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
+        .from('chat_cs_data')
+        .select('started')
+        .gte('started', startDate)
+        .lte('started', endDate);
       
       if (trafficMetricsAsset !== 'all') {
         depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
         withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
-        // CHAT GA ADA BRAND, JADI FILTER BY ASSET GA BISA
       }
       
       const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
@@ -444,6 +443,8 @@ const fetchTrafficMetricsData = async () => {
         withdrawalQuery,
         chatQuery
       ]);
+      
+      console.log('🔥 Chat data:', chats?.length); // DEBUG
       
       const data = processDailyTrafficData(
         deposits || [], 
@@ -468,16 +469,16 @@ const fetchTrafficMetricsData = async () => {
         .lte('approved_date', endDate);
       
       let withdrawalQuery = supabase
-        .from('withdrawal_transactions')
+        .from('wallet_withdrawal_transactions')
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
       let chatQuery = supabase
-        .from('chat')
-        .select('created_at')
-        .gte('created_at', startDate)
-        .lte('created_at', endDate);
+        .from('chat_cs_data')
+        .select('started')
+        .gte('started', startDate)
+        .lte('started', endDate);
       
       if (trafficMetricsAsset !== 'all') {
         depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
@@ -489,6 +490,8 @@ const fetchTrafficMetricsData = async () => {
         withdrawalQuery,
         chatQuery
       ]);
+      
+      console.log('🔥 Chat data monthly:', chats?.length); // DEBUG
       
       const data = processMonthlyTrafficData(
         deposits || [], 
@@ -507,7 +510,6 @@ const fetchTrafficMetricsData = async () => {
   }
 };
 
-// PROCESS FUNCTIONS TETAP SAMA
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
@@ -532,25 +534,28 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
     };
   });
   
+  // HITUNG DEPOSIT
   deposits.forEach(deposit => {
     const date = new Date(deposit.approved_date);
     const day = date.getDate() - 1;
     if (days[day]) days[day].deposit++;
   });
   
+  // HITUNG WITHDRAWAL
   withdrawals.forEach(withdrawal => {
     const date = new Date(withdrawal.approved_date);
     const day = date.getDate() - 1;
     if (days[day]) days[day].withdrawal++;
   });
   
-  // HITUNG SEMUA CHAT (BOT + HUMAN)
+  // HITUNG CHAT - PAKE STARTED
   chats.forEach(chat => {
-    const date = new Date(chat.created_at);
+    const date = new Date(chat.started);
     const day = date.getDate() - 1;
     if (days[day]) days[day].chat++;
   });
   
+  console.log('📊 Daily data:', days); // DEBUG
   return days;
 };
 
@@ -575,6 +580,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     };
   });
   
+  // HITUNG DEPOSIT
   deposits.forEach(deposit => {
     const date = new Date(deposit.approved_date);
     const month = date.getMonth();
@@ -584,6 +590,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     }
   });
   
+  // HITUNG WITHDRAWAL
   withdrawals.forEach(withdrawal => {
     const date = new Date(withdrawal.approved_date);
     const month = date.getMonth();
@@ -593,9 +600,9 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     }
   });
   
-  // HITUNG SEMUA CHAT (BOT + HUMAN)
+  // HITUNG CHAT - PAKE STARTED
   chats.forEach(chat => {
-    const date = new Date(chat.created_at);
+    const date = new Date(chat.started);
     const month = date.getMonth();
     const monthIndex = month - startMonth;
     if (monthIndex >= 0 && monthIndex < 6) {
@@ -603,6 +610,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     }
   });
   
+  console.log('📊 Monthly data:', monthlyData); // DEBUG
   return monthlyData;
 };
 
