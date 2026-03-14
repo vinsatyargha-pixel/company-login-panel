@@ -1957,7 +1957,10 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
   ) : (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={trafficMetrics}>
+      <LineChart 
+        data={trafficMetrics}
+        margin={{ top: 5, right: 20, left: 20, bottom: 5 }} // INI YANG DITAMBAH
+      >
         <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
         <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
         <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
