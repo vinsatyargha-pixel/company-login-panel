@@ -66,36 +66,56 @@ export default function ChatCSPage() {
   }
 
   const fetchUploads = async () => {
-    try {
-      setLoading(true)
-      
-      // FORMAT: YYYY-DD-MM
-      // Bulan ada di 2 digit terakhir
-      const monthIndex = months.indexOf(selectedMonth) + 1
-      const monthStr = String(monthIndex).padStart(2, '0')
-      
-      // Filter berdasarkan bulan di 2 digit terakhir
-      let query = supabase
-        .from('chat_uploads')
-        .select('*')
-        .filter('upload_date', 'like', `${selectedYear}-%-${monthStr}`)
-        .order('upload_date', { ascending: true })
+  try {
+    setLoading(true)
+    
+    const monthIndex = months.indexOf(selectedMonth) + 1
+    const monthPadded = String(monthIndex).padStart(2, '0')
+    
+    // BUAT RANGE TANGGAL LENGKAP
+    const startDate = `${selectedYear}-01-${monthPadded}`  // YYYY-DD-MM
+    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+    const endDate = `${selectedYear}-${lastDay}-${monthPadded}`
 
-      if (selectedAsset !== 'all') {
-        const asset = assets.find(a => a.id === selectedAsset)
-        if (asset) {
-          query = query.eq('website', asset.asset_code)
-        }
+    console.log('🔍 FILTER CS:', { 
+      selectedMonth, 
+      selectedYear,
+      startDate, 
+      endDate 
+    })
+
+    let query = supabase
+      .from('chat_uploads')
+      .select('*')
+      .gte('upload_date', startDate)
+      .lte('upload_date', endDate)
+      .order('upload_date', { ascending: true })
+
+    if (selectedAsset !== 'all') {
+      const asset = assets.find(a => a.id === selectedAsset)
+      if (asset) {
+        query = query.eq('website', asset.asset_code)
       }
-
-      const { data } = await query
-      setUploads(data || [])
-    } catch (error) {
-      console.error('Error fetching uploads:', error)
-    } finally {
-      setLoading(false)
     }
+
+    const { data, error } = await query
+    
+    if (error) {
+      console.error('❌ ERROR SUPABASE:', error)
+      throw error
+    }
+    
+    console.log('📅 DATA DITEMUKAN:', data?.length || 0, 'baris')
+    console.log('📅 ISI DATA:', data)
+    
+    setUploads(data || [])
+    
+  } catch (error) {
+    console.error('Error fetching uploads:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault()
