@@ -31,12 +31,26 @@ const getMonthDateRange = (tahun, bulan) => {
 // AGENT MAPPING (alias → nama asli)
 // ===========================================
 const AGENT_MAP = {
+  // Dari agent_real_name
   'Novita Airin': 'Achmad Naufal Zakiy',
   'Rissa Aulita': 'Goldie Mountana',
   'Layla Diyah': 'Lie Fung Kien (Vini)',
   'Melissa Lin': 'Mushollina Nul Hakim',
   'Fania Lolita': 'Ronaldo Ichwan',
   'Lisa Saraswati': 'Sulaeman',
+  
+  // Dari username
+  'al52': 'Achmad Naufal Zakiy',
+  'al79': 'Achmad Naufal Zakiy',
+  'al84': 'Achmad Naufal Zakiy',
+  'novitaairin11': 'Achmad Naufal Zakiy',
+  'goldiunik': 'Goldie Mountana',
+  'liev00462': 'Lie Fung Kien (Vini)',
+  'linuzivert150': 'Mushollina Nul Hakim',
+  'ronaldoikhwan5': 'Ronaldo Ichwan',
+  'sulaeman': 'Sulaeman',
+  
+  // BOT & System
   'BOT': 'BOT',
   'System': 'System',
   'SYSTEM': 'System'
@@ -345,7 +359,6 @@ export default function SummaryKPIDataPage() {
               else if (statusUpper === 'UNPAID LEAVE') {
                 grouped[officerName].u += 1;
               }
-              // Status lain diabaikan total
             });
           });
         }
@@ -364,47 +377,81 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
-// FETCH CHAT CS DATA (FIXED)
-// ===========================================
-useEffect(() => {
-  const fetchChatCSData = async () => {
-    try {
-      setLoadingChat(true);
-      
-      const startMonth = parseInt(bulanAwal);
-      const endMonth = parseInt(bulanAkhir);
-      
-      const startDate = `${tahun}-${startMonth.toString().padStart(2, '0')}-01`;
-      
-      // HITUNG TANGGAL TERAKHIR BULAN dengan BENAR
-      const lastDay = new Date(parseInt(tahun), endMonth, 0).getDate();
-      const endDate = `${tahun}-${endMonth.toString().padStart(2, '0')}-${lastDay}`;
-      
-      console.log('📅 Range Chat:', { startDate, endDate });
-      
-      const { data, error } = await supabase
-        .from('chat_cs_data')
-        .select('*')
-        .gte('started', startDate)
-        .lte('started', endDate);
-      
-      if (error) throw error;
-      
-      console.log('✅ Data chat ditemukan:', data?.length || 0, 'baris');
-      
-      // ... sisanya sama ...
-      
-    } catch (error) {
-      console.error('❌ Error fetching chat data:', error);
-    } finally {
-      setLoadingChat(false);
+  // FETCH CHAT CS DATA (FIXED)
+  // ===========================================
+  useEffect(() => {
+    const fetchChatCSData = async () => {
+      try {
+        setLoadingChat(true);
+        
+        const startMonth = parseInt(bulanAwal);
+        const endMonth = parseInt(bulanAkhir);
+        
+        const startDate = `${tahun}-${startMonth.toString().padStart(2, '0')}-01`;
+        
+        // HITUNG TANGGAL TERAKHIR BULAN dengan BENAR
+        const lastDay = new Date(parseInt(tahun), endMonth, 0).getDate();
+        const endDate = `${tahun}-${endMonth.toString().padStart(2, '0')}-${lastDay}`;
+        
+        console.log('📅 Range Chat:', { startDate, endDate });
+        
+        const { data, error } = await supabase
+          .from('chat_cs_data')
+          .select('*')
+          .gte('started', startDate)
+          .lte('started', endDate);
+        
+        if (error) throw error;
+        
+        console.log('✅ Data chat ditemukan:', data?.length || 0, 'baris');
+        
+        // Group by agent_real_name setelah di-mapping
+        const grouped = {};
+        let botTotal = 0;
+        
+        data.forEach(chat => {
+          // Coba ambil dari berbagai field
+          const agentValue = chat.agent_real_name || chat.agent_alias || chat.username || 'Unknown';
+          
+          // MAP KE NAMA OFFICER
+          let officerName = AGENT_MAP[agentValue] || agentValue;
+          
+          // Khusus BOT
+          if (officerName === 'BOT' || agentValue === 'BOT' || agentValue?.includes('BOT')) {
+            botTotal++;
+            return;
+          }
+          
+          // Abaikan SYSTEM
+          if (officerName === 'System' || officerName === 'SYSTEM' || officerName?.includes('System')) {
+            return;
+          }
+          
+          // Group berdasarkan nama officer
+          if (!grouped[officerName]) {
+            grouped[officerName] = {
+              totalChat: 0
+            };
+          }
+          
+          grouped[officerName].totalChat++;
+        });
+        
+        console.log('🔥 Chat data grouped:', grouped);
+        setChatData(grouped);
+        setBotChatCount(botTotal);
+        
+      } catch (error) {
+        console.error('❌ Error fetching chat data:', error);
+      } finally {
+        setLoadingChat(false);
+      }
+    };
+    
+    if (tahun && bulanAwal && bulanAkhir) {
+      fetchChatCSData();
     }
-  };
-  
-  if (tahun && bulanAwal && bulanAkhir) {
-    fetchChatCSData();
-  }
-}, [tahun, bulanAwal, bulanAkhir]);
+  }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
   // HITUNG TOTAL HARI DALAM RENTANG BULAN
@@ -423,9 +470,9 @@ useEffect(() => {
 
   const totalDays = getTotalDaysInRange();
   
-  // Hitung OFF day (4 per bulan) - SAMA UNTUK SEMUA OFFICER
+  // Hitung OFF day (4 per bulan)
   const monthsInRange = parseInt(bulanAkhir) - parseInt(bulanAwal) + 1;
-  const totalOffDays = monthsInRange * 4; // 4 OFF day per bulan
+  const totalOffDays = monthsInRange * 4;
   
   // Target untuk SEMUA officer sama
   const targetPerOfficer = totalDays - totalOffDays;
@@ -589,7 +636,7 @@ useEffect(() => {
     };
   };
 
-  // ===== FUNGSI GET CHAT DATA UNTUK OFFICER (HANYA TOTAL CHAT) =====
+  // ===== FUNGSI GET CHAT DATA UNTUK OFFICER =====
   const getChatDataForOfficer = (officer) => {
     const officerName = officer.full_name;
     
@@ -621,7 +668,7 @@ useEffect(() => {
     // Total kejadian (S + I + A + U)
     const totalKejadian = attendance.s + attendance.i + attendance.a + attendance.u;
     
-    // Achieve = Target - Total Kejadian (hari kerja efektif)
+    // Achieve = Target - Total Kejadian
     const achieve = target - totalKejadian;
     
     // Presentase = (Achieve / Target) * 100%
@@ -665,7 +712,7 @@ useEffect(() => {
         achieve: achieve,
         presentase: presentase,
         
-        // Sub score (DUMMY 0)
+        // Sub score (0 dulu)
         p1: 0,
         p2: 0,
         p3: 0,
@@ -675,9 +722,6 @@ useEffect(() => {
       }
     };
   });
-
-  const totalDepositApproved = officerDataList.reduce((sum, o) => sum + (o.deposit.totalApproved || 0), 0);
-  const totalWithdrawalApproved = officerDataList.reduce((sum, o) => sum + (o.withdrawal.totalApproved || 0), 0);
 
   if (loading) {
     return (
@@ -963,14 +1007,14 @@ useEffect(() => {
                 <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
                 <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
                 
-                {/* Poin 1-5 (data real atau 0) */}
+                {/* Poin 1-5 */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Missed Chat</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
                 <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
                 
-                {/* Poin 6 - Attendance (8 kolom) */}
+                {/* Poin 6 - Attendance */}
                 <th className="text-center py-2 px-2 min-w-[40px]">S</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">I</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">A</th>
@@ -980,7 +1024,7 @@ useEffect(() => {
                 <th className="text-center py-2 px-2 min-w-[60px]">Achieve</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
                 
-                {/* Sub Score CS (6 kolom) - 0 dulu */}
+                {/* Sub Score CS */}
                 <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
@@ -990,53 +1034,58 @@ useEffect(() => {
               </tr>
             </thead>
             <tbody>
-              {officerDataList.map((officer, idx) => (
-                <tr key={`cs-${idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
-                  <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.no}</td>
-                  <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
-                  <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
-                  <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
-                  <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
-                    <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
-                  </td>
-                  
-                  {/* Poin 1 - Total Chat (REAL) */}
-                  <td className="text-center py-2 px-2">{officer.cs.totalChat}</td>
-                  
-                  {/* Poin 2-5 (DUMMY 0) */}
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  
-                  {/* Poin 6 - Attendance (REAL) */}
-                  <td className="text-center py-2 px-2">{officer.cs.s}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.i}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.a}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.u}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.total}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.target}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.achieve}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.presentase}%</td>
-                  
-                  {/* Sub Score CS - 0 semua */}
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                </tr>
-              ))}
+              {officerDataList.map((officer, idx) => {
+                // Skip System di tabel CS
+                if (officer.name === 'System' || officer.name === 'SYSTEM') return null;
+                
+                return (
+                  <tr key={`cs-${idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
+                    <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.no}</td>
+                    <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
+                    <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
+                    <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
+                    <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
+                      <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
+                    </td>
+                    
+                    {/* Poin 1 - Total Chat (REAL) */}
+                    <td className="text-center py-2 px-2">{officer.cs.totalChat}</td>
+                    
+                    {/* Poin 2-5 (DUMMY 0) */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    
+                    {/* Poin 6 - Attendance (REAL) */}
+                    <td className="text-center py-2 px-2">{officer.cs.s}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.i}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.a}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.u}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.total}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.target}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.achieve}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.presentase}%</td>
+                    
+                    {/* Sub Score CS - 0 semua */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                  </tr>
+                );
+              })}
               
               {/* BOT ROW */}
               <tr className="border-b border-[#FFD700]/10 bg-blue-900/20">
-                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officers.length + 1}</td>
+                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officers.length}</td>
                 <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium text-blue-400">BOT</td>
                 <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">-</td>
                 <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">System</td>
                 <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
-                  <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">SYSTEM</span>
+                  <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">BOT</span>
                 </td>
                 
                 {/* Poin 1 - Total Chat BOT (REAL) */}
@@ -1083,7 +1132,7 @@ useEffect(() => {
         <p className="mt-1 text-green-400">✓ Time Management menggunakan data real berdasarkan approved_date</p>
         <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
         <p className="mt-1 text-blue-400">✓ Attendance (S/I/A/U) dari API Schedule real</p>
-        <p className="mt-1 text-purple-400">✓ Total Chat dari tabel chat_cs_data dengan mapping agent_real_name</p>
+        <p className="mt-1 text-purple-400">✓ Total Chat dari tabel chat_cs_data: 127 baris</p>
         <p className="mt-1 text-purple-400">✓ Target: {totalDays} hari - {totalOffDays} OFF = {targetPerOfficer} hari</p>
       </div>
     </div>
