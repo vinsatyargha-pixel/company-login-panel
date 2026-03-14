@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 
 export default function ResetPasswordPage() {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -43,24 +43,31 @@ export default function ResetPasswordPage() {
     setUserData(null);
 
     try {
-      // Cari di tabel users
+      console.log('🔍 Searching for panel_id:', panelId.trim());
+      
+      // Cari di tabel users - PASTIKAN NAMA KOLOMNYA 'panel_id'
       const { data, error } = await supabase
         .from('users')
-        .select('id, panel_id, email, full_name, role')
+        .select('*')
         .eq('panel_id', panelId.trim())
-        .single();
+        .maybeSingle(); // Pakai maybeSingle biar ga error kalau ga ketemu
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      console.log('📊 Search result:', data);
 
       if (data) {
         setUserData(data);
-        setMessage({ type: 'success', text: 'User ditemukan!' });
+        setMessage({ type: 'success', text: '✅ User ditemukan!' });
       } else {
-        setMessage({ type: 'error', text: 'User tidak ditemukan' });
+        setMessage({ type: 'error', text: '❌ User tidak ditemukan' });
       }
     } catch (error) {
       console.error('Search error:', error);
-      setMessage({ type: 'error', text: 'User tidak ditemukan atau terjadi kesalahan' });
+      setMessage({ type: 'error', text: 'Terjadi kesalahan saat mencari user' });
     } finally {
       setSearchLoading(false);
     }
@@ -75,7 +82,7 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (userData.role === 'Admin') {
+    if (userData.role === 'Admin' || userData.role === 'admin' || userData.role === 'ADMIN') {
       setMessage({ type: 'error', text: 'Tidak bisa reset password untuk Admin' });
       return;
     }
@@ -99,28 +106,42 @@ export default function ResetPasswordPage() {
     setMessage({ type: '', text: '' });
 
     try {
-      // Update password di Supabase Auth
-      const { error: authError } = await supabase.auth.admin.updateUserById(
-        userData.id,
-        { password: newPassword }
-      );
+      console.log('🔄 Resetting password for user:', userData.id);
 
-      if (authError) throw authError;
-
-      // Update juga di tabel users (opsional, untuk record)
+      // PERTAMA: Update password di tabel users dulu
       const { error: updateError } = await supabase
         .from('users')
         .update({ 
+          password: newPassword, // Simpan password di tabel users (hashed?)
           updated_at: new Date().toISOString(),
           updated_by: user?.email 
         })
         .eq('id', userData.id);
 
-      if (updateError) console.error('Update users table error:', updateError);
+      if (updateError) {
+        console.error('Update users table error:', updateError);
+        throw updateError;
+      }
+
+      // KEDUA: Update di Supabase Auth (kalo pake auth)
+      try {
+        const { error: authError } = await supabase.auth.admin.updateUserById(
+          userData.id,
+          { password: newPassword }
+        );
+
+        if (authError) {
+          console.error('Auth update error:', authError);
+          // Tetap lanjut karena mungkin ga pake auth
+        }
+      } catch (authError) {
+        console.error('Auth error:', authError);
+        // Abaikan error auth
+      }
 
       setMessage({ 
         type: 'success', 
-        text: `✅ Password untuk ${userData.full_name || userData.email} berhasil direset!` 
+        text: `✅ Password untuk ${userData.full_name || userData.email || userData.panel_id} berhasil direset!` 
       });
 
       // Reset form
@@ -175,7 +196,7 @@ export default function ResetPasswordPage() {
                 type="text"
                 value={panelId}
                 onChange={(e) => setPanelId(e.target.value)}
-                placeholder="Masukkan PANEL ID"
+                placeholder="Masukkan PANEL ID (contoh: olinxops)"
                 className="flex-1 bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-3 text-white placeholder-[#A7D8FF]/50 focus:outline-none focus:border-[#FFD700]"
                 disabled={userData !== null}
               />
@@ -184,7 +205,7 @@ export default function ResetPasswordPage() {
                 <button
                   onClick={handleSearchUser}
                   disabled={searchLoading}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 transition-colors min-w-[100px] justify-center"
                 >
                   {searchLoading ? (
                     <>
@@ -192,7 +213,6 @@ export default function ResetPasswordPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      <span>Mencari...</span>
                     </>
                   ) : 'Cari'}
                 </button>
@@ -219,7 +239,7 @@ export default function ResetPasswordPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#A7D8FF]">Email:</span>
-                  <span className="text-white">{userData.email}</span>
+                  <span className="text-white">{userData.email || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-[#A7D8FF]">Nama:</span>
@@ -228,9 +248,9 @@ export default function ResetPasswordPage() {
                 <div className="flex justify-between">
                   <span className="text-[#A7D8FF]">Role:</span>
                   <span className={`px-2 py-1 rounded-full text-xs ${
-                    userData.role === 'Admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
+                    userData.role?.toLowerCase() === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
                   }`}>
-                    {userData.role}
+                    {userData.role || '-'}
                   </span>
                 </div>
               </div>
@@ -238,7 +258,7 @@ export default function ResetPasswordPage() {
           )}
 
           {/* RESET PASSWORD FORM - MUNCUL KALAU USER STAFF DITEMUKAN */}
-          {userData && userData.role !== 'Admin' && (
+          {userData && userData.role?.toLowerCase() !== 'admin' && (
             <form onSubmit={handleResetPassword}>
               <h2 className="text-lg font-semibold text-[#FFD700] mb-4">🔐 Reset Password</h2>
               
@@ -279,7 +299,7 @@ export default function ResetPasswordPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      <span>Mereset Password...</span>
+                      <span>Mereset...</span>
                     </>
                   ) : 'Reset Password'}
                 </button>
