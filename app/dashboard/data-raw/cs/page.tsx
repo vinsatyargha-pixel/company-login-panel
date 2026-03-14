@@ -147,57 +147,52 @@ export default function ChatCSPage() {
   }, [])
 
   // ===========================================
-  // PARSE TANGGAL EXCEL - FINAL FIX!
+  // PARSE TANGGAL EXCEL - FINAL FIX UNTUK FORMAT MM/DD/YYYY
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
-  if (!value) return null
-
-  try {
-    // Excel serial number
-    if (typeof value === 'number') {
-      const excelEpoch = new Date(Date.UTC(1899, 11, 30))
-      const date = new Date(excelEpoch.getTime() + value * 86400000)
-      return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')} ${String(date.getUTCHours()).padStart(2,'0')}:${String(date.getUTCMinutes()).padStart(2,'0')}:${String(date.getUTCSeconds()).padStart(2,'0')}`
-    }
-
-    const str = value.toString().trim()
-    
-    // Format tanggal dengan slash: 12/3/2026 atau 13/03/26
-    if (str.includes('/')) {
-      const [datePart, timePart = '00:00:00'] = str.split(' ')
-      const parts = datePart.split('/')
-      
-      // parts[0] = day, parts[1] = month, parts[2] = year
-      const day = parts[0].padStart(2, '0')
-      const month = parts[1].padStart(2, '0')
-      let year = parts[2]
-      
-      // KONVERSI TAHUN 2 DIGIT KE 4 DIGIT
-      if (year.length === 2) {
-        year = '20' + year  // '26' → '2026'
-      }
-      // Kalo tahun 4 digit, biarin aja '2026'
-      
-      return `${year}-${month}-${day} ${timePart}`
-    }
-    
-    return str
-  } catch (err) {
-    console.error('Date parse error:', value)
-    return null
-  }
-}
-
-  const parsePercentage = (value: string): number | null => {
     if (!value) return null
-    const match = value.match(/(\d+(?:\.\d+)?)%/)
-    return match ? parseFloat(match[1]) : null
+
+    try {
+      // Excel serial number
+      if (typeof value === 'number') {
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+        const date = new Date(excelEpoch.getTime() + value * 86400000)
+        const year = date.getUTCFullYear()
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+        const day = String(date.getUTCDate()).padStart(2, '0')
+        const hour = String(date.getUTCHours()).padStart(2, '0')
+        const minute = String(date.getUTCMinutes()).padStart(2, '0')
+        const second = String(date.getUTCSeconds()).padStart(2, '0')
+        return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+      }
+
+      const str = value.toString().trim()
+      
+      // Format dengan slash: 3/13/2026 23:29 (MM/DD/YYYY)
+      if (str.includes('/')) {
+        const [datePart, timePart = '00:00:00'] = str.split(' ')
+        const parts = datePart.split('/')
+        
+        // Format Freshchat: MM/DD/YYYY
+        const month = parts[0].padStart(2, '0')
+        const day = parts[1].padStart(2, '0')
+        const year = parts[2]
+        
+        // KONVERSI KE YYYY-MM-DD UNTUK DATABASE
+        return `${year}-${month}-${day} ${timePart}`
+      }
+      
+      return str
+    } catch (err) {
+      console.error('Date parse error:', value)
+      return null
+    }
   }
 
   const parseArrayField = (value: string): string[] | null => {
     if (!value || value === '-' || value === ' -') return null
-    return value.split(',').map(item => item.trim()).filter(item => item)
+    return value.split(';').map(item => item.trim()).filter(item => item)
   }
 
   // ===========================================
@@ -226,7 +221,7 @@ export default function ChatCSPage() {
       const headers = rows[0]
       const dataRows = rows.slice(1)
       
-      // Cari index kolom
+      // Cari index kolom berdasarkan header baru
       const findIndex = (keyword: string) => {
         return headers.findIndex((h: string) => 
           h && h.toString().toLowerCase().includes(keyword.toLowerCase())
@@ -235,29 +230,29 @@ export default function ChatCSPage() {
       
       const idx = {
         account: findIndex('account'),
-        group: findIndex('group'),
         website: findIndex('website'),
-        conversation_id: findIndex('conversation id'),
-        started: findIndex('started'),
-        ended: findIndex('ended'),
-        chat_duration: findIndex('chat duration'),
-        username: findIndex('username'),
-        total_replies: findIndex('total replies'),
-        replied_by_bot: findIndex('replied by bot'),
-        replied_by_agent: findIndex('replied by agent'),
-        status: findIndex('status'),
-        agent_alias: findIndex('agent alias'),
-        agent_email: findIndex('agent email'),
-        agent_name: findIndex('agent name'),
-        resolve_duration: findIndex('resolve duration'),
-        chat_prompt_id: findIndex('chat prompt id'),
-        intents: findIndex('intent(s)'),
+        group: findIndex('group'),
+        conversation_id: findIndex('freshchat id'),
+        started: findIndex('created at'),
+        ended: findIndex('resolved at'),
+        chat_duration: findIndex('conversation duration'),
+        username: findIndex('customer name'),
+        intents: findIndex('intent'),
         emotional_sentiment: findIndex('emotional sentiment'),
-        agent_real_name: findIndex('agent real name')
+        total_replies: findIndex('total replies'),
+        replied_by_bot: findIndex('bot reply count'),
+        replied_by_agent: findIndex('agent reply count'),
+        status: findIndex('status'),
+        agent: findIndex('agent'),
+        agent_real_name: findIndex('agent real name'),
+        agent_alias: findIndex('agent alias'),
+        resolve_duration: findIndex('resolve duration'),
+        chat_prompt_id: findIndex('prompt id'),
+        agent_score: findIndex('agent score')
       }
       
       if (idx.started === -1) {
-        throw new Error('Kolom Started tidak ditemukan')
+        throw new Error('Kolom Created At tidak ditemukan')
       }
       
       setUploadProgress('Memvalidasi data...')
@@ -269,55 +264,35 @@ export default function ChatCSPage() {
         const row = dataRows[i]
         if (!row || row.length === 0) continue
         
-        // Skip GRAND TOTAL
-        let isGrandTotal = false
-        for (let j = 0; j < row.length; j++) {
-          if (row[j] && row[j].toString().includes('GRAND TOTAL')) {
-            isGrandTotal = true
-            break
-          }
-        }
-        if (isGrandTotal) continue
-        
-        // PAKAI FUNGSI PARSE YANG BENER
         const started = parseExcelDate(row[idx.started])
+        const ended = parseExcelDate(row[idx.ended])
+        
         if (!started) continue
         
         const dateOnly = started.split(' ')[0]
         uploadDates.add(dateOnly)
         
-        const botStr = row[idx.replied_by_bot]?.toString() || ''
-        const agentStr = row[idx.replied_by_agent]?.toString() || ''
-        
-        const botMatch = botStr.match(/(\d+)/)
-        const agentMatch = agentStr.match(/(\d+)/)
-        
-        const replied_by_bot = botMatch ? parseInt(botMatch[1]) : 0
-        const replied_by_agent = agentMatch ? parseInt(agentMatch[1]) : 0
-        
         validData.push({
           account: row[idx.account] || null,
-          group: row[idx.group] || null,
           website: row[idx.website] || 'LUCKY77',
+          group: row[idx.group] || null,
           conversation_id: row[idx.conversation_id] || null,
           started: started,
-          ended: parseExcelDate(row[idx.ended]),
+          ended: ended,
           chat_duration: row[idx.chat_duration] || null,
           username: row[idx.username] || null,
-          total_replies: parseInt(row[idx.total_replies]) || 0,
-          replied_by_bot: replied_by_bot,
-          replied_by_agent: replied_by_agent,
-          bot_percentage: parsePercentage(botStr),
-          agent_percentage: parsePercentage(agentStr),
-          status: row[idx.status] || null,
-          agent_alias: row[idx.agent_alias] || null,
-          agent_email: row[idx.agent_email] || null,
-          agent_name: row[idx.agent_name] || null,
-          resolve_duration: row[idx.resolve_duration] || null,
-          chat_prompt_id: row[idx.chat_prompt_id] ? parseInt(row[idx.chat_prompt_id]) : null,
           intents: parseArrayField(row[idx.intents]),
           emotional_sentiment: parseArrayField(row[idx.emotional_sentiment]),
+          total_replies: parseInt(row[idx.total_replies]) || 0,
+          replied_by_bot: parseInt(row[idx.replied_by_bot]) || 0,
+          replied_by_agent: parseInt(row[idx.replied_by_agent]) || 0,
+          status: row[idx.status] || null,
+          agent: row[idx.agent] || null,
           agent_real_name: row[idx.agent_real_name] || null,
+          agent_alias: row[idx.agent_alias] || null,
+          resolve_duration: row[idx.resolve_duration] || null,
+          chat_prompt_id: row[idx.chat_prompt_id] ? parseInt(row[idx.chat_prompt_id]) : null,
+          agent_score: row[idx.agent_score] ? parseInt(row[idx.agent_score]) : null,
           file_name: selectedFile.name
         })
       }
