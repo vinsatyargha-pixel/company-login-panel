@@ -70,15 +70,15 @@ export default function ChatCSPage() {
       
       // FORMAT YANG BENAR: YYYY-DD-MM
       // Bulan ada di 2 digit terakhir
-      const monthIndex = months.indexOf(selectedMonth) + 1
-      const monthStr = String(monthIndex).padStart(2, '0')
-      
-      // Filter berdasarkan bulan di posisi akhir (karena format YYYY-DD-MM)
-      let query = supabase
-        .from('chat_uploads')
-        .select('*')
-        .filter('upload_date', 'like', `${selectedYear}-%-${monthStr}`)
-        .order('upload_date', { ascending: true })
+      // PASTIKAN FILTER NYA INI:
+const monthIndex = months.indexOf(selectedMonth) + 1 // 3 untuk Maret
+const monthStr = String(monthIndex).padStart(2, '0') // '03'
+
+let query = supabase
+  .from('chat_uploads')
+  .select('*')
+  .filter('upload_date', 'like', `${selectedYear}-%-${monthStr}`) // Cari yang berakhiran '-03'
+  .order('upload_date', { ascending: true })
 
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset)
