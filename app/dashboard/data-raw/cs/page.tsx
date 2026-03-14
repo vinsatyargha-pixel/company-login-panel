@@ -161,7 +161,7 @@ export default function ChatCSPage() {
   }, [])
 
   // ===========================================
-  // PARSE TANGGAL EXCEL
+  // PARSE TANGGAL EXCEL - FIXED VERSION!
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
@@ -178,22 +178,24 @@ export default function ChatCSPage() {
       }
 
       const str = value.toString().trim()
-      const cleanStr = str.split(',')[0].split('Platform')[0].trim()
-      const parts = cleanStr.split(' ')
       
-      if (parts.length >= 2) {
-        const [datePart, timePart] = parts
-        const [day, month, year] = datePart.split('-')
-        
-        const monthMap: any = {
-          'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-          'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
-          'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      // Format DD/MM/YY: 13/03/26 09:32
+      if (str.includes('/')) {
+        const parts = str.split(' ')
+        if (parts.length >= 2) {
+          const [datePart, timePart] = parts
+          const [day, month, year] = datePart.split('/')
+          if (day && month && year) {
+            const fullYear = year.length === 2 ? '20' + year : year
+            // FORMAT YANG BENAR: YYYY-MM-DD
+            return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+          }
         }
-        
-        if (monthMap[month]) {
-          return `${year}-${monthMap[month]}-${day.padStart(2, '0')} ${timePart}`
-        }
+      }
+      
+      // Format YYYY-MM-DD HH:MM:SS (sudah bener)
+      if (str.includes('-') && str.includes(':')) {
+        return str
       }
       
       return null
