@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
@@ -16,6 +16,32 @@ export default function ResetPasswordPage() {
   const [userData, setUserData] = useState(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Debug: cek struktur tabel users
+  useEffect(() => {
+    const checkTableStructure = async () => {
+      try {
+        // Ambil 1 row untuk lihat struktur
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .limit(1);
+
+        if (error) {
+          console.error('Error checking table:', error);
+        } else {
+          console.log('📊 Table structure - column names:', data && data[0] ? Object.keys(data[0]) : 'No data');
+          console.log('📊 Sample data:', data);
+        }
+      } catch (err) {
+        console.error('Check error:', err);
+      }
+    };
+
+    if (isAdmin) {
+      checkTableStructure();
+    }
+  }, [isAdmin]);
 
   if (!isAdmin) {
     return (
@@ -45,29 +71,74 @@ export default function ResetPasswordPage() {
     try {
       console.log('🔍 Searching for panel_id:', panelId.trim());
       
-      // Cari di tabel users - PASTIKAN NAMA KOLOMNYA 'panel_id'
+      // Coba cari dengan berbagai kemungkinan nama kolom
+      // Pertama: coba cari semua users dulu
+      const { data: allUsers, error: allError } = await supabase
+        .from('users')
+        .select('*')
+        .limit(10);
+
+      if (allError) {
+        console.error('Error fetching all users:', allError);
+      } else {
+        console.log('📊 All users (first 10):', allUsers);
+        
+        // Cari manual di JavaScript berdasarkan panel_id
+        const foundUser = allUsers?.find(u => 
+          u.panel_id === panelId.trim() || 
+          u.panelid === panelId.trim() || 
+          u.panelId === panelId.trim() ||
+          u.id === panelId.trim()
+        );
+
+        if (foundUser) {
+          console.log('✅ User found manually:', foundUser);
+          setUserData(foundUser);
+          setMessage({ type: 'success', text: '✅ User ditemukan!' });
+          setSearchLoading(false);
+          return;
+        }
+      }
+
+      // Coba dengan query yang lebih fleksibel
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('panel_id', panelId.trim())
-        .maybeSingle(); // Pakai maybeSingle biar ga error kalau ga ketemu
+        .or(`panel_id.eq.${panelId.trim()},panelid.eq.${panelId.trim()},id.eq.${panelId.trim()}`)
+        .maybeSingle();
 
       if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+        console.error('Supabase query error:', error);
+        
+        // Coba query simple tanpa filter dulu
+        const { data: simpleData, error: simpleError } = await supabase
+          .from('users')
+          .select('*')
+          .limit(5);
+
+        if (simpleError) {
+          throw simpleError;
+        }
+
+        console.log('📊 Sample users:', simpleData);
+        setMessage({ 
+          type: 'error', 
+          text: `Error query. Cek console untuk sample data. Panel ID yang dicari: ${panelId.trim()}` 
+        });
+        return;
       }
 
-      console.log('📊 Search result:', data);
+      console.log('📊 Query result:', data);
 
       if (data) {
         setUserData(data);
         setMessage({ type: 'success', text: '✅ User ditemukan!' });
       } else {
-        setMessage({ type: 'error', text: '❌ User tidak ditemukan' });
+        setMessage({ type: 'error', text: `❌ User dengan PANEL ID "${panelId.trim()}" tidak ditemukan` });
       }
     } catch (error) {
       console.error('Search error:', error);
-      setMessage({ type: 'error', text: 'Terjadi kesalahan saat mencari user' });
+      setMessage({ type: 'error', text: 'Terjadi kesalahan saat mencari user: ' + error.message });
     } finally {
       setSearchLoading(false);
     }
@@ -82,7 +153,7 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    if (userData.role === 'Admin' || userData.role === 'admin' || userData.role === 'ADMIN') {
+    if (userData.role?.toLowerCase() === 'admin') {
       setMessage({ type: 'error', text: 'Tidak bisa reset password untuk Admin' });
       return;
     }
@@ -108,40 +179,24 @@ export default function ResetPasswordPage() {
     try {
       console.log('🔄 Resetting password for user:', userData.id);
 
-      // PERTAMA: Update password di tabel users dulu
+      // Update password di tabel users
       const { error: updateError } = await supabase
         .from('users')
         .update({ 
-          password: newPassword, // Simpan password di tabel users (hashed?)
+          password: newPassword,
           updated_at: new Date().toISOString(),
           updated_by: user?.email 
         })
         .eq('id', userData.id);
 
       if (updateError) {
-        console.error('Update users table error:', updateError);
+        console.error('Update error:', updateError);
         throw updateError;
-      }
-
-      // KEDUA: Update di Supabase Auth (kalo pake auth)
-      try {
-        const { error: authError } = await supabase.auth.admin.updateUserById(
-          userData.id,
-          { password: newPassword }
-        );
-
-        if (authError) {
-          console.error('Auth update error:', authError);
-          // Tetap lanjut karena mungkin ga pake auth
-        }
-      } catch (authError) {
-        console.error('Auth error:', authError);
-        // Abaikan error auth
       }
 
       setMessage({ 
         type: 'success', 
-        text: `✅ Password untuk ${userData.full_name || userData.email || userData.panel_id} berhasil direset!` 
+        text: `✅ Password untuk ${userData.full_name || userData.email || userData.panel_id || 'user'} berhasil direset!` 
       });
 
       // Reset form
@@ -152,7 +207,7 @@ export default function ResetPasswordPage() {
       console.error('Reset password error:', error);
       setMessage({ 
         type: 'error', 
-        text: error.message || 'Gagal mereset password' 
+        text: 'Gagal mereset password: ' + error.message 
       });
     } finally {
       setLoading(false);
@@ -196,7 +251,7 @@ export default function ResetPasswordPage() {
                 type="text"
                 value={panelId}
                 onChange={(e) => setPanelId(e.target.value)}
-                placeholder="Masukkan PANEL ID (contoh: olinxops)"
+                placeholder="Masukkan PANEL ID (contoh: zakiyxops)"
                 className="flex-1 bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-3 text-white placeholder-[#A7D8FF]/50 focus:outline-none focus:border-[#FFD700]"
                 disabled={userData !== null}
               />
@@ -225,39 +280,33 @@ export default function ResetPasswordPage() {
                 </button>
               )}
             </div>
+
+            {/* DEBUG INFO - BISA DIHAPUS NANTI */}
+            <div className="mt-4 p-3 bg-[#0B1A33] rounded-lg border border-yellow-500/30 text-xs text-[#A7D8FF]">
+              <p className="font-bold text-yellow-400 mb-1">🔧 DEBUG:</p>
+              <p>Cek console browser (F12) untuk melihat struktur tabel dan sample data</p>
+            </div>
           </div>
 
-          {/* USER INFO SECTION - MUNCUL KALAU USER DITEMUKAN */}
+          {/* USER INFO SECTION */}
           {userData && (
             <div className="mb-6 pb-6 border-b border-[#FFD700]/20">
               <h2 className="text-lg font-semibold text-[#FFD700] mb-4">👤 Data User</h2>
               
               <div className="bg-[#0B1A33] rounded-lg p-4 space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-[#A7D8FF]">PANEL ID:</span>
-                  <span className="text-white font-mono">{userData.panel_id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#A7D8FF]">Email:</span>
-                  <span className="text-white">{userData.email || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#A7D8FF]">Nama:</span>
-                  <span className="text-white">{userData.full_name || '-'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[#A7D8FF]">Role:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    userData.role?.toLowerCase() === 'admin' ? 'bg-purple-500/20 text-purple-400' : 'bg-blue-500/20 text-blue-400'
-                  }`}>
-                    {userData.role || '-'}
-                  </span>
-                </div>
+                {Object.entries(userData).map(([key, value]) => (
+                  <div key={key} className="flex justify-between border-b border-[#FFD700]/10 pb-2 last:border-0">
+                    <span className="text-[#A7D8FF] text-sm">{key}:</span>
+                    <span className="text-white text-sm font-mono">
+                      {value === null ? '-' : String(value)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
 
-          {/* RESET PASSWORD FORM - MUNCUL KALAU USER STAFF DITEMUKAN */}
+          {/* RESET PASSWORD FORM */}
           {userData && userData.role?.toLowerCase() !== 'admin' && (
             <form onSubmit={handleResetPassword}>
               <h2 className="text-lg font-semibold text-[#FFD700] mb-4">🔐 Reset Password</h2>
