@@ -25,7 +25,6 @@ export default function ReviewBreakdownTransactionPage() {
   // DATA
   const [traficData, setTraficData] = useState([]);
   const [summaryData, setSummaryData] = useState({
-    // Chat - KOSONGIN DULU
     chatTotal: 0,
     
     // Deposit
@@ -92,539 +91,515 @@ export default function ReviewBreakdownTransactionPage() {
     }).format(amount);
   };
 
-// ===========================================
-// FETCH HOURLY DATA (24 JAM) - TAMBAH CONSOLE.LOG
-// ===========================================
-const fetchHourlyData = async (date, asset, status) => {
-  try {
-    const startDate = `${date} 00:00:00`;
-    const endDate = `${date} 23:59:59`;
-    
-    const assetCode = asset === 'all' ? 'XLY' : asset;
-    
-    console.log('🔍 Fetching hourly data for:', { startDate, endDate, assetCode });
-    
-    // Fetch deposits
-    let depositQuery = supabase
-      .from('deposit_transactions')
-      .select('approved_date, status, deposit_amount, brand')
-      .eq('brand', assetCode)
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    if (status !== 'all') {
-      const dbStatus = status === 'failed' ? 'Fail' : 
-                      status.charAt(0).toUpperCase() + status.slice(1);
-      depositQuery = depositQuery.eq('status', dbStatus);
+  // ===========================================
+  // FETCH HOURLY DATA (24 JAM)
+  // ===========================================
+  const fetchHourlyData = async (date, asset, status) => {
+    try {
+      const startDate = `${date} 00:00:00`;
+      const endDate = `${date} 23:59:59`;
+      
+      const assetCode = asset === 'all' ? 'XLY' : asset;
+      
+      // Fetch deposits
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date, status, deposit_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all') {
+        const dbStatus = status === 'failed' ? 'Fail' : 
+                        status.charAt(0).toUpperCase() + status.slice(1);
+        depositQuery = depositQuery.eq('status', dbStatus);
+      }
+      
+      // Fetch withdrawals
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date, status, withdrawal_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all' && status !== 'failed') {
+        const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
+        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+      } else if (status === 'failed') {
+        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
+      }
+      
+      // FETCH CHAT
+      let chatQuery = supabase
+        .from('chat_cs_data')
+        .select('started')
+        .gte('started', startDate)
+        .lte('started', endDate);
+      
+      const [depositResult, withdrawalResult, chatResult] = await Promise.all([
+        depositQuery, 
+        withdrawalQuery,
+        chatQuery
+      ]);
+      
+      return processHourlyData(
+        depositResult.data || [], 
+        withdrawalResult.data || [], 
+        chatResult.data || [], 
+        date
+      );
+      
+    } catch (error) {
+      console.error('Error fetching hourly data:', error);
+      return [];
     }
-    
-    // Fetch withdrawals
-    let withdrawalQuery = supabase
-      .from('withdrawal_transactions')
-      .select('approved_date, status, withdrawal_amount, brand')
-      .eq('brand', assetCode)
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    if (status !== 'all' && status !== 'failed') {
-      const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
-      withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
-    } else if (status === 'failed') {
-      withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
-    }
-    
-    // FETCH CHAT
-    let chatQuery = supabase
-      .from('chat_cs_data')
-      .select('started')
-      .gte('started', startDate)
-      .lte('started', endDate);
-    
-    console.log('📤 Running queries...');
-    
-    const [depositResult, withdrawalResult, chatResult] = await Promise.all([
-      depositQuery, 
-      withdrawalQuery,
-      chatQuery
-    ]);
-    
-    console.log('📥 Results:', {
-      deposits: depositResult.data?.length || 0,
-      withdrawals: withdrawalResult.data?.length || 0,
-      chats: chatResult.data?.length || 0
+  };
+
+  const processHourlyData = (deposits, withdrawals, chats, date) => {
+    const hours = Array.from({ length: 24 }, (_, i) => {
+      const startHour = i.toString().padStart(2, '0');
+      const endHour = (i + 1).toString().padStart(2, '0');
+      const period = i === 23 ? `${startHour}:00 - 00:00` : `${startHour}:00 - ${endHour}:00`;
+      
+      return {
+        period: period,
+        type: 'hour',
+        chat: 0,
+        chatVolume: 0,
+        
+        depositApproved: 0,
+        depositRejected: 0,
+        depositFailed: 0,
+        depositApprovedAmount: 0,
+        depositRejectedAmount: 0,
+        depositFailedAmount: 0,
+        depositVolume: 0,
+        depositHighest: 0,
+        depositTotal: 0,
+        
+        withdrawalApproved: 0,
+        withdrawalRejected: 0,
+        withdrawalFailed: 0,
+        withdrawalApprovedAmount: 0,
+        withdrawalRejectedAmount: 0,
+        withdrawalFailedAmount: 0,
+        withdrawalVolume: 0,
+        withdrawalHighest: 0,
+        withdrawalTotal: 0,
+        
+        total: 0,
+        totalVolume: 0,
+        asset: 'XLY'
+      };
     });
     
-    if (chatResult.error) {
-      console.error('❌ Chat error:', chatResult.error);
-    }
-    
-    return processHourlyData(
-      depositResult.data || [], 
-      withdrawalResult.data || [], 
-      chatResult.data || [], 
-      date
-    );
-    
-  } catch (error) {
-    console.error('Error fetching hourly data:', error);
-    return [];
-  }
-};
-
-// UPDATE PROCESS HOURLY - TAMBAH CONSOLE.LOG
-const processHourlyData = (deposits, withdrawals, chats, date) => {
-  console.log('🔄 Processing hourly data:', { deposits: deposits.length, withdrawals: withdrawals.length, chats: chats.length });
-  
-  const hours = Array.from({ length: 24 }, (_, i) => {
-    const startHour = i.toString().padStart(2, '0');
-    const endHour = (i + 1).toString().padStart(2, '0');
-    const period = i === 23 ? `${startHour}:00 - 00:00` : `${startHour}:00 - ${endHour}:00`;
-    
-    return {
-      period: period,
-      type: 'hour',
-      chat: 0,
-      chatVolume: 0, // TAMBAH VOLUME CHAT
+    // Proses deposits
+    deposits.forEach(deposit => {
+      const hour = new Date(deposit.approved_date).getHours();
+      const hourData = hours[hour];
       
-      depositApproved: 0,
-      depositRejected: 0,
-      depositFailed: 0,
-      depositApprovedAmount: 0,
-      depositRejectedAmount: 0,
-      depositFailedAmount: 0,
-      depositVolume: 0,
-      depositHighest: 0,
-      depositTotal: 0,
+      hourData.depositTotal++;
+      hourData.depositVolume += deposit.deposit_amount || 0;
       
-      withdrawalApproved: 0,
-      withdrawalRejected: 0,
-      withdrawalFailed: 0,
-      withdrawalApprovedAmount: 0,
-      withdrawalRejectedAmount: 0,
-      withdrawalFailedAmount: 0,
-      withdrawalVolume: 0,
-      withdrawalHighest: 0,
-      withdrawalTotal: 0,
-      
-      total: 0,
-      totalVolume: 0,
-      asset: 'XLY'
-    };
-  });
-  
-  // Proses deposits
-  deposits.forEach(deposit => {
-    const hour = new Date(deposit.approved_date).getHours();
-    const hourData = hours[hour];
-    
-    hourData.depositTotal++;
-    hourData.depositVolume += deposit.deposit_amount || 0;
-    
-    if (deposit.deposit_amount > hourData.depositHighest) {
-      hourData.depositHighest = deposit.deposit_amount;
-    }
-    
-    const status = deposit.status?.toLowerCase() || '';
-    if (status === 'approved') {
-      hourData.depositApproved++;
-      hourData.depositApprovedAmount += deposit.deposit_amount || 0;
-    } else if (status === 'rejected') {
-      hourData.depositRejected++;
-      hourData.depositRejectedAmount += deposit.deposit_amount || 0;
-    } else if (status === 'fail') {
-      hourData.depositFailed++;
-      hourData.depositFailedAmount += deposit.deposit_amount || 0;
-    }
-  });
-  
-  // Proses withdrawals
-  withdrawals.forEach(withdrawal => {
-    const hour = new Date(withdrawal.approved_date).getHours();
-    const hourData = hours[hour];
-    
-    hourData.withdrawalTotal++;
-    hourData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
-    
-    if (withdrawal.withdrawal_amount > hourData.withdrawalHighest) {
-      hourData.withdrawalHighest = withdrawal.withdrawal_amount;
-    }
-    
-    const status = withdrawal.status?.toLowerCase() || '';
-    if (status === 'approved') {
-      hourData.withdrawalApproved++;
-      hourData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
-    } else if (status === 'rejected') {
-      hourData.withdrawalRejected++;
-      hourData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
-    }
-  });
-  
-  // PROSES CHAT
-  chats.forEach(chat => {
-    const hour = new Date(chat.started).getHours();
-    const hourData = hours[hour];
-    if (hourData) {
-      hourData.chat++;
-      hourData.chatVolume++; // CHAT VOLUME = JUMLAH CHAT
-    }
-  });
-  
-  hours.forEach(hour => {
-    hour.total = hour.depositTotal + hour.withdrawalTotal;
-    hour.totalVolume = hour.depositVolume + hour.withdrawalVolume;
-  });
-  
-  // CEK HASIL CHAT
-  const totalChat = hours.reduce((sum, h) => sum + h.chat, 0);
-  console.log('✅ Total chat after processing:', totalChat);
-  console.log('📊 Sample hour data:', hours[0]);
-  
-  return hours;
-};
-
-// ===========================================
-// FETCH DAILY DATA (1 BULAN) - TAMBAH CHAT
-// ===========================================
-const fetchDailyData = async (month, year, asset, status) => {
-  try {
-    const startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
-    const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()} 23:59:59`;
-    
-    const assetCode = asset === 'all' ? 'XLY' : asset;
-    
-    // Fetch deposits (TETAP)
-    let depositQuery = supabase
-      .from('deposit_transactions')
-      .select('approved_date, status, deposit_amount, brand')
-      .eq('brand', assetCode)
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    if (status !== 'all') {
-      const dbStatus = status === 'failed' ? 'Fail' : 
-                      status.charAt(0).toUpperCase() + status.slice(1);
-      depositQuery = depositQuery.eq('status', dbStatus);
-    }
-    
-    // Fetch withdrawals (TETAP)
-    let withdrawalQuery = supabase
-      .from('withdrawal_transactions')
-      .select('approved_date, status, withdrawal_amount, brand')
-      .eq('brand', assetCode)
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    if (status !== 'all' && status !== 'failed') {
-      const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
-      withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
-    } else if (status === 'failed') {
-      withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
-    }
-    
-    // TAMBAHAN: FETCH CHAT
-    let chatQuery = supabase
-      .from('chat_cs_data')
-      .select('started')
-      .gte('started', startDate)
-      .lte('started', endDate);
-    
-    const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
-      depositQuery, 
-      withdrawalQuery,
-      chatQuery
-    ]);
-    
-    return processDailyData(deposits || [], withdrawals || [], chats || [], month, year); // TAMBAH CHATS
-    
-  } catch (error) {
-    console.error('Error fetching daily data:', error);
-    return [];
-  }
-};
-
-// UPDATE PROCESS DAILY - TAMBAH PARAMETER CHATS
-const processDailyData = (deposits, withdrawals, chats, month, year) => {
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const monthName = months[month - 1];
-  
-  const days = Array.from({ length: daysInMonth }, (_, i) => {
-    const day = i + 1;
-    return {
-      period: `${monthName} ${day}`,
-      type: 'day',
-      chat: 0, // AKAN DIISI
-      
-      depositApproved: 0,
-      depositRejected: 0,
-      depositFailed: 0,
-      depositApprovedAmount: 0,
-      depositRejectedAmount: 0,
-      depositFailedAmount: 0,
-      depositVolume: 0,
-      depositHighest: 0,
-      depositTotal: 0,
-      
-      withdrawalApproved: 0,
-      withdrawalRejected: 0,
-      withdrawalFailed: 0,
-      withdrawalApprovedAmount: 0,
-      withdrawalRejectedAmount: 0,
-      withdrawalFailedAmount: 0,
-      withdrawalVolume: 0,
-      withdrawalHighest: 0,
-      withdrawalTotal: 0,
-      
-      total: 0,
-      totalVolume: 0,
-      asset: 'XLY'
-    };
-  });
-  
-  // Proses deposits (TETAP)
-  deposits.forEach(deposit => {
-    const date = new Date(deposit.approved_date);
-    const day = date.getDate() - 1;
-    const dayData = days[day];
-    
-    if (dayData) {
-      dayData.depositTotal++;
-      dayData.depositVolume += deposit.deposit_amount || 0;
-      
-      if (deposit.deposit_amount > dayData.depositHighest) {
-        dayData.depositHighest = deposit.deposit_amount;
+      if (deposit.deposit_amount > hourData.depositHighest) {
+        hourData.depositHighest = deposit.deposit_amount;
       }
       
       const status = deposit.status?.toLowerCase() || '';
       if (status === 'approved') {
-        dayData.depositApproved++;
-        dayData.depositApprovedAmount += deposit.deposit_amount || 0;
+        hourData.depositApproved++;
+        hourData.depositApprovedAmount += deposit.deposit_amount || 0;
       } else if (status === 'rejected') {
-        dayData.depositRejected++;
-        dayData.depositRejectedAmount += deposit.deposit_amount || 0;
+        hourData.depositRejected++;
+        hourData.depositRejectedAmount += deposit.deposit_amount || 0;
       } else if (status === 'fail') {
-        dayData.depositFailed++;
-        dayData.depositFailedAmount += deposit.deposit_amount || 0;
+        hourData.depositFailed++;
+        hourData.depositFailedAmount += deposit.deposit_amount || 0;
       }
-    }
-  });
-  
-  // Proses withdrawals (TETAP)
-  withdrawals.forEach(withdrawal => {
-    const date = new Date(withdrawal.approved_date);
-    const day = date.getDate() - 1;
-    const dayData = days[day];
+    });
     
-    if (dayData) {
-      dayData.withdrawalTotal++;
-      dayData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
+    // Proses withdrawals
+    withdrawals.forEach(withdrawal => {
+      const hour = new Date(withdrawal.approved_date).getHours();
+      const hourData = hours[hour];
       
-      if (withdrawal.withdrawal_amount > dayData.withdrawalHighest) {
-        dayData.withdrawalHighest = withdrawal.withdrawal_amount;
+      hourData.withdrawalTotal++;
+      hourData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
+      
+      if (withdrawal.withdrawal_amount > hourData.withdrawalHighest) {
+        hourData.withdrawalHighest = withdrawal.withdrawal_amount;
       }
       
       const status = withdrawal.status?.toLowerCase() || '';
       if (status === 'approved') {
-        dayData.withdrawalApproved++;
-        dayData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
+        hourData.withdrawalApproved++;
+        hourData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
       } else if (status === 'rejected') {
-        dayData.withdrawalRejected++;
-        dayData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
+        hourData.withdrawalRejected++;
+        hourData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
       }
-    }
-  });
-  
-  // TAMBAHAN: PROSES CHAT
-  chats.forEach(chat => {
-    const date = new Date(chat.started);
-    const day = date.getDate() - 1;
-    const dayData = days[day];
-    if (dayData) {
-      dayData.chat++;
-    }
-  });
-  
-  days.forEach(day => {
-    day.total = day.depositTotal + day.withdrawalTotal;
-    day.totalVolume = day.depositVolume + day.withdrawalVolume;
-  });
-  
-  return days;
-};
+    });
+    
+    // PROSES CHAT
+    chats.forEach(chat => {
+      const hour = new Date(chat.started).getHours();
+      const hourData = hours[hour];
+      if (hourData) {
+        hourData.chat++;
+        hourData.chatVolume++;
+      }
+    });
+    
+    hours.forEach(hour => {
+      hour.total = hour.depositTotal + hour.withdrawalTotal;
+      hour.totalVolume = hour.depositVolume + hour.withdrawalVolume;
+    });
+    
+    return hours;
+  };
 
-// ===========================================
-// FETCH MONTHLY DATA (6 BULAN) - TAMBAH CHAT
-// ===========================================
-const fetchMonthlyData = async (period, year, asset, status) => {
-  try {
-    const startMonth = period === 'jan-jun' ? 1 : 7;
-    const endMonth = period === 'jan-jun' ? 6 : 12;
-    
-    const startDate = `${year}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
-    const endDate = `${year}-${String(endMonth).padStart(2, '0')}-${new Date(year, endMonth, 0).getDate()} 23:59:59`;
-    
-    const assetCode = asset === 'all' ? 'XLY' : asset;
-    
-    // Fetch deposits (TETAP)
-    let depositQuery = supabase
-      .from('deposit_transactions')
-      .select('approved_date, status, deposit_amount, brand')
-      .eq('brand', assetCode)
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    if (status !== 'all') {
-      const dbStatus = status === 'failed' ? 'Fail' : 
-                      status.charAt(0).toUpperCase() + status.slice(1);
-      depositQuery = depositQuery.eq('status', dbStatus);
+  // ===========================================
+  // FETCH DAILY DATA (1 BULAN)
+  // ===========================================
+  const fetchDailyData = async (month, year, asset, status) => {
+    try {
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()} 23:59:59`;
+      
+      const assetCode = asset === 'all' ? 'XLY' : asset;
+      
+      // Fetch deposits
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date, status, deposit_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all') {
+        const dbStatus = status === 'failed' ? 'Fail' : 
+                        status.charAt(0).toUpperCase() + status.slice(1);
+        depositQuery = depositQuery.eq('status', dbStatus);
+      }
+      
+      // Fetch withdrawals
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date, status, withdrawal_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all' && status !== 'failed') {
+        const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
+        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+      } else if (status === 'failed') {
+        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
+      }
+      
+      // FETCH CHAT
+      let chatQuery = supabase
+        .from('chat_cs_data')
+        .select('started')
+        .gte('started', startDate)
+        .lte('started', endDate);
+      
+      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
+        depositQuery, 
+        withdrawalQuery,
+        chatQuery
+      ]);
+      
+      return processDailyData(deposits || [], withdrawals || [], chats || [], month, year);
+      
+    } catch (error) {
+      console.error('Error fetching daily data:', error);
+      return [];
     }
-    
-    // Fetch withdrawals (TETAP)
-    let withdrawalQuery = supabase
-      .from('withdrawal_transactions')
-      .select('approved_date, status, withdrawal_amount, brand')
-      .eq('brand', assetCode)
-      .gte('approved_date', startDate)
-      .lte('approved_date', endDate);
-    
-    if (status !== 'all' && status !== 'failed') {
-      const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
-      withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
-    } else if (status === 'failed') {
-      withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
-    }
-    
-    // TAMBAHAN: FETCH CHAT
-    let chatQuery = supabase
-      .from('chat_cs_data')
-      .select('started')
-      .gte('started', startDate)
-      .lte('started', endDate);
-    
-    const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
-      depositQuery, 
-      withdrawalQuery,
-      chatQuery
-    ]);
-    
-    return processMonthlyData(deposits || [], withdrawals || [], chats || [], period, year); // TAMBAH CHATS
-    
-  } catch (error) {
-    console.error('Error fetching monthly data:', error);
-    return [];
-  }
-};
+  };
 
-// UPDATE PROCESS MONTHLY - TAMBAH PARAMETER CHATS
-const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
-  const startMonth = period === 'jan-jun' ? 0 : 6;
-  
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
-    const monthIndex = startMonth + i;
-    return {
-      period: months[monthIndex],
-      type: 'month',
-      chat: 0, // AKAN DIISI
-      
-      depositApproved: 0,
-      depositRejected: 0,
-      depositFailed: 0,
-      depositApprovedAmount: 0,
-      depositRejectedAmount: 0,
-      depositFailedAmount: 0,
-      depositVolume: 0,
-      depositHighest: 0,
-      depositTotal: 0,
-      
-      withdrawalApproved: 0,
-      withdrawalRejected: 0,
-      withdrawalFailed: 0,
-      withdrawalApprovedAmount: 0,
-      withdrawalRejectedAmount: 0,
-      withdrawalFailedAmount: 0,
-      withdrawalVolume: 0,
-      withdrawalHighest: 0,
-      withdrawalTotal: 0,
-      
-      total: 0,
-      totalVolume: 0,
-      asset: 'XLY'
-    };
-  });
-  
-  // Proses deposits (TETAP)
-  deposits.forEach(deposit => {
-    const date = new Date(deposit.approved_date);
-    const month = date.getMonth();
-    const monthIndex = month - startMonth;
+  const processDailyData = (deposits, withdrawals, chats, month, year) => {
+    const daysInMonth = new Date(year, month, 0).getDate();
+    const monthName = months[month - 1];
     
-    if (monthIndex >= 0 && monthIndex < 6) {
-      const monthData = monthlyData[monthIndex];
-      
-      monthData.depositTotal++;
-      monthData.depositVolume += deposit.deposit_amount || 0;
-      
-      if (deposit.deposit_amount > monthData.depositHighest) {
-        monthData.depositHighest = deposit.deposit_amount;
-      }
-      
-      const status = deposit.status?.toLowerCase() || '';
-      if (status === 'approved') {
-        monthData.depositApproved++;
-        monthData.depositApprovedAmount += deposit.deposit_amount || 0;
-      } else if (status === 'rejected') {
-        monthData.depositRejected++;
-        monthData.depositRejectedAmount += deposit.deposit_amount || 0;
-      } else if (status === 'fail') {
-        monthData.depositFailed++;
-        monthData.depositFailedAmount += deposit.deposit_amount || 0;
-      }
-    }
-  });
-  
-  // Proses withdrawals (TETAP)
-  withdrawals.forEach(withdrawal => {
-    const date = new Date(withdrawal.approved_date);
-    const month = date.getMonth();
-    const monthIndex = month - startMonth;
+    const days = Array.from({ length: daysInMonth }, (_, i) => {
+      const day = i + 1;
+      return {
+        period: `${monthName} ${day}`,
+        type: 'day',
+        chat: 0,
+        
+        depositApproved: 0,
+        depositRejected: 0,
+        depositFailed: 0,
+        depositApprovedAmount: 0,
+        depositRejectedAmount: 0,
+        depositFailedAmount: 0,
+        depositVolume: 0,
+        depositHighest: 0,
+        depositTotal: 0,
+        
+        withdrawalApproved: 0,
+        withdrawalRejected: 0,
+        withdrawalFailed: 0,
+        withdrawalApprovedAmount: 0,
+        withdrawalRejectedAmount: 0,
+        withdrawalFailedAmount: 0,
+        withdrawalVolume: 0,
+        withdrawalHighest: 0,
+        withdrawalTotal: 0,
+        
+        total: 0,
+        totalVolume: 0,
+        asset: 'XLY'
+      };
+    });
     
-    if (monthIndex >= 0 && monthIndex < 6) {
-      const monthData = monthlyData[monthIndex];
+    // Proses deposits
+    deposits.forEach(deposit => {
+      const date = new Date(deposit.approved_date);
+      const day = date.getDate() - 1;
+      const dayData = days[day];
       
-      monthData.withdrawalTotal++;
-      monthData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
+      if (dayData) {
+        dayData.depositTotal++;
+        dayData.depositVolume += deposit.deposit_amount || 0;
+        
+        if (deposit.deposit_amount > dayData.depositHighest) {
+          dayData.depositHighest = deposit.deposit_amount;
+        }
+        
+        const status = deposit.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          dayData.depositApproved++;
+          dayData.depositApprovedAmount += deposit.deposit_amount || 0;
+        } else if (status === 'rejected') {
+          dayData.depositRejected++;
+          dayData.depositRejectedAmount += deposit.deposit_amount || 0;
+        } else if (status === 'fail') {
+          dayData.depositFailed++;
+          dayData.depositFailedAmount += deposit.deposit_amount || 0;
+        }
+      }
+    });
+    
+    // Proses withdrawals
+    withdrawals.forEach(withdrawal => {
+      const date = new Date(withdrawal.approved_date);
+      const day = date.getDate() - 1;
+      const dayData = days[day];
       
-      if (withdrawal.withdrawal_amount > monthData.withdrawalHighest) {
-        monthData.withdrawalHighest = withdrawal.withdrawal_amount;
+      if (dayData) {
+        dayData.withdrawalTotal++;
+        dayData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
+        
+        if (withdrawal.withdrawal_amount > dayData.withdrawalHighest) {
+          dayData.withdrawalHighest = withdrawal.withdrawal_amount;
+        }
+        
+        const status = withdrawal.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          dayData.withdrawalApproved++;
+          dayData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
+        } else if (status === 'rejected') {
+          dayData.withdrawalRejected++;
+          dayData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
+        }
+      }
+    });
+    
+    // PROSES CHAT
+    chats.forEach(chat => {
+      const date = new Date(chat.started);
+      const day = date.getDate() - 1;
+      const dayData = days[day];
+      if (dayData) {
+        dayData.chat++;
+      }
+    });
+    
+    days.forEach(day => {
+      day.total = day.depositTotal + day.withdrawalTotal;
+      day.totalVolume = day.depositVolume + day.withdrawalVolume;
+    });
+    
+    return days;
+  };
+
+  // ===========================================
+  // FETCH MONTHLY DATA (6 BULAN)
+  // ===========================================
+  const fetchMonthlyData = async (period, year, asset, status) => {
+    try {
+      const startMonth = period === 'jan-jun' ? 1 : 7;
+      const endMonth = period === 'jan-jun' ? 6 : 12;
+      
+      const startDate = `${year}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${year}-${String(endMonth).padStart(2, '0')}-${new Date(year, endMonth, 0).getDate()} 23:59:59`;
+      
+      const assetCode = asset === 'all' ? 'XLY' : asset;
+      
+      // Fetch deposits
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date, status, deposit_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all') {
+        const dbStatus = status === 'failed' ? 'Fail' : 
+                        status.charAt(0).toUpperCase() + status.slice(1);
+        depositQuery = depositQuery.eq('status', dbStatus);
       }
       
-      const status = withdrawal.status?.toLowerCase() || '';
-      if (status === 'approved') {
-        monthData.withdrawalApproved++;
-        monthData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
-      } else if (status === 'rejected') {
-        monthData.withdrawalRejected++;
-        monthData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
+      // Fetch withdrawals
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date, status, withdrawal_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      if (status !== 'all' && status !== 'failed') {
+        const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
+        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+      } else if (status === 'failed') {
+        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
       }
+      
+      // FETCH CHAT
+      let chatQuery = supabase
+        .from('chat_cs_data')
+        .select('started')
+        .gte('started', startDate)
+        .lte('started', endDate);
+      
+      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
+        depositQuery, 
+        withdrawalQuery,
+        chatQuery
+      ]);
+      
+      return processMonthlyData(deposits || [], withdrawals || [], chats || [], period, year);
+      
+    } catch (error) {
+      console.error('Error fetching monthly data:', error);
+      return [];
     }
-  });
-  
-  // TAMBAHAN: PROSES CHAT
-  chats.forEach(chat => {
-    const date = new Date(chat.started);
-    const month = date.getMonth();
-    const monthIndex = month - startMonth;
-    if (monthIndex >= 0 && monthIndex < 6) {
-      monthlyData[monthIndex].chat++;
-    }
-  });
-  
-  monthlyData.forEach(month => {
-    month.total = month.depositTotal + month.withdrawalTotal;
-    month.totalVolume = month.depositVolume + month.withdrawalVolume;
-  });
-  
-  return monthlyData;
-};
+  };
+
+  const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
+    const startMonth = period === 'jan-jun' ? 0 : 6;
+    
+    const monthlyData = Array.from({ length: 6 }, (_, i) => {
+      const monthIndex = startMonth + i;
+      return {
+        period: months[monthIndex],
+        type: 'month',
+        chat: 0,
+        
+        depositApproved: 0,
+        depositRejected: 0,
+        depositFailed: 0,
+        depositApprovedAmount: 0,
+        depositRejectedAmount: 0,
+        depositFailedAmount: 0,
+        depositVolume: 0,
+        depositHighest: 0,
+        depositTotal: 0,
+        
+        withdrawalApproved: 0,
+        withdrawalRejected: 0,
+        withdrawalFailed: 0,
+        withdrawalApprovedAmount: 0,
+        withdrawalRejectedAmount: 0,
+        withdrawalFailedAmount: 0,
+        withdrawalVolume: 0,
+        withdrawalHighest: 0,
+        withdrawalTotal: 0,
+        
+        total: 0,
+        totalVolume: 0,
+        asset: 'XLY'
+      };
+    });
+    
+    // Proses deposits
+    deposits.forEach(deposit => {
+      const date = new Date(deposit.approved_date);
+      const month = date.getMonth();
+      const monthIndex = month - startMonth;
+      
+      if (monthIndex >= 0 && monthIndex < 6) {
+        const monthData = monthlyData[monthIndex];
+        
+        monthData.depositTotal++;
+        monthData.depositVolume += deposit.deposit_amount || 0;
+        
+        if (deposit.deposit_amount > monthData.depositHighest) {
+          monthData.depositHighest = deposit.deposit_amount;
+        }
+        
+        const status = deposit.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          monthData.depositApproved++;
+          monthData.depositApprovedAmount += deposit.deposit_amount || 0;
+        } else if (status === 'rejected') {
+          monthData.depositRejected++;
+          monthData.depositRejectedAmount += deposit.deposit_amount || 0;
+        } else if (status === 'fail') {
+          monthData.depositFailed++;
+          monthData.depositFailedAmount += deposit.deposit_amount || 0;
+        }
+      }
+    });
+    
+    // Proses withdrawals
+    withdrawals.forEach(withdrawal => {
+      const date = new Date(withdrawal.approved_date);
+      const month = date.getMonth();
+      const monthIndex = month - startMonth;
+      
+      if (monthIndex >= 0 && monthIndex < 6) {
+        const monthData = monthlyData[monthIndex];
+        
+        monthData.withdrawalTotal++;
+        monthData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
+        
+        if (withdrawal.withdrawal_amount > monthData.withdrawalHighest) {
+          monthData.withdrawalHighest = withdrawal.withdrawal_amount;
+        }
+        
+        const status = withdrawal.status?.toLowerCase() || '';
+        if (status === 'approved') {
+          monthData.withdrawalApproved++;
+          monthData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
+        } else if (status === 'rejected') {
+          monthData.withdrawalRejected++;
+          monthData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
+        }
+      }
+    });
+    
+    // PROSES CHAT
+    chats.forEach(chat => {
+      const date = new Date(chat.started);
+      const month = date.getMonth();
+      const monthIndex = month - startMonth;
+      if (monthIndex >= 0 && monthIndex < 6) {
+        monthlyData[monthIndex].chat++;
+      }
+    });
+    
+    monthlyData.forEach(month => {
+      month.total = month.depositTotal + month.withdrawalTotal;
+      month.totalVolume = month.depositVolume + month.withdrawalVolume;
+    });
+    
+    return monthlyData;
+  };
 
   // ===========================================
   // FETCH DATA
@@ -653,9 +628,8 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
       
       setTraficData(data);
       
-      // Hitung summary - CHAT TETAP 0
-      const chatTotal = data.reduce((sum, item) => sum + item.chat, 0); // GANTI DARI 0 JADI REAL
-      console.log('📈 Final chat total:', chatTotal);
+      // Hitung summary
+      const chatTotal = data.reduce((sum, item) => sum + (item.chat || 0), 0);
       
       const depositApproved = data.reduce((sum, item) => sum + item.depositApproved, 0);
       const depositRejected = data.reduce((sum, item) => sum + item.depositRejected, 0);
@@ -677,7 +651,7 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
       const totalVol = data.reduce((sum, item) => sum + item.totalVolume, 0);
       
       setSummaryData({
-        chatTotal, // SEKARANG REAL
+        chatTotal,
         
         depositApproved,
         depositRejected,
@@ -740,15 +714,6 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
       </div>
     );
   }
-
-  // Hitung nilai tertinggi - PASTIKAN CHAT TIDAK TERHITUNG
-  const maxChat = 0; // CHAT KOSONG
-  const maxDeposit = Math.max(...traficData.map(item => item.depositTotal), 0);
-  const maxDepositVolume = Math.max(...traficData.map(item => item.depositVolume), 0);
-  const maxDepositHighest = Math.max(...traficData.map(item => item.depositHighest), 0);
-  const maxWithdrawal = Math.max(...traficData.map(item => item.withdrawalTotal), 0);
-  const maxWithdrawalVolume = Math.max(...traficData.map(item => item.withdrawalVolume), 0);
-  const maxWithdrawalHighest = Math.max(...traficData.map(item => item.withdrawalHighest), 0);
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
@@ -896,12 +861,12 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
 
       {/* RESUME TOTAL CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* CS CHAT CARD - TETAP 0 */}
+        {/* CS CHAT CARD */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-  <div className="text-[#A7D8FF] text-sm font-semibold mb-2">💬 CS CHAT</div>
-  <div className="text-3xl font-bold text-yellow-400">{summaryData.chatTotal.toLocaleString()}</div>
-  <div className="text-xs text-[#A7D8FF] mt-1">Total Chat Transactions</div>
-</div>
+          <div className="text-[#A7D8FF] text-sm font-semibold mb-2">💬 CS CHAT</div>
+          <div className="text-3xl font-bold text-yellow-400">{summaryData.chatTotal.toLocaleString()}</div>
+          <div className="text-xs text-[#A7D8FF] mt-1">Total Chat Transactions</div>
+        </div>
 
         {/* DEPOSIT CARD */}
         <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
@@ -994,7 +959,7 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
               <tr className="border-b border-[#FFD700]/20">
                 <th className="px-4 py-2 text-left text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20"></th>
                 
-                {/* CHAT SUBHEADERS - TETAP 0 */}
+                {/* CHAT SUBHEADERS */}
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">Trans</th>
                 <th className="px-4 py-2 text-right text-[#A7D8FF] text-xs font-normal border-r border-[#FFD700]/20">%</th>
                 
@@ -1013,53 +978,70 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
             </thead>
             <tbody>
               {traficData.map((item, idx) => {
-  const totalChat = traficData.reduce((sum, i) => sum + (i.chat || 0), 0);
-  const totalDeposit = traficData.reduce((sum, i) => sum + i.depositTotal, 0);
-  const totalWithdrawal = traficData.reduce((sum, i) => sum + i.withdrawalTotal, 0);
-  
-  const chatPercentage = totalChat > 0 ? ((item.chat || 0) / totalChat) * 100 : 0;
-  const depositPercentage = totalDeposit > 0 ? (item.depositTotal / totalDeposit) * 100 : 0;
-  const withdrawalPercentage = totalWithdrawal > 0 ? (item.withdrawalTotal / totalWithdrawal) * 100 : 0;
-  
-  const maxChat = Math.max(...traficData.map(i => i.chat || 0), 0);
-  const isMaxChat = item.chat === maxChat && maxChat > 0;
-  
-  return (
-    <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
-      <td className="px-4 py-3 text-white font-medium border-r border-[#FFD700]/10">{item.period}</td>
-      
-      {/* CHAT DATA - SEKARANG REAL */}
-      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxChat ? 'bg-yellow-300 text-black font-bold' : 'text-yellow-400'}`}>
-        {item.chat || 0}
-      </td>
-      <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{chatPercentage.toFixed(2)}%</td>
-      
-      {/* DEPOSIT DATA - TETAP */}
-      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDeposit ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
-        {Math.round(item.depositTotal)}
-      </td>
-      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositVolume ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
-        {formatIDR(item.depositVolume)}
-      </td>
-      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositHighest ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
-        {formatIDR(item.depositHighest)}
-      </td>
-      <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{depositPercentage.toFixed(2)}%</td>
-      
-      {/* WITHDRAWAL DATA - TETAP */}
-      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawal ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
-        {Math.round(item.withdrawalTotal)}
-      </td>
-      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalVolume ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
-        {formatIDR(item.withdrawalVolume)}
-      </td>
-      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalHighest ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
-        {formatIDR(item.withdrawalHighest)}
-      </td>
-      <td className="px-4 py-3 text-right text-[#A7D8FF]">{withdrawalPercentage.toFixed(2)}%</td>
-    </tr>
-  );
-})}
+                // Hitung total untuk percentage
+                const totalChat = traficData.reduce((sum, i) => sum + (i.chat || 0), 0);
+                const totalDeposit = traficData.reduce((sum, i) => sum + i.depositTotal, 0);
+                const totalWithdrawal = traficData.reduce((sum, i) => sum + i.withdrawalTotal, 0);
+                
+                // Hitung percentage
+                const chatPercentage = totalChat > 0 ? ((item.chat || 0) / totalChat) * 100 : 0;
+                const depositPercentage = totalDeposit > 0 ? (item.depositTotal / totalDeposit) * 100 : 0;
+                const withdrawalPercentage = totalWithdrawal > 0 ? (item.withdrawalTotal / totalWithdrawal) * 100 : 0;
+                
+                // Hitung nilai maksimum untuk highlight
+                const maxChat = Math.max(...traficData.map(i => i.chat || 0), 0);
+                const maxDeposit = Math.max(...traficData.map(i => i.depositTotal), 0);
+                const maxDepositVolume = Math.max(...traficData.map(i => i.depositVolume), 0);
+                const maxDepositHighest = Math.max(...traficData.map(i => i.depositHighest), 0);
+                const maxWithdrawal = Math.max(...traficData.map(i => i.withdrawalTotal), 0);
+                const maxWithdrawalVolume = Math.max(...traficData.map(i => i.withdrawalVolume), 0);
+                const maxWithdrawalHighest = Math.max(...traficData.map(i => i.withdrawalHighest), 0);
+                
+                // Cek apakah ini nilai maksimum
+                const isMaxChat = item.chat === maxChat && maxChat > 0;
+                const isMaxDeposit = item.depositTotal === maxDeposit && maxDeposit > 0;
+                const isMaxDepositVolume = item.depositVolume === maxDepositVolume && maxDepositVolume > 0;
+                const isMaxDepositHighest = item.depositHighest === maxDepositHighest && maxDepositHighest > 0;
+                const isMaxWithdrawal = item.withdrawalTotal === maxWithdrawal && maxWithdrawal > 0;
+                const isMaxWithdrawalVolume = item.withdrawalVolume === maxWithdrawalVolume && maxWithdrawalVolume > 0;
+                const isMaxWithdrawalHighest = item.withdrawalHighest === maxWithdrawalHighest && maxWithdrawalHighest > 0;
+                
+                return (
+                  <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
+                    <td className="px-4 py-3 text-white font-medium border-r border-[#FFD700]/10">{item.period}</td>
+                    
+                    {/* CHAT DATA */}
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxChat ? 'bg-yellow-300 text-black font-bold' : 'text-yellow-400'}`}>
+                      {item.chat || 0}
+                    </td>
+                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{chatPercentage.toFixed(2)}%</td>
+                    
+                    {/* DEPOSIT DATA */}
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDeposit ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
+                      {Math.round(item.depositTotal)}
+                    </td>
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositVolume ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
+                      {formatIDR(item.depositVolume)}
+                    </td>
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositHighest ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
+                      {formatIDR(item.depositHighest)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{depositPercentage.toFixed(2)}%</td>
+                    
+                    {/* WITHDRAWAL DATA */}
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawal ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
+                      {Math.round(item.withdrawalTotal)}
+                    </td>
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalVolume ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
+                      {formatIDR(item.withdrawalVolume)}
+                    </td>
+                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalHighest ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
+                      {formatIDR(item.withdrawalHighest)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-[#A7D8FF]">{withdrawalPercentage.toFixed(2)}%</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
