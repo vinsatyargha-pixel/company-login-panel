@@ -57,7 +57,7 @@ export default function ChatCSPage() {
   }, [selectedMonth, selectedYear, selectedAsset])
 
   // ===========================================
-  // FETCH FUNCTIONS
+  // FETCH FUNCTIONS (FILTER TETAP SAMA)
   // ===========================================
 
   const fetchAssets = async () => {
@@ -84,11 +84,10 @@ export default function ChatCSPage() {
       const monthIndex = months.indexOf(selectedMonth) + 1
       const monthPadded = String(monthIndex).padStart(2, '0')
       
+      // FORMAT FILTER TETAP YYYY-MM-DD
       const startDate = `${selectedYear}-${monthPadded}-01`
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${monthPadded}-${lastDay}`
-
-      console.log('🔍 FILTER CS:', { selectedMonth, selectedYear, startDate, endDate })
 
       let query = supabase
         .from('chat_uploads')
@@ -104,11 +103,7 @@ export default function ChatCSPage() {
         }
       }
 
-      const { data, error } = await query
-      
-      if (error) throw error
-      
-      console.log('📅 DATA DITEMUKAN:', data?.length || 0, 'baris')
+      const { data } = await query
       setUploads(data || [])
       
     } catch (error) {
@@ -152,65 +147,61 @@ export default function ChatCSPage() {
   }, [])
 
   // ===========================================
-  // PARSE TANGGAL EXCEL - FIXED!
+  // PARSE TANGGAL EXCEL - FINAL FIX!
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
-  if (!value) return null
+    if (!value) return null
 
-  try {
+    try {
+      // ===============================
+      // 1. EXCEL SERIAL NUMBER
+      // ===============================
+      if (typeof value === 'number') {
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+        const date = new Date(excelEpoch.getTime() + value * 86400000)
 
-    // ===============================
-    // 1. EXCEL SERIAL NUMBER
-    // ===============================
-    if (typeof value === 'number') {
+        const year = date.getUTCFullYear()
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+        const day = String(date.getUTCDate()).padStart(2, '0')
+        const hour = String(date.getUTCHours()).padStart(2, '0')
+        const minute = String(date.getUTCMinutes()).padStart(2, '0')
+        const second = String(date.getUTCSeconds()).padStart(2, '0')
 
-      const excelEpoch = new Date(Date.UTC(1899, 11, 30))
-      const date = new Date(excelEpoch.getTime() + value * 86400000)
+        return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+      }
 
-      const year = date.getUTCFullYear()
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-      const day = String(date.getUTCDate()).padStart(2, '0')
+      const str = value.toString().trim()
 
-      const hour = String(date.getUTCHours()).padStart(2, '0')
-      const minute = String(date.getUTCMinutes()).padStart(2, '0')
-      const second = String(date.getUTCSeconds()).padStart(2, '0')
+      // ===============================
+      // 2. FORMAT DD/MM/YY atau DD/MM/YYYY
+      // ===============================
+      if (str.includes('/')) {
+        const [datePart, timePart = '00:00:00'] = str.split(' ')
+        const [d, m, y] = datePart.split('/')
 
-      return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+        // Handle 2 digit year (26 -> 2026)
+        const year = y.length === 2 ? `20${y}` : y
+        const day = String(d).padStart(2, '0')
+        const month = String(m).padStart(2, '0')
+
+        // FORMAT YANG BENAR: YYYY-MM-DD
+        return `${year}-${month}-${day} ${timePart}`
+      }
+
+      // ===============================
+      // 3. FORMAT ISO (SUDAH BENAR)
+      // ===============================
+      if (str.includes('-')) {
+        return str
+      }
+
+      return null
+    } catch (err) {
+      console.error('Date parse error:', value)
+      return null
     }
-
-    const str = value.toString().trim()
-
-    // ===============================
-    // 2. FORMAT DD/MM/YY atau DD/MM/YYYY
-    // ===============================
-    if (str.includes('/')) {
-
-      const [datePart, timePart = '00:00:00'] = str.split(' ')
-      const [d, m, y] = datePart.split('/')
-
-      const year = y.length === 2 ? `20${y}` : y
-
-      const day = String(d).padStart(2, '0')
-      const month = String(m).padStart(2, '0')
-
-      return `${year}-${month}-${day} ${timePart}`
-    }
-
-    // ===============================
-    // 3. FORMAT ISO (SUDAH BENAR)
-    // ===============================
-    if (str.includes('-')) {
-      return str
-    }
-
-    return null
-
-  } catch (err) {
-    console.error('Date parse error:', value)
-    return null
   }
-}
 
   const parsePercentage = (value: string): number | null => {
     if (!value) return null
@@ -224,7 +215,7 @@ export default function ChatCSPage() {
   }
 
   // ===========================================
-  // UPLOAD PROCESS - FIXED!
+  // UPLOAD PROCESS - DENGAN BATCH INSERT
   // ===========================================
 
   const processFile = async () => {
@@ -245,13 +236,9 @@ export default function ChatCSPage() {
         blankrows: false
       }) as any[][]
       
-      console.log('📋 Total baris:', rows.length)
-      
       // HEADER LANGSUNG DI BARIS PERTAMA
       const headers = rows[0]
       const dataRows = rows.slice(1)
-      
-      console.log('📊 Jumlah baris data:', dataRows.length)
       
       // Cari index kolom
       const findIndex = (keyword: string) => {
@@ -296,8 +283,22 @@ export default function ChatCSPage() {
         const row = dataRows[i]
         if (!row || row.length === 0) continue
         
+        // Skip GRAND TOTAL
+        let isGrandTotal = false
+        for (let j = 0; j < row.length; j++) {
+          if (row[j] && row[j].toString().includes('GRAND TOTAL')) {
+            isGrandTotal = true
+            break
+          }
+        }
+        if (isGrandTotal) continue
+        
         const started = parseExcelDate(row[idx.started])
         if (!started) continue
+        
+        // DEBUG (opsional)
+        console.log("RAW DATE:", row[idx.started])
+        console.log("PARSED DATE:", started)
         
         const dateOnly = started.split(' ')[0]
         uploadDates.add(dateOnly)
@@ -340,14 +341,17 @@ export default function ChatCSPage() {
 
       if (validData.length === 0) throw new Error('Tidak ada data valid')
 
+      // INSERT KE CHAT_CS_DATA (BATCH)
       setUploadProgress(`Menyimpan ${validData.length} data...`)
       
-      // INSERT KE CHAT_CS_DATA
-      const { error } = await supabase
-        .from('chat_cs_data')
-        .insert(validData)
-
-      if (error) throw error
+      const chunkSize = 500
+      for (let i = 0; i < validData.length; i += chunkSize) {
+        const chunk = validData.slice(i, i + chunkSize)
+        const { error } = await supabase
+          .from('chat_cs_data')
+          .insert(chunk)
+        if (error) throw error
+      }
 
       // INSERT KE CHAT_UPLOADS
       setUploadProgress('Menyimpan tracking upload...')
@@ -407,7 +411,7 @@ export default function ChatCSPage() {
   }
 
   // ===========================================
-  // RENDER
+  // RENDER (TETAP SAMA)
   // ===========================================
 
   if (loading) {
