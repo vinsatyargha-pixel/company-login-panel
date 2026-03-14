@@ -160,51 +160,54 @@ export default function ChatCSPage() {
 
   try {
 
-    // Excel serial number
+    // ===============================
+    // 1. EXCEL SERIAL NUMBER
+    // ===============================
     if (typeof value === 'number') {
-      const excelDate = XLSX.SSF.parse_date_code(value)
-      if (!excelDate) return null
 
-      const date = new Date(
-        excelDate.y,
-        excelDate.m - 1,
-        excelDate.d,
-        excelDate.H || 0,
-        excelDate.M || 0,
-        excelDate.S || 0
-      )
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+      const date = new Date(excelEpoch.getTime() + value * 86400000)
 
-      return date.toISOString().slice(0, 19).replace('T', ' ')
+      const year = date.getUTCFullYear()
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(date.getUTCDate()).padStart(2, '0')
+
+      const hour = String(date.getUTCHours()).padStart(2, '0')
+      const minute = String(date.getUTCMinutes()).padStart(2, '0')
+      const second = String(date.getUTCSeconds()).padStart(2, '0')
+
+      return `${year}-${month}-${day} ${hour}:${minute}:${second}`
     }
 
     const str = value.toString().trim()
 
-    // Format: DD/MM/YY HH:MM
+    // ===============================
+    // 2. FORMAT DD/MM/YY atau DD/MM/YYYY
+    // ===============================
     if (str.includes('/')) {
+
       const [datePart, timePart = '00:00:00'] = str.split(' ')
       const [d, m, y] = datePart.split('/')
 
       const year = y.length === 2 ? `20${y}` : y
 
-      const date = new Date(
-        Number(year),
-        Number(m) - 1,
-        Number(d)
-      )
+      const day = String(d).padStart(2, '0')
+      const month = String(m).padStart(2, '0')
 
-      const iso = date.toISOString().slice(0, 10)
-
-      return `${iso} ${timePart}`
+      return `${year}-${month}-${day} ${timePart}`
     }
 
-    // already correct
+    // ===============================
+    // 3. FORMAT ISO (SUDAH BENAR)
+    // ===============================
     if (str.includes('-')) {
       return str
     }
 
     return null
 
-  } catch {
+  } catch (err) {
+    console.error('Date parse error:', value)
     return null
   }
 }
