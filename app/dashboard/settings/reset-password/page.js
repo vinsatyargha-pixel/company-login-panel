@@ -74,89 +74,90 @@ const handleSearchUser = async () => {
   }
 };
 
-  // Reset password
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
+  // Reset password via API route
+const handleResetPassword = async (e) => {
+  e.preventDefault();
 
-    if (!userData) {
-      setMessage({ type: 'error', text: 'Cari user terlebih dahulu' });
-      return;
+  if (!userData) {
+    setMessage({ type: 'error', text: 'Cari user terlebih dahulu' });
+    return;
+  }
+
+  if (userData.role?.toLowerCase() === 'admin') {
+    setMessage({ type: 'error', text: 'Tidak bisa reset password untuk Admin' });
+    return;
+  }
+
+  if (!newPassword) {
+    setMessage({ type: 'error', text: 'Masukkan password baru' });
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    setMessage({ type: 'error', text: 'Password minimal 6 karakter' });
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    setMessage({ type: 'error', text: 'Password tidak cocok' });
+    return;
+  }
+
+  setLoading(true);
+  setMessage({ type: '', text: '' });
+
+  try {
+    console.log('🔄 Resetting password for user:', userData.email);
+
+    // PANGGIL API ROUTE
+    const response = await fetch('/api/reset-password', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: userData.email,        // PAKAI EMAIL (lebih aman)
+        newPassword: newPassword
+        // atau kalo mau pake user_id:
+        // userId: userData.user_id,
+        // newPassword: newPassword
+      })
+    });
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error);
     }
 
-    if (userData.role?.toLowerCase() === 'admin') {
-      setMessage({ type: 'error', text: 'Tidak bisa reset password untuk Admin' });
-      return;
-    }
+    // Update timestamp di tabel users (opsional)
+    await supabase
+      .from('users')
+      .update({ 
+        updated_at: new Date().toISOString(),
+        updated_by: user?.email 
+      })
+      .eq('id', userData.id);
 
-    if (!newPassword) {
-      setMessage({ type: 'error', text: 'Masukkan password baru' });
-      return;
-    }
+    setMessage({ 
+      type: 'success', 
+      text: `✅ Password untuk ${userData.full_name || userData.username} berhasil direset!` 
+    });
 
-    if (newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'Password minimal 6 karakter' });
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Password tidak cocok' });
-      return;
-    }
-
-    setLoading(true);
-    setMessage({ type: '', text: '' });
-
-    try {
-      console.log('🔄 Resetting password for user:', userData.id);
-
-      // Update password di tabel users
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ 
-          password: newPassword,
-          updated_at: new Date().toISOString(),
-          updated_by: user?.email 
-        })
-        .eq('id', userData.id);
-
-      if (updateError) {
-        console.error('Update error:', updateError);
-        throw updateError;
-      }
-
-      // Update juga di auth.users? Tergantung setup lo
-      try {
-        const { error: authError } = await supabase.auth.admin.updateUserById(
-          userData.user_id, // Pakai user_id untuk auth
-          { password: newPassword }
-        );
-        
-        if (authError) {
-          console.error('Auth update error:', authError);
-        }
-      } catch (authError) {
-        console.error('Auth error:', authError);
-      }
-
-      setMessage({ 
-        type: 'success', 
-        text: `✅ Password untuk ${userData.full_name || userData.username || userData.email} berhasil direset!` 
-      });
-
-      // Reset form
-      setNewPassword('');
-      setConfirmPassword('');
-      
-    } catch (error) {
-      console.error('Reset password error:', error);
-      setMessage({ 
-        type: 'error', 
-        text: 'Gagal mereset password: ' + error.message 
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    // Reset form
+    setNewPassword('');
+    setConfirmPassword('');
+    
+  } catch (error) {
+    console.error('Reset password error:', error);
+    setMessage({ 
+      type: 'error', 
+      text: error.message || 'Gagal mereset password' 
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Clear user data
   const handleClear = () => {
