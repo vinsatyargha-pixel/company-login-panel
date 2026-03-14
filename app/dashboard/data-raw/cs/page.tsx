@@ -156,43 +156,58 @@ export default function ChatCSPage() {
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
-    if (!value) return null
-    try {
-      // Handle Excel serial number
-      if (typeof value === 'number') {
-        const date = XLSX.SSF.parse_date_code(value)
-        if (!date) return null
-        const hour = date.H?.toString().padStart(2, '0') || '00'
-        const minute = date.M?.toString().padStart(2, '0') || '00'
-        const second = date.S?.toString().padStart(2, '0') || '00'
-        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
-      }
+  if (!value) return null
 
-      const str = value.toString().trim()
-      
-      // Format DD/MM/YY: 13/03/26 09:32
-      if (str.includes('/')) {
-        const parts = str.split(' ')
-        if (parts.length >= 2) {
-          const [datePart, timePart] = parts
-          const [day, month, year] = datePart.split('/')
-          if (day && month && year) {
-            const fullYear = year.length === 2 ? '20' + year : year
-            return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
-          }
-        }
-      }
-      
-      // Format YYYY-MM-DD HH:MM:SS
-      if (str.includes('-') && str.includes(':')) {
-        return str
-      }
-      
-      return null
-    } catch {
-      return null
+  try {
+
+    // Excel serial number
+    if (typeof value === 'number') {
+      const excelDate = XLSX.SSF.parse_date_code(value)
+      if (!excelDate) return null
+
+      const date = new Date(
+        excelDate.y,
+        excelDate.m - 1,
+        excelDate.d,
+        excelDate.H || 0,
+        excelDate.M || 0,
+        excelDate.S || 0
+      )
+
+      return date.toISOString().slice(0, 19).replace('T', ' ')
     }
+
+    const str = value.toString().trim()
+
+    // Format: DD/MM/YY HH:MM
+    if (str.includes('/')) {
+      const [datePart, timePart = '00:00:00'] = str.split(' ')
+      const [d, m, y] = datePart.split('/')
+
+      const year = y.length === 2 ? `20${y}` : y
+
+      const date = new Date(
+        Number(year),
+        Number(m) - 1,
+        Number(d)
+      )
+
+      const iso = date.toISOString().slice(0, 10)
+
+      return `${iso} ${timePart}`
+    }
+
+    // already correct
+    if (str.includes('-')) {
+      return str
+    }
+
+    return null
+
+  } catch {
+    return null
   }
+}
 
   const parsePercentage = (value: string): number | null => {
     if (!value) return null
