@@ -1896,30 +1896,30 @@ export default function DashboardContent() {
           </div>
           
           <div className="h-64">
-            {loadingTrafficMetrics ? (
-              <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trafficMetrics}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                  <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
-                  <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-                  <Legend 
-                    formatter={(value) => {
-                      if (value === 'CS') return 'CS (All Status)';
-                      if (value === 'Deposit') return 'Deposit (All Status)';
-                      if (value === 'Withdrawal') return 'Withdrawal (All Status)';
-                      return value;
-                    }}
-                  />
-                  <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+  {loadingTrafficMetrics ? (
+    <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
+  ) : (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={trafficMetrics}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+        <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
+        <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
+        <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+        <Legend 
+          formatter={(value) => {
+            if (value === 'CS') return 'CS (All Status)';
+            if (value === 'Deposit') return 'Deposit (All Status)';
+            if (value === 'Withdrawal') return 'Withdrawal (All Status)';
+            return value;
+          }}
+        />
+        <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
+        <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
+      </LineChart>
+    </ResponsiveContainer>
+  )}
+</div>
           
           <Link href="/dashboard/traffic-metrics" className="block mt-2 text-right">
             <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
