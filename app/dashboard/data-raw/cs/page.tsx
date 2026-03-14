@@ -70,21 +70,15 @@ export default function ChatCSPage() {
       setLoading(true)
       
       const monthIndex = months.indexOf(selectedMonth) + 1
-      const monthPadded = String(monthIndex).padStart(2, '0')
-      
-      // FILTER DENGAN FORMAT YYYY-MM-DD (bawaan Postgres)
-      const startDate = `${selectedYear}-${monthPadded}-01`
-      
-      // Hitung tanggal terakhir bulan
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-      const endDate = `${selectedYear}-${monthPadded}-${lastDay}`
+const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      let query = supabase
-        .from('chat_uploads')
-        .select('*')
-        .gte('upload_date', startDate)
-        .lte('upload_date', endDate)
-        .order('upload_date', { ascending: true })
+let query = supabase
+  .from('chat_uploads')
+  .select('*')
+  .filter('upload_date', 'gte', `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`)
+  .filter('upload_date', 'lte', `${selectedYear}-${String(monthIndex).padStart(2, '0')}-31`)
 
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset)
