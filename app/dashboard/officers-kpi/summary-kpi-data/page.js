@@ -27,6 +27,21 @@ const getMonthDateRange = (tahun, bulan) => {
   return { startDate, endDate };
 };
 
+// ===========================================
+// AGENT MAPPING (alias → nama asli)
+// ===========================================
+const AGENT_MAP = {
+  'Novita Airin': 'Achmad Naufal Zakiy',
+  'Rissa Aulita': 'Goldie Mountana',
+  'Layla Diyah': 'Lie Fung Kien (Vini)',
+  'Melissa Lin': 'Mushollina Nul Hakim',
+  'Fania Lolita': 'Ronaldo Ichwan',
+  'Lisa Saraswati': 'Sulaeman',
+  'BOT': 'BOT',
+  'System': 'System',
+  'SYSTEM': 'System'
+};
+
 export default function SummaryKPIDataPage() {
   const [tahun, setTahun] = useState('2026');
   const [bulanAwal, setBulanAwal] = useState('1');
@@ -37,6 +52,11 @@ export default function SummaryKPIDataPage() {
   // State untuk menyimpan data transaksi
   const [depositData, setDepositData] = useState({});
   const [withdrawalData, setWithdrawalData] = useState({});
+  
+  // ===== STATE UNTUK CHAT CS =====
+  const [chatData, setChatData] = useState({});
+  const [botChatCount, setBotChatCount] = useState(0);
+  const [loadingChat, setLoadingChat] = useState(false);
 
   // Daftar bulan
   const bulanList = [
@@ -344,6 +364,76 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
+  // FETCH CHAT CS DATA (HANYA TOTAL CHAT)
+  // ===========================================
+  useEffect(() => {
+    const fetchChatCSData = async () => {
+      try {
+        setLoadingChat(true);
+        
+        const startMonth = parseInt(bulanAwal);
+        const endMonth = parseInt(bulanAkhir);
+        
+        const startDate = `${tahun}-${startMonth.toString().padStart(2, '0')}-01`;
+        const endDate = `${tahun}-${endMonth.toString().padStart(2, '0')}-31`;
+        
+        const { data, error } = await supabase
+          .from('chat_cs_data')
+          .select('*')
+          .gte('started', startDate)
+          .lte('started', endDate);
+        
+        if (error) throw error;
+        
+        // Group by agent_real_name setelah di-mapping
+        const grouped = {};
+        let botTotal = 0;
+        
+        data.forEach(chat => {
+          const agentAlias = chat.agent_real_name || 'Unknown';
+          
+          // MAP ALIAS KE NAMA ASLI pake AGENT_MAP
+          const officerName = AGENT_MAP[agentAlias] || agentAlias;
+          
+          // Khusus BOT
+          if (officerName === 'BOT' || agentAlias === 'BOT') {
+            botTotal++;
+            return;
+          }
+          
+          // Abaikan SYSTEM
+          if (officerName === 'System' || officerName === 'SYSTEM') {
+            return;
+          }
+          
+          // HITUNG TOTAL CHAT SAJA
+          if (!grouped[officerName]) {
+            grouped[officerName] = {
+              totalChat: 0
+            };
+          }
+          
+          grouped[officerName].totalChat++;
+        });
+        
+        setChatData(grouped);
+        setBotChatCount(botTotal);
+        console.log('Chat data (total only):', grouped);
+        console.log('Bot total chats:', botTotal);
+        
+      } catch (error) {
+        console.error('Error fetching chat data:', error);
+      } finally {
+        setLoadingChat(false);
+      }
+    };
+    
+    if (tahun && bulanAwal && bulanAkhir) {
+      fetchChatCSData();
+    }
+  }, [tahun, bulanAwal, bulanAkhir]);
+
+  // ===========================================
   // HITUNG TOTAL HARI DALAM RENTANG BULAN
   // ===========================================
   const getTotalDaysInRange = () => {
@@ -526,71 +616,87 @@ export default function SummaryKPIDataPage() {
     };
   };
 
-  // Generate data dengan real attendance
-const officerDataList = officers.map((officer, index) => {
-  const depositReal = getDepositDataForOfficer(officer);
-  const withdrawalReal = getWithdrawalDataForOfficer(officer);
-  
-  // Ambil data attendance berdasarkan nama officer
-  const officerName = officer.full_name;
-  const attendance = attendanceData[officerName] || { s: 0, i: 0, a: 0, u: 0 };
-  
-  // Target SAMA untuk semua officer (181 - 24 = 157)
-  const target = targetPerOfficer;
-  
-  // Total kejadian (S + I + A + U)
-  const totalKejadian = attendance.s + attendance.i + attendance.a + attendance.u;
-  
-  // Achieve = Target - Total Kejadian (hari kerja efektif)
-  const achieve = target - totalKejadian;
-  
-  // Presentase = (Achieve / Target) * 100%
-  const presentase = target > 0 ? Math.round((achieve / target) * 100) : 100;
-  
-  return {
-    no: index + 1,
-    name: officer.full_name || 'Unknown',
-    panelId: officer.panel_id || '-',
-    dept: officer.department || 'CS DP WD',
-    status: officer.status || 'REGULAR',
-    joinDate: officer.join_date || '-',
+  // ===== FUNGSI GET CHAT DATA UNTUK OFFICER (HANYA TOTAL CHAT) =====
+  const getChatDataForOfficer = (officer) => {
+    const officerName = officer.full_name;
     
-    deposit: {
-      divisi: 'Deposit Aspect',
-      ...depositReal
-    },
-    
-    withdrawal: {
-      divisi: 'Withdrawal Aspect',
-      ...withdrawalReal
-    },
-    
-    cs: {
-      totalChat: Math.floor(Math.random() * 50) + 80, // Masih dummy
-      missedChat: Math.floor(Math.random() * 3),
-      timeMgmt: Math.floor(Math.random() * 10) + 85,
-      commSkill: Math.floor(Math.random() * 10) + 85,
-      problemSolving: Math.floor(Math.random() * 10) + 85,
-      s: attendance.s,
-      i: attendance.i,
-      a: attendance.a,
-      u: attendance.u,
-      total: totalKejadian,      // Total kejadian (S+I+A+U)
-      target: target,             // Target (hari kerja - OFF)
-      achieve: achieve,           // ✅ Achieve = angka (bukan %)
-      presentase: presentase,     // ✅ Presentase = %
-      p1: 85,
-      p2: 85,
-      p3: 85,
-      p4: 85,
-      p5: 85,
-      p6: 100
+    // Skip untuk System
+    if (officerName === 'System' || officerName === 'SYSTEM') {
+      return { totalChat: 0 };
     }
+    
+    const data = chatData[officerName];
+    
+    return {
+      totalChat: data?.totalChat || 0
+    };
   };
-});
 
-  const totalDepositApproved = officerDataList.reduce((sum, o) => sum + (o.deposit.totalApproved || 0), 0);
-  const totalWithdrawalApproved = officerDataList.reduce((sum, o) => sum + (o.withdrawal.totalApproved || 0), 0);
+  // Generate data dengan real attendance
+  const officerDataList = officers.map((officer, index) => {
+    const depositReal = getDepositDataForOfficer(officer);
+    const withdrawalReal = getWithdrawalDataForOfficer(officer);
+    const chatReal = getChatDataForOfficer(officer);
+    
+    // Ambil data attendance berdasarkan nama officer
+    const officerName = officer.full_name;
+    const attendance = attendanceData[officerName] || { s: 0, i: 0, a: 0, u: 0 };
+    
+    // Target SAMA untuk semua officer
+    const target = targetPerOfficer;
+    
+    // Total kejadian (S + I + A + U)
+    const totalKejadian = attendance.s + attendance.i + attendance.a + attendance.u;
+    
+    // Achieve = Target - Total Kejadian (hari kerja efektif)
+    const achieve = target - totalKejadian;
+    
+    // Presentase = (Achieve / Target) * 100%
+    const presentase = target > 0 ? Math.round((achieve / target) * 100) : 100;
+    
+    return {
+      no: index + 1,
+      name: officer.full_name || 'Unknown',
+      panelId: officer.panel_id || '-',
+      dept: officer.department || 'CS DP WD',
+      status: officer.status || 'REGULAR',
+      joinDate: officer.join_date || '-',
+      
+      deposit: {
+        divisi: 'Deposit Aspect',
+        ...depositReal
+      },
+      
+      withdrawal: {
+        divisi: 'Withdrawal Aspect',
+        ...withdrawalReal
+      },
+      
+      cs: {
+        // HANYA TOTAL CHAT YANG REAL
+        totalChat: chatReal.totalChat,
+        
+        // Poin 2-5 DIHAPUS (tidak ditampilkan)
+        // Poin 6 (Attendance) tetap ada
+        s: attendance.s,
+        i: attendance.i,
+        a: attendance.a,
+        u: attendance.u,
+        total: totalKejadian,
+        target: target,
+        achieve: achieve,
+        presentase: presentase,
+        
+        // Sub score (masih perlu disesuaikan nanti)
+        p1: 0,
+        p2: 0,
+        p3: 0,
+        p4: 0,
+        p5: 0,
+        p6: 0
+      }
+    };
+  });
 
   if (loading) {
     return (
@@ -671,7 +777,7 @@ const officerDataList = officers.map((officer, index) => {
         </span>
       </div>
 
-      {/* ========== DEPOSIT & WITHDRAWAL KPI ========== */}
+      {/* ========== DEPOSIT & WITHDRAWAL KPI (TIDAK BERUBAH) ========== */}
       <div className="mb-12">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">DEPOSIT & WITHDRAWAL KPI</h2>
         
@@ -740,7 +846,7 @@ const officerDataList = officers.map((officer, index) => {
             </thead>
             
             <tbody>
-              {/* LOOPING OFFICERS */}
+              {/* LOOPING OFFICERS (TIDAK BERUBAH) */}
               {officerDataList.map((officer, idx) => (
                 <React.Fragment key={`officer-${idx}`}>
                   {/* DEPOSIT ASPECT */}
@@ -849,21 +955,17 @@ const officerDataList = officers.map((officer, index) => {
         </div>
       </div>
 
-      {/* ========== CUSTOMER SERVICE KPI ========== */}
+      {/* ========== CUSTOMER SERVICE KPI (HANYA TOTAL CHAT) ========== */}
       <div className="mb-10">
         <h2 className="text-xl font-bold text-[#FFD700] mb-4">CUSTOMER SERVICE KPI</h2>
         
         <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
           <table className="w-full text-xs min-w-[1600px]">
             <thead>
-              {/* MAIN HEADER CS */}
+              {/* MAIN HEADER CS - DIUBAH SESUAI YANG ADA */}
               <tr className="border-b border-[#FFD700]/20">
                 <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
                 <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Poin 2</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Poin 3</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">Poin 4</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Poin 5</th>
                 <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-orange-500/10">Attendance & Attitude (Poin 6)</th>
                 <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-pink-500/10">SUB SCORE CS</th>
               </tr>
@@ -876,12 +978,10 @@ const officerDataList = officers.map((officer, index) => {
                 <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
                 <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
                 
+                {/* Poin 1 - Total Chat */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Missed Chat</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
-                <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
                 
+                {/* Poin 6 - Attendance (8 kolom) */}
                 <th className="text-center py-2 px-2 min-w-[40px]">S</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">I</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">A</th>
@@ -891,6 +991,7 @@ const officerDataList = officers.map((officer, index) => {
                 <th className="text-center py-2 px-2 min-w-[60px]">Achieve</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
                 
+                {/* Sub Score CS (6 kolom) - KOSONG DULU */}
                 <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
@@ -900,51 +1001,82 @@ const officerDataList = officers.map((officer, index) => {
               </tr>
             </thead>
             <tbody>
-              {officerDataList.map((officer, idx) => (
-                <tr key={`cs-${idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
-                  <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.no}</td>
-                  <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
-                  <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
-                  <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
-                  <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
-                    <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
-                  </td>
-                  
-                  <td className="text-center py-2 px-2">{officer.cs.totalChat}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.missedChat}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.timeMgmt}%</td>
-                  <td className="text-center py-2 px-2">{officer.cs.commSkill}%</td>
-                  <td className="text-center py-2 px-2">{officer.cs.problemSolving}%</td>
-                  <td className="text-center py-2 px-2">{officer.cs.s}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.i}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.a}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.u}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.total}</td>      {/* Total kejadian */}
-                  <td className="text-center py-2 px-2">{officer.cs.target}</td>     {/* Target */}
-                  <td className="text-center py-2 px-2">{officer.cs.achieve}</td>    {/* ✅ Achieve (angka) */}
-                  <td className="text-center py-2 px-2">{officer.cs.presentase}%</td> {/* ✅ Presentase */}
-                  <td className="text-center py-2 px-2">{officer.cs.p1}%</td>
-                  <td className="text-center py-2 px-2">{officer.cs.p2}%</td>
-                  <td className="text-center py-2 px-2">{officer.cs.p3}%</td>
-                  <td className="text-center py-2 px-2">{officer.cs.p4}%</td>
-                  <td className="text-center py-2 px-2">{officer.cs.p5}%</td>
-                  <td className="text-center py-2 px-2">{officer.cs.p6}%</td>
-                </tr>
-              ))}
+              {officerDataList.map((officer, idx) => {
+                // Skip System di tabel CS
+                if (officer.name === 'System' || officer.name === 'SYSTEM') return null;
+                
+                return (
+                  <tr key={`cs-${idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
+                    <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.no}</td>
+                    <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
+                    <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
+                    <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
+                    <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
+                      <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
+                    </td>
+                    
+                    {/* Poin 1 - Total Chat (REAL) */}
+                    <td className="text-center py-2 px-2">{officer.cs.totalChat}</td>
+                    
+                    {/* Poin 6 - Attendance */}
+                    <td className="text-center py-2 px-2">{officer.cs.s}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.i}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.a}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.u}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.total}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.target}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.achieve}</td>
+                    <td className="text-center py-2 px-2">{officer.cs.presentase}%</td>
+                    
+                    {/* Sub Score CS - KOSONG (0) */}
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">-</td>
+                  </tr>
+                );
+              })}
               
-              {/* BOT ROW */}
+              {/* BOT ROW - HANYA TOTAL CHAT */}
               <tr className="border-b border-[#FFD700]/10 bg-blue-900/20">
-                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officers.length + 1}</td>
+                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officers.length}</td>
                 <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium text-blue-400">BOT</td>
                 <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">-</td>
                 <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">System</td>
                 <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
-                  <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">SYSTEM</span>
+                  <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">BOT</span>
                 </td>
-                <td colSpan="19" className="text-center py-2 px-2 text-[#A7D8FF]">-</td>
+                
+                {/* Total Chat BOT */}
+                <td className="text-center py-2 px-2">{botChatCount}</td>
+                
+                {/* Attendance BOT (kosong) */}
+                <td className="text-center py-2 px-2">0</td>
+                <td className="text-center py-2 px-2">0</td>
+                <td className="text-center py-2 px-2">0</td>
+                <td className="text-center py-2 px-2">0</td>
+                <td className="text-center py-2 px-2">0</td>
+                <td className="text-center py-2 px-2">-</td>
+                <td className="text-center py-2 px-2">-</td>
+                <td className="text-center py-2 px-2">-</td>
+                
+                {/* Sub Score BOT - KOSONG */}
+                <td className="text-center py-2 px-2">-</td>
+                <td className="text-center py-2 px-2">-</td>
+                <td className="text-center py-2 px-2">-</td>
+                <td className="text-center py-2 px-2">-</td>
+                <td className="text-center py-2 px-2">-</td>
+                <td className="text-center py-2 px-2">-</td>
               </tr>
             </tbody>
           </table>
+          {loadingChat && (
+            <div className="text-center py-4 text-[#A7D8FF]">
+              Loading chat data...
+            </div>
+          )}
         </div>
       </div>
 
@@ -955,6 +1087,7 @@ const officerDataList = officers.map((officer, index) => {
         <p className="mt-1 text-green-400">✓ Time Management menggunakan data real berdasarkan approved_date</p>
         <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
         <p className="mt-1 text-blue-400">✓ Attendance (S/I/A/U) dari API Schedule real</p>
+        <p className="mt-1 text-purple-400">✓ Total Chat dari tabel chat_cs_data dengan mapping agent_real_name</p>
         <p className="mt-1 text-purple-400">✓ Target: {totalDays} hari - {totalOffDays} OFF = {targetPerOfficer} hari</p>
       </div>
     </div>
