@@ -944,7 +944,7 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
                   labelStyle={{ color: '#FFD700' }}
                 />
                 <Legend />
-                {/* <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" /> */}
+                <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
                 <Bar yAxisId="left" dataKey="deposit" fill="#3b82f6" name="Deposit" />
                 <Bar yAxisId="left" dataKey="withdrawal" fill="#ef4444" name="Withdrawal" />
               </BarChart>
@@ -1033,7 +1033,7 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
                   }}
                 />
                 <Legend />
-                {/* <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" /> */}
+                <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
                 <Bar yAxisId="right" dataKey="depositVolume" fill="#3b82f6" name="Deposit Volume" />
                 <Bar yAxisId="right" dataKey="withdrawalVolume" fill="#ef4444" name="Withdrawal Volume" />
               </BarChart>
