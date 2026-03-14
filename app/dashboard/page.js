@@ -402,7 +402,7 @@ export default function DashboardContent() {
   };
 
 // ===========================================
-// FETCH TRAFFIC METRICS DATA - PAKE TABLE CHAT_CS_DATA
+// FETCH TRAFFIC METRICS DATA - TOTAL SEMUA CHAT (BOT + HUMAN)
 // ===========================================
 const fetchTrafficMetricsData = async () => {
   try {
@@ -412,21 +412,21 @@ const fetchTrafficMetricsData = async () => {
       const startDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, trafficMetricsMonth, 0).getDate()} 23:59:59`;
       
-      // AMBIL DEPOSIT
+      // AMBIL DEPOSIT - TETAP
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      // AMBIL WITHDRAWAL  
+      // AMBIL WITHDRAWAL - TETAP
       let withdrawalQuery = supabase
-        .from('wallet_withdrawal_transactions')  // GANTI INI JUGA
+        .from('withdrawal_transactions')
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      // AMBIL CHAT - DARI TABLE CHAT_CS_DATA, PAKE KOLOM STARTED
+      // AMBIL CHAT - DARI CHAT_CS_DATA PAKE STARTED (INI YANG DITAMBAH)
       let chatQuery = supabase
         .from('chat_cs_data')
         .select('started')
@@ -436,20 +436,19 @@ const fetchTrafficMetricsData = async () => {
       if (trafficMetricsAsset !== 'all') {
         depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
         withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
+        // CHAT GA ADA BRAND, JADI FILTER BY ASSET GA BISA
       }
       
       const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
         depositQuery, 
         withdrawalQuery,
-        chatQuery
+        chatQuery  // INI YANG DITAMBAH
       ]);
-      
-      console.log('🔥 Chat data:', chats?.length); // DEBUG
       
       const data = processDailyTrafficData(
         deposits || [], 
         withdrawals || [], 
-        chats || [],
+        chats || [],  // INI YANG DITAMBAH
         trafficMetricsMonth, 
         trafficMetricsYear
       );
@@ -462,18 +461,21 @@ const fetchTrafficMetricsData = async () => {
       const startDate = `${trafficMetricsYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${trafficMetricsYear}-${String(endMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, endMonth, 0).getDate()} 23:59:59`;
       
+      // AMBIL DEPOSIT - TETAP
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
+      // AMBIL WITHDRAWAL - TETAP
       let withdrawalQuery = supabase
-        .from('wallet_withdrawal_transactions')
+        .from('withdrawal_transactions')
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
+      // AMBIL CHAT - DARI CHAT_CS_DATA PAKE STARTED (INI YANG DITAMBAH)
       let chatQuery = supabase
         .from('chat_cs_data')
         .select('started')
@@ -488,15 +490,13 @@ const fetchTrafficMetricsData = async () => {
       const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
         depositQuery, 
         withdrawalQuery,
-        chatQuery
+        chatQuery  // INI YANG DITAMBAH
       ]);
-      
-      console.log('🔥 Chat data monthly:', chats?.length); // DEBUG
       
       const data = processMonthlyTrafficData(
         deposits || [], 
         withdrawals || [], 
-        chats || [],
+        chats || [],  // INI YANG DITAMBAH
         trafficMetricsPeriod, 
         trafficMetricsYear
       );
@@ -510,6 +510,7 @@ const fetchTrafficMetricsData = async () => {
   }
 };
 
+// PROCESS FUNCTIONS - UBAH PARAMETER DAN LOOP CHATNYA
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
@@ -534,28 +535,27 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
     };
   });
   
-  // HITUNG DEPOSIT
+  // DEPOSIT - TETAP
   deposits.forEach(deposit => {
     const date = new Date(deposit.approved_date);
     const day = date.getDate() - 1;
     if (days[day]) days[day].deposit++;
   });
   
-  // HITUNG WITHDRAWAL
+  // WITHDRAWAL - TETAP
   withdrawals.forEach(withdrawal => {
     const date = new Date(withdrawal.approved_date);
     const day = date.getDate() - 1;
     if (days[day]) days[day].withdrawal++;
   });
   
-  // HITUNG CHAT - PAKE STARTED
+  // CHAT - DARI STARTED (INI YANG DITAMBAH)
   chats.forEach(chat => {
     const date = new Date(chat.started);
     const day = date.getDate() - 1;
     if (days[day]) days[day].chat++;
   });
   
-  console.log('📊 Daily data:', days); // DEBUG
   return days;
 };
 
@@ -580,7 +580,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     };
   });
   
-  // HITUNG DEPOSIT
+  // DEPOSIT - TETAP
   deposits.forEach(deposit => {
     const date = new Date(deposit.approved_date);
     const month = date.getMonth();
@@ -590,7 +590,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     }
   });
   
-  // HITUNG WITHDRAWAL
+  // WITHDRAWAL - TETAP
   withdrawals.forEach(withdrawal => {
     const date = new Date(withdrawal.approved_date);
     const month = date.getMonth();
@@ -600,7 +600,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     }
   });
   
-  // HITUNG CHAT - PAKE STARTED
+  // CHAT - DARI STARTED (INI YANG DITAMBAH)
   chats.forEach(chat => {
     const date = new Date(chat.started);
     const month = date.getMonth();
@@ -610,7 +610,6 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     }
   });
   
-  console.log('📊 Monthly data:', monthlyData); // DEBUG
   return monthlyData;
 };
 
