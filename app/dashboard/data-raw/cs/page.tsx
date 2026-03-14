@@ -69,15 +69,14 @@ export default function ChatCSPage() {
       setLoading(true)
       
       const monthIndex = months.indexOf(selectedMonth) + 1
-      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
-
+      const monthStr = String(monthIndex).padStart(2, '0')
+      
+      // FORMAT YANG BENAR: YYYY-DD-MM
+      // Filter berdasarkan bulan di 2 digit terakhir
       let query = supabase
         .from('chat_uploads')
         .select('*')
-        .gte('upload_date', startDate)
-        .lte('upload_date', endDate)
+        .filter('upload_date', 'like', `${selectedYear}-%-${monthStr}`)
         .order('upload_date', { ascending: true })
 
       if (selectedAsset !== 'all') {
@@ -135,7 +134,8 @@ export default function ChatCSPage() {
         const hour = date.H?.toString().padStart(2, '0') || '00'
         const minute = date.M?.toString().padStart(2, '0') || '00'
         const second = date.S?.toString().padStart(2, '0') || '00'
-        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
+        // FORMAT YANG BENAR: YYYY-DD-MM
+        return `${date.y}-${String(date.d).padStart(2, '0')}-${String(date.m).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
       
       const str = value.toString().trim()
@@ -146,7 +146,8 @@ export default function ChatCSPage() {
         if (datePart && timePart) {
           const [year, month, day] = datePart.split('-')
           if (year && month && day) {
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+            // FORMAT YANG BENAR: YYYY-DD-MM
+            return `${year}-${day.padStart(2, '0')}-${month.padStart(2, '0')} ${timePart}`
           }
         }
       }
@@ -159,8 +160,8 @@ export default function ChatCSPage() {
           const [day, month, year] = datePart.split('/')
           if (day && month && year) {
             const fullYear = year.length === 2 ? '20' + year : year
-            // INI YANG BENER: YYYY-MM-DD (bukan YYYY-DD-MM)
-            return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+            // FORMAT YANG BENAR: YYYY-DD-MM
+            return `${fullYear}-${day.padStart(2, '0')}-${month.padStart(2, '0')} ${timePart}`
           }
         }
       }
@@ -233,10 +234,19 @@ export default function ChatCSPage() {
         if (!row || row.length === 0) continue
         
         const started = parseExcelDate(row[idx.started])
-        if (!started) continue
+        const ended = parseExcelDate(row[idx.ended])
         
-        const dateOnly = started.split(' ')[0]
-        uploadDates.add(dateOnly)
+        if (!started && !ended) continue
+        
+        // Ambil tanggal unik untuk tracking
+        if (started) {
+          const dateOnly = started.split(' ')[0]
+          uploadDates.add(dateOnly)
+        }
+        if (ended) {
+          const dateOnly = ended.split(' ')[0]
+          uploadDates.add(dateOnly)
+        }
         
         const botStr = row[idx.replied_by_bot]?.toString() || ''
         const agentStr = row[idx.replied_by_agent]?.toString() || ''
@@ -253,7 +263,7 @@ export default function ChatCSPage() {
           website: row[idx.website] || 'XLY',
           conversation_id: row[idx.conversation_id] || null,
           started: started,
-          ended: parseExcelDate(row[idx.ended]),
+          ended: ended,
           chat_duration: row[idx.chat_duration] || null,
           username: row[idx.username] || null,
           total_replies: parseInt(row[idx.total_replies]) || 0,
@@ -283,10 +293,16 @@ export default function ChatCSPage() {
 
       const dataByDate: { [key: string]: any[] } = {}
       validData.forEach(d => {
-        const date = d.started?.split(' ')[0]
-        if (!date) return
-        if (!dataByDate[date]) dataByDate[date] = []
-        dataByDate[date].push(d)
+        if (d.started) {
+          const date = d.started.split(' ')[0]
+          if (!dataByDate[date]) dataByDate[date] = []
+          dataByDate[date].push(d)
+        }
+        if (d.ended && (!d.started || d.ended.split(' ')[0] !== d.started.split(' ')[0])) {
+          const date = d.ended.split(' ')[0]
+          if (!dataByDate[date]) dataByDate[date] = []
+          dataByDate[date].push(d)
+        }
       })
 
       for (const [date, data] of Object.entries(dataByDate)) {
@@ -394,7 +410,9 @@ export default function ChatCSPage() {
           <tbody>
             {uploads.length > 0 ? uploads.map(item => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                <td className="px-4 py-3">{new Date(item.upload_date).getDate()} {selectedMonth} {selectedYear}</td>
+                <td className="px-4 py-3">
+                  {new Date(item.upload_date).getDate()} {selectedMonth} {selectedYear}
+                </td>
                 <td className="px-4 py-3 text-[#FFD700]">{item.website || '-'}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                 <td className="px-4 py-3">{item.total_rows} chat</td>
