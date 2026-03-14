@@ -32,46 +32,47 @@ export default function ResetPasswordPage() {
   }
 
   // Cari user berdasarkan USERNAME
-  const handleSearchUser = async () => {
-    if (!username.trim()) {
-      setMessage({ type: 'error', text: 'Masukkan USERNAME' });
-      return;
+  // Cari user berdasarkan USERNAME (case insensitive)
+const handleSearchUser = async () => {
+  if (!username.trim()) {
+    setMessage({ type: 'error', text: 'Masukkan USERNAME' });
+    return;
+  }
+
+  setSearchLoading(true);
+  setMessage({ type: '', text: '' });
+  setUserData(null);
+
+  try {
+    console.log('🔍 Searching for username (case insensitive):', username.trim());
+    
+    // PAKE ILIKE BIAR CASE INSENSITIVE
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .ilike('username', username.trim()) // ILIKE bukan eq
+      .maybeSingle();
+
+    if (error) {
+      console.error('Supabase query error:', error);
+      throw error;
     }
 
-    setSearchLoading(true);
-    setMessage({ type: '', text: '' });
-    setUserData(null);
+    console.log('📊 Query result:', data);
 
-    try {
-      console.log('🔍 Searching for username:', username.trim());
-      
-      // Cari berdasarkan username (PANEL ID)
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('username', username.trim())
-        .maybeSingle();
-
-      if (error) {
-        console.error('Supabase query error:', error);
-        throw error;
-      }
-
-      console.log('📊 Query result:', data);
-
-      if (data) {
-        setUserData(data);
-        setMessage({ type: 'success', text: '✅ User ditemukan!' });
-      } else {
-        setMessage({ type: 'error', text: `❌ User dengan USERNAME "${username.trim()}" tidak ditemukan` });
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-      setMessage({ type: 'error', text: 'Terjadi kesalahan saat mencari user' });
-    } finally {
-      setSearchLoading(false);
+    if (data) {
+      setUserData(data);
+      setMessage({ type: 'success', text: '✅ User ditemukan!' });
+    } else {
+      setMessage({ type: 'error', text: `❌ User dengan USERNAME "${username.trim()}" tidak ditemukan` });
     }
-  };
+  } catch (error) {
+    console.error('Search error:', error);
+    setMessage({ type: 'error', text: 'Terjadi kesalahan saat mencari user' });
+  } finally {
+    setSearchLoading(false);
+  }
+};
 
   // Reset password
   const handleResetPassword = async (e) => {
