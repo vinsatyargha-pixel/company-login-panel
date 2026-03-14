@@ -151,49 +151,43 @@ export default function ChatCSPage() {
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
-    if (!value) return null
+  if (!value) return null
 
-    try {
-      // Excel serial number
-      if (typeof value === 'number') {
-        const excelEpoch = new Date(Date.UTC(1899, 11, 30))
-        const date = new Date(excelEpoch.getTime() + value * 86400000)
-        const year = date.getUTCFullYear()
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-        const day = String(date.getUTCDate()).padStart(2, '0')
-        const hour = String(date.getUTCHours()).padStart(2, '0')
-        const minute = String(date.getUTCMinutes()).padStart(2, '0')
-        const second = String(date.getUTCSeconds()).padStart(2, '0')
-        return `${year}-${month}-${day} ${hour}:${minute}:${second}`
-      }
-
-      const str = value.toString().trim()
-      
-      // Format DD/MM/YYYY atau D/MM/YYYY (12/3/2026, 9/3/2026)
-      if (str.includes('/')) {
-        const [datePart, timePart = '00:00:00'] = str.split(' ')
-        const parts = datePart.split('/')
-        
-        // parts[0] = day (1-31), parts[1] = month (1-12), parts[2] = year (2026)
-        const day = parts[0].padStart(2, '0')
-        const month = parts[1].padStart(2, '0')
-        const year = parts[2]
-        
-        // FORMAT YANG BENAR: YYYY-MM-DD
-        return `${year}-${month}-${day} ${timePart}`
-      }
-      
-      // Format ISO (2026-03-13) - fallback
-      if (str.includes('-')) {
-        return str
-      }
-      
-      return null
-    } catch (err) {
-      console.error('Date parse error:', value)
-      return null
+  try {
+    // Excel serial number
+    if (typeof value === 'number') {
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+      const date = new Date(excelEpoch.getTime() + value * 86400000)
+      return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')} ${String(date.getUTCHours()).padStart(2,'0')}:${String(date.getUTCMinutes()).padStart(2,'0')}:${String(date.getUTCSeconds()).padStart(2,'0')}`
     }
+
+    const str = value.toString().trim()
+    
+    // Format tanggal dengan slash: 12/3/2026 atau 13/03/26
+    if (str.includes('/')) {
+      const [datePart, timePart = '00:00:00'] = str.split(' ')
+      const parts = datePart.split('/')
+      
+      // parts[0] = day, parts[1] = month, parts[2] = year
+      const day = parts[0].padStart(2, '0')
+      const month = parts[1].padStart(2, '0')
+      let year = parts[2]
+      
+      // KONVERSI TAHUN 2 DIGIT KE 4 DIGIT
+      if (year.length === 2) {
+        year = '20' + year  // '26' → '2026'
+      }
+      // Kalo tahun 4 digit, biarin aja '2026'
+      
+      return `${year}-${month}-${day} ${timePart}`
+    }
+    
+    return str
+  } catch (err) {
+    console.error('Date parse error:', value)
+    return null
   }
+}
 
   const parsePercentage = (value: string): number | null => {
     if (!value) return null
