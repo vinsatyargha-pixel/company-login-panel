@@ -66,31 +66,41 @@ export default function ChatCSPage() {
   }
 
   const fetchUploads = async () => {
-  try {
-    setLoading(true)
-    
-    const monthIndex = months.indexOf(selectedMonth) + 1 // 3 untuk Maret
-    const monthStr = String(monthIndex).padStart(2, '0') // '03'
-    
-    // FILTER DENGAN FORMAT YYYY-DD-MM
-    const startDate = `${selectedYear}-01-${monthStr}`   // 2026-01-03
-    const endDate = `${selectedYear}-31-${monthStr}`     // 2026-31-03
-    
-    let query = supabase
-      .from('chat_uploads')
-      .select('*')
-      .gte('upload_date', startDate)
-      .lte('upload_date', endDate)
-      .order('upload_date', { ascending: true })
+    try {
+      setLoading(true)
+      
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const monthPadded = String(monthIndex).padStart(2, '0')
+      
+      // FILTER DENGAN FORMAT YYYY-MM-DD (bawaan Postgres)
+      const startDate = `${selectedYear}-${monthPadded}-01`
+      
+      // Hitung tanggal terakhir bulan
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      const endDate = `${selectedYear}-${monthPadded}-${lastDay}`
 
-    const { data } = await query
-    setUploads(data || [])
-  } catch (error) {
-    console.error('Error fetching uploads:', error)
-  } finally {
-    setLoading(false)
+      let query = supabase
+        .from('chat_uploads')
+        .select('*')
+        .gte('upload_date', startDate)
+        .lte('upload_date', endDate)
+        .order('upload_date', { ascending: true })
+
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset)
+        if (asset) {
+          query = query.eq('website', asset.asset_code)
+        }
+      }
+
+      const { data } = await query
+      setUploads(data || [])
+    } catch (error) {
+      console.error('Error fetching uploads:', error)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -131,7 +141,7 @@ export default function ChatCSPage() {
         const hour = date.H?.toString().padStart(2, '0') || '00'
         const minute = date.M?.toString().padStart(2, '0') || '00'
         const second = date.S?.toString().padStart(2, '0') || '00'
-        // UNTUK DATABASE: YYYY-MM-DD
+        // FORMAT UNTUK DATABASE: YYYY-MM-DD
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
       
@@ -145,7 +155,7 @@ export default function ChatCSPage() {
           const [day, month, year] = datePart.split('/')
           if (day && month && year) {
             const fullYear = year.length === 2 ? '20' + year : year
-            // UNTUK DATABASE: YYYY-MM-DD
+            // FORMAT UNTUK DATABASE: YYYY-MM-DD
             return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
           }
         }
@@ -181,8 +191,8 @@ export default function ChatCSPage() {
 
   const formatDisplayDate = (dateStr: string): string => {
     try {
-      // dateStr = '2026-12-03' (YYYY-DD-MM)
-      const [year, day, month] = dateStr.split('-')
+      // dateStr = '2026-03-13' (YYYY-MM-DD dari database)
+      const [year, month, day] = dateStr.split('-')
       const monthIndex = parseInt(month) - 1
       return `${parseInt(day)} ${months[monthIndex]} ${year}`
     } catch {
@@ -247,13 +257,7 @@ export default function ChatCSPage() {
         
         // Ambil tanggal dari started (prioritas) atau ended
         const dateForUpload = started ? started.split(' ')[0] : (ended ? ended.split(' ')[0] : null)
-        
-        // Konversi ke format YYYY-DD-MM untuk upload_date
-        if (dateForUpload) {
-          const [year, month, day] = dateForUpload.split('-')
-          const uploadDate = `${year}-${day}-${month}` // YYYY-DD-MM
-          uploadDates.add(uploadDate)
-        }
+        if (dateForUpload) uploadDates.add(dateForUpload)
         
         const botStr = row[idx.replied_by_bot]?.toString() || ''
         const agentStr = row[idx.replied_by_agent]?.toString() || ''
@@ -299,17 +303,17 @@ export default function ChatCSPage() {
       const { error } = await supabase.from('chat_cs_data').insert(validData)
       if (error) throw error
 
-      // INSERT KE CHAT_UPLOADS (dengan format YYYY-DD-MM)
+      // INSERT KE CHAT_UPLOADS (dengan format YYYY-MM-DD)
       setUploadProgress('Menyimpan tracking upload...')
       
       for (const date of uploadDates) {
-        const { error: uploadError } = await supabase.from('chat_uploads').upsert({
-          upload_date: date, // YYYY-DD-MM
+        const { error: uploadError } = await supabase.from('chat_uploads').insert({
+          upload_date: date, // YYYY-MM-DD
           file_name: selectedFile.name,
           total_rows: validData.length,
           status: 'completed',
           website: 'LUCKY77'
-        }, { onConflict: 'upload_date', ignoreDuplicates: true })
+        })
 
         if (uploadError) {
           console.error('❌ Gagal insert ke chat_uploads:', uploadError)
