@@ -71,8 +71,7 @@ export default function ChatCSPage() {
       const monthIndex = months.indexOf(selectedMonth) + 1
       const monthStr = String(monthIndex).padStart(2, '0')
       
-      // FORMAT YANG BENAR: YYYY-DD-MM
-      // Filter berdasarkan bulan di 2 digit terakhir
+      // Filter berdasarkan bulan di posisi akhir (YYYY-DD-MM)
       let query = supabase
         .from('chat_uploads')
         .select('*')
@@ -134,23 +133,11 @@ export default function ChatCSPage() {
         const hour = date.H?.toString().padStart(2, '0') || '00'
         const minute = date.M?.toString().padStart(2, '0') || '00'
         const second = date.S?.toString().padStart(2, '0') || '00'
-        // FORMAT YANG BENAR: YYYY-DD-MM
-        return `${date.y}-${String(date.d).padStart(2, '0')}-${String(date.m).padStart(2, '0')} ${hour}:${minute}:${second}`
+        // KEMBALIKAN KE YYYY-MM-DD UNTUK DATABASE
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
       
       const str = value.toString().trim()
-      
-      // Format ISO: 2026-12-03 23:50:00
-      if (str.includes('-') && str.includes(':')) {
-        const [datePart, timePart] = str.split(' ')
-        if (datePart && timePart) {
-          const [year, month, day] = datePart.split('-')
-          if (year && month && day) {
-            // FORMAT YANG BENAR: YYYY-DD-MM
-            return `${year}-${day.padStart(2, '0')}-${month.padStart(2, '0')} ${timePart}`
-          }
-        }
-      }
       
       // Format DD/MM/YY: 13/03/26 09:32
       if (str.includes('/')) {
@@ -160,8 +147,20 @@ export default function ChatCSPage() {
           const [day, month, year] = datePart.split('/')
           if (day && month && year) {
             const fullYear = year.length === 2 ? '20' + year : year
-            // FORMAT YANG BENAR: YYYY-DD-MM
-            return `${fullYear}-${day.padStart(2, '0')}-${month.padStart(2, '0')} ${timePart}`
+            // KEMBALIKAN KE YYYY-MM-DD UNTUK DATABASE
+            return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+          }
+        }
+      }
+      
+      // Format ISO: 2026-12-03 23:50:00
+      if (str.includes('-') && str.includes(':')) {
+        const [datePart, timePart] = str.split(' ')
+        if (datePart && timePart) {
+          const [year, month, day] = datePart.split('-')
+          if (year && month && day) {
+            // KEMBALIKAN KE YYYY-MM-DD UNTUK DATABASE
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
           }
         }
       }
@@ -238,15 +237,9 @@ export default function ChatCSPage() {
         
         if (!started && !ended) continue
         
-        // Ambil tanggal unik untuk tracking
-        if (started) {
-          const dateOnly = started.split(' ')[0]
-          uploadDates.add(dateOnly)
-        }
-        if (ended) {
-          const dateOnly = ended.split(' ')[0]
-          uploadDates.add(dateOnly)
-        }
+        // Ambil tanggal dari started (prioritas) atau ended
+        const dateForUpload = started ? started.split(' ')[0] : (ended ? ended.split(' ')[0] : null)
+        if (dateForUpload) uploadDates.add(dateForUpload)
         
         const botStr = row[idx.replied_by_bot]?.toString() || ''
         const agentStr = row[idx.replied_by_agent]?.toString() || ''
@@ -291,27 +284,17 @@ export default function ChatCSPage() {
       const { error } = await supabase.from('chat_cs_data').insert(validData)
       if (error) throw error
 
-      const dataByDate: { [key: string]: any[] } = {}
-      validData.forEach(d => {
-        if (d.started) {
-          const date = d.started.split(' ')[0]
-          if (!dataByDate[date]) dataByDate[date] = []
-          dataByDate[date].push(d)
-        }
-        if (d.ended && (!d.started || d.ended.split(' ')[0] !== d.started.split(' ')[0])) {
-          const date = d.ended.split(' ')[0]
-          if (!dataByDate[date]) dataByDate[date] = []
-          dataByDate[date].push(d)
-        }
-      })
-
-      for (const [date, data] of Object.entries(dataByDate)) {
+      // Insert ke chat_uploads berdasarkan tanggal unik
+      for (const date of uploadDates) {
         await supabase.from('chat_uploads').insert({
           upload_date: date,
           file_name: selectedFile.name,
-          total_rows: data.length,
+          total_rows: validData.filter(d => 
+            (d.started && d.started.startsWith(date)) || 
+            (d.ended && d.ended.startsWith(date))
+          ).length,
           status: 'completed',
-          website: data[0]?.website || 'XLY'
+          website: 'XLY'
         })
       }
 
@@ -330,7 +313,7 @@ export default function ChatCSPage() {
 
   const getDayFromDate = (dateStr: string): number => {
     try {
-      return new Date(dateStr).getDate()
+      return parseInt(dateStr.split('-')[1]) // Ambil tanggal dari YYYY-DD-MM
     } catch {
       return 1
     }
@@ -411,7 +394,7 @@ export default function ChatCSPage() {
             {uploads.length > 0 ? uploads.map(item => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                 <td className="px-4 py-3">
-                  {new Date(item.upload_date).getDate()} {selectedMonth} {selectedYear}
+                  {getDayFromDate(item.upload_date)} {selectedMonth} {selectedYear}
                 </td>
                 <td className="px-4 py-3 text-[#FFD700]">{item.website || '-'}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
