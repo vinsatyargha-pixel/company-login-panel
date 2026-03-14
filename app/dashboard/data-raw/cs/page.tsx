@@ -148,42 +148,52 @@ export default function ChatCSPage() {
 
   // ===========================================
   // PARSE TANGGAL EXCEL - FINAL FIX!
-  // KHUSUS UNTUK CHAT_CS_DATA (YYYY-MM-DD)
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
-  if (!value) return null
+    if (!value) return null
 
-  try {
-    // Excel serial number
-    if (typeof value === 'number') {
-      const excelEpoch = new Date(Date.UTC(1899, 11, 30))
-      const date = new Date(excelEpoch.getTime() + value * 86400000)
-      return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')} ${String(date.getUTCHours()).padStart(2,'0')}:${String(date.getUTCMinutes()).padStart(2,'0')}:${String(date.getUTCSeconds()).padStart(2,'0')}`
-    }
+    try {
+      // Excel serial number
+      if (typeof value === 'number') {
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+        const date = new Date(excelEpoch.getTime() + value * 86400000)
+        const year = date.getUTCFullYear()
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+        const day = String(date.getUTCDate()).padStart(2, '0')
+        const hour = String(date.getUTCHours()).padStart(2, '0')
+        const minute = String(date.getUTCMinutes()).padStart(2, '0')
+        const second = String(date.getUTCSeconds()).padStart(2, '0')
+        return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+      }
 
-    const str = value.toString().trim()
-    
-    // Format DD/MM/YYYY atau D/MM/YYYY
-    if (str.includes('/')) {
-      const [datePart, timePart = '00:00:00'] = str.split(' ')
-      const parts = datePart.split('/')
+      const str = value.toString().trim()
       
-      // parts[0] = day (bisa 1-31), parts[1] = month (1-12), parts[2] = year (2026)
-      const day = parts[0].padStart(2, '0')
-      const month = parts[1].padStart(2, '0')
-      const year = parts[2]
+      // Format DD/MM/YYYY atau D/MM/YYYY (12/3/2026, 9/3/2026)
+      if (str.includes('/')) {
+        const [datePart, timePart = '00:00:00'] = str.split(' ')
+        const parts = datePart.split('/')
+        
+        // parts[0] = day (1-31), parts[1] = month (1-12), parts[2] = year (2026)
+        const day = parts[0].padStart(2, '0')
+        const month = parts[1].padStart(2, '0')
+        const year = parts[2]
+        
+        // FORMAT YANG BENAR: YYYY-MM-DD
+        return `${year}-${month}-${day} ${timePart}`
+      }
       
-      // FORMAT YANG BENAR: YYYY-MM-DD
-      return `${year}-${month}-${day} ${timePart}`
+      // Format ISO (2026-03-13) - fallback
+      if (str.includes('-')) {
+        return str
+      }
+      
+      return null
+    } catch (err) {
+      console.error('Date parse error:', value)
+      return null
     }
-    
-    return str
-  } catch (err) {
-    console.error('Date parse error:', value)
-    return null
   }
-}
 
   const parsePercentage = (value: string): number | null => {
     if (!value) return null
@@ -275,8 +285,8 @@ export default function ChatCSPage() {
         }
         if (isGrandTotal) continue
         
-        // PAKAI FUNGSI YANG BENER UNTUK CHAT_CS_DATA
-        const started = parseExcelDateForCSData(row[idx.started])
+        // PAKAI FUNGSI PARSE YANG BENER
+        const started = parseExcelDate(row[idx.started])
         if (!started) continue
         
         const dateOnly = started.split(' ')[0]
@@ -297,7 +307,7 @@ export default function ChatCSPage() {
           website: row[idx.website] || 'LUCKY77',
           conversation_id: row[idx.conversation_id] || null,
           started: started,
-          ended: parseExcelDateForCSData(row[idx.ended]),
+          ended: parseExcelDate(row[idx.ended]),
           chat_duration: row[idx.chat_duration] || null,
           username: row[idx.username] || null,
           total_replies: parseInt(row[idx.total_replies]) || 0,
