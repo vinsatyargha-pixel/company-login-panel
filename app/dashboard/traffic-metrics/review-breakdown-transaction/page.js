@@ -92,8 +92,8 @@ export default function ReviewBreakdownTransactionPage() {
     }).format(amount);
   };
 
-  // ===========================================
-// FETCH HOURLY DATA (24 JAM) - TAMBAH CHAT
+// ===========================================
+// FETCH HOURLY DATA (24 JAM) - TAMBAH CONSOLE.LOG
 // ===========================================
 const fetchHourlyData = async (date, asset, status) => {
   try {
@@ -102,7 +102,9 @@ const fetchHourlyData = async (date, asset, status) => {
     
     const assetCode = asset === 'all' ? 'XLY' : asset;
     
-    // Fetch deposits (TETAP)
+    console.log('🔍 Fetching hourly data for:', { startDate, endDate, assetCode });
+    
+    // Fetch deposits
     let depositQuery = supabase
       .from('deposit_transactions')
       .select('approved_date, status, deposit_amount, brand')
@@ -116,7 +118,7 @@ const fetchHourlyData = async (date, asset, status) => {
       depositQuery = depositQuery.eq('status', dbStatus);
     }
     
-    // Fetch withdrawals (TETAP)
+    // Fetch withdrawals
     let withdrawalQuery = supabase
       .from('withdrawal_transactions')
       .select('approved_date, status, withdrawal_amount, brand')
@@ -131,20 +133,37 @@ const fetchHourlyData = async (date, asset, status) => {
       withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
     }
     
-    // TAMBAHAN: FETCH CHAT DARI CHAT_CS_DATA
+    // FETCH CHAT
     let chatQuery = supabase
       .from('chat_cs_data')
       .select('started')
       .gte('started', startDate)
       .lte('started', endDate);
     
-    const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
+    console.log('📤 Running queries...');
+    
+    const [depositResult, withdrawalResult, chatResult] = await Promise.all([
       depositQuery, 
       withdrawalQuery,
-      chatQuery  // TAMBAH INI
+      chatQuery
     ]);
     
-    return processHourlyData(deposits || [], withdrawals || [], chats || [], date); // TAMBAH CHATS
+    console.log('📥 Results:', {
+      deposits: depositResult.data?.length || 0,
+      withdrawals: withdrawalResult.data?.length || 0,
+      chats: chatResult.data?.length || 0
+    });
+    
+    if (chatResult.error) {
+      console.error('❌ Chat error:', chatResult.error);
+    }
+    
+    return processHourlyData(
+      depositResult.data || [], 
+      withdrawalResult.data || [], 
+      chatResult.data || [], 
+      date
+    );
     
   } catch (error) {
     console.error('Error fetching hourly data:', error);
@@ -152,8 +171,10 @@ const fetchHourlyData = async (date, asset, status) => {
   }
 };
 
-// UPDATE PROCESS HOURLY - TAMBAH PARAMETER CHATS
+// UPDATE PROCESS HOURLY - TAMBAH CONSOLE.LOG
 const processHourlyData = (deposits, withdrawals, chats, date) => {
+  console.log('🔄 Processing hourly data:', { deposits: deposits.length, withdrawals: withdrawals.length, chats: chats.length });
+  
   const hours = Array.from({ length: 24 }, (_, i) => {
     const startHour = i.toString().padStart(2, '0');
     const endHour = (i + 1).toString().padStart(2, '0');
@@ -162,7 +183,8 @@ const processHourlyData = (deposits, withdrawals, chats, date) => {
     return {
       period: period,
       type: 'hour',
-      chat: 0, // AKAN DIISI
+      chat: 0,
+      chatVolume: 0, // TAMBAH VOLUME CHAT
       
       depositApproved: 0,
       depositRejected: 0,
@@ -190,7 +212,7 @@ const processHourlyData = (deposits, withdrawals, chats, date) => {
     };
   });
   
-  // Proses deposits (TETAP)
+  // Proses deposits
   deposits.forEach(deposit => {
     const hour = new Date(deposit.approved_date).getHours();
     const hourData = hours[hour];
@@ -215,7 +237,7 @@ const processHourlyData = (deposits, withdrawals, chats, date) => {
     }
   });
   
-  // Proses withdrawals (TETAP)
+  // Proses withdrawals
   withdrawals.forEach(withdrawal => {
     const hour = new Date(withdrawal.approved_date).getHours();
     const hourData = hours[hour];
@@ -237,12 +259,13 @@ const processHourlyData = (deposits, withdrawals, chats, date) => {
     }
   });
   
-  // TAMBAHAN: PROSES CHAT
+  // PROSES CHAT
   chats.forEach(chat => {
     const hour = new Date(chat.started).getHours();
     const hourData = hours[hour];
     if (hourData) {
       hourData.chat++;
+      hourData.chatVolume++; // CHAT VOLUME = JUMLAH CHAT
     }
   });
   
@@ -250,6 +273,11 @@ const processHourlyData = (deposits, withdrawals, chats, date) => {
     hour.total = hour.depositTotal + hour.withdrawalTotal;
     hour.totalVolume = hour.depositVolume + hour.withdrawalVolume;
   });
+  
+  // CEK HASIL CHAT
+  const totalChat = hours.reduce((sum, h) => sum + h.chat, 0);
+  console.log('✅ Total chat after processing:', totalChat);
+  console.log('📊 Sample hour data:', hours[0]);
   
   return hours;
 };
@@ -627,6 +655,7 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
       
       // Hitung summary - CHAT TETAP 0
       const chatTotal = data.reduce((sum, item) => sum + item.chat, 0); // GANTI DARI 0 JADI REAL
+      console.log('📈 Final chat total:', chatTotal);
       
       const depositApproved = data.reduce((sum, item) => sum + item.depositApproved, 0);
       const depositRejected = data.reduce((sum, item) => sum + item.depositRejected, 0);
@@ -648,7 +677,7 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
       const totalVol = data.reduce((sum, item) => sum + item.totalVolume, 0);
       
       setSummaryData({
-        chatTotal, // 0
+        chatTotal, // SEKARANG REAL
         
         depositApproved,
         depositRejected,
@@ -984,56 +1013,53 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
             </thead>
             <tbody>
               {traficData.map((item, idx) => {
-                const totalChat = traficData.reduce((sum, i) => sum + i.chat, 0); // HITUNG TOTAL CHAT
-                const totalDeposit = traficData.reduce((sum, i) => sum + i.depositTotal, 0);
-                const totalWithdrawal = traficData.reduce((sum, i) => sum + i.withdrawalTotal, 0);
-                
-                const chatPercentage = 0; // CHAT KOSONG
-                const depositPercentage = totalDeposit > 0 ? (item.depositTotal / totalDeposit) * 100 : 0;
-                const withdrawalPercentage = totalWithdrawal > 0 ? (item.withdrawalTotal / totalWithdrawal) * 100 : 0;
-                
-                const maxChat = Math.max(...traficData.map(i => i.chat), 0); // HITUNG MAX CHAT
-                const isMaxDeposit = item.depositTotal === maxDeposit && maxDeposit > 0;
-                const isMaxDepositVolume = item.depositVolume === maxDepositVolume && maxDepositVolume > 0;
-                const isMaxDepositHighest = item.depositHighest === maxDepositHighest && maxDepositHighest > 0;
-                const isMaxWithdrawal = item.withdrawalTotal === maxWithdrawal && maxWithdrawal > 0;
-                const isMaxWithdrawalVolume = item.withdrawalVolume === maxWithdrawalVolume && maxWithdrawalVolume > 0;
-                const isMaxWithdrawalHighest = item.withdrawalHighest === maxWithdrawalHighest && maxWithdrawalHighest > 0;
-                
-                return (
-                  <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
-                    <td className="px-4 py-3 text-white font-medium border-r border-[#FFD700]/10">{item.period}</td>
-                    
-                    {/* CHAT DATA - KOSONG */}
-                    <td className="px-4 py-3 text-right border-r border-[#FFD700]/10 text-yellow-400">0</td>
-                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">0%</td>
-                    
-                    {/* DEPOSIT DATA */}
-                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDeposit ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
-                      {Math.round(item.depositTotal)}
-                    </td>
-                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositVolume ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
-                      {formatIDR(item.depositVolume)}
-                    </td>
-                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositHighest ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
-                      {formatIDR(item.depositHighest)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{depositPercentage.toFixed(2)}%</td>
-                    
-                    {/* WITHDRAWAL DATA */}
-                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawal ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
-                      {Math.round(item.withdrawalTotal)}
-                    </td>
-                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalVolume ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
-                      {formatIDR(item.withdrawalVolume)}
-                    </td>
-                    <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalHighest ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
-                      {formatIDR(item.withdrawalHighest)}
-                    </td>
-                    <td className="px-4 py-3 text-right text-[#A7D8FF]">{withdrawalPercentage.toFixed(2)}%</td>
-                  </tr>
-                );
-              })}
+  const totalChat = traficData.reduce((sum, i) => sum + (i.chat || 0), 0);
+  const totalDeposit = traficData.reduce((sum, i) => sum + i.depositTotal, 0);
+  const totalWithdrawal = traficData.reduce((sum, i) => sum + i.withdrawalTotal, 0);
+  
+  const chatPercentage = totalChat > 0 ? ((item.chat || 0) / totalChat) * 100 : 0;
+  const depositPercentage = totalDeposit > 0 ? (item.depositTotal / totalDeposit) * 100 : 0;
+  const withdrawalPercentage = totalWithdrawal > 0 ? (item.withdrawalTotal / totalWithdrawal) * 100 : 0;
+  
+  const maxChat = Math.max(...traficData.map(i => i.chat || 0), 0);
+  const isMaxChat = item.chat === maxChat && maxChat > 0;
+  
+  return (
+    <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50 transition-colors">
+      <td className="px-4 py-3 text-white font-medium border-r border-[#FFD700]/10">{item.period}</td>
+      
+      {/* CHAT DATA - SEKARANG REAL */}
+      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxChat ? 'bg-yellow-300 text-black font-bold' : 'text-yellow-400'}`}>
+        {item.chat || 0}
+      </td>
+      <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{chatPercentage.toFixed(2)}%</td>
+      
+      {/* DEPOSIT DATA - TETAP */}
+      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDeposit ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
+        {Math.round(item.depositTotal)}
+      </td>
+      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositVolume ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
+        {formatIDR(item.depositVolume)}
+      </td>
+      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxDepositHighest ? 'bg-yellow-300 text-black font-bold' : 'text-blue-400'}`}>
+        {formatIDR(item.depositHighest)}
+      </td>
+      <td className="px-4 py-3 text-right text-[#A7D8FF] border-r border-[#FFD700]/10">{depositPercentage.toFixed(2)}%</td>
+      
+      {/* WITHDRAWAL DATA - TETAP */}
+      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawal ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
+        {Math.round(item.withdrawalTotal)}
+      </td>
+      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalVolume ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
+        {formatIDR(item.withdrawalVolume)}
+      </td>
+      <td className={`px-4 py-3 text-right border-r border-[#FFD700]/10 ${isMaxWithdrawalHighest ? 'bg-yellow-300 text-black font-bold' : 'text-red-400'}`}>
+        {formatIDR(item.withdrawalHighest)}
+      </td>
+      <td className="px-4 py-3 text-right text-[#A7D8FF]">{withdrawalPercentage.toFixed(2)}%</td>
+    </tr>
+  );
+})}
             </tbody>
           </table>
         </div>
