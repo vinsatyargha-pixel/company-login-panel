@@ -281,73 +281,157 @@ export default function DashboardContent() {
   }, []);
 
   // ===========================================
-  // FETCH OFFICER PIE DATA (HUMAN VS SYSTEM) - DENGAN FILTER
-  // ===========================================
-  const fetchOfficerPieData = async () => {
-    try {
-      setLoadingOfficerPie(true);
-      
-      const { startDate, endDate } = getDateRangeForOfficerPie();
-      
-      let depositQuery = supabase
-        .from('deposit_transactions')
-        .select('handler')
-        .eq('status', 'Approved')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      let withdrawalQuery = supabase
-        .from('withdrawal_transactions')
-        .select('handler')
-        .eq('status', 'Approved')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      if (selectedAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', 'XLY');
-        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
-      }
-      
-      const { data: depositData } = await depositQuery;
-      const { data: withdrawalData } = await withdrawalQuery;
-      
-      let humanTotal = 0;
-      let systemTotal = 0;
-      
-      depositData?.forEach(tx => {
-        if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
-        else humanTotal++;
-      });
-      
-      withdrawalData?.forEach(tx => {
-        if (tx.handler === 'SYSTEM' || !tx.handler) systemTotal++;
-        else humanTotal++;
-      });
-      
-      const total = humanTotal + systemTotal;
-      
-      const pieData = [];
-      if (humanTotal > 0) pieData.push({ 
-        name: 'Human', 
-        value: humanTotal, 
-        color: '#3b82f6',
-        percentage: ((humanTotal / total) * 100).toFixed(1)
-      });
-      if (systemTotal > 0) pieData.push({ 
-        name: 'System', 
-        value: systemTotal, 
-        color: '#ef4444',
-        percentage: ((systemTotal / total) * 100).toFixed(1)
-      });
-      
-      setOfficerPieData(pieData);
-      
-    } catch (error) {
-      console.error('Error fetching officer pie data:', error);
-    } finally {
-      setLoadingOfficerPie(false);
+// FETCH OFFICER PIE DATA - DETAIL (HUMAN: CHAT,DP,WD vs SYSTEM: CHAT,DP,WD)
+// ===========================================
+const fetchOfficerPieData = async () => {
+  try {
+    setLoadingOfficerPie(true);
+    
+    const { startDate, endDate } = getDateRangeForOfficerPie();
+    
+    // 1. AMBIL DEPOSIT (APPROVED ONLY)
+    let depositQuery = supabase
+      .from('deposit_transactions')
+      .select('handler')
+      .eq('status', 'Approved')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate);
+    
+    // 2. AMBIL WITHDRAWAL (APPROVED ONLY)
+    let withdrawalQuery = supabase
+      .from('withdrawal_transactions')
+      .select('handler')
+      .eq('status', 'Approved')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate);
+    
+    // 3. AMBIL CHAT (ALL CHAT)
+    let chatQuery = supabase
+      .from('chat_cs_data')
+      .select('agent_alias')
+      .gte('started', startDate)
+      .lte('started', endDate);
+    
+    if (selectedAsset !== 'all') {
+      depositQuery = depositQuery.eq('brand', 'XLY');
+      withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
+      // CHAT GA ADA BRAND
     }
-  };
+    
+    const [{ data: depositData }, { data: withdrawalData }, { data: chatData }] = await Promise.all([
+      depositQuery,
+      withdrawalQuery,
+      chatQuery
+    ]);
+    
+    console.log('📊 PIE DATA RAW:', {
+      deposits: depositData?.length || 0,
+      withdrawals: withdrawalData?.length || 0,
+      chats: chatData?.length || 0
+    });
+    
+    // INIT COUNTERS
+    let humanChat = 0;
+    let humanDeposit = 0;
+    let humanWithdrawal = 0;
+    
+    let systemChat = 0;
+    let systemDeposit = 0;
+    let systemWithdrawal = 0;
+    
+    // HITUNG DEPOSIT
+    depositData?.forEach(tx => {
+      if (tx.handler === 'SYSTEM' || !tx.handler) {
+        systemDeposit++;
+      } else {
+        humanDeposit++;
+      }
+    });
+    
+    // HITUNG WITHDRAWAL
+    withdrawalData?.forEach(tx => {
+      if (tx.handler === 'SYSTEM' || !tx.handler) {
+        systemWithdrawal++;
+      } else {
+        humanWithdrawal++;
+      }
+    });
+    
+    // HITUNG CHAT - BOT ATAU HUMAN
+    chatData?.forEach(chat => {
+      // ASUMSI: BOT = 'BOT' atau 'System' di agent_alias
+      const alias = chat.agent_alias?.toLowerCase() || '';
+      if (alias === 'bot' || alias.includes('bot') || alias === 'system') {
+        systemChat++;
+      } else {
+        humanChat++;
+      }
+    });
+    
+    // BUAT PIE DATA - 6 SLICE
+    const pieData = [];
+    
+    // HUMAN SLICES (WARNA BIRU GRADASI)
+    if (humanChat > 0) {
+      pieData.push({ 
+        name: 'Human Chat', 
+        value: humanChat, 
+        color: '#93c5fd', // biru muda
+        category: 'human'
+      });
+    }
+    if (humanDeposit > 0) {
+      pieData.push({ 
+        name: 'Human Deposit', 
+        value: humanDeposit, 
+        color: '#3b82f6', // biru
+        category: 'human'
+      });
+    }
+    if (humanWithdrawal > 0) {
+      pieData.push({ 
+        name: 'Human Withdrawal', 
+        value: humanWithdrawal, 
+        color: '#1e3a8a', // biru tua
+        category: 'human'
+      });
+    }
+    
+    // SYSTEM SLICES (WARNA MERAH GRADASI)
+    if (systemChat > 0) {
+      pieData.push({ 
+        name: 'System Chat', 
+        value: systemChat, 
+        color: '#fca5a5', // merah muda
+        category: 'system'
+      });
+    }
+    if (systemDeposit > 0) {
+      pieData.push({ 
+        name: 'System Deposit', 
+        value: systemDeposit, 
+        color: '#ef4444', // merah
+        category: 'system'
+      });
+    }
+    if (systemWithdrawal > 0) {
+      pieData.push({ 
+        name: 'System Withdrawal', 
+        value: systemWithdrawal, 
+        color: '#7f1d1d', // merah tua
+        category: 'system'
+      });
+    }
+    
+    console.log('📊 PIE DATA FINAL:', pieData);
+    setOfficerPieData(pieData);
+    
+  } catch (error) {
+    console.error('Error fetching officer pie data:', error);
+  } finally {
+    setLoadingOfficerPie(false);
+  }
+};
 
   // ===========================================
   // GET DATE RANGE FOR OFFICER PIE
