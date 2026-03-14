@@ -44,6 +44,7 @@ export default function ChatCSPage() {
     setSelectedMonth(months[today.getMonth()])
     setSelectedYear(today.getFullYear().toString())
     fetchAssets()
+    fetchUploads()
   }, [])
 
   useEffect(() => {
@@ -73,6 +74,7 @@ export default function ChatCSPage() {
       const monthIndex = months.indexOf(selectedMonth) + 1
       const monthStr = String(monthIndex).padStart(2, '0')
       
+      // Filter berdasarkan bulan di 2 digit terakhir
       let query = supabase
         .from('chat_uploads')
         .select('*')
@@ -134,7 +136,7 @@ export default function ChatCSPage() {
         const hour = date.H?.toString().padStart(2, '0') || '00'
         const minute = date.M?.toString().padStart(2, '0') || '00'
         const second = date.S?.toString().padStart(2, '0') || '00'
-        // UNTUK DATABASE: YYYY-MM-DD (biar ga error)
+        // UNTUK DATABASE: YYYY-MM-DD
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
       
@@ -150,6 +152,17 @@ export default function ChatCSPage() {
             const fullYear = year.length === 2 ? '20' + year : year
             // UNTUK DATABASE: YYYY-MM-DD
             return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+          }
+        }
+      }
+      
+      // Format ISO: 2026-12-03 23:50:00
+      if (str.includes('-') && str.includes(':')) {
+        const [datePart, timePart] = str.split(' ')
+        if (datePart && timePart) {
+          const [year, month, day] = datePart.split('-')
+          if (year && month && day) {
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
           }
         }
       }
@@ -173,7 +186,7 @@ export default function ChatCSPage() {
 
   const formatDisplayDate = (dateStr: string): string => {
     try {
-      // Input dari database: YYYY-DD-MM
+      // dateStr = '2026-12-03' (YYYY-DD-MM)
       const [year, day, month] = dateStr.split('-')
       const monthIndex = parseInt(month) - 1
       return `${parseInt(day)} ${months[monthIndex]} ${year}`
@@ -237,8 +250,15 @@ export default function ChatCSPage() {
         
         if (!started && !ended) continue
         
-        // Ambil tanggal dari started atau ended
+        // Ambil tanggal dari started (prioritas) atau ended
         const dateForUpload = started ? started.split(' ')[0] : (ended ? ended.split(' ')[0] : null)
+        
+        // Konversi ke format YYYY-DD-MM untuk upload_date
+        if (dateForUpload) {
+          const [year, month, day] = dateForUpload.split('-')
+          const uploadDate = `${year}-${day}-${month}` // YYYY-DD-MM
+          uploadDates.add(uploadDate)
+        }
         
         const botStr = row[idx.replied_by_bot]?.toString() || ''
         const agentStr = row[idx.replied_by_agent]?.toString() || ''
@@ -248,14 +268,6 @@ export default function ChatCSPage() {
         
         const replied_by_bot = botMatch ? parseInt(botMatch[1]) : 0
         const replied_by_agent = agentMatch ? parseInt(agentMatch[1]) : 0
-        
-        // Konversi ke format YYYY-DD-MM untuk upload_date
-        let uploadDate = null
-        if (dateForUpload) {
-          const [year, month, day] = dateForUpload.split('-')
-          uploadDate = `${year}-${day}-${month}` // YYYY-DD-MM
-          uploadDates.add(uploadDate)
-        }
         
         validData.push({
           account: row[idx.account] || null,
@@ -296,13 +308,13 @@ export default function ChatCSPage() {
       setUploadProgress('Menyimpan tracking upload...')
       
       for (const date of uploadDates) {
-        const { error: uploadError } = await supabase.from('chat_uploads').insert({
+        const { error: uploadError } = await supabase.from('chat_uploads').upsert({
           upload_date: date, // YYYY-DD-MM
           file_name: selectedFile.name,
           total_rows: validData.length,
           status: 'completed',
           website: 'LUCKY77'
-        })
+        }, { onConflict: 'upload_date', ignoreDuplicates: true })
 
         if (uploadError) {
           console.error('❌ Gagal insert ke chat_uploads:', uploadError)
