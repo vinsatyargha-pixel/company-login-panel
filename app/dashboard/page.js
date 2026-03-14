@@ -2043,11 +2043,20 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     <ResponsiveContainer width="100%" height="100%">
       <LineChart 
         data={trafficMetrics}
-        margin={{ top: 5, right: 20, left: 20, bottom: 5 }} // INI YANG DITAMBAH
+        margin={{ top: 20, right: 30, left: 30, bottom: 20 }} // DIPERBESAR!
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-        <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
-        <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
+        <XAxis 
+          dataKey="name" 
+          stroke="#A7D8FF" 
+          tick={{ fontSize: 10 }}
+          padding={{ left: 10, right: 10 }} // TAMBAH PADDING
+        />
+        <YAxis 
+          stroke="#A7D8FF" 
+          tick={{ fontSize: 10 }}
+          padding={{ top: 10, bottom: 10 }} // TAMBAH PADDING
+        />
         <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
         <Legend 
           formatter={(value) => {
