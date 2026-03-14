@@ -1967,7 +1967,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
         <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
         <Legend 
           formatter={(value) => {
-            if (value === 'CS') return 'CS (All Status)';
+            if (value === 'CS') return 'CS (Chat Volume)';
             if (value === 'Deposit') return 'Deposit (All Status)';
             if (value === 'Withdrawal') return 'Withdrawal (All Status)';
             return value;
