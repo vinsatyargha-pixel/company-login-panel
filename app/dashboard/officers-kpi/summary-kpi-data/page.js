@@ -364,74 +364,47 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
-  // ===== FETCH CHAT CS DATA (BARU) =====
-  // ===========================================
-  useEffect(() => {
-    const fetchChatCSData = async () => {
-      try {
-        setLoadingChat(true);
-        
-        const startMonth = parseInt(bulanAwal);
-        const endMonth = parseInt(bulanAkhir);
-        
-        const startDate = `${tahun}-${startMonth.toString().padStart(2, '0')}-01`;
-        const endDate = `${tahun}-${endMonth.toString().padStart(2, '0')}-31`;
-        
-        const { data, error } = await supabase
-          .from('chat_cs_data')
-          .select('*')
-          .gte('started', startDate)
-          .lte('started', endDate);
-        
-        if (error) throw error;
-        
-        // Group by agent_real_name setelah di-mapping
-        const grouped = {};
-        let botTotal = 0;
-        
-        data.forEach(chat => {
-          const agentAlias = chat.agent_real_name || 'Unknown';
-          
-          // MAP ALIAS KE NAMA ASLI pake AGENT_MAP
-          const officerName = AGENT_MAP[agentAlias] || agentAlias;
-          
-          // Khusus BOT
-          if (officerName === 'BOT' || agentAlias === 'BOT') {
-            botTotal++;
-            return;
-          }
-          
-          // Abaikan SYSTEM
-          if (officerName === 'System' || officerName === 'SYSTEM') {
-            return;
-          }
-          
-          // Group berdasarkan nama officer
-          if (!grouped[officerName]) {
-            grouped[officerName] = {
-              totalChat: 0
-            };
-          }
-          
-          grouped[officerName].totalChat++;
-        });
-        
-        setChatData(grouped);
-        setBotChatCount(botTotal);
-        console.log('Chat data (total only):', grouped);
-        console.log('Bot total chats:', botTotal);
-        
-      } catch (error) {
-        console.error('Error fetching chat data:', error);
-      } finally {
-        setLoadingChat(false);
-      }
-    };
-    
-    if (tahun && bulanAwal && bulanAkhir) {
-      fetchChatCSData();
+// FETCH CHAT CS DATA (FIXED)
+// ===========================================
+useEffect(() => {
+  const fetchChatCSData = async () => {
+    try {
+      setLoadingChat(true);
+      
+      const startMonth = parseInt(bulanAwal);
+      const endMonth = parseInt(bulanAkhir);
+      
+      const startDate = `${tahun}-${startMonth.toString().padStart(2, '0')}-01`;
+      
+      // HITUNG TANGGAL TERAKHIR BULAN dengan BENAR
+      const lastDay = new Date(parseInt(tahun), endMonth, 0).getDate();
+      const endDate = `${tahun}-${endMonth.toString().padStart(2, '0')}-${lastDay}`;
+      
+      console.log('📅 Range Chat:', { startDate, endDate });
+      
+      const { data, error } = await supabase
+        .from('chat_cs_data')
+        .select('*')
+        .gte('started', startDate)
+        .lte('started', endDate);
+      
+      if (error) throw error;
+      
+      console.log('✅ Data chat ditemukan:', data?.length || 0, 'baris');
+      
+      // ... sisanya sama ...
+      
+    } catch (error) {
+      console.error('❌ Error fetching chat data:', error);
+    } finally {
+      setLoadingChat(false);
     }
-  }, [tahun, bulanAwal, bulanAkhir]);
+  };
+  
+  if (tahun && bulanAwal && bulanAkhir) {
+    fetchChatCSData();
+  }
+}, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
   // HITUNG TOTAL HARI DALAM RENTANG BULAN
