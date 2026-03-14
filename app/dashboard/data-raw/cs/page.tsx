@@ -57,7 +57,7 @@ export default function ChatCSPage() {
   }, [selectedMonth, selectedYear, selectedAsset])
 
   // ===========================================
-  // FETCH FUNCTIONS (FILTER TETAP SAMA)
+  // FETCH FUNCTIONS
   // ===========================================
 
   const fetchAssets = async () => {
@@ -84,7 +84,7 @@ export default function ChatCSPage() {
       const monthIndex = months.indexOf(selectedMonth) + 1
       const monthPadded = String(monthIndex).padStart(2, '0')
       
-      // FORMAT FILTER TETAP YYYY-MM-DD
+      // FORMAT FILTER YYYY-MM-DD
       const startDate = `${selectedYear}-${monthPadded}-01`
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${monthPadded}-${lastDay}`
@@ -148,57 +148,52 @@ export default function ChatCSPage() {
 
   // ===========================================
   // PARSE TANGGAL EXCEL - FINAL FIX!
+  // KHUSUS UNTUK CHAT_CS_DATA (YYYY-MM-DD)
   // ===========================================
 
-  const parseExcelDate = (value: any): string | null => {
+  const parseExcelDateForCSData = (value: any): string | null => {
     if (!value) return null
 
     try {
-      // ===============================
-      // 1. EXCEL SERIAL NUMBER
-      // ===============================
+      // Handle Excel serial number
       if (typeof value === 'number') {
-        const excelEpoch = new Date(Date.UTC(1899, 11, 30))
-        const date = new Date(excelEpoch.getTime() + value * 86400000)
-
-        const year = date.getUTCFullYear()
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-        const day = String(date.getUTCDate()).padStart(2, '0')
-        const hour = String(date.getUTCHours()).padStart(2, '0')
-        const minute = String(date.getUTCMinutes()).padStart(2, '0')
-        const second = String(date.getUTCSeconds()).padStart(2, '0')
-
-        return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+        const date = XLSX.SSF.parse_date_code(value)
+        if (!date) return null
+        const hour = date.H?.toString().padStart(2, '0') || '00'
+        const minute = date.M?.toString().padStart(2, '0') || '00'
+        const second = date.S?.toString().padStart(2, '0') || '00'
+        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
 
       const str = value.toString().trim()
-
-      // ===============================
-      // 2. FORMAT DD/MM/YY atau DD/MM/YYYY
-      // ===============================
+      
+      // Format DD/MM/YY: 13/03/26 09:32
       if (str.includes('/')) {
-        const [datePart, timePart = '00:00:00'] = str.split(' ')
-        const [d, m, y] = datePart.split('/')
-
-        // Handle 2 digit year (26 -> 2026)
-        const year = y.length === 2 ? `20${y}` : y
-        const day = String(d).padStart(2, '0')
-        const month = String(m).padStart(2, '0')
-
-        // FORMAT YANG BENAR: YYYY-MM-DD
-        return `${year}-${month}-${day} ${timePart}`
+        const parts = str.split(' ')
+        if (parts.length >= 2) {
+          const [datePart, timePart] = parts
+          const [day, month, year] = datePart.split('/')
+          if (day && month && year) {
+            const fullYear = year.length === 2 ? '20' + year : year
+            // YANG BENAR: YYYY-MM-DD
+            return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+          }
+        }
       }
-
-      // ===============================
-      // 3. FORMAT ISO (SUDAH BENAR)
-      // ===============================
-      if (str.includes('-')) {
-        return str
+      
+      // Format ISO: 2026-12-03 23:50:00
+      if (str.includes('-') && str.includes(':')) {
+        const [datePart, timePart] = str.split(' ')
+        if (datePart && timePart) {
+          const [year, month, day] = datePart.split('-')
+          if (year && month && day) {
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
+          }
+        }
       }
-
+      
       return null
-    } catch (err) {
-      console.error('Date parse error:', value)
+    } catch {
       return null
     }
   }
@@ -215,7 +210,7 @@ export default function ChatCSPage() {
   }
 
   // ===========================================
-  // UPLOAD PROCESS - DENGAN BATCH INSERT
+  // UPLOAD PROCESS
   // ===========================================
 
   const processFile = async () => {
@@ -293,12 +288,9 @@ export default function ChatCSPage() {
         }
         if (isGrandTotal) continue
         
-        const started = parseExcelDate(row[idx.started])
+        // PAKAI FUNGSI YANG BENER UNTUK CHAT_CS_DATA
+        const started = parseExcelDateForCSData(row[idx.started])
         if (!started) continue
-        
-        // DEBUG (opsional)
-        console.log("RAW DATE:", row[idx.started])
-        console.log("PARSED DATE:", started)
         
         const dateOnly = started.split(' ')[0]
         uploadDates.add(dateOnly)
@@ -318,7 +310,7 @@ export default function ChatCSPage() {
           website: row[idx.website] || 'LUCKY77',
           conversation_id: row[idx.conversation_id] || null,
           started: started,
-          ended: parseExcelDate(row[idx.ended]),
+          ended: parseExcelDateForCSData(row[idx.ended]),
           chat_duration: row[idx.chat_duration] || null,
           username: row[idx.username] || null,
           total_replies: parseInt(row[idx.total_replies]) || 0,
@@ -341,17 +333,14 @@ export default function ChatCSPage() {
 
       if (validData.length === 0) throw new Error('Tidak ada data valid')
 
-      // INSERT KE CHAT_CS_DATA (BATCH)
+      // INSERT KE CHAT_CS_DATA
       setUploadProgress(`Menyimpan ${validData.length} data...`)
       
-      const chunkSize = 500
-      for (let i = 0; i < validData.length; i += chunkSize) {
-        const chunk = validData.slice(i, i + chunkSize)
-        const { error } = await supabase
-          .from('chat_cs_data')
-          .insert(chunk)
-        if (error) throw error
-      }
+      const { error } = await supabase
+        .from('chat_cs_data')
+        .insert(validData)
+
+      if (error) throw error
 
       // INSERT KE CHAT_UPLOADS
       setUploadProgress('Menyimpan tracking upload...')
@@ -411,7 +400,7 @@ export default function ChatCSPage() {
   }
 
   // ===========================================
-  // RENDER (TETAP SAMA)
+  // RENDER
   // ===========================================
 
   if (loading) {
