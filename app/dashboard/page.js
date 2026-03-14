@@ -402,159 +402,209 @@ export default function DashboardContent() {
   };
 
   // ===========================================
-  // FETCH TRAFFIC METRICS DATA
-  // ===========================================
-  const fetchTrafficMetricsData = async () => {
-    try {
-      setLoadingTrafficMetrics(true);
+// FETCH TRAFFIC METRICS DATA - TOTAL SEMUA CHAT (BOT + HUMAN)
+// ===========================================
+const fetchTrafficMetricsData = async () => {
+  try {
+    setLoadingTrafficMetrics(true);
+    
+    if (trafficMetricsFilter === 'daily') {
+      const startDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, trafficMetricsMonth, 0).getDate()} 23:59:59`;
       
-      if (trafficMetricsFilter === 'daily') {
-        const startDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-01 00:00:00`;
-        const endDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, trafficMetricsMonth, 0).getDate()} 23:59:59`;
-        
-        let depositQuery = supabase
-          .from('deposit_transactions')
-          .select('approved_date')
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        let withdrawalQuery = supabase
-          .from('withdrawal_transactions')
-          .select('approved_date')
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        if (trafficMetricsAsset !== 'all') {
-          depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
-          withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
-        }
-        
-        const [{ data: deposits }, { data: withdrawals }] = await Promise.all([
-          depositQuery, withdrawalQuery
-        ]);
-        
-        const data = processDailyTrafficData(deposits || [], withdrawals || [], trafficMetricsMonth, trafficMetricsYear);
-        setTrafficMetrics(data);
-        
-      } else {
-        const startMonth = trafficMetricsPeriod === 'jan-jun' ? 1 : 7;
-        const endMonth = trafficMetricsPeriod === 'jan-jun' ? 6 : 12;
-        
-        const startDate = `${trafficMetricsYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
-        const endDate = `${trafficMetricsYear}-${String(endMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, endMonth, 0).getDate()} 23:59:59`;
-        
-        let depositQuery = supabase
-          .from('deposit_transactions')
-          .select('approved_date')
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        let withdrawalQuery = supabase
-          .from('withdrawal_transactions')
-          .select('approved_date')
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate);
-        
-        if (trafficMetricsAsset !== 'all') {
-          depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
-          withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
-        }
-        
-        const [{ data: deposits }, { data: withdrawals }] = await Promise.all([
-          depositQuery, withdrawalQuery
-        ]);
-        
-        const data = processMonthlyTrafficData(deposits || [], withdrawals || [], trafficMetricsPeriod, trafficMetricsYear);
-        setTrafficMetrics(data);
+      // AMBIL DEPOSIT
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      // AMBIL WITHDRAWAL  
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      // AMBIL CHAT - SEMUA (BOT + HUMAN) - GA PAKE FILTER
+      let chatQuery = supabase
+        .from('chat')
+        .select('created_at')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+      
+      if (trafficMetricsAsset !== 'all') {
+        depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
+        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
+        // CHAT GA ADA BRAND, JADI FILTER BY ASSET GA BISA
       }
       
-    } catch (error) {
-      console.error('Error fetching traffic metrics:', error);
-    } finally {
-      setLoadingTrafficMetrics(false);
+      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
+        depositQuery, 
+        withdrawalQuery,
+        chatQuery
+      ]);
+      
+      const data = processDailyTrafficData(
+        deposits || [], 
+        withdrawals || [], 
+        chats || [],
+        trafficMetricsMonth, 
+        trafficMetricsYear
+      );
+      setTrafficMetrics(data);
+      
+    } else {
+      const startMonth = trafficMetricsPeriod === 'jan-jun' ? 1 : 7;
+      const endMonth = trafficMetricsPeriod === 'jan-jun' ? 6 : 12;
+      
+      const startDate = `${trafficMetricsYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${trafficMetricsYear}-${String(endMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, endMonth, 0).getDate()} 23:59:59`;
+      
+      let depositQuery = supabase
+        .from('deposit_transactions')
+        .select('approved_date')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      let withdrawalQuery = supabase
+        .from('withdrawal_transactions')
+        .select('approved_date')
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
+      
+      let chatQuery = supabase
+        .from('chat')
+        .select('created_at')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate);
+      
+      if (trafficMetricsAsset !== 'all') {
+        depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
+        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
+      }
+      
+      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
+        depositQuery, 
+        withdrawalQuery,
+        chatQuery
+      ]);
+      
+      const data = processMonthlyTrafficData(
+        deposits || [], 
+        withdrawals || [], 
+        chats || [],
+        trafficMetricsPeriod, 
+        trafficMetricsYear
+      );
+      setTrafficMetrics(data);
     }
-  };
+    
+  } catch (error) {
+    console.error('Error fetching traffic metrics:', error);
+  } finally {
+    setLoadingTrafficMetrics(false);
+  }
+};
 
-  const processDailyTrafficData = (deposits, withdrawals, month, year) => {
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const today = new Date();
-    const currentDate = today.getDate();
-    const currentMonth = today.getMonth() + 1;
-    const currentYear = today.getFullYear();
+// PROCESS FUNCTIONS TETAP SAMA
+const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const today = new Date();
+  const currentDate = today.getDate();
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+  
+  const days = Array.from({ length: daysInMonth }, (_, i) => {
+    const day = i + 1;
+    const isPastDate = (year < currentYear) || 
+                      (year === currentYear && month < currentMonth) ||
+                      (year === currentYear && month === currentMonth && day <= currentDate);
     
-    const days = Array.from({ length: daysInMonth }, (_, i) => {
-      const day = i + 1;
-      const isPastDate = (year < currentYear) || 
-                        (year === currentYear && month < currentMonth) ||
-                        (year === currentYear && month === currentMonth && day <= currentDate);
-      
-      return {
-        name: `${day}`,
-        day: day,
-        chat: isPastDate ? 0 : null,
-        deposit: 0,
-        withdrawal: 0,
-        isPastDate: isPastDate,
-        fullDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-      };
-    });
-    
-    deposits.forEach(deposit => {
-      const date = new Date(deposit.approved_date);
-      const day = date.getDate() - 1;
-      if (days[day]) days[day].deposit++;
-    });
-    
-    withdrawals.forEach(withdrawal => {
-      const date = new Date(withdrawal.approved_date);
-      const day = date.getDate() - 1;
-      if (days[day]) days[day].withdrawal++;
-    });
-    
-    return days;
-  };
+    return {
+      name: `${day}`,
+      day: day,
+      chat: 0,
+      deposit: 0,
+      withdrawal: 0,
+      isPastDate: isPastDate,
+      fullDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    };
+  });
+  
+  deposits.forEach(deposit => {
+    const date = new Date(deposit.approved_date);
+    const day = date.getDate() - 1;
+    if (days[day]) days[day].deposit++;
+  });
+  
+  withdrawals.forEach(withdrawal => {
+    const date = new Date(withdrawal.approved_date);
+    const day = date.getDate() - 1;
+    if (days[day]) days[day].withdrawal++;
+  });
+  
+  // HITUNG SEMUA CHAT (BOT + HUMAN)
+  chats.forEach(chat => {
+    const date = new Date(chat.created_at);
+    const day = date.getDate() - 1;
+    if (days[day]) days[day].chat++;
+  });
+  
+  return days;
+};
 
-  const processMonthlyTrafficData = (deposits, withdrawals, period, year) => {
-    const startMonth = period === 'jan-jun' ? 0 : 6;
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
+const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) => {
+  const startMonth = period === 'jan-jun' ? 0 : 6;
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  
+  const monthlyData = Array.from({ length: 6 }, (_, i) => {
+    const monthIndex = startMonth + i;
+    const isPastDate = (year < currentYear) || (year === currentYear && monthIndex <= currentMonth);
     
-    const monthlyData = Array.from({ length: 6 }, (_, i) => {
-      const monthIndex = startMonth + i;
-      const isPastDate = (year < currentYear) || (year === currentYear && monthIndex <= currentMonth);
-      
-      return {
-        name: months[monthIndex],
-        month: months[monthIndex],
-        monthNum: monthIndex + 1,
-        chat: isPastDate ? 0 : null,
-        deposit: 0,
-        withdrawal: 0,
-        isPastDate: isPastDate
-      };
-    });
-    
-    deposits.forEach(deposit => {
-      const date = new Date(deposit.approved_date);
-      const month = date.getMonth();
-      const monthIndex = month - startMonth;
-      if (monthIndex >= 0 && monthIndex < 6) {
-        monthlyData[monthIndex].deposit++;
-      }
-    });
-    
-    withdrawals.forEach(withdrawal => {
-      const date = new Date(withdrawal.approved_date);
-      const month = date.getMonth();
-      const monthIndex = month - startMonth;
-      if (monthIndex >= 0 && monthIndex < 6) {
-        monthlyData[monthIndex].withdrawal++;
-      }
-    });
-    
-    return monthlyData;
-  };
+    return {
+      name: months[monthIndex],
+      month: months[monthIndex],
+      monthNum: monthIndex + 1,
+      chat: 0,
+      deposit: 0,
+      withdrawal: 0,
+      isPastDate: isPastDate
+    };
+  });
+  
+  deposits.forEach(deposit => {
+    const date = new Date(deposit.approved_date);
+    const month = date.getMonth();
+    const monthIndex = month - startMonth;
+    if (monthIndex >= 0 && monthIndex < 6) {
+      monthlyData[monthIndex].deposit++;
+    }
+  });
+  
+  withdrawals.forEach(withdrawal => {
+    const date = new Date(withdrawal.approved_date);
+    const month = date.getMonth();
+    const monthIndex = month - startMonth;
+    if (monthIndex >= 0 && monthIndex < 6) {
+      monthlyData[monthIndex].withdrawal++;
+    }
+  });
+  
+  // HITUNG SEMUA CHAT (BOT + HUMAN)
+  chats.forEach(chat => {
+    const date = new Date(chat.created_at);
+    const month = date.getMonth();
+    const monthIndex = month - startMonth;
+    if (monthIndex >= 0 && monthIndex < 6) {
+      monthlyData[monthIndex].chat++;
+    }
+  });
+  
+  return monthlyData;
+};
 
   // ===========================================
   // FETCH OFFICER BAR CHART DATA
