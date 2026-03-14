@@ -151,52 +151,39 @@ export default function ChatCSPage() {
   // KHUSUS UNTUK CHAT_CS_DATA (YYYY-MM-DD)
   // ===========================================
 
-  const parseExcelDateForCSData = (value: any): string | null => {
-    if (!value) return null
+  const parseExcelDate = (value: any): string | null => {
+  if (!value) return null
 
-    try {
-      // Handle Excel serial number
-      if (typeof value === 'number') {
-        const date = XLSX.SSF.parse_date_code(value)
-        if (!date) return null
-        const hour = date.H?.toString().padStart(2, '0') || '00'
-        const minute = date.M?.toString().padStart(2, '0') || '00'
-        const second = date.S?.toString().padStart(2, '0') || '00'
-        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
-      }
-
-      const str = value.toString().trim()
-      
-      // Format DD/MM/YY: 13/03/26 09:32
-      if (str.includes('/')) {
-        const parts = str.split(' ')
-        if (parts.length >= 2) {
-          const [datePart, timePart] = parts
-          const [day, month, year] = datePart.split('/')
-          if (day && month && year) {
-            const fullYear = year.length === 2 ? '20' + year : year
-            // YANG BENAR: YYYY-MM-DD
-            return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
-          }
-        }
-      }
-      
-      // Format ISO: 2026-12-03 23:50:00
-      if (str.includes('-') && str.includes(':')) {
-        const [datePart, timePart] = str.split(' ')
-        if (datePart && timePart) {
-          const [year, month, day] = datePart.split('-')
-          if (year && month && day) {
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
-          }
-        }
-      }
-      
-      return null
-    } catch {
-      return null
+  try {
+    // Excel serial number
+    if (typeof value === 'number') {
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+      const date = new Date(excelEpoch.getTime() + value * 86400000)
+      return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')} ${String(date.getUTCHours()).padStart(2,'0')}:${String(date.getUTCMinutes()).padStart(2,'0')}:${String(date.getUTCSeconds()).padStart(2,'0')}`
     }
+
+    const str = value.toString().trim()
+    
+    // Format DD/MM/YYYY atau D/MM/YYYY
+    if (str.includes('/')) {
+      const [datePart, timePart = '00:00:00'] = str.split(' ')
+      const parts = datePart.split('/')
+      
+      // parts[0] = day (bisa 1-31), parts[1] = month (1-12), parts[2] = year (2026)
+      const day = parts[0].padStart(2, '0')
+      const month = parts[1].padStart(2, '0')
+      const year = parts[2]
+      
+      // FORMAT YANG BENAR: YYYY-MM-DD
+      return `${year}-${month}-${day} ${timePart}`
+    }
+    
+    return str
+  } catch (err) {
+    console.error('Date parse error:', value)
+    return null
   }
+}
 
   const parsePercentage = (value: string): number | null => {
     if (!value) return null
