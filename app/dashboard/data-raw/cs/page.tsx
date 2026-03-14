@@ -69,12 +69,12 @@ export default function ChatCSPage() {
   try {
     setLoading(true)
     
-    const monthIndex = months.indexOf(selectedMonth) + 1
-    const monthStr = String(monthIndex).padStart(2, '0')
+    const monthIndex = months.indexOf(selectedMonth) + 1 // 3 untuk Maret
+    const monthStr = String(monthIndex).padStart(2, '0') // '03'
     
-    // GANTI BAGIAN INI:
-    const startDate = `${selectedYear}-01-${monthStr}`   // 2026-01-03 (1 Maret)
-    const endDate = `${selectedYear}-31-${monthStr}`     // 2026-31-03 (31 Maret)
+    // FILTER DENGAN FORMAT YYYY-DD-MM
+    const startDate = `${selectedYear}-01-${monthStr}`   // 2026-01-03
+    const endDate = `${selectedYear}-31-${monthStr}`     // 2026-31-03
     
     let query = supabase
       .from('chat_uploads')
@@ -82,13 +82,6 @@ export default function ChatCSPage() {
       .gte('upload_date', startDate)
       .lte('upload_date', endDate)
       .order('upload_date', { ascending: true })
-
-    if (selectedAsset !== 'all') {
-      const asset = assets.find(a => a.id === selectedAsset)
-      if (asset) {
-        query = query.eq('website', asset.asset_code)
-      }
-    }
 
     const { data } = await query
     setUploads(data || [])
