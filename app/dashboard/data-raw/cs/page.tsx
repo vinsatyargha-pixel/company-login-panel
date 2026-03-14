@@ -70,20 +70,12 @@ export default function ChatCSPage() {
     setLoading(true)
     
     const monthIndex = months.indexOf(selectedMonth) + 1
-    const monthPadded = String(monthIndex).padStart(2, '0')
+    const monthStr = String(monthIndex).padStart(2, '0')
     
-    // BUAT RANGE TANGGAL LENGKAP
-    const startDate = `${selectedYear}-01-${monthPadded}`  // YYYY-DD-MM
-    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-    const endDate = `${selectedYear}-${lastDay}-${monthPadded}`
-
-    console.log('🔍 FILTER CS:', { 
-      selectedMonth, 
-      selectedYear,
-      startDate, 
-      endDate 
-    })
-
+    // GANTI BAGIAN INI:
+    const startDate = `${selectedYear}-01-${monthStr}`   // 2026-01-03 (1 Maret)
+    const endDate = `${selectedYear}-31-${monthStr}`     // 2026-31-03 (31 Maret)
+    
     let query = supabase
       .from('chat_uploads')
       .select('*')
@@ -98,18 +90,8 @@ export default function ChatCSPage() {
       }
     }
 
-    const { data, error } = await query
-    
-    if (error) {
-      console.error('❌ ERROR SUPABASE:', error)
-      throw error
-    }
-    
-    console.log('📅 DATA DITEMUKAN:', data?.length || 0, 'baris')
-    console.log('📅 ISI DATA:', data)
-    
+    const { data } = await query
     setUploads(data || [])
-    
   } catch (error) {
     console.error('Error fetching uploads:', error)
   } finally {
