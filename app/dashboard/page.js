@@ -1821,122 +1821,112 @@ export default function DashboardContent() {
         </div>
 
         {/* KOLOM 2: TRAFFIC METRICS */}
-<div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
-  <div className="flex items-center justify-between mb-2">
-    <Link href="/dashboard/traffic-metrics" className="block group flex-1">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-[#FFD700]">📊 Traffic Metrics</h3>
-        <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </div>
-      </div>
-    </Link>
-    
-    <button
-      onClick={async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setLoadingTrafficMetrics(true);
-        await fetchTrafficMetricsData();
-      }}
-      disabled={loadingTrafficMetrics}
-      className="ml-2 p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex-shrink-0"
-      title="Refresh traffic data"
-    >
-      <svg className={`w-4 h-4 text-white ${loadingTrafficMetrics ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-    </button>
-  </div>
-  
-  {/* LINE BARU: TOTAL CHAT - KUNING */}
-  <div className="mb-3 p-2 bg-[#0B1A33] rounded-lg border border-yellow-500/30">
-    <div className="flex items-center justify-between">
-      <span className="text-sm font-medium text-yellow-400">Total Chat (CS)</span>
-      <span className="text-lg font-bold text-yellow-400">
-        {trafficMetrics.reduce((sum, item) => sum + (item.chat || 0), 0)}
-      </span>
-    </div>
-  </div>
-  
-  <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
-    <select 
-      value={trafficMetricsAsset} 
-      onChange={(e) => setTrafficMetricsAsset(e.target.value)}
-      className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
-    >
-      <option value="all">ALL</option>
-      {assetList.length > 0 ? (
-        assetList.map(asset => {
-          const assetCode = getAssetCode(asset);
-          return <option key={asset} value={assetCode}>{assetCode}</option>;
-        })
-      ) : (
-        <option value="XLY">XLY</option>
-      )}
-    </select>
+        <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
+          <div className="flex items-center justify-between mb-2">
+            <Link href="/dashboard/traffic-metrics" className="block group flex-1">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-[#FFD700]">📊 Traffic Metrics</h3>
+                <div className="text-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+            </Link>
+            
+            <button
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setLoadingTrafficMetrics(true);
+                await fetchTrafficMetricsData();
+              }}
+              disabled={loadingTrafficMetrics}
+              className="ml-2 p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors flex-shrink-0"
+              title="Refresh traffic data"
+            >
+              <svg className={`w-4 h-4 text-white ${loadingTrafficMetrics ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
+          
+          <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.preventDefault()}>
+            <select 
+              value={trafficMetricsAsset} 
+              onChange={(e) => setTrafficMetricsAsset(e.target.value)}
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white w-24"
+            >
+              <option value="all">ALL</option>
+              {assetList.length > 0 ? (
+                assetList.map(asset => {
+                  const assetCode = getAssetCode(asset);
+                  return <option key={asset} value={assetCode}>{assetCode}</option>;
+                })
+              ) : (
+                <option value="XLY">XLY</option>
+              )}
+            </select>
 
-    <select value={trafficMetricsFilter} onChange={(e) => setTrafficMetricsFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-      <option value="daily">Daily</option>
-      <option value="monthly">Monthly</option>
-    </select>
-    
-    {trafficMetricsFilter === 'daily' ? (
-      <>
-        <select value={trafficMetricsMonth} onChange={(e) => setTrafficMetricsMonth(parseInt(e.target.value))} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-          {fullMonths.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
-        </select>
-        <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-          {years.map(year => <option key={year} value={year}>{year}</option>)}
-        </select>
-      </>
-    ) : (
-      <>
-        <select value={trafficMetricsPeriod} onChange={(e) => setTrafficMetricsPeriod(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-          <option value="jan-jun">Jan-Jun</option>
-          <option value="jul-dec">Jul-Dec</option>
-        </select>
-        <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
-          {years.map(year => <option key={year} value={year}>{year}</option>)}
-        </select>
-      </>
-    )}
-  </div>
-  
-  <div className="h-64">
-    {loadingTrafficMetrics ? (
-      <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
-    ) : (
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={trafficMetrics}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-          <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
-          <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
-          <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-          <Legend 
-            formatter={(value) => {
-              if (value === 'CS') return 'CS (All Status)';
-              if (value === 'Deposit') return 'Deposit (All Status)';
-              if (value === 'Withdrawal') return 'Withdrawal (All Status)';
-              return value;
-            }}
-          />
-          <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
-          <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
-          <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
-        </LineChart>
-      </ResponsiveContainer>
-    )}
-  </div>
-  
-  <Link href="/dashboard/traffic-metrics" className="block mt-2 text-right">
-    <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
-      Click to see detailed breakdown →
-    </span>
-  </Link>
-</div>
+            <select value={trafficMetricsFilter} onChange={(e) => setTrafficMetricsFilter(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+              <option value="daily">Daily</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            
+            {trafficMetricsFilter === 'daily' ? (
+              <>
+                <select value={trafficMetricsMonth} onChange={(e) => setTrafficMetricsMonth(parseInt(e.target.value))} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                  {fullMonths.map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+                </select>
+                <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                  {years.map(year => <option key={year} value={year}>{year}</option>)}
+                </select>
+              </>
+            ) : (
+              <>
+                <select value={trafficMetricsPeriod} onChange={(e) => setTrafficMetricsPeriod(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                  <option value="jan-jun">Jan-Jun</option>
+                  <option value="jul-dec">Jul-Dec</option>
+                </select>
+                <select value={trafficMetricsYear} onChange={(e) => setTrafficMetricsYear(e.target.value)} className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-2 py-1 text-xs text-white">
+                  {years.map(year => <option key={year} value={year}>{year}</option>)}
+                </select>
+              </>
+            )}
+          </div>
+          
+          <div className="h-64">
+            {loadingTrafficMetrics ? (
+              <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trafficMetrics}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+                  <XAxis dataKey="name" stroke="#A7D8FF" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#A7D8FF" tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+                  <Legend 
+                    formatter={(value) => {
+                      if (value === 'CS') return 'CS (All Status)';
+                      if (value === 'Deposit') return 'Deposit (All Status)';
+                      if (value === 'Withdrawal') return 'Withdrawal (All Status)';
+                      return value;
+                    }}
+                  />
+                  <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          
+          <Link href="/dashboard/traffic-metrics" className="block mt-2 text-right">
+            <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
+              Click to see detailed breakdown →
+            </span>
+          </Link>
+        </div>
 
         {/* KOLOM 3: OFFICER PERFORMANCE */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
