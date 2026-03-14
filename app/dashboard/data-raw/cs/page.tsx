@@ -68,10 +68,12 @@ export default function ChatCSPage() {
     try {
       setLoading(true)
       
+      // FORMAT YANG BENAR: YYYY-DD-MM
+      // Bulan ada di 2 digit terakhir
       const monthIndex = months.indexOf(selectedMonth) + 1
       const monthStr = String(monthIndex).padStart(2, '0')
       
-      // Filter berdasarkan bulan di posisi akhir (YYYY-DD-MM)
+      // Filter berdasarkan bulan di posisi akhir (karena format YYYY-DD-MM)
       let query = supabase
         .from('chat_uploads')
         .select('*')
@@ -133,7 +135,7 @@ export default function ChatCSPage() {
         const hour = date.H?.toString().padStart(2, '0') || '00'
         const minute = date.M?.toString().padStart(2, '0') || '00'
         const second = date.S?.toString().padStart(2, '0') || '00'
-        // KEMBALIKAN KE YYYY-MM-DD UNTUK DATABASE
+        // Kembalikan dalam format YYYY-MM-DD untuk database
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
       
@@ -147,7 +149,7 @@ export default function ChatCSPage() {
           const [day, month, year] = datePart.split('/')
           if (day && month && year) {
             const fullYear = year.length === 2 ? '20' + year : year
-            // KEMBALIKAN KE YYYY-MM-DD UNTUK DATABASE
+            // Kembalikan YYYY-MM-DD untuk database
             return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
           }
         }
@@ -159,7 +161,6 @@ export default function ChatCSPage() {
         if (datePart && timePart) {
           const [year, month, day] = datePart.split('-')
           if (year && month && day) {
-            // KEMBALIKAN KE YYYY-MM-DD UNTUK DATABASE
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
           }
         }
@@ -281,12 +282,15 @@ export default function ChatCSPage() {
 
       setUploadProgress(`Menyimpan ${validData.length} data...`)
       
+      // INSERT KE CHAT_CS_DATA
       const { error } = await supabase.from('chat_cs_data').insert(validData)
       if (error) throw error
 
-      // Insert ke chat_uploads berdasarkan tanggal unik
+      // INSERT KE CHAT_UPLOADS (untuk setiap tanggal unik)
+      setUploadProgress('Menyimpan tracking upload...')
+      
       for (const date of uploadDates) {
-        await supabase.from('chat_uploads').insert({
+        const { error: uploadError } = await supabase.from('chat_uploads').insert({
           upload_date: date,
           file_name: selectedFile.name,
           total_rows: validData.filter(d => 
@@ -294,11 +298,15 @@ export default function ChatCSPage() {
             (d.ended && d.ended.startsWith(date))
           ).length,
           status: 'completed',
-          website: 'XLY'
+          website: validData[0]?.website || 'XLY'
         })
+
+        if (uploadError) {
+          console.error('❌ Gagal insert ke chat_uploads:', uploadError)
+        }
       }
 
-      alert(`✅ Berhasil! ${validData.length} data chat`)
+      alert(`✅ Berhasil! ${validData.length} data chat dari ${uploadDates.size} tanggal`)
       setShowModal(false)
       setSelectedFile(null)
       fetchUploads()
@@ -311,11 +319,14 @@ export default function ChatCSPage() {
     }
   }
 
-  const getDayFromDate = (dateStr: string): number => {
+  const formatDisplayDate = (dateStr: string): string => {
     try {
-      return parseInt(dateStr.split('-')[1]) // Ambil tanggal dari YYYY-DD-MM
+      // Input: YYYY-DD-MM
+      const [year, day, month] = dateStr.split('-')
+      const monthIndex = parseInt(month) - 1
+      return `${parseInt(day)} ${months[monthIndex]} ${year}`
     } catch {
-      return 1
+      return dateStr
     }
   }
 
@@ -393,9 +404,7 @@ export default function ChatCSPage() {
           <tbody>
             {uploads.length > 0 ? uploads.map(item => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                <td className="px-4 py-3">
-                  {getDayFromDate(item.upload_date)} {selectedMonth} {selectedYear}
-                </td>
+                <td className="px-4 py-3">{formatDisplayDate(item.upload_date)}</td>
                 <td className="px-4 py-3 text-[#FFD700]">{item.website || '-'}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                 <td className="px-4 py-3">{item.total_rows} chat</td>
