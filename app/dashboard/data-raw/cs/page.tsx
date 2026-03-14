@@ -68,17 +68,16 @@ export default function ChatCSPage() {
     try {
       setLoading(true)
       
-      // FORMAT YANG BENAR: YYYY-DD-MM
+      // FORMAT: YYYY-DD-MM
       // Bulan ada di 2 digit terakhir
-      // PASTIKAN FILTER NYA INI:
-const monthIndex = months.indexOf(selectedMonth) + 1 // 3 untuk Maret
-const monthStr = String(monthIndex).padStart(2, '0') // '03'
-
-let query = supabase
-  .from('chat_uploads')
-  .select('*')
-  .filter('upload_date', 'like', `${selectedYear}-%-${monthStr}`) // Cari yang berakhiran '-03'
-  .order('upload_date', { ascending: true })
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const monthStr = String(monthIndex).padStart(2, '0')
+      
+      let query = supabase
+        .from('chat_uploads')
+        .select('*')
+        .filter('upload_date', 'like', `${selectedYear}-%-${monthStr}`)
+        .order('upload_date', { ascending: true })
 
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset)
@@ -135,7 +134,7 @@ let query = supabase
         const hour = date.H?.toString().padStart(2, '0') || '00'
         const minute = date.M?.toString().padStart(2, '0') || '00'
         const second = date.S?.toString().padStart(2, '0') || '00'
-        // Kembalikan dalam format YYYY-MM-DD untuk database
+        // UNTUK DATABASE: YYYY-MM-DD (biar ga error)
         return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')} ${hour}:${minute}:${second}`
       }
       
@@ -149,19 +148,8 @@ let query = supabase
           const [day, month, year] = datePart.split('/')
           if (day && month && year) {
             const fullYear = year.length === 2 ? '20' + year : year
-            // Kembalikan YYYY-MM-DD untuk database
+            // UNTUK DATABASE: YYYY-MM-DD
             return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
-          }
-        }
-      }
-      
-      // Format ISO: 2026-12-03 23:50:00
-      if (str.includes('-') && str.includes(':')) {
-        const [datePart, timePart] = str.split(' ')
-        if (datePart && timePart) {
-          const [year, month, day] = datePart.split('-')
-          if (year && month && day) {
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${timePart}`
           }
         }
       }
@@ -181,6 +169,17 @@ let query = supabase
   const parseArrayField = (value: string): string[] | null => {
     if (!value || value === '-' || value === ' -') return null
     return value.split(',').map(item => item.trim()).filter(item => item)
+  }
+
+  const formatDisplayDate = (dateStr: string): string => {
+    try {
+      // Input dari database: YYYY-DD-MM
+      const [year, day, month] = dateStr.split('-')
+      const monthIndex = parseInt(month) - 1
+      return `${parseInt(day)} ${months[monthIndex]} ${year}`
+    } catch {
+      return dateStr
+    }
   }
 
   const processFile = async () => {
@@ -238,9 +237,8 @@ let query = supabase
         
         if (!started && !ended) continue
         
-        // Ambil tanggal dari started (prioritas) atau ended
+        // Ambil tanggal dari started atau ended
         const dateForUpload = started ? started.split(' ')[0] : (ended ? ended.split(' ')[0] : null)
-        if (dateForUpload) uploadDates.add(dateForUpload)
         
         const botStr = row[idx.replied_by_bot]?.toString() || ''
         const agentStr = row[idx.replied_by_agent]?.toString() || ''
@@ -251,10 +249,18 @@ let query = supabase
         const replied_by_bot = botMatch ? parseInt(botMatch[1]) : 0
         const replied_by_agent = agentMatch ? parseInt(agentMatch[1]) : 0
         
+        // Konversi ke format YYYY-DD-MM untuk upload_date
+        let uploadDate = null
+        if (dateForUpload) {
+          const [year, month, day] = dateForUpload.split('-')
+          uploadDate = `${year}-${day}-${month}` // YYYY-DD-MM
+          uploadDates.add(uploadDate)
+        }
+        
         validData.push({
           account: row[idx.account] || null,
           group: row[idx.group] || null,
-          website: row[idx.website] || 'XLY',
+          website: row[idx.website] || 'LUCKY77',
           conversation_id: row[idx.conversation_id] || null,
           started: started,
           ended: ended,
@@ -286,19 +292,16 @@ let query = supabase
       const { error } = await supabase.from('chat_cs_data').insert(validData)
       if (error) throw error
 
-      // INSERT KE CHAT_UPLOADS (untuk setiap tanggal unik)
+      // INSERT KE CHAT_UPLOADS (dengan format YYYY-DD-MM)
       setUploadProgress('Menyimpan tracking upload...')
       
       for (const date of uploadDates) {
         const { error: uploadError } = await supabase.from('chat_uploads').insert({
-          upload_date: date,
+          upload_date: date, // YYYY-DD-MM
           file_name: selectedFile.name,
-          total_rows: validData.filter(d => 
-            (d.started && d.started.startsWith(date)) || 
-            (d.ended && d.ended.startsWith(date))
-          ).length,
+          total_rows: validData.length,
           status: 'completed',
-          website: validData[0]?.website || 'XLY'
+          website: 'LUCKY77'
         })
 
         if (uploadError) {
@@ -316,17 +319,6 @@ let query = supabase
     } finally {
       setUploading(false)
       setUploadProgress('')
-    }
-  }
-
-  const formatDisplayDate = (dateStr: string): string => {
-    try {
-      // Input: YYYY-DD-MM
-      const [year, day, month] = dateStr.split('-')
-      const monthIndex = parseInt(month) - 1
-      return `${parseInt(day)} ${months[monthIndex]} ${year}`
-    } catch {
-      return dateStr
     }
   }
 
