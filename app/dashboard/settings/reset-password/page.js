@@ -74,7 +74,7 @@ const handleSearchUser = async () => {
   }
 };
 
-  // Reset password via API route
+// Reset password via API route
 const handleResetPassword = async (e) => {
   e.preventDefault();
 
@@ -109,18 +109,15 @@ const handleResetPassword = async (e) => {
   try {
     console.log('🔄 Resetting password for user:', userData.email);
 
-    // PANGGIL API ROUTE
+    // PANGGIL API ROUTE - PAKAI EMAIL (bukan user_id)
     const response = await fetch('/api/reset-password', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        email: userData.email,        // PAKAI EMAIL (lebih aman)
+        email: userData.email,  // PAKAI EMAIL, lebih aman
         newPassword: newPassword
-        // atau kalo mau pake user_id:
-        // userId: userData.user_id,
-        // newPassword: newPassword
       })
     });
 
