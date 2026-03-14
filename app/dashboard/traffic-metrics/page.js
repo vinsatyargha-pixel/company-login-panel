@@ -876,171 +876,187 @@ const processMonthlyData = (deposits, withdrawals, chats, period, year) => {
       </div>
 
       {/* FIRST CHART - By Transaction */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle('transaction')}</h2>
-        
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            {selectedChartType === 'line' ? (
-              <LineChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                <XAxis 
-                  dataKey="label" 
-                  stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
-                  angle={filterType === 'hourly' ? -45 : 0}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis yAxisId="left" stroke="#A7D8FF" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                  labelStyle={{ color: '#FFD700' }}
-                />
-                <Legend />
-                
-                <Line 
-  yAxisId="left" 
-  type="monotone" 
-  dataKey="chat" 
-  stroke="#FFD700" 
-  name="CS" 
-  strokeWidth={2} 
-  dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }} 
-/>
-                <Line 
-                  yAxisId="left" 
-                  type="monotone" 
-                  dataKey="deposit" 
-                  stroke="#3b82f6" 
-                  name="Deposit" 
-                  strokeWidth={2} 
-                  dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
-                />
-                <Line 
-                  yAxisId="left" 
-                  type="monotone" 
-                  dataKey="withdrawal" 
-                  stroke="#ef4444" 
-                  name="Withdrawal" 
-                  strokeWidth={2} 
-                  dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
-                />
-              </LineChart>
-            ) : (
-              <BarChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                <XAxis 
-                  dataKey="label" 
-                  stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
-                  angle={filterType === 'hourly' ? -45 : 0}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis yAxisId="left" stroke="#A7D8FF" />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                  labelStyle={{ color: '#FFD700' }}
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
-                <Bar yAxisId="left" dataKey="deposit" fill="#3b82f6" name="Deposit" />
-                <Bar yAxisId="left" dataKey="withdrawal" fill="#ef4444" name="Withdrawal" />
-              </BarChart>
-            )}
-          </ResponsiveContainer>
-        </div>
-      </div>
+<div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
+  <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle('transaction')}</h2>
+  
+  <div className="h-80">
+    <ResponsiveContainer width="100%" height="100%">
+      {selectedChartType === 'line' ? (
+        <LineChart 
+          data={performanceData}
+          syncId="trafficCharts"  // <<< TAMBAH INI
+          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+          <XAxis 
+            dataKey="label" 
+            stroke="#A7D8FF" 
+            interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+            angle={filterType === 'hourly' ? -45 : 0}
+            textAnchor="end"
+            height={60}
+          />
+          <YAxis yAxisId="left" stroke="#A7D8FF" />
+          <Tooltip 
+            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+            labelStyle={{ color: '#FFD700' }}
+          />
+          <Legend />
+          
+          <Line 
+            yAxisId="left" 
+            type="monotone" 
+            dataKey="chat" 
+            stroke="#FFD700" 
+            name="CS" 
+            strokeWidth={2} 
+            dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }} 
+          />
+          <Line 
+            yAxisId="left" 
+            type="monotone" 
+            dataKey="deposit" 
+            stroke="#3b82f6" 
+            name="Deposit" 
+            strokeWidth={2} 
+            dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
+          />
+          <Line 
+            yAxisId="left" 
+            type="monotone" 
+            dataKey="withdrawal" 
+            stroke="#ef4444" 
+            name="Withdrawal" 
+            strokeWidth={2} 
+            dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
+          />
+        </LineChart>
+      ) : (
+        <BarChart 
+          data={performanceData}
+          syncId="trafficCharts"  // <<< TAMBAH INI
+          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+          <XAxis 
+            dataKey="label" 
+            stroke="#A7D8FF" 
+            interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+            angle={filterType === 'hourly' ? -45 : 0}
+            textAnchor="end"
+            height={60}
+          />
+          <YAxis yAxisId="left" stroke="#A7D8FF" />
+          <Tooltip 
+            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+            labelStyle={{ color: '#FFD700' }}
+          />
+          <Legend />
+          <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
+          <Bar yAxisId="left" dataKey="deposit" fill="#3b82f6" name="Deposit" />
+          <Bar yAxisId="left" dataKey="withdrawal" fill="#ef4444" name="Withdrawal" />
+        </BarChart>
+      )}
+    </ResponsiveContainer>
+  </div>
+</div>
 
-      {/* SECOND CHART - By Value (IDR) */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle('value')}</h2>
-        
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
-            {selectedChartType === 'line' ? (
-              <LineChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                <XAxis 
-                  dataKey="label" 
-                  stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
-                  angle={filterType === 'hourly' ? -45 : 0}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis yAxisId="left" stroke="#A7D8FF" />
-                <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                  labelStyle={{ color: '#FFD700' }}
-                  formatter={(value, name) => {
-                    if (name === 'CS') return value;
-                    return formatIDR(value);
-                  }}
-                />
-                <Legend />
-                
-                <Line 
-  yAxisId="left" 
-  type="monotone" 
-  dataKey="chat" 
-  stroke="#FFD700" 
-  name="CS" 
-  strokeWidth={2} 
-  dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }} 
-/>
-                
-                <Line 
-                  yAxisId="right" 
-                  type="monotone" 
-                  dataKey="depositVolume" 
-                  stroke="#3b82f6" 
-                  name="Deposit Volume" 
-                  strokeWidth={2} 
-                  dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
-                />
-                <Line 
-                  yAxisId="right" 
-                  type="monotone" 
-                  dataKey="withdrawalVolume" 
-                  stroke="#ef4444" 
-                  name="Withdrawal Volume" 
-                  strokeWidth={2} 
-                  dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
-                />
-              </LineChart>
-            ) : (
-              <BarChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-                <XAxis 
-                  dataKey="label" 
-                  stroke="#A7D8FF" 
-                  interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
-                  angle={filterType === 'hourly' ? -45 : 0}
-                  textAnchor="end"
-                  height={60}
-                />
-                <YAxis yAxisId="left" stroke="#A7D8FF" />
-                <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
-                  labelStyle={{ color: '#FFD700' }}
-                  formatter={(value, name) => {
-                    if (name === 'CS') return value;
-                    return formatIDR(value);
-                  }}
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
-                <Bar yAxisId="right" dataKey="depositVolume" fill="#3b82f6" name="Deposit Volume" />
-                <Bar yAxisId="right" dataKey="withdrawalVolume" fill="#ef4444" name="Withdrawal Volume" />
-              </BarChart>
-            )}
-          </ResponsiveContainer>
-        </div>
-      </div>
+{/* SECOND CHART - By Value (IDR) */}
+<div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 p-6 mb-6">
+  <h2 className="text-xl font-bold text-[#FFD700] mb-4">{getDisplayTitle('value')}</h2>
+  
+  <div className="h-80">
+    <ResponsiveContainer width="100%" height="100%">
+      {selectedChartType === 'line' ? (
+        <LineChart 
+          data={performanceData}
+          syncId="trafficCharts"  // <<< TAMBAH INI (SAME syncId)
+          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+          <XAxis 
+            dataKey="label" 
+            stroke="#A7D8FF" 
+            interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+            angle={filterType === 'hourly' ? -45 : 0}
+            textAnchor="end"
+            height={60}
+          />
+          <YAxis yAxisId="left" stroke="#A7D8FF" />
+          <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
+          <Tooltip 
+            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+            labelStyle={{ color: '#FFD700' }}
+            formatter={(value, name) => {
+              if (name === 'CS') return value;
+              return formatIDR(value);
+            }}
+          />
+          <Legend />
+          
+          <Line 
+            yAxisId="left" 
+            type="monotone" 
+            dataKey="chat" 
+            stroke="#FFD700" 
+            name="CS" 
+            strokeWidth={2} 
+            dot={{ r: 4, fill: "#FFD700", stroke: "#FFD700", strokeWidth: 1 }} 
+          />
+          
+          <Line 
+            yAxisId="right" 
+            type="monotone" 
+            dataKey="depositVolume" 
+            stroke="#3b82f6" 
+            name="Deposit Volume" 
+            strokeWidth={2} 
+            dot={{ r: 4, fill: "#3b82f6", stroke: "#3b82f6", strokeWidth: 1 }}
+          />
+          <Line 
+            yAxisId="right" 
+            type="monotone" 
+            dataKey="withdrawalVolume" 
+            stroke="#ef4444" 
+            name="Withdrawal Volume" 
+            strokeWidth={2} 
+            dot={{ r: 4, fill: "#ef4444", stroke: "#ef4444", strokeWidth: 1 }}
+          />
+        </LineChart>
+      ) : (
+        <BarChart 
+          data={performanceData}
+          syncId="trafficCharts"  // <<< TAMBAH INI (SAME syncId)
+          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+          <XAxis 
+            dataKey="label" 
+            stroke="#A7D8FF" 
+            interval={filterType === 'hourly' ? 3 : filterType === 'daily' ? 5 : 0}
+            angle={filterType === 'hourly' ? -45 : 0}
+            textAnchor="end"
+            height={60}
+          />
+          <YAxis yAxisId="left" stroke="#A7D8FF" />
+          <YAxis yAxisId="right" orientation="right" stroke="#A7D8FF" tickFormatter={(value) => `Rp${(value/1000000)}M`} />
+          <Tooltip 
+            contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }}
+            labelStyle={{ color: '#FFD700' }}
+            formatter={(value, name) => {
+              if (name === 'CS') return value;
+              return formatIDR(value);
+            }}
+          />
+          <Legend />
+          <Bar yAxisId="left" dataKey="chat" fill="#FFD700" name="CS" />
+          <Bar yAxisId="right" dataKey="depositVolume" fill="#3b82f6" name="Deposit Volume" />
+          <Bar yAxisId="right" dataKey="withdrawalVolume" fill="#ef4444" name="Withdrawal Volume" />
+        </BarChart>
+      )}
+    </ResponsiveContainer>
+  </div>
+</div>
     </div>
   );
 }
