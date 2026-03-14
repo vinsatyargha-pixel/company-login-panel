@@ -2043,22 +2043,27 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     <ResponsiveContainer width="100%" height="100%">
       <LineChart 
         data={trafficMetrics}
-        margin={{ top: 20, right: 30, left: 30, bottom: 20 }} // DIPERBESAR!
+        margin={{ top: 30, right: 40, left: 40, bottom: 30 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
         <XAxis 
           dataKey="name" 
           stroke="#A7D8FF" 
           tick={{ fontSize: 10 }}
-          padding={{ left: 10, right: 10 }} // TAMBAH PADDING
+          padding={{ left: 20, right: 20 }}
+          axisLine={{ stroke: '#FFD70040' }}
+          tickLine={{ stroke: '#FFD70040' }}
         />
         <YAxis 
           stroke="#A7D8FF" 
           tick={{ fontSize: 10 }}
-          padding={{ top: 10, bottom: 10 }} // TAMBAH PADDING
+          padding={{ top: 20, bottom: 20 }}
+          axisLine={{ stroke: '#FFD70040' }}
+          tickLine={{ stroke: '#FFD70040' }}
         />
         <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
         <Legend 
+          wrapperStyle={{ paddingTop: 20 }}
           formatter={(value) => {
             if (value === 'CS') return 'CS (Chat Volume)';
             if (value === 'Deposit') return 'Deposit (All Status)';
