@@ -151,57 +151,39 @@ export default function ChatCSPage() {
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
-    if (!value) return null
+  if (!value) return null
 
-    try {
-      // ===============================
-      // 1. EXCEL SERIAL NUMBER
-      // ===============================
-      if (typeof value === 'number') {
-        const excelEpoch = new Date(Date.UTC(1899, 11, 30))
-        const date = new Date(excelEpoch.getTime() + value * 86400000)
-
-        const year = date.getUTCFullYear()
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-        const day = String(date.getUTCDate()).padStart(2, '0')
-        const hour = String(date.getUTCHours()).padStart(2, '0')
-        const minute = String(date.getUTCMinutes()).padStart(2, '0')
-        const second = String(date.getUTCSeconds()).padStart(2, '0')
-
-        return `${year}-${month}-${day} ${hour}:${minute}:${second}`
-      }
-
-      const str = value.toString().trim()
-
-      // ===============================
-      // 2. FORMAT DD/MM/YY atau DD/MM/YYYY
-      // ===============================
-      if (str.includes('/')) {
-        const [datePart, timePart = '00:00:00'] = str.split(' ')
-        const [d, m, y] = datePart.split('/')
-
-        // Handle 2 digit year (26 -> 2026)
-        const year = y.length === 2 ? `20${y}` : y
-        const day = String(d).padStart(2, '0')
-        const month = String(m).padStart(2, '0')
-
-        // FORMAT YANG BENAR: YYYY-MM-DD
-        return `${year}-${month}-${day} ${timePart}`
-      }
-
-      // ===============================
-      // 3. FORMAT ISO (SUDAH BENAR)
-      // ===============================
-      if (str.includes('-')) {
-        return str
-      }
-
-      return null
-    } catch (err) {
-      console.error('Date parse error:', value)
-      return null
+  try {
+    // Excel serial number
+    if (typeof value === 'number') {
+      const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+      const date = new Date(excelEpoch.getTime() + value * 86400000)
+      return `${date.getUTCFullYear()}-${String(date.getUTCMonth()+1).padStart(2,'0')}-${String(date.getUTCDate()).padStart(2,'0')} ${String(date.getUTCHours()).padStart(2,'0')}:${String(date.getUTCMinutes()).padStart(2,'0')}:${String(date.getUTCSeconds()).padStart(2,'0')}`
     }
+
+    const str = value.toString().trim()
+    
+    // Format DD/MM/YY atau DD/MM/YYYY
+    if (str.includes('/')) {
+      const [datePart, timePart = '00:00:00'] = str.split(' ')
+      const [d, m, y] = datePart.split('/')
+      const year = y.length === 2 ? `20${y}` : y
+      
+      // PASTIKAN INI: YYYY-MM-DD
+      return `${year}-${m.padStart(2,'0')}-${d.padStart(2,'0')} ${timePart}`
+    }
+    
+    // Format ISO (2026-03-13)
+    if (str.includes('-') && str.length >= 10) {
+      return str
+    }
+    
+    return null
+  } catch (err) {
+    console.error('Date parse error:', value)
+    return null
   }
+}
 
   const parsePercentage = (value: string): number | null => {
     if (!value) return null
