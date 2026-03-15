@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 // ===========================================
 // HELPER: Convert minutes to HH:MM:SS
@@ -46,11 +47,16 @@ const AGENT_MAP = {
 };
 
 export default function SummaryKPIDataPage() {
+  const router = useRouter();
   const [tahun, setTahun] = useState('2026');
   const [bulanAwal, setBulanAwal] = useState('1');
   const [bulanAkhir, setBulanAkhir] = useState('6');
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // State untuk user role
+  const [userRole, setUserRole] = useState(null);
+  const [checkingRole, setCheckingRole] = useState(true);
   
   // State untuk menyimpan data transaksi
   const [depositData, setDepositData] = useState({});
@@ -76,6 +82,35 @@ export default function SummaryKPIDataPage() {
     { value: '11', label: 'November' },
     { value: '12', label: 'Desember' }
   ];
+
+  // ===========================================
+  // CEK USER ROLE
+  // ===========================================
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          const { data, error } = await supabase
+            .from('officers')
+            .select('role')
+            .eq('auth_user_id', user.id)
+            .single();
+          
+          if (!error && data) {
+            setUserRole(data.role);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking user role:', error);
+      } finally {
+        setCheckingRole(false);
+      }
+    };
+
+    checkUserRole();
+  }, []);
 
   // ===========================================
   // FETCH OFFICERS CS DP WD
@@ -708,7 +743,7 @@ export default function SummaryKPIDataPage() {
     };
   });
 
-  if (loading) {
+  if (loading || checkingRole) {
     return (
       <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white flex items-center justify-center">
         <div className="text-center">
@@ -722,7 +757,7 @@ export default function SummaryKPIDataPage() {
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
       {/* BACK LINK */}
-      <div className="mb-6">
+      <div className="mb-6 flex justify-between items-center">
         <Link 
           href="/dashboard/officers-kpi"
           className="inline-flex items-center gap-2 text-[#A7D8FF] hover:text-[#FFD700] transition-colors text-sm"
@@ -732,6 +767,19 @@ export default function SummaryKPIDataPage() {
           </svg>
           BACK TO OFFICERS KPI
         </Link>
+        
+        {/* WEIGHTING MENU - ONLY FOR ADMIN */}
+        {userRole === 'admin' && (
+          <button
+            onClick={() => router.push('/dashboard/kpi-weighting')}
+            className="inline-flex items-center gap-2 bg-[#FFD700] text-[#0B1A33] px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#FFD700]/90 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            WEIGHTING SETTINGS
+          </button>
+        )}
       </div>
 
       {/* HEADER */}
@@ -788,179 +836,179 @@ export default function SummaryKPIDataPage() {
       </div>
 
       {/* ========== DEPOSIT & WITHDRAWAL KPI ========== */}
-<div className="mb-12">
-  <h2 className="text-xl font-bold text-[#FFD700] mb-4">DEPOSIT & WITHDRAWAL KPI</h2>
-  
-  <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-    <table className="w-full text-xs min-w-[1800px]">
-      <thead>
-        {/* MAIN HEADER */}
-        <tr className="border-b border-[#FFD700]/20">
-          <th colSpan="6" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
-          <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">TIME MANAGEMENT</th>
-          <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">HUMAN ERROR</th>
-          <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">PROBLEM SOLVING</th>
-          <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP</th>
-          <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE</th>
-        </tr>
+      <div className="mb-12">
+        <h2 className="text-xl font-bold text-[#FFD700] mb-4">DEPOSIT & WITHDRAWAL KPI</h2>
         
-        {/* SUB HEADER */}
-        <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-          <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
-          <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
-          <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
-          <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
-          <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
-          <th className="sticky left-[470px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
-          <th className="sticky left-[560px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DIVISI</th>
-          
-          {/* TIME MANAGEMENT */}
-          <th className="text-center py-2 px-2 min-w-[50px]">App Qty</th>
-          <th className="text-center py-2 px-2 min-w-[50px]">Rej Qty</th>
-          <th className="text-center py-2 px-2 min-w-[40px]">SOP</th>
-          <th className="text-center py-2 px-2 min-w-[45px]">SOP%</th>
-          <th className="text-center py-2 px-2 min-w-[45px]">Non SOP</th>
-          <th className="text-center py-2 px-2 min-w-[70px]">Int App</th>
-          <th className="text-center py-2 px-2 min-w-[70px]">Int Rej</th>
-          
-          {/* HUMAN ERROR */}
-          <th className="text-center py-2 px-2 min-w-[30px]">HE Qty</th>
-          <th className="text-center py-2 px-2 min-w-[50px]">HE Amount</th>
-          <th className="text-center py-2 px-2 min-w-[40px]">Mist Qty</th>
-          <th className="text-center py-2 px-2 min-w-[60px]">Mist Amount</th>
-          <th className="text-center py-2 px-2 min-w-[40px]">Block B</th>
-          <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
-          
-          {/* PROBLEM SOLVING */}
-          <th className="text-center py-2 px-2 min-w-[35px]">CB Qty</th>
-          <th className="text-center py-2 px-2 min-w-[55px]">CB Amount</th>
-          <th className="text-center py-2 px-2 min-w-[35px]">CA Qty</th>
-          <th className="text-center py-2 px-2 min-w-[55px]">CA Amount</th>
-          <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
-          
-          {/* FOLLOW SOP */}
-          <th className="text-center py-2 px-2 min-w-[40px]">Buku Dosa</th>
-          <th className="text-center py-2 px-2 min-w-[30px]">SP1</th>
-          <th className="text-center py-2 px-2 min-w-[30px]">SP2</th>
-          <th className="text-center py-2 px-2 min-w-[30px]">SUS</th>
-          <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
-          
-          {/* SUB SCORE */}
-          <th className="text-center py-2 px-2 min-w-[35px]">P1</th>
-          <th className="text-center py-2 px-2 min-w-[35px]">P2</th>
-          <th className="text-center py-2 px-2 min-w-[35px]">P3</th>
-          <th className="text-center py-2 px-2 min-w-[35px]">P4</th>
-          <th className="text-center py-2 px-2 min-w-[40px]">AVG</th>
-        </tr>
-      </thead>
-      <tbody>
-        {officerDataList.map((officer, idx) => (
-          <React.Fragment key={`officer-${idx}`}>
-            {/* DEPOSIT ASPECT */}
-            <tr className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
-              <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.no}</td>
-              <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
-              <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
-              <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
-              <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
-                <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
-              </td>
-              <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.joinDate}</td>
-              <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Deposit</td>
+        <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+          <table className="w-full text-xs min-w-[1800px]">
+            <thead>
+              {/* MAIN HEADER */}
+              <tr className="border-b border-[#FFD700]/20">
+                <th colSpan="6" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
+                <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">TIME MANAGEMENT</th>
+                <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">HUMAN ERROR</th>
+                <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">PROBLEM SOLVING</th>
+                <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP</th>
+                <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE</th>
+              </tr>
               
-              {/* TIME MANAGEMENT */}
-              <td className="text-center py-2 px-2">{officer.deposit.totalApproved || '-'}</td>
-              <td className="text-center py-2 px-2">{officer.deposit.totalReject || '-'}</td>
-              <td className="text-center py-2 px-2">{officer.deposit.sop || '-'}</td>
-              <td className="text-center py-2 px-2">{officer.deposit.sopPercent ? `${officer.deposit.sopPercent}%` : '-'}</td>
-              <td className="text-center py-2 px-2">{officer.deposit.nonSop || '-'}</td>
-              <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.deposit.intervalApp)}</td>
-              <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.deposit.intervalRej)}</td>
-              
-              {/* HUMAN ERROR */}
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">-</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">-</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">100%</td>
-              
-              {/* PROBLEM SOLVING */}
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">-</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">-</td>
-              <td className="text-center py-2 px-2">100%</td>
-              
-              {/* FOLLOW SOP */}
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">100</td>
-              
-              {/* SUB SCORE */}
-              <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.deposit.p1 ? `${officer.deposit.p1}%` : '-'}</td>
-              <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
-              <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
-              <td className="text-center py-2 px-2 font-bold text-green-400">100%</td>
-              <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.deposit.avg || '-'}</td>
-            </tr>
+              {/* SUB HEADER */}
+              <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
+                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
+                <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
+                <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
+                <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
+                <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
+                <th className="sticky left-[470px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[90px]">JOIN DATE</th>
+                <th className="sticky left-[560px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DIVISI</th>
+                
+                {/* TIME MANAGEMENT */}
+                <th className="text-center py-2 px-2 min-w-[50px]">App Qty</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">Rej Qty</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">SOP</th>
+                <th className="text-center py-2 px-2 min-w-[45px]">SOP%</th>
+                <th className="text-center py-2 px-2 min-w-[45px]">Non SOP</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Int App</th>
+                <th className="text-center py-2 px-2 min-w-[70px]">Int Rej</th>
+                
+                {/* HUMAN ERROR */}
+                <th className="text-center py-2 px-2 min-w-[30px]">HE Qty</th>
+                <th className="text-center py-2 px-2 min-w-[50px]">HE Amount</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">Mist Qty</th>
+                <th className="text-center py-2 px-2 min-w-[60px]">Mist Amount</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">Block B</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
+                
+                {/* PROBLEM SOLVING */}
+                <th className="text-center py-2 px-2 min-w-[35px]">CB Qty</th>
+                <th className="text-center py-2 px-2 min-w-[55px]">CB Amount</th>
+                <th className="text-center py-2 px-2 min-w-[35px]">CA Qty</th>
+                <th className="text-center py-2 px-2 min-w-[55px]">CA Amount</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
+                
+                {/* FOLLOW SOP */}
+                <th className="text-center py-2 px-2 min-w-[40px]">Buku Dosa</th>
+                <th className="text-center py-2 px-2 min-w-[30px]">SP1</th>
+                <th className="text-center py-2 px-2 min-w-[30px]">SP2</th>
+                <th className="text-center py-2 px-2 min-w-[30px]">SUS</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
+                
+                {/* SUB SCORE */}
+                <th className="text-center py-2 px-2 min-w-[35px]">P1</th>
+                <th className="text-center py-2 px-2 min-w-[35px]">P2</th>
+                <th className="text-center py-2 px-2 min-w-[35px]">P3</th>
+                <th className="text-center py-2 px-2 min-w-[35px]">P4</th>
+                <th className="text-center py-2 px-2 min-w-[40px]">AVG</th>
+              </tr>
+            </thead>
+            <tbody>
+              {officerDataList.map((officer, idx) => (
+                <React.Fragment key={`officer-${idx}`}>
+                  {/* DEPOSIT ASPECT */}
+                  <tr className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
+                    <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.no}</td>
+                    <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
+                    <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
+                    <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
+                    <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
+                      <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
+                    </td>
+                    <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.joinDate}</td>
+                    <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Deposit</td>
+                    
+                    {/* TIME MANAGEMENT */}
+                    <td className="text-center py-2 px-2">{officer.deposit.totalApproved || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.totalReject || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sop || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sopPercent ? `${officer.deposit.sopPercent}%` : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.nonSop || '-'}</td>
+                    <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.deposit.intervalApp)}</td>
+                    <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.deposit.intervalRej)}</td>
+                    
+                    {/* HUMAN ERROR */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">100%</td>
+                    
+                    {/* PROBLEM SOLVING */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">100%</td>
+                    
+                    {/* FOLLOW SOP */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">100</td>
+                    
+                    {/* SUB SCORE */}
+                    <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.deposit.p1 ? `${officer.deposit.p1}%` : '-'}</td>
+                    <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-green-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.deposit.avg || '-'}</td>
+                  </tr>
 
-            {/* WITHDRAWAL ASPECT */}
-            <tr className="border-b border-[#FFD700]/10 bg-[#0B1A33]/50 hover:bg-[#FFD700]/5">
-              <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2"></td>
-              <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-              <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-              <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-              <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-              <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
-              <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Withdrawal</td>
-              
-              {/* TIME MANAGEMENT */}
-              <td className="text-center py-2 px-2">{officer.withdrawal.totalApproved || '-'}</td>
-              <td className="text-center py-2 px-2">{officer.withdrawal.totalReject || '-'}</td>
-              <td className="text-center py-2 px-2">{officer.withdrawal.sop || '-'}</td>
-              <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent ? `${officer.withdrawal.sopPercent}%` : '-'}</td>
-              <td className="text-center py-2 px-2">{officer.withdrawal.nonSop || '-'}</td>
-              <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.withdrawal.intervalApp)}</td>
-              <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.withdrawal.intervalRej)}</td>
-              
-              {/* HUMAN ERROR */}
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">-</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">-</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">100%</td>
-              
-              {/* PROBLEM SOLVING */}
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">-</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">-</td>
-              <td className="text-center py-2 px-2">100%</td>
-              
-              {/* FOLLOW SOP */}
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">0</td>
-              <td className="text-center py-2 px-2">100</td>
-              
-              {/* SUB SCORE */}
-              <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.withdrawal.p1 ? `${officer.withdrawal.p1}%` : '-'}</td>
-              <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
-              <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
-              <td className="text-center py-2 px-2 font-bold text-green-400">100%</td>
-              <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.withdrawal.avg || '-'}</td>
-            </tr>
-          </React.Fragment>
-        ))}
-      </tbody>
-    </table>
-  </div>
-</div>
+                  {/* WITHDRAWAL ASPECT */}
+                  <tr className="border-b border-[#FFD700]/10 bg-[#0B1A33]/50 hover:bg-[#FFD700]/5">
+                    <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                    <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                    <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                    <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                    <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                    <td className="sticky left-[470px] z-10 bg-[#1A2F4A] py-2 px-2"></td>
+                    <td className="sticky left-[560px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700] font-bold">Withdrawal</td>
+                    
+                    {/* TIME MANAGEMENT */}
+                    <td className="text-center py-2 px-2">{officer.withdrawal.totalApproved || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.totalReject || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sop || '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sopPercent ? `${officer.withdrawal.sopPercent}%` : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.nonSop || '-'}</td>
+                    <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.withdrawal.intervalApp)}</td>
+                    <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.withdrawal.intervalRej)}</td>
+                    
+                    {/* HUMAN ERROR */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">100%</td>
+                    
+                    {/* PROBLEM SOLVING */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">-</td>
+                    <td className="text-center py-2 px-2">100%</td>
+                    
+                    {/* FOLLOW SOP */}
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">0</td>
+                    <td className="text-center py-2 px-2">100</td>
+                    
+                    {/* SUB SCORE */}
+                    <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.withdrawal.p1 ? `${officer.withdrawal.p1}%` : '-'}</td>
+                    <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-green-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.withdrawal.avg || '-'}</td>
+                  </tr>
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* ========== CUSTOMER SERVICE KPI ========== */}
       <div className="mb-10">
