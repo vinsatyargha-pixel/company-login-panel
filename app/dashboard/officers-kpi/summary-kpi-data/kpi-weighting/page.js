@@ -241,14 +241,14 @@ export default function KPIWeightingPage() {
       {/* BACK LINK */}
       <div className="mb-6 flex justify-between items-center">
         <Link 
-          href="/dashboard/summary-kpi-data"
-          className="inline-flex items-center gap-2 text-[#A7D8FF] hover:text-[#FFD700] transition-colors text-sm"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          BACK TO SUMMARY KPI
-        </Link>
+  href="/dashboard/officers-kpi/summary-kpi-data"  // ← INI PATH YANG BENAR
+  className="inline-flex items-center gap-2 text-[#A7D8FF] hover:text-[#FFD700] transition-colors text-sm"
+>
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+  </svg>
+  BACK TO SUMMARY KPI
+</Link>
 
         {/* SYNC BUTTON */}
         <button
