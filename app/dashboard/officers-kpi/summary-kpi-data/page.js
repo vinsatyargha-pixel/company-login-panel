@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 // ===========================================
 // HELPER: Convert minutes to HH:MM:SS
@@ -54,10 +54,6 @@ export default function SummaryKPIDataPage() {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // State untuk user role
-  const [userRole, setUserRole] = useState(null);
-  const [checkingRole, setCheckingRole] = useState(true);
-  
   // State untuk menyimpan data transaksi
   const [depositData, setDepositData] = useState({});
   const [withdrawalData, setWithdrawalData] = useState({});
@@ -82,35 +78,6 @@ export default function SummaryKPIDataPage() {
     { value: '11', label: 'November' },
     { value: '12', label: 'Desember' }
   ];
-
-  // ===========================================
-  // CEK USER ROLE
-  // ===========================================
-  useEffect(() => {
-    const checkUserRole = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (user) {
-          const { data, error } = await supabase
-            .from('officers')
-            .select('role')
-            .eq('auth_user_id', user.id)
-            .single();
-          
-          if (!error && data) {
-            setUserRole(data.role);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking user role:', error);
-      } finally {
-        setCheckingRole(false);
-      }
-    };
-
-    checkUserRole();
-  }, []);
 
   // ===========================================
   // FETCH OFFICERS CS DP WD
@@ -743,7 +710,7 @@ export default function SummaryKPIDataPage() {
     };
   });
 
-  if (loading || checkingRole) {
+  if (loading) {
     return (
       <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white flex items-center justify-center">
         <div className="text-center">
@@ -756,7 +723,7 @@ export default function SummaryKPIDataPage() {
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
-      {/* BACK LINK */}
+      {/* BACK LINK & WEIGHTING BUTTON */}
       <div className="mb-6 flex justify-between items-center">
         <Link 
           href="/dashboard/officers-kpi"
@@ -768,18 +735,16 @@ export default function SummaryKPIDataPage() {
           BACK TO OFFICERS KPI
         </Link>
         
-        {/* WEIGHTING MENU - ONLY FOR ADMIN */}
-        {userRole === 'admin' && (
-          <button
-            onClick={() => router.push('/dashboard/kpi-weighting')}
-            className="inline-flex items-center gap-2 bg-[#FFD700] text-[#0B1A33] px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#FFD700]/90 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-            </svg>
-            WEIGHTING SETTINGS
-          </button>
-        )}
+        {/* WEIGHTING MENU - TAMPIL UNTUK SEMUA USER */}
+        <button
+          onClick={() => router.push('/dashboard/kpi-weighting')}
+          className="inline-flex items-center gap-2 bg-[#FFD700] text-[#0B1A33] px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#FFD700]/90 transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+          </svg>
+          WEIGHTING SETTINGS
+        </button>
       </div>
 
       {/* HEADER */}
