@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 // ===========================================
 // HELPER: Convert minutes to HH:MM:SS
@@ -54,6 +54,10 @@ export default function SummaryKPIDataPage() {
   const [officers, setOfficers] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  // State untuk user role
+  const [userRole, setUserRole] = useState(null);
+  const [checkingRole, setCheckingRole] = useState(true);
+  
   // State untuk menyimpan data transaksi
   const [depositData, setDepositData] = useState({});
   const [withdrawalData, setWithdrawalData] = useState({});
@@ -78,6 +82,42 @@ export default function SummaryKPIDataPage() {
     { value: '11', label: 'November' },
     { value: '12', label: 'Desember' }
   ];
+
+  // ===========================================
+  // CEK USER ROLE (PERBAIKAN)
+  // ===========================================
+  useEffect(() => {
+    const checkUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Coba cari berdasarkan email dulu (lebih umum)
+          const { data, error } = await supabase
+            .from('officers')
+            .select('role')
+            .eq('email', user.email)
+            .maybeSingle();
+          
+          if (!error && data) {
+            setUserRole(data.role);
+          } else {
+            // Default role staff kalau tidak ditemukan
+            setUserRole('staff');
+          }
+        } else {
+          setUserRole('staff');
+        }
+      } catch (error) {
+        console.error('Error checking user role:', error);
+        setUserRole('staff');
+      } finally {
+        setCheckingRole(false);
+      }
+    };
+
+    checkUserRole();
+  }, []);
 
   // ===========================================
   // FETCH OFFICERS CS DP WD
@@ -710,7 +750,7 @@ export default function SummaryKPIDataPage() {
     };
   });
 
-  if (loading) {
+  if (loading || checkingRole) {
     return (
       <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white flex items-center justify-center">
         <div className="text-center">
@@ -723,21 +763,21 @@ export default function SummaryKPIDataPage() {
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
-      {/* BACK LINK & WEIGHTING BUTTON */}
+      {/* BACK LINK & WEIGHTING BUTTON - DIPERBAIKI */}
       <div className="mb-6 flex justify-between items-center">
         <Link 
-  href="/dashboard/officers-kpi/summary-kpi-data"  // Path ini yang benar
-  className="inline-flex items-center gap-2 text-[#A7D8FF] hover:text-[#FFD700] transition-colors text-sm"
->
+          href="/dashboard/officers-kpi"
+          className="inline-flex items-center gap-2 text-[#A7D8FF] hover:text-[#FFD700] transition-colors text-sm"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           BACK TO OFFICERS KPI
         </Link>
         
-        {/* WEIGHTING MENU - TAMPIL UNTUK SEMUA USER */}
+        {/* WEIGHTING MENU - TAMPIL UNTUK SEMUA USER DULU */}
         <button
-          onClick={() => router.push('/dashboard/kpi-weighting')}
+          onClick={() => router.push('/dashboard/officers-kpi/summary-kpi-data/kpi-weighting')}
           className="inline-flex items-center gap-2 bg-[#FFD700] text-[#0B1A33] px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#FFD700]/90 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
