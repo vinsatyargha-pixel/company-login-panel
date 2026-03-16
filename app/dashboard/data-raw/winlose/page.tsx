@@ -16,14 +16,13 @@ type Asset = {
 
 type WinloseUpload = {
   id: string
-  upload_date: string
   file_name: string
   total_rows: number
   status: string
-  website?: string
-  period_start?: string
-  period_end?: string
-  active_unique_players?: number
+  website: string
+  period_start: string
+  period_end: string
+  active_unique_players: number
 }
 
 type WinloseTransaction = {
@@ -43,7 +42,6 @@ type WinloseTransaction = {
   file_name: string
   period_start: string
   period_end: string
-  upload_date: string
 }
 
 export default function WinloseDataRawPage() {
@@ -113,12 +111,15 @@ export default function WinloseDataRawPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
+      console.log('🔍 FILTER PERIODE:', { selectedMonth, selectedYear, startDate, endDate })
+
+      // FILTER BERDASARKAN PERIOD_START DAN PERIOD_END
       let query = supabase
         .from('winlose_uploads')
         .select('*')
-        .gte('upload_date', startDate)
-        .lte('upload_date', endDate)
-        .order('upload_date', { ascending: true })
+        .gte('period_start', startDate)
+        .lte('period_end', endDate)
+        .order('period_start', { ascending: true })
 
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset)
@@ -130,6 +131,7 @@ export default function WinloseDataRawPage() {
       const { data, error } = await query
       if (error) throw error
       
+      console.log('📊 DATA FOUND:', data?.length || 0)
       setUploads(data || [])
     } catch (error) {
       console.error('Error fetching uploads:', error)
@@ -173,7 +175,7 @@ export default function WinloseDataRawPage() {
   }, [])
 
   // ===========================================
-  // PARSE FUNCTIONS - NO NULLS!
+  // PARSE FUNCTIONS
   // ===========================================
 
   const parseNumber = (value: any): number => {
@@ -331,7 +333,6 @@ export default function WinloseDataRawPage() {
       setUploadProgress('Memvalidasi data...')
       
       const validTransactions: WinloseTransaction[] = []
-      const today = new Date().toISOString().split('T')[0]
       const fileName = parseString(selectedFile.name)
       
       for (let i = 0; i < dataRows.length; i++) {
@@ -358,8 +359,7 @@ export default function WinloseDataRawPage() {
           website: 'XLY',
           file_name: fileName,
           period_start: periodStart,
-          period_end: periodEnd,
-          upload_date: today
+          period_end: periodEnd
         })
       }
 
@@ -389,7 +389,6 @@ export default function WinloseDataRawPage() {
       const { error: uploadError } = await supabase
         .from('winlose_uploads')
         .insert({
-          upload_date: today,
           file_name: fileName,
           total_rows: validTransactions.length,
           status: 'completed',
@@ -422,15 +421,6 @@ export default function WinloseDataRawPage() {
   // ===========================================
   // HELPER FUNCTIONS
   // ===========================================
-
-  const getDayFromDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr)
-      return date.getDate()
-    } catch {
-      return 1
-    }
-  }
 
   const getStatusColor = (status: string) => {
     switch(status?.toLowerCase()) {
@@ -509,7 +499,7 @@ export default function WinloseDataRawPage() {
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal Upload</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">No</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
@@ -519,27 +509,21 @@ export default function WinloseDataRawPage() {
             </tr>
           </thead>
           <tbody>
-            {uploads.length > 0 ? uploads.map(item => {
-              const day = getDayFromDate(item.upload_date)
-              
-              return (
-                <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                  <td className="px-4 py-3">{day} {selectedMonth} {selectedYear}</td>
-                  <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
-                  <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                  <td className="px-4 py-3">
-                    {item.period_start && item.period_end ? (
-                      <span className="text-xs">{item.period_start} s/d {item.period_end}</span>
-                    ) : '-'}
-                  </td>
-                  <td className="px-4 py-3">{item.active_unique_players || 0}</td>
-                  <td className="px-4 py-3">{item.total_rows} data</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>{item.status}</span>
-                  </td>
-                </tr>
-              )
-            }) : (
+            {uploads.length > 0 ? uploads.map((item, index) => (
+              <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                <td className="px-4 py-3">{index + 1}</td>
+                <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
+                <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                <td className="px-4 py-3">
+                  {item.period_start} s/d {item.period_end}
+                </td>
+                <td className="px-4 py-3">{item.active_unique_players}</td>
+                <td className="px-4 py-3">{item.total_rows} data</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>{item.status}</span>
+                </td>
+              </tr>
+            )) : (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
             )}
           </tbody>
