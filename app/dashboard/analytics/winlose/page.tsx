@@ -90,11 +90,16 @@ export default function WinloseAnalyticsPage() {
   }
 
   // ===========================================
-  // FILTER BY ASSET (PAKAI KOLOM BRAND)
+  // FILTER BY ASSET (PAKAI KOLOM BRAND) - DENGAN DEBUG
   // ===========================================
   const filterByAsset = (row: any): boolean => {
-    if (selectedAsset === 'all') return true
-    return row.brand === selectedAsset
+    if (selectedAsset === 'all') {
+      console.log('🔍 FILTER: all mode - include all rows')
+      return true
+    }
+    const match = row.brand === selectedAsset
+    console.log(`🔍 FILTER: brand = ${row.brand}, selected = ${selectedAsset}, match = ${match}`)
+    return match
   }
 
   // ===========================================
@@ -145,6 +150,12 @@ export default function WinloseAnalyticsPage() {
 
       if (winloseError) throw winloseError
 
+      console.log('📊 RAW WINLOSE DATA:', winloseData?.length || 0, 'rows')
+      if (winloseData && winloseData.length > 0) {
+        console.log('📊 SAMPLE BRAND VALUES:', winloseData.slice(0, 5).map((r: any) => r.brand))
+        console.log('📊 SAMPLE ACCOUNT_ID:', winloseData.slice(0, 5).map((r: any) => r.account_id))
+      }
+
       // ===========================================
       // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS
       // ===========================================
@@ -166,20 +177,39 @@ export default function WinloseAnalyticsPage() {
         console.error('Deposit/Withdraw error:', depositError || withdrawError)
       }
 
+      console.log('💰 DEPOSIT DATA:', depositData?.length || 0, 'rows')
+      if (depositData && depositData.length > 0) {
+        console.log('💰 DEPOSIT BRANDS:', depositData.map((r: any) => r.brand))
+      }
+      
+      console.log('💰 WITHDRAW DATA:', withdrawData?.length || 0, 'rows')
+      if (withdrawData && withdrawData.length > 0) {
+        console.log('💰 WITHDRAW BRANDS:', withdrawData.map((r: any) => r.brand))
+      }
+
       // ===========================================
       // PROCESS WINLOSE DATA
       // ===========================================
       if (!winloseData || winloseData.length === 0) {
+        console.log('❌ TIDAK ADA WINLOSE DATA')
         setHasData(false)
         resetData()
         setLoading(false)
         return
       }
 
-      // Filter by asset (pake brand)
-      const filteredWinlose = winloseData.filter((row: any) => filterByAsset(row))
+      // Filter by asset (pake brand) - DENGAN DEBUG
+      console.log('🎯 MULAI FILTER WINLOSE, selectedAsset =', selectedAsset)
+      const filteredWinlose = winloseData.filter((row: any) => {
+        const result = filterByAsset(row)
+        if (!result) console.log('❌ FILTERED OUT:', row.account_id, 'brand =', row.brand)
+        return result
+      })
+      
+      console.log('📊 FILTERED WINLOSE:', filteredWinlose.length, 'rows')
 
       if (filteredWinlose.length === 0) {
+        console.log('❌ TIDAK ADA DATA SETELAH FILTER ASSET')
         setHasData(false)
         resetData()
         setLoading(false)
@@ -328,7 +358,7 @@ export default function WinloseAnalyticsPage() {
 
       // Process deposits
       depositData?.forEach((row: any) => {
-        if (!filterByAsset(row)) return // FILTER PAKAI BRAND!
+        if (!filterByAsset(row)) return
         
         const fullId = row.user_name
         const { asset_code, member_id } = parseAccountId(fullId)
@@ -354,7 +384,7 @@ export default function WinloseAnalyticsPage() {
 
       // Process withdrawals
       withdrawData?.forEach((row: any) => {
-        if (!filterByAsset(row)) return // FILTER PAKAI BRAND!
+        if (!filterByAsset(row)) return
         
         const fullId = row.user_name
         const { asset_code, member_id } = parseAccountId(fullId)
@@ -383,6 +413,8 @@ export default function WinloseAnalyticsPage() {
         .sort((a, b) => b.net_amount - a.net_amount)
         .slice(0, 100)
       setNetDepositWithdraw(netArray)
+
+      console.log('✅ SEMUA DATA BERHASIL DIPROSES')
 
     } catch (error) {
       console.error('Error fetching data:', error)
