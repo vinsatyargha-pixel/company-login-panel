@@ -9,13 +9,13 @@ import "react-datepicker/dist/react-datepicker.css"
 // ===========================================
 // TYPES
 // ===========================================
-type Asset = {
+interface Asset {
   id: string
   asset_name: string
   asset_code: string
 }
 
-type MemberStats = {
+interface MemberStats {
   account_id: string
   total_turnover: number
   total_winlose: number
@@ -25,7 +25,7 @@ type MemberStats = {
   biggest_win_date?: string
 }
 
-type ProductStats = {
+interface ProductStats {
   product_type: string
   total_turnover: number
   total_winlose: number
@@ -34,7 +34,7 @@ type ProductStats = {
   win_rate: number
 }
 
-type WinDetail = {
+interface WinDetail {
   account_id: string
   win_amount: number
   product_type: string
@@ -44,7 +44,7 @@ type WinDetail = {
 
 export default function WinloseAnalyticsPage() {
   // ===========================================
-  // STATES
+  // STATES - PAKAI undefined BUKAN null
   // ===========================================
   const [assets, setAssets] = useState<Asset[]>([])
   const [selectedAsset, setSelectedAsset] = useState<string>('all')
@@ -166,7 +166,7 @@ export default function WinloseAnalyticsPage() {
       setUniquePlayerCount(uniquePlayers.size)
 
       // ===========================================
-      // 2. MEMBER STATS (untuk TOP members & Turnover)
+      // 2. MEMBER STATS
       // ===========================================
       const memberMap = new Map<string, MemberStats>()
       const winDetails: WinDetail[] = []
@@ -192,13 +192,11 @@ export default function WinloseAnalyticsPage() {
         stats.total_winlose += winAmount
         stats.games_played += row.bet_count || 0
         
-        // Track biggest win
         if (winAmount > stats.biggest_win) {
           stats.biggest_win = winAmount
           stats.biggest_win_date = row.period_start
         }
         
-        // Collect all wins for Big Time Win
         if (winAmount > 0) {
           winDetails.push({
             account_id: account,
@@ -210,7 +208,6 @@ export default function WinloseAnalyticsPage() {
         }
       })
 
-      // Calculate win rates
       memberMap.forEach(stats => {
         stats.win_rate = stats.total_turnover > 0 
           ? (stats.total_winlose / stats.total_turnover) * 100 
@@ -220,7 +217,7 @@ export default function WinloseAnalyticsPage() {
       const membersArray = Array.from(memberMap.values())
 
       // ===========================================
-      // 3. TOP MEMBERS (by win rate)
+      // 3. TOP MEMBERS
       // ===========================================
       const topByWinRate = [...membersArray]
         .filter(m => m.games_played >= 5)
@@ -229,7 +226,7 @@ export default function WinloseAnalyticsPage() {
       setTopMembers(topByWinRate)
 
       // ===========================================
-      // 4. BIG TIME WINS (all positive wins sorted)
+      // 4. BIG TIME WINS
       // ===========================================
       const sortedWins = winDetails
         .sort((a, b) => b.win_amount - a.win_amount)
@@ -262,7 +259,6 @@ export default function WinloseAnalyticsPage() {
         stats.bet_count += row.bet_count || 0
       })
 
-      // Calculate member count per product
       const memberPerProduct = new Map<string, Set<string>>()
       data.forEach((row: any) => {
         const product = row.product_type
@@ -414,7 +410,7 @@ export default function WinloseAnalyticsPage() {
             </>
           )}
 
-          {/* CUSTOM DATE RANGE */}
+          {/* CUSTOM DATE RANGE - INI YANG SUDAH FIX TOTAL */}
           {useCustomRange && (
             <>
               <div>
