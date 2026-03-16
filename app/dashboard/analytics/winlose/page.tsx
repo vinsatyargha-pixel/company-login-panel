@@ -7,7 +7,7 @@ import DatePicker from 'react-datepicker'
 import "react-datepicker/dist/react-datepicker.css"
 
 // ===========================================
-// TYPES (sama seperti sebelumnya)
+// TYPES
 // ===========================================
 interface MemberStats {
   account_id: string
@@ -79,10 +79,6 @@ export default function WinloseAnalyticsPage() {
   const [loading, setLoading] = useState(false)
   const [hasData, setHasData] = useState(false)
   
-  // NEW: Checkbox states
-  const [showTopDeposit, setShowTopDeposit] = useState(true)
-  const [showTopWithdrawal, setShowTopWithdrawal] = useState(true)
-  
   // Summary stats
   const [uniquePlayerCount, setUniquePlayerCount] = useState(0)
   const [totalTurnover, setTotalTurnover] = useState(0)
@@ -104,7 +100,7 @@ export default function WinloseAnalyticsPage() {
   const assets = ['XLY']
 
   // ===========================================
-  // HELPER FUNCTIONS (sama seperti sebelumnya)
+  // HELPER FUNCTIONS
   // ===========================================
   const parseAccountId = (fullId: string): { asset_code: string; member_id: string } => {
     if (!fullId) return { asset_code: 'XLY', member_id: '' }
@@ -131,7 +127,7 @@ export default function WinloseAnalyticsPage() {
   }
 
   // ===========================================
-  // FETCH DATA (sama seperti sebelumnya)
+  // FETCH DATA
   // ===========================================
   useEffect(() => {
     if (!useCustomRange && selectedMonth && selectedYear) {
@@ -660,31 +656,6 @@ export default function WinloseAnalyticsPage() {
             </div>
           </div>
 
-          {/* CHECKBOX SECTION */}
-          <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
-            <h3 className="text-[#FFD700] font-bold mb-3">🔍 TAMPILKAN DATA:</h3>
-            <div className="flex gap-6">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showTopDeposit}
-                  onChange={(e) => setShowTopDeposit(e.target.checked)}
-                  className="w-4 h-4 accent-[#FFD700]"
-                />
-                <span className="text-[#A7D8FF]">🏦 Top Deposit</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showTopWithdrawal}
-                  onChange={(e) => setShowTopWithdrawal(e.target.checked)}
-                  className="w-4 h-4 accent-[#FFD700]"
-                />
-                <span className="text-[#A7D8FF]">💸 Top Withdrawal</span>
-              </label>
-            </div>
-          </div>
-
           {/* MAIN CONTENT GRID - 2 KOLOM ATAS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* COLUMN 1: Member Performance */}
@@ -851,83 +822,74 @@ export default function WinloseAnalyticsPage() {
             </div>
           </div>
 
-          {/* ROW 4: TOP DEPOSIT & TOP WITHDRAWAL - DENGAN CHECKBOX */}
+          {/* ROW 4: TOP DEPOSIT & TOP WITHDRAWAL - 2 KOLOM */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {showTopDeposit && (
-              <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
-                <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-                  <h2 className="text-[#FFD700] font-bold">🏦 TOP DEPOSIT (By Total)</h2>
-                </div>
-                <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="bg-[#0B1A33]/50 sticky top-0">
-                      <tr>
-                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
-                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Deposit</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Rata-rata</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {topDeposit.map((item, idx) => (
-                        <tr key={item.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
-                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{item.member_id}</td>
-                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
-                          <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(item.total_deposit)}</td>
-                          <td className="px-2 py-1 text-sm text-right">{item.transaction_count}x</td>
-                          <td className="px-2 py-1 text-sm text-right text-gray-400">{formatCurrency(item.avg_deposit)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            {/* TOP DEPOSIT */}
+            <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+              <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
+                <h2 className="text-[#FFD700] font-bold">🏦 TOP DEPOSIT (By Total)</h2>
               </div>
-            )}
-
-            {showTopWithdrawal && (
-              <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
-                <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-                  <h2 className="text-[#FFD700] font-bold">💸 TOP WITHDRAWAL (By Total)</h2>
-                </div>
-                <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="bg-[#0B1A33]/50 sticky top-0">
-                      <tr>
-                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
-                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Withdraw</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Rata-rata</th>
+              <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                <table className="w-full">
+                  <thead className="bg-[#0B1A33]/50 sticky top-0">
+                    <tr>
+                      <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
+                      <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
+                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
+                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Deposit</th>
+                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
+                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Rata-rata</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topDeposit.map((item, idx) => (
+                      <tr key={item.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                        <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                        <td className="px-2 py-1 text-sm text-[#A7D8FF]">{item.member_id}</td>
+                        <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
+                        <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(item.total_deposit)}</td>
+                        <td className="px-2 py-1 text-sm text-right">{item.transaction_count}x</td>
+                        <td className="px-2 py-1 text-sm text-right text-gray-400">{formatCurrency(item.avg_deposit)}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {topWithdrawal.map((item, idx) => (
-                        <tr key={item.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
-                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{item.member_id}</td>
-                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
-                          <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(item.total_withdraw)}</td>
-                          <td className="px-2 py-1 text-sm text-right">{item.transaction_count}x</td>
-                          <td className="px-2 py-1 text-sm text-right text-gray-400">{formatCurrency(item.avg_withdraw)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </div>
-
-          {/* KALAU KEDUA CHECKBOX TIDAK DICENTANG */}
-          {!showTopDeposit && !showTopWithdrawal && (
-            <div className="bg-[#1A2F4A] p-8 rounded-lg text-center text-gray-400">
-              Pilih salah satu atau kedua checkbox di atas untuk menampilkan data
             </div>
-          )}
+
+            {/* TOP WITHDRAWAL */}
+            <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+              <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
+                <h2 className="text-[#FFD700] font-bold">💸 TOP WITHDRAWAL (By Total)</h2>
+              </div>
+              <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                <table className="w-full">
+                  <thead className="bg-[#0B1A33]/50 sticky top-0">
+                    <tr>
+                      <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
+                      <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
+                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
+                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Withdraw</th>
+                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
+                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Rata-rata</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topWithdrawal.map((item, idx) => (
+                      <tr key={item.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                        <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                        <td className="px-2 py-1 text-sm text-[#A7D8FF]">{item.member_id}</td>
+                        <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
+                        <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(item.total_withdraw)}</td>
+                        <td className="px-2 py-1 text-sm text-right">{item.transaction_count}x</td>
+                        <td className="px-2 py-1 text-sm text-right text-gray-400">{formatCurrency(item.avg_withdraw)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </>
       )}
     </div>
