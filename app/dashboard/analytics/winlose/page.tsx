@@ -101,11 +101,24 @@ export default function WinloseAnalyticsPage() {
   }
 
   // ===========================================
-  // FILTER BY ASSET (PAKAI KOLOM BRAND)
+  // FILTER BY ASSET - DENGAN FALLBACK
   // ===========================================
   const filterByAsset = (row: any): boolean => {
     if (selectedAsset === 'all') return true
-    return row.brand === selectedAsset
+    
+    // Coba dari kolom brand dulu
+    if (row.brand) {
+      return row.brand === selectedAsset
+    }
+    
+    // Fallback: dari account_id atau user_name
+    const id = row.account_id || row.user_name
+    if (id) {
+      const { asset_code } = parseAccountId(id)
+      return asset_code === selectedAsset
+    }
+    
+    return false
   }
 
   // ===========================================
@@ -190,7 +203,7 @@ export default function WinloseAnalyticsPage() {
         return
       }
 
-      // Filter by asset (pake brand)
+      // Filter by asset
       const filteredWinlose = winloseData.filter((row: any) => filterByAsset(row))
 
       if (filteredWinlose.length === 0) {
@@ -275,7 +288,7 @@ export default function WinloseAnalyticsPage() {
         .slice(0, 100)
       setTopMembers(topByWinRate)
 
-      // Highest Turnover (HANYA TURNOVER)
+      // Highest Turnover
       const topByTurnover = [...membersArray]
         .sort((a, b) => b.total_turnover - a.total_turnover)
         .slice(0, 100)
@@ -344,8 +357,7 @@ export default function WinloseAnalyticsPage() {
       depositData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         
-        // FORMAT MEMBER ID: tambahin XLY di depan user_name
-        const fullId = formatMemberId(row.user_name, row.brand)
+        const fullId = formatMemberId(row.user_name, row.brand || selectedAsset)
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
@@ -371,8 +383,7 @@ export default function WinloseAnalyticsPage() {
       withdrawData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         
-        // FORMAT MEMBER ID: tambahin XLY di depan user_name
-        const fullId = formatMemberId(row.user_name, row.brand)
+        const fullId = formatMemberId(row.user_name, row.brand || selectedAsset)
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
@@ -598,8 +609,8 @@ export default function WinloseAnalyticsPage() {
             </div>
           </div>
 
-          {/* MAIN CONTENT GRID - 3 Kolom */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* MAIN CONTENT GRID - 2 KOLOM ATAS */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* COLUMN 1: Member Performance */}
             <div className="space-y-6">
               {/* TOP MEMBERS BY WIN RATE */}
@@ -725,42 +736,42 @@ export default function WinloseAnalyticsPage() {
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* COLUMN 3: NET DEPOSIT VS WITHDRAW */}
-            <div className="space-y-6">
-              <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
-                <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-                  <h2 className="text-[#FFD700] font-bold">💰 NET DEPOSIT VS WITHDRAW (Top 100)</h2>
-                </div>
-                <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="bg-[#0B1A33]/50 sticky top-0">
-                      <tr>
-                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
-                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Deposit</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Withdraw</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {netDepositWithdraw.map((item, idx) => (
-                        <tr key={item.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
-                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{item.member_id}</td>
-                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
-                          <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(item.total_deposit)}</td>
-                          <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(item.total_withdraw)}</td>
-                          <td className={`px-2 py-1 text-sm text-right font-bold ${item.net_amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {formatCurrency(item.net_amount)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+          {/* ROW 3: NET DEPOSIT VS WITHDRAW - FULL WIDTH */}
+          <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+            <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
+              <h2 className="text-[#FFD700] font-bold">💰 NET DEPOSIT VS WITHDRAW (Top 100)</h2>
+            </div>
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+              <table className="w-full">
+                <thead className="bg-[#0B1A33]/50 sticky top-0">
+                  <tr>
+                    <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
+                    <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
+                    <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
+                    <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Deposit</th>
+                    <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Withdraw</th>
+                    <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net</th>
+                    <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {netDepositWithdraw.map((item, idx) => (
+                    <tr key={item.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                      <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                      <td className="px-2 py-1 text-sm text-[#A7D8FF]">{item.member_id}</td>
+                      <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
+                      <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(item.total_deposit)}</td>
+                      <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(item.total_withdraw)}</td>
+                      <td className={`px-2 py-1 text-sm text-right font-bold ${item.net_amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {formatCurrency(item.net_amount)}
+                      </td>
+                      <td className="px-2 py-1 text-sm text-right">{item.transaction_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </>
