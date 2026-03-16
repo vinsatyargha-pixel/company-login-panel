@@ -29,9 +29,10 @@ export default function AnalyticsPage() {
           <p className="text-[#A7D8FF] text-sm mt-2">CS, Deposit, WD Performance</p>
         </Link>
 
-        <Link href="/dashboard/analytics/winlose" className="bg-[#1A2F4A] p-6 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700]">
-          <h2 className="text-xl font-bold text-pink-400">Win/Lose Overview</h2>
-          <p className="text-[#A7D8FF] text-sm mt-2">Player Win/Lose, Turnover</p>
+        {/* UBAH INI: dari winlose ke player */}
+        <Link href="/dashboard/analytics/player" className="bg-[#1A2F4A] p-6 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700]">
+          <h2 className="text-xl font-bold text-pink-400">Player Overview</h2>
+          <p className="text-[#A7D8FF] text-sm mt-2">Player Win/Lose, Turnover, Deposit, WD</p>
         </Link>
       </div>
     </div>
