@@ -90,6 +90,14 @@ export default function WinloseAnalyticsPage() {
   }
 
   // ===========================================
+  // FILTER BY ASSET (PAKAI KOLOM BRAND)
+  // ===========================================
+  const filterByAsset = (row: any): boolean => {
+    if (selectedAsset === 'all') return true
+    return row.brand === selectedAsset
+  }
+
+  // ===========================================
   // FETCH DATA FROM SUPABASE
   // ===========================================
   useEffect(() => {
@@ -119,12 +127,6 @@ export default function WinloseAnalyticsPage() {
     }
   }
 
-  const filterByAsset = (accountId: string): boolean => {
-    if (selectedAsset === 'all') return true
-    const { asset_code } = parseAccountId(accountId)
-    return asset_code === selectedAsset
-  }
-
   const fetchAllData = async () => {
     try {
       setLoading(true)
@@ -144,18 +146,18 @@ export default function WinloseAnalyticsPage() {
       if (winloseError) throw winloseError
 
       // ===========================================
-      // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS (PAKAI USER_NAME)
+      // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS
       // ===========================================
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
-        .select('user_name, nett_amount')
+        .select('user_name, nett_amount, brand')
         .eq('status', 'approved')
         .gte('approved_date', start)
         .lte('approved_date', end)
 
       const { data: withdrawData, error: withdrawError } = await supabase
         .from('withdrawal_transactions')
-        .select('user_name, nett_amount')
+        .select('user_name, nett_amount, brand')
         .eq('status', 'approved')
         .gte('approved_date', start)
         .lte('approved_date', end)
@@ -174,8 +176,8 @@ export default function WinloseAnalyticsPage() {
         return
       }
 
-      // Filter by asset
-      const filteredWinlose = winloseData.filter((row: any) => filterByAsset(row.account_id))
+      // Filter by asset (pake brand)
+      const filteredWinlose = winloseData.filter((row: any) => filterByAsset(row))
 
       if (filteredWinlose.length === 0) {
         setHasData(false)
@@ -320,15 +322,15 @@ export default function WinloseAnalyticsPage() {
       setProductStats(productsArray)
 
       // ===========================================
-      // PROCESS DEPOSIT & WITHDRAWAL DATA (PAKAI USER_NAME)
+      // PROCESS DEPOSIT & WITHDRAWAL DATA
       // ===========================================
       const netMap = new Map<string, NetDepositWithdraw>()
 
       // Process deposits
       depositData?.forEach((row: any) => {
-        const fullId = row.user_name
-        if (!fullId || !filterByAsset(fullId)) return
+        if (!filterByAsset(row)) return // FILTER PAKAI BRAND!
         
+        const fullId = row.user_name
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
@@ -352,9 +354,9 @@ export default function WinloseAnalyticsPage() {
 
       // Process withdrawals
       withdrawData?.forEach((row: any) => {
-        const fullId = row.user_name
-        if (!fullId || !filterByAsset(fullId)) return
+        if (!filterByAsset(row)) return // FILTER PAKAI BRAND!
         
+        const fullId = row.user_name
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
