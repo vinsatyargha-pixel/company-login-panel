@@ -17,14 +17,14 @@ type Asset = {
 
 type WinloseUpload = {
   id: string
-  upload_date: string
   file_name: string
   total_rows: number
   status: string
-  website?: string
-  period_start?: string
-  period_end?: string
-  active_unique_players?: number
+  website: string
+  period_start: string
+  period_end: string
+  active_unique_players: number
+  uploaded_at: string
 }
 
 type WinloseTransaction = {
@@ -44,7 +44,6 @@ type WinloseTransaction = {
   file_name: string
   period_start: string
   period_end: string
-  upload_date: string
 }
 
 // ===========================================
@@ -114,15 +113,17 @@ export default function WinloseDataRawPage() {
       
       const monthIndex = months.indexOf(selectedMonth) + 1
       const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-31`
 
+      console.log('🔍 FILTER PERIODE:', { selectedMonth, selectedYear, startDate, endDate })
+
+      // FILTER BERDASARKAN PERIOD_START DAN PERIOD_END!
       let query = supabase
         .from('winlose_uploads')
         .select('*')
-        .gte('upload_date', startDate)
-        .lte('upload_date', endDate)
-        .order('upload_date', { ascending: true })
+        .gte('period_start', startDate)
+        .lte('period_end', endDate)
+        .order('period_start', { ascending: true })
 
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset)
@@ -134,6 +135,7 @@ export default function WinloseDataRawPage() {
       const { data, error } = await query
       if (error) throw error
       
+      console.log('📊 DATA FOUND:', data?.length || 0)
       setUploads(data || [])
     } catch (error) {
       console.error('Error fetching uploads:', error)
@@ -177,7 +179,7 @@ export default function WinloseDataRawPage() {
   }, [])
 
   // ===========================================
-  // PARSE FUNCTIONS - NO NULLS!
+  // PARSE FUNCTIONS
   // ===========================================
 
   const parseNumber = (value: any): number => {
@@ -199,37 +201,28 @@ export default function WinloseDataRawPage() {
     return String(value) || ''
   }
 
-  const parseExcelDate = (value: any): string => {
-    if (!value) return ''
-
+  // ===========================================
+  // PARSE DATE DARI FORMAT "01-Jan-2026"
+  // ===========================================
+  
+  const parsePeriodDate = (dateStr: string): string => {
+    if (!dateStr) return ''
+    
     try {
-      if (typeof value === 'string') {
-        const months: { [key: string]: string } = {
-          'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
-          'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
-          'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
-        }
-        
-        const match = value.match(/(\d{2})-(\w{3})-(\d{4})/)
-        if (match) {
-          const day = match[1]
-          const monthStr = match[2].toLowerCase()
-          const year = match[3]
-          const month = months[monthStr] || '01'
-          return `${year}-${month}-${day}`
-        }
-        return value
-      }
-
-      if (typeof value === 'number') {
-        const excelEpoch = new Date(Date.UTC(1899, 11, 30))
-        const date = new Date(excelEpoch.getTime() + value * 86400000)
-        const year = date.getUTCFullYear()
-        const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-        const day = String(date.getUTCDate()).padStart(2, '0')
-        return `${year}-${month}-${day}`
+      const months: { [key: string]: string } = {
+        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+        'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+        'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
       }
       
+      const match = dateStr.match(/(\d{2})-(\w{3})-(\d{4})/)
+      if (match) {
+        const day = match[1]
+        const monthStr = match[2].toLowerCase()
+        const year = match[3]
+        const month = months[monthStr] || '01'
+        return `${year}-${month}-${day}`
+      }
       return ''
     } catch {
       return ''
@@ -237,50 +230,33 @@ export default function WinloseDataRawPage() {
   }
 
   // ===========================================
-  // EXTRACT PERIOD
+  // EXTRACT METADATA DARI 2 BARIS PERTAMA
   // ===========================================
 
-  const extractPeriodFromFile = (fileName: string, firstRows: any[]): { start: string, end: string } => {
-    let start = '', end = ''
+  const extractMetadata = (rows: any[]) => {
+    let periodStart = ''
+    let periodEnd = ''
+    let activePlayers = 0
     
-    for (const row of firstRows) {
-      if (row && Array.isArray(row)) {
-        const rowStr = row.join(' ')
-        const match = rowStr.match(/From:\s*(\d{2}-\w{3}-\d{4}).*?To:\s*(\d{2}-\w{3}-\d{4})/i)
-        if (match) {
-          start = parseExcelDate(match[1])
-          end = parseExcelDate(match[2])
-          break
-        }
+    // Baris 1: Consolidate Player | (kosong) | From: 01-Jan-2026 To: 31-Jan-2026
+    if (rows[0] && rows[0][2]) {
+      const fromToMatch = rows[0][2].match(/From:\s*(\d{2}-\w{3}-\d{4}).*?To:\s*(\d{2}-\w{3}-\d{4})/i)
+      if (fromToMatch) {
+        periodStart = parsePeriodDate(fromToMatch[1])
+        periodEnd = parsePeriodDate(fromToMatch[2])
       }
     }
     
-    if (!start || !end) {
-      const fileMatch = fileName.match(/(\d{2}-\w{3}-\d{4})[^\d]*(\d{2}-\w{3}-\d{4})/i)
-      if (fileMatch) {
-        start = parseExcelDate(fileMatch[1])
-        end = parseExcelDate(fileMatch[2])
+    // Baris 2: Active Unique Player | (kosong) | 87
+    if (rows[1] && rows[1][2]) {
+      const activeMatch = rows[1][2].toString().match(/(\d+)/)
+      if (activeMatch) {
+        activePlayers = parseInt(activeMatch[1]) || 0
       }
     }
     
-    return { start, end }
-  }
-
-  // ===========================================
-  // GET ACTIVE PLAYERS
-  // ===========================================
-
-  const getActivePlayers = (firstRows: any[]): number => {
-    for (const row of firstRows) {
-      if (row && Array.isArray(row)) {
-        const rowStr = row.join(' ')
-        const match = rowStr.match(/Active Unique Player.*?(\d+)/i)
-        if (match) {
-          return parseInt(match[1]) || 0
-        }
-      }
-    }
-    return 0
+    console.log('📅 METADATA:', { periodStart, periodEnd, activePlayers })
+    return { periodStart, periodEnd, activePlayers }
   }
 
   // ===========================================
@@ -305,9 +281,18 @@ export default function WinloseDataRawPage() {
         blankrows: false
       }) as any[][]
       
-      // CARI BARIS HEADER
+      console.log('📋 Total baris:', rows.length)
+      
+      // AMBIL METADATA DARI 2 BARIS PERTAMA
+      const { periodStart, periodEnd, activePlayers } = extractMetadata(rows)
+      
+      if (!periodStart || !periodEnd) {
+        throw new Error('Gagal membaca periode dari file (From: ... To: ...)')
+      }
+      
+      // CARI BARIS HEADER (Account ID)
       let headerRowIndex = -1
-      for (let i = 0; i < rows.length; i++) {
+      for (let i = 2; i < rows.length; i++) { // Mulai dari baris 3
         const row = rows[i]
         if (row && row[0] && row[0].toString().includes('Account ID')) {
           headerRowIndex = i
@@ -321,10 +306,9 @@ export default function WinloseDataRawPage() {
       
       const headers = rows[headerRowIndex]
       const dataRows = rows.slice(headerRowIndex + 1)
-      const metadataRows = rows.slice(0, headerRowIndex)
       
-      const { start: periodStart, end: periodEnd } = extractPeriodFromFile(selectedFile.name, metadataRows)
-      const activePlayers = getActivePlayers(metadataRows)
+      console.log('📊 HEADER:', headers)
+      console.log('📊 Data rows:', dataRows.length)
       
       // Cari index kolom
       const findIndex = (keyword: string) => {
@@ -334,7 +318,7 @@ export default function WinloseDataRawPage() {
       }
       
       const idx = {
-        account: 0,
+        account: 0, // Account ID di kolom 0
         product: findIndex('product type'),
         betCount: findIndex('bet count'),
         turnover: findIndex('turnover'),
@@ -351,14 +335,15 @@ export default function WinloseDataRawPage() {
       setUploadProgress('Memvalidasi data...')
       
       const validTransactions: WinloseTransaction[] = []
-      const today = new Date().toISOString().split('T')[0]
       const fileName = parseString(selectedFile.name)
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
         if (!row || row.length === 0) continue
         
+        // Skip baris Sub Total atau kosong
         if (row[0] && row[0].toString().includes('Sub Total')) continue
+        if (!row[0] || row[0] === '') continue
         
         validTransactions.push({
           account_id: parseString(row[idx.account]),
@@ -375,19 +360,20 @@ export default function WinloseDataRawPage() {
           pvp_table_fee: parseNumber(row[idx.pvpFee]),
           website: 'XLY',
           file_name: fileName,
-          period_start: parseString(periodStart),
-          period_end: parseString(periodEnd),
-          upload_date: today
+          period_start: periodStart,
+          period_end: periodEnd
         })
       }
 
+      console.log('✅ Data valid:', validTransactions.length)
+      
       if (validTransactions.length === 0) {
         throw new Error('Tidak ada data valid dalam file')
       }
 
+      // INSERT BATCH KE TRANSACTIONS
       setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
       
-      // INSERT BATCH
       const batchSize = 500
       for (let i = 0; i < validTransactions.length; i += batchSize) {
         const batch = validTransactions.slice(i, i + batchSize)
@@ -399,28 +385,28 @@ export default function WinloseDataRawPage() {
         setUploadProgress(`Menyimpan... ${Math.min(i + batchSize, validTransactions.length)}/${validTransactions.length}`)
       }
 
-      // INSERT UPLOADS TRACKING
+      // INSERT KE UPLOADS TRACKING (PAKAI PERIODE, BUKAN UPLOAD_DATE!)
       setUploadProgress('Menyimpan tracking upload...')
       
       const { error: uploadError } = await supabase
         .from('winlose_uploads')
         .insert({
-          upload_date: today,
           file_name: fileName,
           total_rows: validTransactions.length,
           status: 'completed',
           website: 'XLY',
-          period_start: parseString(periodStart),
-          period_end: parseString(periodEnd),
-          active_unique_players: activePlayers || 0
+          period_start: periodStart,
+          period_end: periodEnd,
+          active_unique_players: activePlayers,
+          uploaded_at: new Date().toISOString()
         })
       
       if (uploadError) console.error('Error insert upload:', uploadError)
 
       alert(`✅ Berhasil! 
 • ${validTransactions.length} data transaksi
-• Periode: ${periodStart || '-'} - ${periodEnd || '-'}
-• Active Players: ${activePlayers || 0}`)
+• Periode: ${periodStart} - ${periodEnd}
+• Active Players: ${activePlayers}`)
       
       setShowModal(false)
       setSelectedFile(null)
@@ -439,20 +425,17 @@ export default function WinloseDataRawPage() {
   // HELPER FUNCTIONS
   // ===========================================
 
-  const getDayFromDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr)
-      return date.getDate()
-    } catch {
-      return 1
-    }
-  }
-
   const getStatusColor = (status: string) => {
     switch(status?.toLowerCase()) {
       case 'completed': return 'bg-green-500/20 text-green-400'
       default: return 'bg-gray-500/20 text-gray-400'
     }
+  }
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-'
+    const date = new Date(dateStr)
+    return date.getDate().toString()
   }
 
   // ===========================================
@@ -522,8 +505,7 @@ export default function WinloseDataRawPage() {
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal Upload</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">No</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Active Players</th>
@@ -532,24 +514,21 @@ export default function WinloseDataRawPage() {
             </tr>
           </thead>
           <tbody>
-            {uploads.length > 0 ? uploads.map(item => (
+            {uploads.length > 0 ? uploads.map((item, index) => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                <td className="px-4 py-3">{getDayFromDate(item.upload_date)} {selectedMonth} {selectedYear}</td>
-                <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
+                <td className="px-4 py-3">{index + 1}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                 <td className="px-4 py-3">
-                  {item.period_start && item.period_end ? (
-                    <span className="text-xs">{item.period_start} s/d {item.period_end}</span>
-                  ) : '-'}
+                  {item.period_start} s/d {item.period_end}
                 </td>
-                <td className="px-4 py-3">{item.active_unique_players || 0}</td>
+                <td className="px-4 py-3">{item.active_unique_players}</td>
                 <td className="px-4 py-3">{item.total_rows} data</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>{item.status}</span>
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
             )}
           </tbody>
         </table>
@@ -559,6 +538,10 @@ export default function WinloseDataRawPage() {
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
             <h2 className="text-xl font-bold text-[#FFD700] mb-4">Upload File Win/Lose</h2>
+            <p className="text-sm text-[#A7D8FF] mb-4">
+              Upload file Consolidate Report (format .xlsx, .xls, .csv)
+            </p>
+            
             <div 
               className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer ${dragActive ? 'border-[#FFD700] bg-[#FFD700]/10' : 'border-[#FFD700]/30 hover:border-[#FFD700] hover:bg-[#FFD700]/5'}`}
               onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
