@@ -40,11 +40,17 @@ export default function DataRawPage() {
           <p className="text-[#A7D8FF] text-sm mt-2">Import Withdrawal Data</p>
         </Link>
 
-        {/* MENU ADJUSTMENT BARU */}
         <Link href="/dashboard/data-raw/adj" className="bg-[#1A2F4A] p-6 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] transition-all hover:scale-105">
           <h2 className="text-xl font-bold text-purple-400">Adjustment Data Raw</h2>
           <p className="text-[#A7D8FF] text-sm mt-2">Import Adjustment Data</p>
           <span className="inline-block mt-2 text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded">New</span>
+        </Link>
+
+        {/* 🆕 MENU WINLOSE DATA RAW - BARU! */}
+        <Link href="/dashboard/data-raw/winlose" className="bg-[#1A2F4A] p-6 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700] transition-all hover:scale-105">
+          <h2 className="text-xl font-bold text-pink-400">Winlose Data Raw</h2>
+          <p className="text-[#A7D8FF] text-sm mt-2">Import Win/Lose Report</p>
+          <span className="inline-block mt-2 text-xs bg-pink-500/20 text-pink-400 px-2 py-1 rounded">New</span>
         </Link>
       </div>
 
@@ -57,6 +63,15 @@ export default function DataRawPage() {
           <li>Pastikan header sesuai dengan template masing-masing</li>
           <li>Data akan otomatis terdeteksi berdasarkan periode</li>
         </ul>
+      </div>
+
+      {/* STATS ROW - OPSIONAL */}
+      <div className="mt-6 grid grid-cols-5 gap-4 text-xs text-[#A7D8FF]">
+        <div className="bg-[#1A2F4A]/30 p-2 rounded text-center">CS: 5 files</div>
+        <div className="bg-[#1A2F4A]/30 p-2 rounded text-center">DP: 3 files</div>
+        <div className="bg-[#1A2F4A]/30 p-2 rounded text-center">WD: 4 files</div>
+        <div className="bg-[#1A2F4A]/30 p-2 rounded text-center">Adj: 2 files</div>
+        <div className="bg-[#1A2F4A]/30 p-2 rounded text-center">Winlose: 0 files</div>
       </div>
     </div>
   );
