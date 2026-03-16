@@ -7,33 +7,33 @@ import DatePicker from 'react-datepicker'
 import "react-datepicker/dist/react-datepicker.css"
 
 // ===========================================
-// TYPES
+// TYPES - SESUAIKAN DENGAN REQUEST
 // ===========================================
 interface MemberStats {
   account_id: string
   asset_code: string
   member_id: string
-  total_net_turnover: number
-  total_winlose: number
-  win_rate: number
+  total_net_turnover: number      // dari net_turnover
+  member_total: number             // dari member_total (NET WIN/LOSE)
+  win_rate: number                 // (member_total / total_net_turnover) * 100
   games_played: number
   biggest_win: number
 }
 
 interface ProductStats {
   product_type: string
-  total_net_turnover: number
-  total_winlose: number
+  total_net_turnover: number       // dari net_turnover
+  member_total: number              // dari member_total
   member_count: number
   bet_count: number
-  win_rate: number
+  win_rate: number                  // (member_total / total_net_turnover) * 100
 }
 
 interface WinDetail {
   account_id: string
   asset_code: string
   member_id: string
-  win_amount: number
+  win_amount: number                // member_total positif (kemenangan)
   product_type: string
   date: string
 }
@@ -79,10 +79,10 @@ export default function WinloseAnalyticsPage() {
   const [loading, setLoading] = useState(false)
   const [hasData, setHasData] = useState(false)
   
-  // Summary stats
+  // Summary stats - SESUAI REQUEST
   const [uniquePlayerCount, setUniquePlayerCount] = useState(0)
-  const [totalNetTurnover, setTotalNetTurnover] = useState(0)
-  const [totalWinlose, setTotalWinlose] = useState(0)
+  const [totalNetTurnover, setTotalNetTurnover] = useState(0)      // dari net_turnover
+  const [netWinLose, setNetWinLose] = useState(0)                   // dari member_total
   const [totalGames, setTotalGames] = useState(0)
   
   // Detail data
@@ -163,7 +163,9 @@ export default function WinloseAnalyticsPage() {
       
       console.log('📅 FETCHING DATA PERIODE:', { start, end })
 
-      // Fetch winlose
+      // ===========================================
+      // 1. FETCH WINLOSE TRANSACTIONS
+      // ===========================================
       const { data: winloseData, error: winloseError } = await supabase
         .from('winlose_transactions')
         .select('*')
@@ -172,12 +174,9 @@ export default function WinloseAnalyticsPage() {
 
       if (winloseError) throw winloseError
 
-      console.log('📊 RAW WINLOSE DATA TOTAL:', winloseData?.length || 0, 'rows')
-      if (winloseData && winloseData.length > 0) {
-        console.log('📊 SAMPLE RAW DATA:', winloseData.slice(0, 2))
-      }
-
-      // Fetch deposit & withdrawal
+      // ===========================================
+      // 2. FETCH DEPOSIT & WITHDRAWAL
+      // ===========================================
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
         .select('user_name, nett_amount, brand')
@@ -196,9 +195,6 @@ export default function WinloseAnalyticsPage() {
         console.error('Deposit/Withdraw error:', depositError || withdrawError)
       }
 
-      console.log('💰 DEPOSIT DATA:', depositData?.length || 0, 'rows')
-      console.log('💰 WITHDRAW DATA:', withdrawData?.length || 0, 'rows')
-
       // ===========================================
       // PROCESS WINLOSE DATA
       // ===========================================
@@ -212,8 +208,6 @@ export default function WinloseAnalyticsPage() {
       // Filter by asset
       const filteredWinlose = winloseData.filter((row: any) => filterByAsset(row))
 
-      console.log('🔍 FILTERED BY ASSET:', filteredWinlose.length, 'rows')
-
       if (filteredWinlose.length === 0) {
         setHasData(false)
         resetData()
@@ -223,49 +217,42 @@ export default function WinloseAnalyticsPage() {
 
       setHasData(true)
 
-      // ========== DEBUG SUMMARY ==========
-      const validAccounts = filteredWinlose.filter((row: any) => 
+      // ===========================================
+      // SUMMARY STATS - PAKAI NET_TURNOVER & MEMBER_TOTAL
+      // ===========================================
+      const validRows = filteredWinlose.filter((row: any) => 
         row.account_id && row.account_id !== '' && !row.account_id.toString().includes('Sub Total')
       )
-      
-      console.log('✅ VALID ACCOUNTS (tanpa Sub Total):', validAccounts.length, 'rows')
-      
-      const sumNetTurnover = validAccounts.reduce((sum: number, row: any) => sum + (row.net_turnover || 0), 0)
-      const sumMemberWin = validAccounts.reduce((sum: number, row: any) => sum + (row.member_win || 0), 0)
-      const sumBetCount = validAccounts.reduce((sum: number, row: any) => sum + (row.bet_count || 0), 0)
-      
-      console.log('📊 DEBUG SUMMARY:')
-      console.log('   - Total Net Turnover:', sumNetTurnover)
-      console.log('   - Total Member Win:', sumMemberWin)
-      console.log('   - Total Bet Count:', sumBetCount)
-      
-      if (validAccounts.length > 0) {
-        console.log('📊 SAMPLE VALID DATA:', validAccounts.slice(0, 2))
-      }
-      // ===================================
+
+      // Hitung total dari data valid (skip Sub Total)
+      const totalNetTurnover = validRows.reduce((sum: number, row: any) => sum + (row.net_turnover || 0), 0)
+      const totalMemberTotal = validRows.reduce((sum: number, row: any) => sum + (row.member_total || 0), 0)
+      const totalGames = validRows.reduce((sum: number, row: any) => sum + (row.bet_count || 0), 0)
+
+      console.log('📊 SUMMARY DARI DATA VALID:', {
+        netTurnover: totalNetTurnover,
+        memberTotal: totalMemberTotal,  // INI NET WIN/LOSE
+        games: totalGames
+      })
+
+      setTotalNetTurnover(totalNetTurnover)
+      setNetWinLose(totalMemberTotal)
+      setTotalGames(totalGames)
 
       // Unique player count
-      const uniquePlayers = new Set(validAccounts.map((d: any) => d.account_id))
+      const uniquePlayers = new Set(validRows.map((d: any) => d.account_id))
       setUniquePlayerCount(uniquePlayers.size)
 
-      // Summary stats
-      setTotalNetTurnover(sumNetTurnover)
-      setTotalWinlose(sumMemberWin)
-      setTotalGames(sumBetCount)
-
-      // Member Stats
+      // ===========================================
+      // MEMBER STATS (untuk Top Members, Highest Turnover, Big Wins)
+      // ===========================================
       const memberMap = new Map<string, MemberStats>()
       const winDetails: WinDetail[] = []
 
-      filteredWinlose.forEach((row: any) => {
-        // SKIP DATA SUBTOTAL
-        if (!row.account_id || row.account_id === '' || row.account_id.toString().includes('Sub Total')) {
-          return
-        }
-        
+      validRows.forEach((row: any) => {
         const fullId = row.account_id
         const { asset_code, member_id } = parseAccountId(fullId)
-        const winAmount = row.member_win || 0
+        const memberTotal = row.member_total || 0
         const netTurnover = row.net_turnover || 0
         
         if (!memberMap.has(fullId)) {
@@ -274,7 +261,7 @@ export default function WinloseAnalyticsPage() {
             asset_code,
             member_id,
             total_net_turnover: 0,
-            total_winlose: 0,
+            member_total: 0,
             win_rate: 0,
             games_played: 0,
             biggest_win: 0
@@ -283,36 +270,37 @@ export default function WinloseAnalyticsPage() {
         
         const stats = memberMap.get(fullId)!
         stats.total_net_turnover += netTurnover
-        stats.total_winlose += winAmount
+        stats.member_total += memberTotal
         stats.games_played += row.bet_count || 0
         
-        if (winAmount > stats.biggest_win) {
-          stats.biggest_win = winAmount
+        // Track biggest win (member_total positif)
+        if (memberTotal > stats.biggest_win) {
+          stats.biggest_win = memberTotal
         }
         
-        if (winAmount > 0) {
+        // Collect wins for Big Time Wins (member_total positif)
+        if (memberTotal > 0) {
           winDetails.push({
             account_id: fullId,
             asset_code,
             member_id,
-            win_amount: winAmount,
+            win_amount: memberTotal,
             product_type: row.product_type,
             date: row.period_start
           })
         }
       })
 
-      console.log('👥 MEMBER MAP SIZE:', memberMap.size)
-
-      // Calculate win rates
+      // Hitung win rate untuk setiap member
       memberMap.forEach(stats => {
         stats.win_rate = stats.total_net_turnover > 0 
-          ? (stats.total_winlose / stats.total_net_turnover) * 100 
+          ? (stats.member_total / stats.total_net_turnover) * 100 
           : 0
       })
 
       const membersArray = Array.from(memberMap.values())
 
+      // Top Members by Win Rate
       setTopMembers(
         [...membersArray]
           .filter(m => m.games_played >= 5)
@@ -320,27 +308,26 @@ export default function WinloseAnalyticsPage() {
           .slice(0, 100)
       )
 
+      // Highest Net Turnover
       setHighestNetTurnover(
         [...membersArray]
           .sort((a, b) => b.total_net_turnover - a.total_net_turnover)
           .slice(0, 100)
       )
 
+      // Big Time Wins
       setBigWins(
         winDetails
           .sort((a, b) => b.win_amount - a.win_amount)
           .slice(0, 50)
       )
 
-      // Product Stats
+      // ===========================================
+      // PRODUCT STATS
+      // ===========================================
       const productMap = new Map<string, ProductStats>()
       
-      filteredWinlose.forEach((row: any) => {
-        // SKIP DATA SUBTOTAL
-        if (!row.account_id || row.account_id === '' || row.account_id.toString().includes('Sub Total')) {
-          return
-        }
-        
+      validRows.forEach((row: any) => {
         const product = row.product_type
         if (!product) return
         
@@ -348,7 +335,7 @@ export default function WinloseAnalyticsPage() {
           productMap.set(product, {
             product_type: product,
             total_net_turnover: 0,
-            total_winlose: 0,
+            member_total: 0,
             member_count: 0,
             bet_count: 0,
             win_rate: 0
@@ -357,16 +344,13 @@ export default function WinloseAnalyticsPage() {
         
         const stats = productMap.get(product)!
         stats.total_net_turnover += row.net_turnover || 0
-        stats.total_winlose += row.member_win || 0
+        stats.member_total += row.member_total || 0
         stats.bet_count += row.bet_count || 0
       })
 
+      // Hitung member count per product
       const memberPerProduct = new Map<string, Set<string>>()
-      filteredWinlose.forEach((row: any) => {
-        if (!row.account_id || row.account_id === '' || row.account_id.toString().includes('Sub Total')) {
-          return
-        }
-        
+      validRows.forEach((row: any) => {
         const product = row.product_type
         const account = row.account_id
         if (!product || !account) return
@@ -377,22 +361,21 @@ export default function WinloseAnalyticsPage() {
         memberPerProduct.get(product)!.add(account)
       })
 
+      // Hitung win rate per product
       productMap.forEach((stats, product) => {
         stats.member_count = memberPerProduct.get(product)?.size || 0
         stats.win_rate = stats.total_net_turnover > 0 
-          ? (stats.total_winlose / stats.total_net_turnover) * 100 
+          ? (stats.member_total / stats.total_net_turnover) * 100 
           : 0
       })
 
       setProductStats(
         Array.from(productMap.values())
-          .sort((a, b) => b.total_winlose - a.total_winlose)
+          .sort((a, b) => b.member_total - a.member_total)
       )
 
-      console.log('🎰 PRODUCT STATS COUNT:', productMap.size)
-
       // ===========================================
-      // PROCESS DEPOSIT & WITHDRAWAL
+      // PROCESS DEPOSIT & WITHDRAWAL (SAMA SEPERTI SEBELUMNYA)
       // ===========================================
       const netMap = new Map<string, NetDepositWithdraw>()
       const depositMap = new Map<string, TopDeposit>()
@@ -406,7 +389,6 @@ export default function WinloseAnalyticsPage() {
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
-        // NET MAP
         if (!netMap.has(fullId)) {
           netMap.set(fullId, {
             account_id: fullId,
@@ -423,7 +405,6 @@ export default function WinloseAnalyticsPage() {
         netStats.net_amount += amount
         netStats.transaction_count += 1
 
-        // DEPOSIT MAP
         if (!depositMap.has(fullId)) {
           depositMap.set(fullId, {
             account_id: fullId,
@@ -448,7 +429,6 @@ export default function WinloseAnalyticsPage() {
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
-        // NET MAP
         if (!netMap.has(fullId)) {
           netMap.set(fullId, {
             account_id: fullId,
@@ -465,7 +445,6 @@ export default function WinloseAnalyticsPage() {
         netStats.net_amount -= amount
         netStats.transaction_count += 1
 
-        // WITHDRAW MAP
         if (!withdrawMap.has(fullId)) {
           withdrawMap.set(fullId, {
             account_id: fullId,
@@ -481,10 +460,6 @@ export default function WinloseAnalyticsPage() {
         wdStats.transaction_count += 1
         wdStats.avg_withdraw = wdStats.total_withdraw / wdStats.transaction_count
       })
-
-      console.log('💰 NET MAP SIZE:', netMap.size)
-      console.log('💰 DEPOSIT MAP SIZE:', depositMap.size)
-      console.log('💰 WITHDRAW MAP SIZE:', withdrawMap.size)
 
       setNetDepositWithdraw(
         Array.from(netMap.values())
@@ -516,7 +491,7 @@ export default function WinloseAnalyticsPage() {
   const resetData = () => {
     setUniquePlayerCount(0)
     setTotalNetTurnover(0)
-    setTotalWinlose(0)
+    setNetWinLose(0)
     setTotalGames(0)
     setTopMembers([])
     setProductStats([])
@@ -676,27 +651,33 @@ export default function WinloseAnalyticsPage() {
       {/* DATA DISPLAY */}
       {!loading && hasData && (
         <>
-          {/* SUMMARY CARDS */}
+          {/* SUMMARY CARDS - SESUAI REQUEST */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Unique Players</div>
               <div className="text-2xl font-bold text-[#FFD700]">{formatNumber(uniquePlayerCount)}</div>
               <div className="text-xs text-gray-400">Total ID unik</div>
             </div>
+            
+            {/* TOTAL NET TURNOVER - DARI NET_TURNOVER */}
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Total Net Turnover</div>
               <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalNetTurnover)}</div>
-              <div className="text-xs text-gray-400">Total net bet</div>
+              <div className="text-xs text-gray-400">Dari kolom net_turnover</div>
             </div>
+            
+            {/* NET WIN/LOSE - DARI MEMBER_TOTAL */}
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Net Win/Lose</div>
-              <div className={`text-2xl font-bold ${totalWinlose <= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {formatCurrency(totalWinlose)}
+              <div className={`text-2xl font-bold ${netWinLose <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {formatCurrency(netWinLose)}
               </div>
               <div className="text-xs text-gray-400">
-                {totalWinlose <= 0 ? '💰 Profit' : '📉 Loss'}
+                {netWinLose <= 0 ? '💰 Profit (dari member_total)' : '📉 Loss'}
               </div>
             </div>
+            
+            {/* TOTAL GAMES */}
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Total Games</div>
               <div className="text-2xl font-bold text-purple-400">{formatNumber(totalGames)}</div>
@@ -708,10 +689,11 @@ export default function WinloseAnalyticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* COLUMN 1: Member Performance */}
             <div className="space-y-6">
-              {/* TOP MEMBERS BY WIN RATE */}
+              {/* TOP MEMBERS BY WIN RATE - PAKAI MEMBER_TOTAL & NET_TURNOVER */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">🏆 TOP 100 (Win Rate)</h2>
+                  <p className="text-xs text-[#A7D8FF]">Win Rate = (Member Total / Net Turnover) × 100%</p>
                 </div>
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
@@ -730,7 +712,7 @@ export default function WinloseAnalyticsPage() {
                           <td className="px-2 py-1 text-sm text-[#A7D8FF]">{member.member_id}</td>
                           <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{member.asset_code}</td>
                           <td className="px-2 py-1 text-sm text-right">
-                            <span className={member.win_rate > 50 ? 'text-red-400' : 'text-green-400'}>
+                            <span className={member.win_rate > 0 ? 'text-red-400' : 'text-green-400'}>
                               {formatPercent(member.win_rate)}
                             </span>
                           </td>
@@ -741,10 +723,11 @@ export default function WinloseAnalyticsPage() {
                 </div>
               </div>
 
-              {/* BIG TIME WINS */}
+              {/* BIG TIME WINS - PAKAI MEMBER_TOTAL POSITIF */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">💰 BIG WINS (Top 50)</h2>
+                  <p className="text-xs text-[#A7D8FF]">Berdasarkan Member Total positif</p>
                 </div>
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
@@ -802,7 +785,7 @@ export default function WinloseAnalyticsPage() {
                 </div>
               </div>
 
-              {/* PRODUCT STATS */}
+              {/* PROVIDER PERFORMANCE - PAKAI NET_TURNOVER & MEMBER_TOTAL */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">🎰 PROVIDER PERFORMANCE</h2>
@@ -813,7 +796,8 @@ export default function WinloseAnalyticsPage() {
                       <tr>
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Provider</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net Turnover</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Win/Lose</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Member Total</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Win Rate</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -821,9 +805,10 @@ export default function WinloseAnalyticsPage() {
                         <tr key={product.product_type} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                           <td className="px-2 py-1 text-sm font-medium">{product.product_type}</td>
                           <td className="px-2 py-1 text-sm text-right">{formatCurrency(product.total_net_turnover)}</td>
-                          <td className={`px-2 py-1 text-sm text-right ${product.total_winlose <= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {formatCurrency(product.total_winlose)}
+                          <td className={`px-2 py-1 text-sm text-right ${product.member_total <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {formatCurrency(product.member_total)}
                           </td>
+                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{formatPercent(product.win_rate)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -870,7 +855,7 @@ export default function WinloseAnalyticsPage() {
             </div>
           </div>
 
-          {/* ROW 4: TOP DEPOSIT & TOP WITHDRAWAL - 2 KOLOM */}
+          {/* ROW 4: TOP DEPOSIT & TOP WITHDRAWAL */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* TOP DEPOSIT */}
             <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
