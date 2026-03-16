@@ -144,25 +144,24 @@ export default function WinloseAnalyticsPage() {
       if (winloseError) throw winloseError
 
       // ===========================================
-      // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS (APPROVED_DATE)
+      // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS (PAKAI USER_NAME)
       // ===========================================
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
-        .select('account_id, nett_amount')
+        .select('user_name, nett_amount')
         .eq('status', 'approved')
         .gte('approved_date', start)
         .lte('approved_date', end)
 
       const { data: withdrawData, error: withdrawError } = await supabase
         .from('withdrawal_transactions')
-        .select('account_id, nett_amount')
+        .select('user_name, nett_amount')
         .eq('status', 'approved')
         .gte('approved_date', start)
         .lte('approved_date', end)
 
       if (depositError || withdrawError) {
         console.error('Deposit/Withdraw error:', depositError || withdrawError)
-        // Tetap lanjut meskipun deposit/withdraw error
       }
 
       // ===========================================
@@ -321,13 +320,13 @@ export default function WinloseAnalyticsPage() {
       setProductStats(productsArray)
 
       // ===========================================
-      // PROCESS DEPOSIT & WITHDRAWAL DATA
+      // PROCESS DEPOSIT & WITHDRAWAL DATA (PAKAI USER_NAME)
       // ===========================================
       const netMap = new Map<string, NetDepositWithdraw>()
 
       // Process deposits
       depositData?.forEach((row: any) => {
-        const fullId = row.account_id
+        const fullId = row.user_name
         if (!fullId || !filterByAsset(fullId)) return
         
         const { asset_code, member_id } = parseAccountId(fullId)
@@ -353,7 +352,7 @@ export default function WinloseAnalyticsPage() {
 
       // Process withdrawals
       withdrawData?.forEach((row: any) => {
-        const fullId = row.account_id
+        const fullId = row.user_name
         if (!fullId || !filterByAsset(fullId)) return
         
         const { asset_code, member_id } = parseAccountId(fullId)
