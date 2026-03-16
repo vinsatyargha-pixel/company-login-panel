@@ -7,7 +7,7 @@ import DatePicker from 'react-datepicker'
 import "react-datepicker/dist/react-datepicker.css"
 
 // ===========================================
-// TYPES
+// TYPES (sama seperti sebelumnya)
 // ===========================================
 interface MemberStats {
   account_id: string
@@ -48,6 +48,24 @@ interface NetDepositWithdraw {
   transaction_count: number
 }
 
+interface TopDeposit {
+  account_id: string
+  asset_code: string
+  member_id: string
+  total_deposit: number
+  transaction_count: number
+  avg_deposit: number
+}
+
+interface TopWithdrawal {
+  account_id: string
+  asset_code: string
+  member_id: string
+  total_withdraw: number
+  transaction_count: number
+  avg_withdraw: number
+}
+
 export default function WinloseAnalyticsPage() {
   // ===========================================
   // STATES
@@ -61,6 +79,10 @@ export default function WinloseAnalyticsPage() {
   const [loading, setLoading] = useState(false)
   const [hasData, setHasData] = useState(false)
   
+  // NEW: Checkbox states
+  const [showTopDeposit, setShowTopDeposit] = useState(true)
+  const [showTopWithdrawal, setShowTopWithdrawal] = useState(true)
+  
   // Summary stats
   const [uniquePlayerCount, setUniquePlayerCount] = useState(0)
   const [totalTurnover, setTotalTurnover] = useState(0)
@@ -73,6 +95,8 @@ export default function WinloseAnalyticsPage() {
   const [bigWins, setBigWins] = useState<WinDetail[]>([])
   const [highestTurnover, setHighestTurnover] = useState<MemberStats[]>([])
   const [netDepositWithdraw, setNetDepositWithdraw] = useState<NetDepositWithdraw[]>([])
+  const [topDeposit, setTopDeposit] = useState<TopDeposit[]>([])
+  const [topWithdrawal, setTopWithdrawal] = useState<TopWithdrawal[]>([])
 
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
                   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -80,7 +104,7 @@ export default function WinloseAnalyticsPage() {
   const assets = ['XLY']
 
   // ===========================================
-  // HELPER: Parse Account ID (3 huruf pertama = asset)
+  // HELPER FUNCTIONS (sama seperti sebelumnya)
   // ===========================================
   const parseAccountId = (fullId: string): { asset_code: string; member_id: string } => {
     if (!fullId) return { asset_code: 'XLY', member_id: '' }
@@ -89,40 +113,25 @@ export default function WinloseAnalyticsPage() {
     return { asset_code, member_id }
   }
 
-  // ===========================================
-  // FORMAT MEMBER ID UNTUK DEPOSIT/WITHDRAWAL
-  // ===========================================
   const formatMemberId = (userName: string, assetCode: string = 'XLY'): string => {
     if (!userName) return ''
-    // Kalo udah ada prefix XLY, return apa adanya
     if (userName.startsWith('XLY')) return userName
-    // Kalo belum, tambahin XLY
     return assetCode + userName
   }
 
-  // ===========================================
-  // FILTER BY ASSET - DENGAN FALLBACK
-  // ===========================================
   const filterByAsset = (row: any): boolean => {
     if (selectedAsset === 'all') return true
-    
-    // Coba dari kolom brand dulu
-    if (row.brand) {
-      return row.brand === selectedAsset
-    }
-    
-    // Fallback: dari account_id atau user_name
+    if (row.brand) return row.brand === selectedAsset
     const id = row.account_id || row.user_name
     if (id) {
       const { asset_code } = parseAccountId(id)
       return asset_code === selectedAsset
     }
-    
     return false
   }
 
   // ===========================================
-  // FETCH DATA FROM SUPABASE
+  // FETCH DATA (sama seperti sebelumnya)
   // ===========================================
   useEffect(() => {
     if (!useCustomRange && selectedMonth && selectedYear) {
@@ -158,9 +167,7 @@ export default function WinloseAnalyticsPage() {
       
       console.log('📅 FETCHING DATA PERIODE:', { start, end })
 
-      // ===========================================
-      // 1. FETCH WINLOSE TRANSACTIONS
-      // ===========================================
+      // Fetch winlose
       const { data: winloseData, error: winloseError } = await supabase
         .from('winlose_transactions')
         .select('*')
@@ -169,9 +176,7 @@ export default function WinloseAnalyticsPage() {
 
       if (winloseError) throw winloseError
 
-      // ===========================================
-      // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS
-      // ===========================================
+      // Fetch deposit & withdrawal
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
         .select('user_name, nett_amount, brand')
@@ -203,7 +208,6 @@ export default function WinloseAnalyticsPage() {
         return
       }
 
-      // Filter by asset
       const filteredWinlose = winloseData.filter((row: any) => filterByAsset(row))
 
       if (filteredWinlose.length === 0) {
@@ -215,7 +219,7 @@ export default function WinloseAnalyticsPage() {
 
       setHasData(true)
 
-      // Unique player count
+      // Unique players
       const uniquePlayers = new Set(filteredWinlose.map((d: any) => d.account_id))
       setUniquePlayerCount(uniquePlayers.size)
 
@@ -272,7 +276,6 @@ export default function WinloseAnalyticsPage() {
         }
       })
 
-      // Calculate win rates
       memberMap.forEach(stats => {
         stats.win_rate = stats.total_turnover > 0 
           ? (stats.total_winlose / stats.total_turnover) * 100 
@@ -281,24 +284,24 @@ export default function WinloseAnalyticsPage() {
 
       const membersArray = Array.from(memberMap.values())
 
-      // Top members by win rate
-      const topByWinRate = [...membersArray]
-        .filter(m => m.games_played >= 5)
-        .sort((a, b) => b.win_rate - a.win_rate)
-        .slice(0, 100)
-      setTopMembers(topByWinRate)
+      setTopMembers(
+        [...membersArray]
+          .filter(m => m.games_played >= 5)
+          .sort((a, b) => b.win_rate - a.win_rate)
+          .slice(0, 100)
+      )
 
-      // Highest Turnover
-      const topByTurnover = [...membersArray]
-        .sort((a, b) => b.total_turnover - a.total_turnover)
-        .slice(0, 100)
-      setHighestTurnover(topByTurnover)
+      setHighestTurnover(
+        [...membersArray]
+          .sort((a, b) => b.total_turnover - a.total_turnover)
+          .slice(0, 100)
+      )
 
-      // Big time wins
-      const sortedWins = winDetails
-        .sort((a, b) => b.win_amount - a.win_amount)
-        .slice(0, 50)
-      setBigWins(sortedWins)
+      setBigWins(
+        winDetails
+          .sort((a, b) => b.win_amount - a.win_amount)
+          .slice(0, 50)
+      )
 
       // Product Stats
       const productMap = new Map<string, ProductStats>()
@@ -324,7 +327,6 @@ export default function WinloseAnalyticsPage() {
         stats.bet_count += row.bet_count || 0
       })
 
-      // Calculate member count per product
       const memberPerProduct = new Map<string, Set<string>>()
       filteredWinlose.forEach((row: any) => {
         const product = row.product_type
@@ -344,14 +346,17 @@ export default function WinloseAnalyticsPage() {
           : 0
       })
 
-      const productsArray = Array.from(productMap.values())
-        .sort((a, b) => b.total_winlose - a.total_winlose)
-      setProductStats(productsArray)
+      setProductStats(
+        Array.from(productMap.values())
+          .sort((a, b) => b.total_winlose - a.total_winlose)
+      )
 
       // ===========================================
-      // PROCESS DEPOSIT & WITHDRAWAL DATA
+      // PROCESS DEPOSIT & WITHDRAWAL
       // ===========================================
       const netMap = new Map<string, NetDepositWithdraw>()
+      const depositMap = new Map<string, TopDeposit>()
+      const withdrawMap = new Map<string, TopWithdrawal>()
 
       // Process deposits
       depositData?.forEach((row: any) => {
@@ -361,6 +366,7 @@ export default function WinloseAnalyticsPage() {
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
+        // NET MAP
         if (!netMap.has(fullId)) {
           netMap.set(fullId, {
             account_id: fullId,
@@ -372,11 +378,26 @@ export default function WinloseAnalyticsPage() {
             transaction_count: 0
           })
         }
-        
-        const stats = netMap.get(fullId)!
-        stats.total_deposit += amount
-        stats.net_amount += amount
-        stats.transaction_count += 1
+        const netStats = netMap.get(fullId)!
+        netStats.total_deposit += amount
+        netStats.net_amount += amount
+        netStats.transaction_count += 1
+
+        // DEPOSIT MAP
+        if (!depositMap.has(fullId)) {
+          depositMap.set(fullId, {
+            account_id: fullId,
+            asset_code,
+            member_id,
+            total_deposit: 0,
+            transaction_count: 0,
+            avg_deposit: 0
+          })
+        }
+        const depStats = depositMap.get(fullId)!
+        depStats.total_deposit += amount
+        depStats.transaction_count += 1
+        depStats.avg_deposit = depStats.total_deposit / depStats.transaction_count
       })
 
       // Process withdrawals
@@ -387,6 +408,7 @@ export default function WinloseAnalyticsPage() {
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
+        // NET MAP
         if (!netMap.has(fullId)) {
           netMap.set(fullId, {
             account_id: fullId,
@@ -398,18 +420,45 @@ export default function WinloseAnalyticsPage() {
             transaction_count: 0
           })
         }
-        
-        const stats = netMap.get(fullId)!
-        stats.total_withdraw += amount
-        stats.net_amount -= amount
-        stats.transaction_count += 1
+        const netStats = netMap.get(fullId)!
+        netStats.total_withdraw += amount
+        netStats.net_amount -= amount
+        netStats.transaction_count += 1
+
+        // WITHDRAW MAP
+        if (!withdrawMap.has(fullId)) {
+          withdrawMap.set(fullId, {
+            account_id: fullId,
+            asset_code,
+            member_id,
+            total_withdraw: 0,
+            transaction_count: 0,
+            avg_withdraw: 0
+          })
+        }
+        const wdStats = withdrawMap.get(fullId)!
+        wdStats.total_withdraw += amount
+        wdStats.transaction_count += 1
+        wdStats.avg_withdraw = wdStats.total_withdraw / wdStats.transaction_count
       })
 
-      // Sort by net amount
-      const netArray = Array.from(netMap.values())
-        .sort((a, b) => b.net_amount - a.net_amount)
-        .slice(0, 100)
-      setNetDepositWithdraw(netArray)
+      setNetDepositWithdraw(
+        Array.from(netMap.values())
+          .sort((a, b) => b.net_amount - a.net_amount)
+          .slice(0, 100)
+      )
+
+      setTopDeposit(
+        Array.from(depositMap.values())
+          .sort((a, b) => b.total_deposit - a.total_deposit)
+          .slice(0, 100)
+      )
+
+      setTopWithdrawal(
+        Array.from(withdrawMap.values())
+          .sort((a, b) => b.total_withdraw - a.total_withdraw)
+          .slice(0, 100)
+      )
 
       console.log('✅ SEMUA DATA BERHASIL DIPROSES')
 
@@ -430,6 +479,8 @@ export default function WinloseAnalyticsPage() {
     setBigWins([])
     setHighestTurnover([])
     setNetDepositWithdraw([])
+    setTopDeposit([])
+    setTopWithdrawal([])
   }
 
   // ===========================================
@@ -609,6 +660,31 @@ export default function WinloseAnalyticsPage() {
             </div>
           </div>
 
+          {/* CHECKBOX SECTION */}
+          <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
+            <h3 className="text-[#FFD700] font-bold mb-3">🔍 TAMPILKAN DATA:</h3>
+            <div className="flex gap-6">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showTopDeposit}
+                  onChange={(e) => setShowTopDeposit(e.target.checked)}
+                  className="w-4 h-4 accent-[#FFD700]"
+                />
+                <span className="text-[#A7D8FF]">🏦 Top Deposit</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showTopWithdrawal}
+                  onChange={(e) => setShowTopWithdrawal(e.target.checked)}
+                  className="w-4 h-4 accent-[#FFD700]"
+                />
+                <span className="text-[#A7D8FF]">💸 Top Withdrawal</span>
+              </label>
+            </div>
+          </div>
+
           {/* MAIN CONTENT GRID - 2 KOLOM ATAS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* COLUMN 1: Member Performance */}
@@ -738,8 +814,8 @@ export default function WinloseAnalyticsPage() {
             </div>
           </div>
 
-          {/* ROW 3: NET DEPOSIT VS WITHDRAW - FULL WIDTH */}
-          <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+          {/* ROW 3: NET DEPOSIT VS WITHDRAW */}
+          <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
             <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
               <h2 className="text-[#FFD700] font-bold">💰 NET DEPOSIT VS WITHDRAW (Top 100)</h2>
             </div>
@@ -774,6 +850,84 @@ export default function WinloseAnalyticsPage() {
               </table>
             </div>
           </div>
+
+          {/* ROW 4: TOP DEPOSIT & TOP WITHDRAWAL - DENGAN CHECKBOX */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {showTopDeposit && (
+              <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+                <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
+                  <h2 className="text-[#FFD700] font-bold">🏦 TOP DEPOSIT (By Total)</h2>
+                </div>
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#0B1A33]/50 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Deposit</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Rata-rata</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topDeposit.map((item, idx) => (
+                        <tr key={item.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{item.member_id}</td>
+                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
+                          <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(item.total_deposit)}</td>
+                          <td className="px-2 py-1 text-sm text-right">{item.transaction_count}x</td>
+                          <td className="px-2 py-1 text-sm text-right text-gray-400">{formatCurrency(item.avg_deposit)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {showTopWithdrawal && (
+              <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+                <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
+                  <h2 className="text-[#FFD700] font-bold">💸 TOP WITHDRAWAL (By Total)</h2>
+                </div>
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#0B1A33]/50 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Withdraw</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Rata-rata</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {topWithdrawal.map((item, idx) => (
+                        <tr key={item.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{item.member_id}</td>
+                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
+                          <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(item.total_withdraw)}</td>
+                          <td className="px-2 py-1 text-sm text-right">{item.transaction_count}x</td>
+                          <td className="px-2 py-1 text-sm text-right text-gray-400">{formatCurrency(item.avg_withdraw)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* KALAU KEDUA CHECKBOX TIDAK DICENTANG */}
+          {!showTopDeposit && !showTopWithdrawal && (
+            <div className="bg-[#1A2F4A] p-8 rounded-lg text-center text-gray-400">
+              Pilih salah satu atau kedua checkbox di atas untuk menampilkan data
+            </div>
+          )}
         </>
       )}
     </div>
