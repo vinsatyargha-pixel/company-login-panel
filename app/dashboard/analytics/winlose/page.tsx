@@ -90,16 +90,22 @@ export default function WinloseAnalyticsPage() {
   }
 
   // ===========================================
-  // FILTER BY ASSET (PAKAI KOLOM BRAND) - DENGAN DEBUG
+  // FORMAT MEMBER ID UNTUK DEPOSIT/WITHDRAWAL
+  // ===========================================
+  const formatMemberId = (userName: string, assetCode: string = 'XLY'): string => {
+    if (!userName) return ''
+    // Kalo udah ada prefix XLY, return apa adanya
+    if (userName.startsWith('XLY')) return userName
+    // Kalo belum, tambahin XLY
+    return assetCode + userName
+  }
+
+  // ===========================================
+  // FILTER BY ASSET (PAKAI KOLOM BRAND)
   // ===========================================
   const filterByAsset = (row: any): boolean => {
-    if (selectedAsset === 'all') {
-      console.log('🔍 FILTER: all mode - include all rows')
-      return true
-    }
-    const match = row.brand === selectedAsset
-    console.log(`🔍 FILTER: brand = ${row.brand}, selected = ${selectedAsset}, match = ${match}`)
-    return match
+    if (selectedAsset === 'all') return true
+    return row.brand === selectedAsset
   }
 
   // ===========================================
@@ -150,66 +156,44 @@ export default function WinloseAnalyticsPage() {
 
       if (winloseError) throw winloseError
 
-      console.log('📊 RAW WINLOSE DATA:', winloseData?.length || 0, 'rows')
-      if (winloseData && winloseData.length > 0) {
-        console.log('📊 SAMPLE BRAND VALUES:', winloseData.slice(0, 5).map((r: any) => r.brand))
-        console.log('📊 SAMPLE ACCOUNT_ID:', winloseData.slice(0, 5).map((r: any) => r.account_id))
-      }
-
       // ===========================================
       // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS
       // ===========================================
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
         .select('user_name, nett_amount, brand')
-        .eq('status', 'approved')
-        .gte('approved_date', start)
-        .lte('approved_date', end)
+        .eq('status', 'Approved')
+        .gte('approved_date', start + ' 00:00:00')
+        .lte('approved_date', end + ' 23:59:59')
 
       const { data: withdrawData, error: withdrawError } = await supabase
         .from('withdrawal_transactions')
         .select('user_name, nett_amount, brand')
-        .eq('status', 'approved')
-        .gte('approved_date', start)
-        .lte('approved_date', end)
+        .eq('status', 'Approved')
+        .gte('approved_date', start + ' 00:00:00')
+        .lte('approved_date', end + ' 23:59:59')
 
       if (depositError || withdrawError) {
         console.error('Deposit/Withdraw error:', depositError || withdrawError)
       }
 
       console.log('💰 DEPOSIT DATA:', depositData?.length || 0, 'rows')
-      if (depositData && depositData.length > 0) {
-        console.log('💰 DEPOSIT BRANDS:', depositData.map((r: any) => r.brand))
-      }
-      
       console.log('💰 WITHDRAW DATA:', withdrawData?.length || 0, 'rows')
-      if (withdrawData && withdrawData.length > 0) {
-        console.log('💰 WITHDRAW BRANDS:', withdrawData.map((r: any) => r.brand))
-      }
 
       // ===========================================
       // PROCESS WINLOSE DATA
       // ===========================================
       if (!winloseData || winloseData.length === 0) {
-        console.log('❌ TIDAK ADA WINLOSE DATA')
         setHasData(false)
         resetData()
         setLoading(false)
         return
       }
 
-      // Filter by asset (pake brand) - DENGAN DEBUG
-      console.log('🎯 MULAI FILTER WINLOSE, selectedAsset =', selectedAsset)
-      const filteredWinlose = winloseData.filter((row: any) => {
-        const result = filterByAsset(row)
-        if (!result) console.log('❌ FILTERED OUT:', row.account_id, 'brand =', row.brand)
-        return result
-      })
-      
-      console.log('📊 FILTERED WINLOSE:', filteredWinlose.length, 'rows')
+      // Filter by asset (pake brand)
+      const filteredWinlose = winloseData.filter((row: any) => filterByAsset(row))
 
       if (filteredWinlose.length === 0) {
-        console.log('❌ TIDAK ADA DATA SETELAH FILTER ASSET')
         setHasData(false)
         resetData()
         setLoading(false)
@@ -360,7 +344,8 @@ export default function WinloseAnalyticsPage() {
       depositData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         
-        const fullId = row.user_name
+        // FORMAT MEMBER ID: tambahin XLY di depan user_name
+        const fullId = formatMemberId(row.user_name, row.brand)
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
@@ -386,7 +371,8 @@ export default function WinloseAnalyticsPage() {
       withdrawData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         
-        const fullId = row.user_name
+        // FORMAT MEMBER ID: tambahin XLY di depan user_name
+        const fullId = formatMemberId(row.user_name, row.brand)
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
