@@ -11,6 +11,8 @@ import "react-datepicker/dist/react-datepicker.css"
 // ===========================================
 interface MemberStats {
   account_id: string
+  asset_code: string
+  member_id: string
   total_turnover: number
   total_winlose: number
   win_rate: number
@@ -29,15 +31,28 @@ interface ProductStats {
 
 interface WinDetail {
   account_id: string
+  asset_code: string
+  member_id: string
   win_amount: number
   product_type: string
   date: string
+}
+
+interface NetDepositWithdraw {
+  account_id: string
+  asset_code: string
+  member_id: string
+  total_deposit: number
+  total_withdraw: number
+  net_amount: number
+  transaction_count: number
 }
 
 export default function WinloseAnalyticsPage() {
   // ===========================================
   // STATES
   // ===========================================
+  const [selectedAsset, setSelectedAsset] = useState('all')
   const [selectedMonth, setSelectedMonth] = useState('Januari')
   const [selectedYear, setSelectedYear] = useState('2026')
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined)
@@ -57,25 +72,40 @@ export default function WinloseAnalyticsPage() {
   const [productStats, setProductStats] = useState<ProductStats[]>([])
   const [bigWins, setBigWins] = useState<WinDetail[]>([])
   const [highestTurnover, setHighestTurnover] = useState<MemberStats[]>([])
+  const [netDepositWithdraw, setNetDepositWithdraw] = useState<NetDepositWithdraw[]>([])
 
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
                   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
   const years = ['2025', '2026', '2027']
+  const assets = ['XLY'] // Sementara hardcode dulu
+
+  // ===========================================
+  // HELPER: Parse Account ID
+  // ===========================================
+  const parseAccountId = (fullId: string): { asset_code: string; member_id: string } => {
+    if (!fullId) return { asset_code: 'XLY', member_id: '' }
+    
+    // Ambil 3 huruf pertama sebagai asset code
+    const asset_code = fullId.substring(0, 3).toUpperCase()
+    const member_id = fullId.substring(3)
+    
+    return { asset_code, member_id }
+  }
 
   // ===========================================
   // FETCH DATA FROM SUPABASE
   // ===========================================
   useEffect(() => {
     if (!useCustomRange && selectedMonth && selectedYear) {
-      fetchData()
+      fetchAllData()
     }
-  }, [selectedMonth, selectedYear])
+  }, [selectedMonth, selectedYear, selectedAsset])
 
   useEffect(() => {
     if (useCustomRange && customStartDate && customEndDate) {
-      fetchData()
+      fetchAllData()
     }
-  }, [useCustomRange, customStartDate, customEndDate])
+  }, [useCustomRange, customStartDate, customEndDate, selectedAsset])
 
   const getDateRange = () => {
     if (useCustomRange && customStartDate && customEndDate) {
@@ -92,62 +122,99 @@ export default function WinloseAnalyticsPage() {
     }
   }
 
-  const fetchData = async () => {
+  const filterByAsset = (accountId: string): boolean => {
+    if (selectedAsset === 'all') return true
+    const { asset_code } = parseAccountId(accountId)
+    return asset_code === selectedAsset
+  }
+
+  const fetchAllData = async () => {
     try {
       setLoading(true)
       const { start, end } = getDateRange()
       
       console.log('📅 FETCHING DATA PERIODE:', { start, end })
 
-      const { data, error } = await supabase
+      // ===========================================
+      // 1. FETCH WINLOSE TRANSACTIONS
+      // ===========================================
+      const { data: winloseData, error: winloseError } = await supabase
         .from('winlose_transactions')
         .select('*')
         .gte('period_start', start)
         .lte('period_end', end)
 
-      if (error) throw error
+      if (winloseError) throw winloseError
 
-      if (!data || data.length === 0) {
+      // ===========================================
+      // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS
+      // ===========================================
+      const { data: depositData, error: depositError } = await supabase
+        .from('deposit_transactions')
+        .select('*')
+        .eq('status', 'approved')
+        .gte('created_at', start)
+        .lte('created_at', end)
+
+      const { data: withdrawData, error: withdrawError } = await supabase
+        .from('withdrawal_transactions')
+        .select('*')
+        .eq('status', 'approved')
+        .gte('created_at', start)
+        .lte('created_at', end)
+
+      if (depositError || withdrawError) throw depositError || withdrawError
+
+      // ===========================================
+      // PROCESS WINLOSE DATA
+      // ===========================================
+      if (!winloseData || winloseData.length === 0) {
         setHasData(false)
         resetData()
         setLoading(false)
         return
       }
 
-      console.log('📊 DATA FOUND:', data.length)
+      // Filter by asset
+      const filteredWinlose = winloseData.filter((row: any) => filterByAsset(row.account_id))
+
+      if (filteredWinlose.length === 0) {
+        setHasData(false)
+        resetData()
+        setLoading(false)
+        return
+      }
+
       setHasData(true)
 
-      // ===========================================
-      // 1. UNIQUE PLAYER COUNT
-      // ===========================================
-      const uniquePlayers = new Set(data.map((d: any) => d.account_id))
+      // Unique player count
+      const uniquePlayers = new Set(filteredWinlose.map((d: any) => d.account_id))
       setUniquePlayerCount(uniquePlayers.size)
 
-      // ===========================================
-      // 2. SUMMARY STATS
-      // ===========================================
-      const turnover = data.reduce((sum: number, row: any) => sum + (row.turnover || 0), 0)
-      const winlose = data.reduce((sum: number, row: any) => sum + (row.member_win || 0), 0)
-      const games = data.reduce((sum: number, row: any) => sum + (row.bet_count || 0), 0)
+      // Summary stats
+      const turnover = filteredWinlose.reduce((sum: number, row: any) => sum + (row.turnover || 0), 0)
+      const winlose = filteredWinlose.reduce((sum: number, row: any) => sum + (row.member_win || 0), 0)
+      const games = filteredWinlose.reduce((sum: number, row: any) => sum + (row.bet_count || 0), 0)
       
       setTotalTurnover(turnover)
       setTotalWinlose(winlose)
       setTotalGames(games)
 
-      // ===========================================
-      // 3. MEMBER STATS
-      // ===========================================
+      // Member Stats
       const memberMap = new Map<string, MemberStats>()
       const winDetails: WinDetail[] = []
 
-      data.forEach((row: any) => {
-        const account = row.account_id
+      filteredWinlose.forEach((row: any) => {
+        const fullId = row.account_id
+        const { asset_code, member_id } = parseAccountId(fullId)
         const winAmount = row.member_win || 0
         const turnover = row.turnover || 0
         
-        if (!memberMap.has(account)) {
-          memberMap.set(account, {
-            account_id: account,
+        if (!memberMap.has(fullId)) {
+          memberMap.set(fullId, {
+            account_id: fullId,
+            asset_code,
+            member_id,
             total_turnover: 0,
             total_winlose: 0,
             win_rate: 0,
@@ -156,7 +223,7 @@ export default function WinloseAnalyticsPage() {
           })
         }
         
-        const stats = memberMap.get(account)!
+        const stats = memberMap.get(fullId)!
         stats.total_turnover += turnover
         stats.total_winlose += winAmount
         stats.games_played += row.bet_count || 0
@@ -167,7 +234,9 @@ export default function WinloseAnalyticsPage() {
         
         if (winAmount > 0) {
           winDetails.push({
-            account_id: account,
+            account_id: fullId,
+            asset_code,
+            member_id,
             win_amount: winAmount,
             product_type: row.product_type,
             date: row.period_start
@@ -191,7 +260,7 @@ export default function WinloseAnalyticsPage() {
         .slice(0, 100)
       setTopMembers(topByWinRate)
 
-      // Highest turnover
+      // Highest Turnover (HANYA TURNOVER, BUKAN NET TURNOVER)
       const topByTurnover = [...membersArray]
         .sort((a, b) => b.total_turnover - a.total_turnover)
         .slice(0, 100)
@@ -203,12 +272,10 @@ export default function WinloseAnalyticsPage() {
         .slice(0, 50)
       setBigWins(sortedWins)
 
-      // ===========================================
-      // 4. PRODUCT STATS
-      // ===========================================
+      // Product Stats
       const productMap = new Map<string, ProductStats>()
       
-      data.forEach((row: any) => {
+      filteredWinlose.forEach((row: any) => {
         const product = row.product_type
         if (!product) return
         
@@ -231,7 +298,7 @@ export default function WinloseAnalyticsPage() {
 
       // Calculate member count per product
       const memberPerProduct = new Map<string, Set<string>>()
-      data.forEach((row: any) => {
+      filteredWinlose.forEach((row: any) => {
         const product = row.product_type
         const account = row.account_id
         if (!product || !account) return
@@ -253,6 +320,69 @@ export default function WinloseAnalyticsPage() {
         .sort((a, b) => b.total_winlose - a.total_winlose)
       setProductStats(productsArray)
 
+      // ===========================================
+      // PROCESS DEPOSIT & WITHDRAWAL DATA
+      // ===========================================
+      const netMap = new Map<string, NetDepositWithdraw>()
+
+      // Process deposits
+      depositData?.forEach((row: any) => {
+        const fullId = row.account_id
+        if (!fullId || !filterByAsset(fullId)) return
+        
+        const { asset_code, member_id } = parseAccountId(fullId)
+        const amount = row.nett_amount || 0
+        
+        if (!netMap.has(fullId)) {
+          netMap.set(fullId, {
+            account_id: fullId,
+            asset_code,
+            member_id,
+            total_deposit: 0,
+            total_withdraw: 0,
+            net_amount: 0,
+            transaction_count: 0
+          })
+        }
+        
+        const stats = netMap.get(fullId)!
+        stats.total_deposit += amount
+        stats.net_amount += amount
+        stats.transaction_count += 1
+      })
+
+      // Process withdrawals
+      withdrawData?.forEach((row: any) => {
+        const fullId = row.account_id
+        if (!fullId || !filterByAsset(fullId)) return
+        
+        const { asset_code, member_id } = parseAccountId(fullId)
+        const amount = row.nett_amount || 0
+        
+        if (!netMap.has(fullId)) {
+          netMap.set(fullId, {
+            account_id: fullId,
+            asset_code,
+            member_id,
+            total_deposit: 0,
+            total_withdraw: 0,
+            net_amount: 0,
+            transaction_count: 0
+          })
+        }
+        
+        const stats = netMap.get(fullId)!
+        stats.total_withdraw += amount
+        stats.net_amount -= amount
+        stats.transaction_count += 1
+      })
+
+      // Sort by net amount (highest positive = member deposit lebih banyak)
+      const netArray = Array.from(netMap.values())
+        .sort((a, b) => b.net_amount - a.net_amount)
+        .slice(0, 100)
+      setNetDepositWithdraw(netArray)
+
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -269,6 +399,7 @@ export default function WinloseAnalyticsPage() {
     setProductStats([])
     setBigWins([])
     setHighestTurnover([])
+    setNetDepositWithdraw([])
   }
 
   // ===========================================
@@ -297,16 +428,31 @@ export default function WinloseAnalyticsPage() {
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
       {/* HEADER */}
-      <div className="mb-6 flex justify-between items-center">
+      <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
         <Link href="/dashboard/analytics" className="text-[#FFD700] hover:underline">
           ← BACK TO ANALYTICS
         </Link>
-        <div className="text-[#FFD700] font-bold">WIN/LOSE ANALYTICS</div>
+        <div className="text-[#FFD700] font-bold text-xl">WIN/LOSE ANALYTICS</div>
       </div>
 
       {/* FILTER SECTION */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
+          {/* ASSET FILTER */}
+          <div>
+            <label className="text-xs text-[#A7D8FF] block mb-1">ASSET</label>
+            <select 
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
+              value={selectedAsset}
+              onChange={(e) => setSelectedAsset(e.target.value)}
+            >
+              <option value="all">SEMUA ASSET</option>
+              {assets.map(asset => (
+                <option key={asset} value={asset}>{asset}</option>
+              ))}
+            </select>
+          </div>
+
           {/* RANGE TYPE TOGGLE */}
           <div className="flex items-center gap-2">
             <button 
@@ -397,7 +543,7 @@ export default function WinloseAnalyticsPage() {
           <div className="text-6xl mb-4">📊</div>
           <h2 className="text-xl text-[#FFD700] font-bold mb-2">Belum Ada Data</h2>
           <p className="text-[#A7D8FF]">
-            Pilih periode yang ada datanya (Januari 2026) atau upload data dulu di menu Winlose Data Raw
+            Pilih periode yang ada datanya (Januari 2026) atau upload data dulu
           </p>
         </div>
       )}
@@ -419,10 +565,12 @@ export default function WinloseAnalyticsPage() {
             </div>
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Net Win/Lose</div>
-              <div className={`text-2xl font-bold ${totalWinlose >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <div className={`text-2xl font-bold ${totalWinlose <= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatCurrency(totalWinlose)}
               </div>
-              <div className="text-xs text-gray-400">(Minus = Player Win)</div>
+              <div className="text-xs text-gray-400">
+                {totalWinlose <= 0 ? '💰 Profit' : '📉 Loss'}
+              </div>
             </div>
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Total Games</div>
@@ -431,36 +579,97 @@ export default function WinloseAnalyticsPage() {
             </div>
           </div>
 
-          {/* MAIN CONTENT GRID */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* LEFT COLUMN */}
+          {/* MAIN CONTENT GRID - 3 Kolom */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* COLUMN 1: Member Performance */}
             <div className="space-y-6">
               {/* TOP MEMBERS BY WIN RATE */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-                  <h2 className="text-[#FFD700] font-bold">🏆 TOP 100 MEMBERS (Win Rate)</h2>
+                  <h2 className="text-[#FFD700] font-bold">🏆 TOP 100 (Win Rate)</h2>
                 </div>
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
                     <thead className="bg-[#0B1A33]/50 sticky top-0">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs text-[#A7D8FF]">Rank</th>
-                        <th className="px-4 py-2 text-left text-xs text-[#A7D8FF]">Account</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Win/Lose</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Win Rate</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Games</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Win Rate</th>
                       </tr>
                     </thead>
                     <tbody>
                       {topMembers.map((member, idx) => (
                         <tr key={member.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-4 py-2 text-sm">#{idx + 1}</td>
-                          <td className="px-4 py-2 text-sm text-[#A7D8FF] font-mono">{member.account_id}</td>
-                          <td className={`px-4 py-2 text-sm text-right ${member.total_winlose >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {formatCurrency(member.total_winlose)}
+                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{member.member_id}</td>
+                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{member.asset_code}</td>
+                          <td className="px-2 py-1 text-sm text-right">
+                            <span className={member.win_rate > 50 ? 'text-red-400' : 'text-green-400'}>
+                              {formatPercent(member.win_rate)}
+                            </span>
                           </td>
-                          <td className="px-4 py-2 text-sm text-right text-[#FFD700]">{formatPercent(member.win_rate)}</td>
-                          <td className="px-4 py-2 text-sm text-right">{formatNumber(member.games_played)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* BIG TIME WINS */}
+              <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+                <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
+                  <h2 className="text-[#FFD700] font-bold">💰 BIG WINS (Top 50)</h2>
+                </div>
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#0B1A33]/50 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Win</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Provider</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bigWins.map((win, idx) => (
+                        <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{win.member_id}</td>
+                          <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(win.win_amount)}</td>
+                          <td className="px-2 py-1 text-sm">{win.product_type}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMN 2: Financial Performance */}
+            <div className="space-y-6">
+              {/* HIGHEST TURNOVER - UDAH BENER (CUMA TURNOVER) */}
+              <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+                <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
+                  <h2 className="text-[#FFD700] font-bold">📊 HIGHEST TURNOVER (Top 100)</h2>
+                </div>
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#0B1A33]/50 sticky top-0">
+                      <tr>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Turnover</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {highestTurnover.map((member, idx) => (
+                        <tr key={member.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{member.member_id}</td>
+                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{member.asset_code}</td>
+                          <td className="px-2 py-1 text-sm text-right text-blue-400">{formatCurrency(member.total_turnover)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -471,33 +680,25 @@ export default function WinloseAnalyticsPage() {
               {/* PRODUCT STATS */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-                  <h2 className="text-[#FFD700] font-bold">🎰 PERFORMANCE PER PROVIDER</h2>
+                  <h2 className="text-[#FFD700] font-bold">🎰 PROVIDER PERFORMANCE</h2>
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
-                    <thead className="bg-[#0B1A33]/50">
+                    <thead className="bg-[#0B1A33]/50 sticky top-0">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs text-[#A7D8FF]">Provider</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Turnover</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Win/Lose</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Win Rate</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Players</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Provider</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Turnover</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Win/Lose</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {productStats.map((product, idx) => (
+                      {productStats.map((product) => (
                         <tr key={product.product_type} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-4 py-2 text-sm font-medium">
-                            <span className={idx === 0 ? 'text-green-400' : idx === productStats.length - 1 ? 'text-red-400' : ''}>
-                              {product.product_type}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2 text-sm text-right">{formatCurrency(product.total_turnover)}</td>
-                          <td className={`px-4 py-2 text-sm text-right ${product.total_winlose >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          <td className="px-2 py-1 text-sm font-medium">{product.product_type}</td>
+                          <td className="px-2 py-1 text-sm text-right">{formatCurrency(product.total_turnover)}</td>
+                          <td className={`px-2 py-1 text-sm text-right ${product.total_winlose <= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             {formatCurrency(product.total_winlose)}
                           </td>
-                          <td className="px-4 py-2 text-sm text-right text-[#FFD700]">{formatPercent(product.win_rate)}</td>
-                          <td className="px-4 py-2 text-sm text-right">{formatNumber(product.member_count)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -506,65 +707,35 @@ export default function WinloseAnalyticsPage() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN */}
+            {/* COLUMN 3: NET DEPOSIT VS WITHDRAW */}
             <div className="space-y-6">
-              {/* BIG TIME WINS */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-                  <h2 className="text-[#FFD700] font-bold">💰 BIG TIME WINS (Top 50)</h2>
+                  <h2 className="text-[#FFD700] font-bold">💰 NET DEPOSIT VS WITHDRAW (Top 100)</h2>
                 </div>
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
                     <thead className="bg-[#0B1A33]/50 sticky top-0">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs text-[#A7D8FF]">Rank</th>
-                        <th className="px-4 py-2 text-left text-xs text-[#A7D8FF]">Account</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Win Amount</th>
-                        <th className="px-4 py-2 text-left text-xs text-[#A7D8FF]">Provider</th>
-                        <th className="px-4 py-2 text-left text-xs text-[#A7D8FF]">Date</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
+                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Member</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Deposit</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Withdraw</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {bigWins.map((win, idx) => (
-                        <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-4 py-2 text-sm">#{idx + 1}</td>
-                          <td className="px-4 py-2 text-sm text-[#A7D8FF] font-mono">{win.account_id}</td>
-                          <td className="px-4 py-2 text-sm text-right text-green-400">{formatCurrency(win.win_amount)}</td>
-                          <td className="px-4 py-2 text-sm">{win.product_type}</td>
-                          <td className="px-4 py-2 text-sm text-gray-400">{win.date}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* HIGHEST TURNOVER */}
-              <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
-                <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-                  <h2 className="text-[#FFD700] font-bold">📊 HIGHEST TURNOVER (Top 100)</h2>
-                </div>
-                <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="bg-[#0B1A33]/50 sticky top-0">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs text-[#A7D8FF]">Rank</th>
-                        <th className="px-4 py-2 text-left text-xs text-[#A7D8FF]">Account</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Turnover</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Win/Lose</th>
-                        <th className="px-4 py-2 text-right text-xs text-[#A7D8FF]">Games</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {highestTurnover.map((member, idx) => (
-                        <tr key={member.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-4 py-2 text-sm">#{idx + 1}</td>
-                          <td className="px-4 py-2 text-sm text-[#A7D8FF] font-mono">{member.account_id}</td>
-                          <td className="px-4 py-2 text-sm text-right text-blue-400">{formatCurrency(member.total_turnover)}</td>
-                          <td className={`px-4 py-2 text-sm text-right ${member.total_winlose >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {formatCurrency(member.total_winlose)}
+                      {netDepositWithdraw.map((item, idx) => (
+                        <tr key={item.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{item.member_id}</td>
+                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
+                          <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(item.total_deposit)}</td>
+                          <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(item.total_withdraw)}</td>
+                          <td className={`px-2 py-1 text-sm text-right font-bold ${item.net_amount >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {formatCurrency(item.net_amount)}
                           </td>
-                          <td className="px-4 py-2 text-sm text-right">{formatNumber(member.games_played)}</td>
                         </tr>
                       ))}
                     </tbody>
