@@ -60,8 +60,8 @@ export default function WinloseAnalyticsPage() {
   const [selectedAsset, setSelectedAsset] = useState<string>('all')
   const [selectedMonth, setSelectedMonth] = useState<string>('')
   const [selectedYear, setSelectedYear] = useState<string>('')
-  const [customStartDate, setCustomStartDate] = useState<Date | null>(null)
-  const [customEndDate, setCustomEndDate] = useState<Date | null>(null)
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined)
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined)
   const [useCustomRange, setUseCustomRange] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(true)
   const [topLimit, setTopLimit] = useState<number>(100)
@@ -431,7 +431,7 @@ export default function WinloseAnalyticsPage() {
                 <label className="text-xs text-[#A7D8FF] block mb-1">DARI TANGGAL</label>
                 <DatePicker
                   selected={customStartDate}
-                  onChange={(date: Date | null) => setCustomStartDate(date)}
+                  onChange={(date: Date | null) => setCustomStartDate(date || undefined)} // <- ini yang bener
                   selectsStart
                   startDate={customStartDate}
                   endDate={customEndDate}
@@ -444,7 +444,7 @@ export default function WinloseAnalyticsPage() {
                 <label className="text-xs text-[#A7D8FF] block mb-1">SAMPAI TANGGAL</label>
                 <DatePicker
                   selected={customEndDate}
-                  onChange={(date: Date | null) => setCustomEndDate(date)}
+                  onChange={(date: Date | null) => setCustomEndDate(date || undefined)}
                   selectsEnd
                   startDate={customStartDate}
                   endDate={customEndDate}
