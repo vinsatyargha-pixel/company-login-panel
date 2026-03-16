@@ -2224,9 +2224,11 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
                   })}
                 </div>
                 
-                <div className="text-center text-[10px] text-[#A7D8FF] mt-1">
-                  Total: {officerPieData.reduce((sum, item) => sum + item.value, 0)} transactions
-                </div>
+                <Link href="/dashboard/officers-performance" className="block mt-2 text-right">
+  <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
+    Click to see detailed performance →
+  </span>
+</Link>
               </>
             ) : (
               <div className="h-full flex items-center justify-center text-[#A7D8FF] text-sm text-center">
