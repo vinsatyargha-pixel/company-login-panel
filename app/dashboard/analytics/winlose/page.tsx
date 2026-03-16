@@ -77,18 +77,15 @@ export default function WinloseAnalyticsPage() {
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
                   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
   const years = ['2025', '2026', '2027']
-  const assets = ['XLY'] // Sementara hardcode dulu
+  const assets = ['XLY']
 
   // ===========================================
-  // HELPER: Parse Account ID
+  // HELPER: Parse Account ID (3 huruf pertama = asset)
   // ===========================================
   const parseAccountId = (fullId: string): { asset_code: string; member_id: string } => {
     if (!fullId) return { asset_code: 'XLY', member_id: '' }
-    
-    // Ambil 3 huruf pertama sebagai asset code
     const asset_code = fullId.substring(0, 3).toUpperCase()
     const member_id = fullId.substring(3)
-    
     return { asset_code, member_id }
   }
 
@@ -147,23 +144,26 @@ export default function WinloseAnalyticsPage() {
       if (winloseError) throw winloseError
 
       // ===========================================
-      // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS
+      // 2. FETCH DEPOSIT & WITHDRAWAL TRANSACTIONS (APPROVED_DATE)
       // ===========================================
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
-        .select('*')
+        .select('account_id, nett_amount')
         .eq('status', 'approved')
-        .gte('created_at', start)
-        .lte('created_at', end)
+        .gte('approved_date', start)
+        .lte('approved_date', end)
 
       const { data: withdrawData, error: withdrawError } = await supabase
         .from('withdrawal_transactions')
-        .select('*')
+        .select('account_id, nett_amount')
         .eq('status', 'approved')
-        .gte('created_at', start)
-        .lte('created_at', end)
+        .gte('approved_date', start)
+        .lte('approved_date', end)
 
-      if (depositError || withdrawError) throw depositError || withdrawError
+      if (depositError || withdrawError) {
+        console.error('Deposit/Withdraw error:', depositError || withdrawError)
+        // Tetap lanjut meskipun deposit/withdraw error
+      }
 
       // ===========================================
       // PROCESS WINLOSE DATA
@@ -260,7 +260,7 @@ export default function WinloseAnalyticsPage() {
         .slice(0, 100)
       setTopMembers(topByWinRate)
 
-      // Highest Turnover (HANYA TURNOVER, BUKAN NET TURNOVER)
+      // Highest Turnover (HANYA TURNOVER)
       const topByTurnover = [...membersArray]
         .sort((a, b) => b.total_turnover - a.total_turnover)
         .slice(0, 100)
@@ -377,7 +377,7 @@ export default function WinloseAnalyticsPage() {
         stats.transaction_count += 1
       })
 
-      // Sort by net amount (highest positive = member deposit lebih banyak)
+      // Sort by net amount
       const netArray = Array.from(netMap.values())
         .sort((a, b) => b.net_amount - a.net_amount)
         .slice(0, 100)
@@ -648,7 +648,7 @@ export default function WinloseAnalyticsPage() {
 
             {/* COLUMN 2: Financial Performance */}
             <div className="space-y-6">
-              {/* HIGHEST TURNOVER - UDAH BENER (CUMA TURNOVER) */}
+              {/* HIGHEST TURNOVER */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">📊 HIGHEST TURNOVER (Top 100)</h2>
