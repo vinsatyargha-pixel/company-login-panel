@@ -1,0 +1,613 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
+import * as XLSX from 'xlsx'
+
+// ===========================================
+// TYPES
+// ===========================================
+
+type Asset = {
+  id: string
+  asset_name: string
+  asset_code: string
+}
+
+type WinloseUpload = {
+  id: string
+  upload_date: string
+  file_name: string
+  total_rows: number
+  status: string
+  website?: string
+  period_start?: string
+  period_end?: string
+  active_unique_players?: number
+}
+
+type WinloseTransaction = {
+  account_id: string
+  product_type: string
+  bet_count: number
+  turnover: number
+  net_turnover: number
+  member_win: number
+  member_comm: number
+  member_total: number
+  games_fee: number
+  jackpot_win: number
+  pvp_player_payout: number
+  pvp_table_fee: number
+  website: string
+  file_name: string
+  period_start: string
+  period_end: string
+  upload_date: string
+}
+
+// ===========================================
+// MAIN COMPONENT
+// ===========================================
+
+export default function WinloseDataRawPage() {
+  
+  // Data states
+  const [uploads, setUploads] = useState<WinloseUpload[]>([])
+  const [assets, setAssets] = useState<Asset[]>([])
+  const [loading, setLoading] = useState(true)
+  
+  // Filter states
+  const [selectedMonth, setSelectedMonth] = useState('')
+  const [selectedYear, setSelectedYear] = useState('')
+  const [selectedAsset, setSelectedAsset] = useState('all')
+  
+  // Upload modal states
+  const [showModal, setShowModal] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [dragActive, setDragActive] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [uploadProgress, setUploadProgress] = useState('')
+
+  const months = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ]
+  const years = ['2025', '2026', '2027']
+
+  // ===========================================
+  // INITIAL DATA
+  // ===========================================
+
+  useEffect(() => {
+    const today = new Date()
+    setSelectedMonth(months[today.getMonth()])
+    setSelectedYear(today.getFullYear().toString())
+    fetchAssets()
+  }, [])
+
+  useEffect(() => {
+    if (selectedMonth && selectedYear) {
+      fetchUploads()
+    }
+  }, [selectedMonth, selectedYear, selectedAsset])
+
+  // ===========================================
+  // FETCH FUNCTIONS
+  // ===========================================
+
+  const fetchAssets = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('assets')
+        .select('id, asset_name, asset_code')
+        .order('asset_name')
+      
+      if (error) throw error
+      setAssets(data || [])
+    } catch (error) {
+      console.error('Error fetching assets:', error)
+    }
+  }
+
+  const fetchUploads = async () => {
+    try {
+      setLoading(true)
+      
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+
+      let query = supabase
+        .from('winlose_uploads')
+        .select('*')
+        .gte('upload_date', startDate)
+        .lte('upload_date', endDate)
+        .order('upload_date', { ascending: true })
+
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset)
+        if (asset) {
+          query = query.eq('website', asset.asset_code)
+        }
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+      
+      setUploads(data || [])
+    } catch (error) {
+      console.error('Error fetching uploads:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // ===========================================
+  // DRAG & DROP HANDLERS
+  // ===========================================
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true)
+    } else if (e.type === 'dragleave') {
+      setDragActive(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+    
+    const files = e.dataTransfer.files
+    if (files && files[0]) {
+      const file = files[0]
+      const validTypes = ['.xlsx', '.xls', '.csv']
+      const fileExt = file.name.split('.').pop()?.toLowerCase()
+      
+      if (!fileExt || !validTypes.includes(`.${fileExt}`)) {
+        alert('Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv')
+        return
+      }
+      
+      setSelectedFile(file)
+    }
+  }, [])
+
+  // ===========================================
+  // PARSE FUNCTIONS
+  // ===========================================
+
+  const parseNumber = (value: any): number => {
+    if (value === null || value === undefined) return 0
+    if (typeof value === 'number') return value
+    if (typeof value === 'string') {
+      const cleaned = value.replace(/,/g, '').trim()
+      if (cleaned === '' || cleaned === '-' || cleaned === ' - ') return 0
+      const parsed = parseFloat(cleaned)
+      return isNaN(parsed) ? 0 : parsed
+    }
+    return 0
+  }
+
+  const parseString = (value: any): string => {
+    if (value === null || value === undefined) return ''
+    if (typeof value === 'string') return value.trim()
+    if (typeof value === 'number') return value.toString()
+    return String(value) || ''
+  }
+
+  const parseExcelDate = (value: any): string => {
+    if (!value) return ''
+
+    try {
+      if (typeof value === 'string') {
+        const months: { [key: string]: string } = {
+          'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+          'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+          'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+        }
+        
+        const match = value.match(/(\d{2})-(\w{3})-(\d{4})/)
+        if (match) {
+          const day = match[1]
+          const monthStr = match[2].toLowerCase()
+          const year = match[3]
+          const month = months[monthStr] || '01'
+          return `${year}-${month}-${day}`
+        }
+        return value
+      }
+
+      if (typeof value === 'number') {
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+        const date = new Date(excelEpoch.getTime() + value * 86400000)
+        const year = date.getUTCFullYear()
+        const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+        const day = String(date.getUTCDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      }
+      
+      return ''
+    } catch {
+      return ''
+    }
+  }
+
+  // ===========================================
+  // EXTRACT PERIOD
+  // ===========================================
+
+  const extractPeriodFromFile = (fileName: string, firstRows: any[]): { start: string, end: string } => {
+    let start = '', end = ''
+    
+    for (const row of firstRows) {
+      if (row && Array.isArray(row)) {
+        const rowStr = row.join(' ')
+        const match = rowStr.match(/From:\s*(\d{2}-\w{3}-\d{4}).*?To:\s*(\d{2}-\w{3}-\d{4})/i)
+        if (match) {
+          start = parseExcelDate(match[1])
+          end = parseExcelDate(match[2])
+          break
+        }
+      }
+    }
+    
+    if (!start || !end) {
+      const fileMatch = fileName.match(/(\d{2}-\w{3}-\d{4})[^\d]*(\d{2}-\w{3}-\d{4})/i)
+      if (fileMatch) {
+        start = parseExcelDate(fileMatch[1])
+        end = parseExcelDate(fileMatch[2])
+      }
+    }
+    
+    return { start, end }
+  }
+
+  // ===========================================
+  // GET ACTIVE PLAYERS
+  // ===========================================
+
+  const getActivePlayers = (firstRows: any[]): number => {
+    for (const row of firstRows) {
+      if (row && Array.isArray(row)) {
+        const rowStr = row.join(' ')
+        const match = rowStr.match(/Active Unique Player.*?(\d+)/i)
+        if (match) {
+          return parseInt(match[1]) || 0
+        }
+      }
+    }
+    return 0
+  }
+
+  // ===========================================
+  // UPLOAD PROCESS
+  // ===========================================
+
+  const processFile = async () => {
+    if (!selectedFile) return
+    
+    setUploading(true)
+    setUploadProgress('Membaca file...')
+    
+    try {
+      const arrayBuffer = await selectedFile.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer)
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      
+      const rows = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        defval: '',
+        blankrows: false
+      }) as any[][]
+      
+      // CARI BARIS HEADER
+      let headerRowIndex = -1
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
+        if (row && row[0] && row[0].toString().includes('Account ID')) {
+          headerRowIndex = i
+          break
+        }
+      }
+      
+      if (headerRowIndex === -1) {
+        throw new Error('Tidak menemukan baris header (Account ID)')
+      }
+      
+      const headers = rows[headerRowIndex]
+      const dataRows = rows.slice(headerRowIndex + 1)
+      const metadataRows = rows.slice(0, headerRowIndex)
+      
+      const { start: periodStart, end: periodEnd } = extractPeriodFromFile(selectedFile.name, metadataRows)
+      const activePlayers = getActivePlayers(metadataRows)
+      
+      // Cari index kolom
+      const findIndex = (keyword: string) => {
+        return headers.findIndex((h: string) => 
+          h && h.toString().toLowerCase().includes(keyword.toLowerCase())
+        )
+      }
+      
+      const idx = {
+        account: 0,
+        product: findIndex('product type'),
+        betCount: findIndex('bet count'),
+        turnover: findIndex('turnover'),
+        netTurnover: findIndex('net turnover'),
+        memberWin: findIndex('member win'),
+        memberComm: findIndex('member comm'),
+        memberTotal: findIndex('member total'),
+        gamesFee: findIndex('games fee'),
+        jackpotWin: findIndex('jackpot win'),
+        pvpPayout: findIndex('pvp player payout'),
+        pvpFee: findIndex('pvp table fee')
+      }
+      
+      setUploadProgress('Memvalidasi data...')
+      
+      const validTransactions: WinloseTransaction[] = []
+      const today = new Date().toISOString().split('T')[0]
+      const fileName = parseString(selectedFile.name)
+      
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i]
+        if (!row || row.length === 0) continue
+        
+        if (row[0] && row[0].toString().includes('Sub Total')) continue
+        
+        validTransactions.push({
+          account_id: parseString(row[idx.account]),
+          product_type: parseString(row[idx.product]),
+          bet_count: parseNumber(row[idx.betCount]),
+          turnover: parseNumber(row[idx.turnover]),
+          net_turnover: parseNumber(row[idx.netTurnover]),
+          member_win: parseNumber(row[idx.memberWin]),
+          member_comm: parseNumber(row[idx.memberComm]),
+          member_total: parseNumber(row[idx.memberTotal]),
+          games_fee: parseNumber(row[idx.gamesFee]),
+          jackpot_win: parseNumber(row[idx.jackpotWin]),
+          pvp_player_payout: parseNumber(row[idx.pvpPayout]),
+          pvp_table_fee: parseNumber(row[idx.pvpFee]),
+          website: 'XLY',
+          file_name: fileName,
+          period_start: parseString(periodStart),
+          period_end: parseString(periodEnd),
+          upload_date: today
+        })
+      }
+
+      if (validTransactions.length === 0) {
+        throw new Error('Tidak ada data valid dalam file')
+      }
+
+      setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
+      
+      // INSERT BATCH
+      const batchSize = 500
+      for (let i = 0; i < validTransactions.length; i += batchSize) {
+        const batch = validTransactions.slice(i, i + batchSize)
+        const { error } = await supabase
+          .from('winlose_transactions')
+          .insert(batch)
+        
+        if (error) throw error
+        setUploadProgress(`Menyimpan... ${Math.min(i + batchSize, validTransactions.length)}/${validTransactions.length}`)
+      }
+
+      // INSERT UPLOADS TRACKING
+      setUploadProgress('Menyimpan tracking upload...')
+      
+      const { error: uploadError } = await supabase
+        .from('winlose_uploads')
+        .insert({
+          upload_date: today,
+          file_name: fileName,
+          total_rows: validTransactions.length,
+          status: 'completed',
+          website: 'XLY',
+          period_start: parseString(periodStart),
+          period_end: parseString(periodEnd),
+          active_unique_players: activePlayers || 0
+        })
+      
+      if (uploadError) console.error('Error insert upload:', uploadError)
+
+      // AUDIT LOGS - COMMENT DULU KALO MASIH ERROR
+      /*
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        await supabase.from('audit_logs').insert({
+          table_name: 'winlose_transactions',
+          action: 'UPLOAD',
+          new_data: { 
+            count: validTransactions.length,
+            filename: fileName,
+            period: `${periodStart || '-'} - ${periodEnd || '-'}`,
+            active_players: activePlayers || 0
+          },
+          changed_by: user?.id || null,
+          changed_at: new Date().toISOString(),
+          module: 'WINLOSE',
+          description: `Uploaded ${validTransactions.length} win/lose records from ${fileName}`
+        })
+      } catch (logError) {
+        console.error('Error logging:', logError)
+      }
+      */
+
+      alert(`✅ Berhasil! 
+• ${validTransactions.length} data transaksi
+• Periode: ${periodStart || '-'} - ${periodEnd || '-'}
+• Active Players: ${activePlayers || 0}`)
+      
+      setShowModal(false)
+      setSelectedFile(null)
+      fetchUploads()
+      
+    } catch (error: any) {
+      console.error('❌ Error:', error)
+      alert('❌ Gagal: ' + error.message)
+    } finally {
+      setUploading(false)
+      setUploadProgress('')
+    }
+  }
+
+  // ===========================================
+  // HELPER FUNCTIONS
+  // ===========================================
+
+  const getDayFromDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr)
+      return date.getDate()
+    } catch {
+      return 1
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch(status?.toLowerCase()) {
+      case 'completed': return 'bg-green-500/20 text-green-400'
+      default: return 'bg-gray-500/20 text-gray-400'
+    }
+  }
+
+  // ===========================================
+  // RENDER
+  // ===========================================
+
+  if (loading) {
+    return (
+      <div className="p-6 min-h-screen bg-[#0B1A33] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
+      <div className="mb-6 flex justify-between items-center">
+        <Link href="/dashboard/data-raw" className="text-[#FFD700] hover:underline">
+          ← BACK TO DATA RAW
+        </Link>
+        
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-[#FFD700] text-[#0B1A33] px-6 py-2 rounded-lg font-bold hover:bg-[#FFD700]/80 flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          UPLOAD EXCEL
+        </button>
+      </div>
+
+      <h1 className="text-3xl font-bold text-[#FFD700] mb-6">WINLOSE DATA RAW</h1>
+
+      <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
+        <select 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+        >
+          {months.map(month => <option key={month} value={month}>{month}</option>)}
+        </select>
+        
+        <select 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+        >
+          {years.map(year => <option key={year} value={year}>{year}</option>)}
+        </select>
+        
+        <select 
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+          value={selectedAsset}
+          onChange={(e) => setSelectedAsset(e.target.value)}
+        >
+          <option value="all">SEMUA ASSET</option>
+          {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
+        </select>
+
+        <div className="ml-auto text-[#A7D8FF]">
+          Total: <span className="text-[#FFD700] font-bold">{uploads.length}</span> file
+        </div>
+      </div>
+
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
+            <tr>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal Upload</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Active Players</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {uploads.length > 0 ? uploads.map(item => (
+              <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                <td className="px-4 py-3">{getDayFromDate(item.upload_date)} {selectedMonth} {selectedYear}</td>
+                <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
+                <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                <td className="px-4 py-3">
+                  {item.period_start && item.period_end ? (
+                    <span className="text-xs">{item.period_start} s/d {item.period_end}</span>
+                  ) : '-'}
+                </td>
+                <td className="px-4 py-3">{item.active_unique_players || 0}</td>
+                <td className="px-4 py-3">{item.total_rows} data</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>{item.status}</span>
+                </td>
+              </tr>
+            )) : (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
+            <h2 className="text-xl font-bold text-[#FFD700] mb-4">Upload File Win/Lose</h2>
+            <div 
+              className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer ${dragActive ? 'border-[#FFD700] bg-[#FFD700]/10' : 'border-[#FFD700]/30 hover:border-[#FFD700] hover:bg-[#FFD700]/5'}`}
+              onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+              onClick={() => document.getElementById('fileInput')?.click()}
+            >
+              <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+              {selectedFile ? (
+                <div className="text-green-400"><p className="text-lg mb-2">✓ {selectedFile.name}</p><p className="text-sm text-[#A7D8FF]">{(selectedFile.size / 1024).toFixed(2)} KB</p></div>
+              ) : (
+                <><div className="text-4xl mb-2">📂</div><p className="text-[#FFD700] font-medium">Geser file ke sini</p><p className="text-sm text-[#A7D8FF] mt-2">atau klik untuk memilih</p><p className="text-xs text-gray-400 mt-4">Format: .xlsx, .xls, .csv</p></>
+              )}
+            </div>
+            {uploadProgress && <div className="mb-4 text-sm text-[#A7D8FF] text-center">{uploadProgress}</div>}
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setShowModal(false); setSelectedFile(null); setUploadProgress(''); }} className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded">Batal</button>
+              <button onClick={processFile} disabled={!selectedFile || uploading} className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded font-bold hover:bg-[#FFD700]/80 disabled:opacity-50 disabled:cursor-not-allowed">
+                {uploading ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-[#0B1A33] border-t-transparent rounded-full animate-spin"></div>Uploading...</span> : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
