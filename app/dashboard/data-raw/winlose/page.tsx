@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx'
 // ===========================================
 // TYPES
 // ===========================================
+
 type Asset = {
   id: string
   asset_name: string
@@ -23,6 +24,7 @@ type WinloseUpload = {
   period_start: string
   period_end: string
   active_unique_players: number
+  uploaded_at: string
 }
 
 type WinloseTransaction = {
@@ -44,15 +46,18 @@ type WinloseTransaction = {
   period_end: string
 }
 
+// ===========================================
+// MAIN COMPONENT
+// ===========================================
+
 export default function WinloseDataRawPage() {
-  // ===========================================
-  // STATES
-  // ===========================================
+  
+  // Data states
   const [uploads, setUploads] = useState<WinloseUpload[]>([])
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   
-  // Filter states
+  // Filter states - DEFAULT JANUARI 2026
   const [selectedMonth, setSelectedMonth] = useState('Januari')
   const [selectedYear, setSelectedYear] = useState('2026')
   const [selectedAsset, setSelectedAsset] = useState('all')
@@ -108,12 +113,11 @@ export default function WinloseDataRawPage() {
       
       const monthIndex = months.indexOf(selectedMonth) + 1
       const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-31`
 
       console.log('🔍 FILTER PERIODE:', { selectedMonth, selectedYear, startDate, endDate })
 
-      // FILTER BERDASARKAN PERIOD_START DAN PERIOD_END
+      // FILTER BERDASARKAN PERIOD_START DAN PERIOD_END!
       let query = supabase
         .from('winlose_uploads')
         .select('*')
@@ -179,7 +183,7 @@ export default function WinloseDataRawPage() {
   // ===========================================
 
   const parseNumber = (value: any): number => {
-    if (!value && value !== 0) return 0
+    if (value === null || value === undefined) return 0
     if (typeof value === 'number') return value
     if (typeof value === 'string') {
       const cleaned = value.replace(/,/g, '').trim()
@@ -191,7 +195,7 @@ export default function WinloseDataRawPage() {
   }
 
   const parseString = (value: any): string => {
-    if (!value) return ''
+    if (value === null || value === undefined) return ''
     if (typeof value === 'string') return value.trim()
     if (typeof value === 'number') return value.toString()
     return String(value) || ''
@@ -234,7 +238,7 @@ export default function WinloseDataRawPage() {
     let periodEnd = ''
     let activePlayers = 0
     
-    // Baris 1: Consolidate Player | From: 01-Jan-2026 To: 31-Jan-2026
+    // Baris 1: Consolidate Player | (kosong) | From: 01-Jan-2026 To: 31-Jan-2026
     if (rows[0] && rows[0][2]) {
       const fromToMatch = rows[0][2].match(/From:\s*(\d{2}-\w{3}-\d{4}).*?To:\s*(\d{2}-\w{3}-\d{4})/i)
       if (fromToMatch) {
@@ -243,7 +247,7 @@ export default function WinloseDataRawPage() {
       }
     }
     
-    // Baris 2: Active Unique Player | 87
+    // Baris 2: Active Unique Player | (kosong) | 87
     if (rows[1] && rows[1][2]) {
       const activeMatch = rows[1][2].toString().match(/(\d+)/)
       if (activeMatch) {
@@ -288,7 +292,7 @@ export default function WinloseDataRawPage() {
       
       // CARI BARIS HEADER (Account ID)
       let headerRowIndex = -1
-      for (let i = 2; i < rows.length; i++) {
+      for (let i = 2; i < rows.length; i++) { // Mulai dari baris 3
         const row = rows[i]
         if (row && row[0] && row[0].toString().includes('Account ID')) {
           headerRowIndex = i
@@ -327,8 +331,6 @@ export default function WinloseDataRawPage() {
         pvpPayout: findIndex('pvp player payout'),
         pvpFee: findIndex('pvp table fee')
       }
-      
-      console.log('📊 Kolom indexes:', idx)
       
       setUploadProgress('Memvalidasi data...')
       
@@ -383,7 +385,7 @@ export default function WinloseDataRawPage() {
         setUploadProgress(`Menyimpan... ${Math.min(i + batchSize, validTransactions.length)}/${validTransactions.length}`)
       }
 
-      // INSERT KE UPLOADS TRACKING
+      // INSERT KE UPLOADS TRACKING (PAKAI PERIODE, BUKAN UPLOAD_DATE!)
       setUploadProgress('Menyimpan tracking upload...')
       
       const { error: uploadError } = await supabase
@@ -395,7 +397,8 @@ export default function WinloseDataRawPage() {
           website: 'XLY',
           period_start: periodStart,
           period_end: periodEnd,
-          active_unique_players: activePlayers
+          active_unique_players: activePlayers,
+          uploaded_at: new Date().toISOString()
         })
       
       if (uploadError) console.error('Error insert upload:', uploadError)
@@ -429,6 +432,12 @@ export default function WinloseDataRawPage() {
     }
   }
 
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-'
+    const date = new Date(dateStr)
+    return date.getDate().toString()
+  }
+
   // ===========================================
   // RENDER
   // ===========================================
@@ -443,7 +452,6 @@ export default function WinloseDataRawPage() {
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-      {/* HEADER */}
       <div className="mb-6 flex justify-between items-center">
         <Link href="/dashboard/data-raw" className="text-[#FFD700] hover:underline">
           ← BACK TO DATA RAW
@@ -462,7 +470,6 @@ export default function WinloseDataRawPage() {
 
       <h1 className="text-3xl font-bold text-[#FFD700] mb-6">WINLOSE DATA RAW</h1>
 
-      {/* FILTERS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
           className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
@@ -494,13 +501,11 @@ export default function WinloseDataRawPage() {
         </div>
       </div>
 
-      {/* TABLE UPLOADS */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th className="px-4 py-3 text-left text-[#FFD700]">No</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Active Players</th>
@@ -512,7 +517,6 @@ export default function WinloseDataRawPage() {
             {uploads.length > 0 ? uploads.map((item, index) => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                 <td className="px-4 py-3">{index + 1}</td>
-                <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                 <td className="px-4 py-3">
                   {item.period_start} s/d {item.period_end}
@@ -524,13 +528,12 @@ export default function WinloseDataRawPage() {
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* UPLOAD MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
