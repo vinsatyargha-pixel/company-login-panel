@@ -58,9 +58,9 @@ export default function WinloseDataRawPage() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   
-  // Filter states
-  const [selectedMonth, setSelectedMonth] = useState('')
-  const [selectedYear, setSelectedYear] = useState('')
+  // Filter states - DEFAULT JANUARI 2026
+  const [selectedMonth, setSelectedMonth] = useState('Januari')
+  const [selectedYear, setSelectedYear] = useState('2026')
   const [selectedAsset, setSelectedAsset] = useState('all')
   
   // Upload modal states
@@ -81,9 +81,6 @@ export default function WinloseDataRawPage() {
   // ===========================================
 
   useEffect(() => {
-    const today = new Date()
-    setSelectedMonth(months[today.getMonth()])
-    setSelectedYear(today.getFullYear().toString())
     fetchAssets()
   }, [])
 
@@ -180,7 +177,7 @@ export default function WinloseDataRawPage() {
   }, [])
 
   // ===========================================
-  // PARSE FUNCTIONS
+  // PARSE FUNCTIONS - NO NULLS!
   // ===========================================
 
   const parseNumber = (value: any): number => {
@@ -419,30 +416,6 @@ export default function WinloseDataRawPage() {
         })
       
       if (uploadError) console.error('Error insert upload:', uploadError)
-
-      // AUDIT LOGS - COMMENT DULU KALO MASIH ERROR
-      /*
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        
-        await supabase.from('audit_logs').insert({
-          table_name: 'winlose_transactions',
-          action: 'UPLOAD',
-          new_data: { 
-            count: validTransactions.length,
-            filename: fileName,
-            period: `${periodStart || '-'} - ${periodEnd || '-'}`,
-            active_players: activePlayers || 0
-          },
-          changed_by: user?.id || null,
-          changed_at: new Date().toISOString(),
-          module: 'WINLOSE',
-          description: `Uploaded ${validTransactions.length} win/lose records from ${fileName}`
-        })
-      } catch (logError) {
-        console.error('Error logging:', logError)
-      }
-      */
 
       alert(`✅ Berhasil! 
 • ${validTransactions.length} data transaksi
