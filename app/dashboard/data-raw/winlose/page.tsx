@@ -15,16 +15,6 @@ type Asset = {
   asset_code: string
 }
 
-type WinloseData = {
-  account_id: string
-  product_type: string
-  bet_count: number
-  turnover: number
-  net_turnover: number
-  member_win: number
-  member_total: number
-}
-
 type MemberStats = {
   account_id: string
   total_turnover: number
@@ -431,7 +421,7 @@ export default function WinloseAnalyticsPage() {
                 <label className="text-xs text-[#A7D8FF] block mb-1">DARI TANGGAL</label>
                 <DatePicker
                   selected={customStartDate}
-                  onChange={(date: Date | null) => setCustomStartDate(date || undefined)} // <- ini yang bener
+                  onChange={(date: Date | null) => setCustomStartDate(date || undefined)}
                   selectsStart
                   startDate={customStartDate}
                   endDate={customEndDate}
