@@ -665,7 +665,7 @@ export default function PlayerOverviewPage() {
           {/* SUMMARY CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-              <div className="text-sm text-[#A7D8FF]">Unique Players</div>
+              <div className="text-sm text-[#A7D8FF]">Active Players</div>
               <div className="text-2xl font-bold text-[#FFD700]">{formatNumber(uniquePlayerCount)}</div>
             </div>
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
@@ -679,7 +679,7 @@ export default function PlayerOverviewPage() {
               </div>
             </div>
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-              <div className="text-sm text-[#A7D8FF]">Total Games</div>
+              <div className="text-sm text-[#A7D8FF]">Total Bet/times</div>
               <div className="text-2xl font-bold text-purple-400">{formatNumber(totalGames)}</div>
             </div>
           </div>
