@@ -68,14 +68,14 @@ interface TopWithdrawal {
 
 export default function PlayerOverviewPage() {
   // ===========================================
-  // STATES
+  // STATES - TAMBAH RANGE TYPE
   // ===========================================
   const [selectedAsset, setSelectedAsset] = useState('all')
   const [selectedMonth, setSelectedMonth] = useState('Januari')
   const [selectedYear, setSelectedYear] = useState('2026')
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined)
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined)
-  const [useCustomRange, setUseCustomRange] = useState(false)
+  const [rangeType, setRangeType] = useState<'monthly' | 'custom' | 'yesterday'>('monthly')
   const [loading, setLoading] = useState(false)
   const [hasData, setHasData] = useState(false)
   
@@ -127,33 +127,52 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // FETCH DATA
+  // FETCH DATA - UPDATE DENGAN YESTERDAY
   // ===========================================
   useEffect(() => {
-    if (!useCustomRange && selectedMonth && selectedYear) {
+    if (rangeType === 'monthly' && selectedMonth && selectedYear) {
       fetchAllData()
     }
-  }, [selectedMonth, selectedYear, selectedAsset])
+  }, [selectedMonth, selectedYear, selectedAsset, rangeType])
 
   useEffect(() => {
-    if (useCustomRange && customStartDate && customEndDate) {
+    if (rangeType === 'yesterday') {
       fetchAllData()
     }
-  }, [useCustomRange, customStartDate, customEndDate, selectedAsset])
+  }, [selectedAsset, rangeType])
+
+  useEffect(() => {
+    if (rangeType === 'custom' && customStartDate && customEndDate) {
+      fetchAllData()
+    }
+  }, [customStartDate, customEndDate, selectedAsset, rangeType])
 
   const getDateRange = () => {
-    if (useCustomRange && customStartDate && customEndDate) {
+    // YESTERDAY
+    if (rangeType === 'yesterday') {
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
+      const dateStr = yesterday.toISOString().split('T')[0]
+      return {
+        start: dateStr,
+        end: dateStr
+      }
+    }
+    
+    // CUSTOM RANGE
+    if (rangeType === 'custom' && customStartDate && customEndDate) {
       return {
         start: customStartDate.toISOString().split('T')[0],
         end: customEndDate.toISOString().split('T')[0]
       }
-    } else {
-      const monthIndex = months.indexOf(selectedMonth) + 1
-      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
-      return { start: startDate, end: endDate }
     }
+    
+    // MONTHLY (default)
+    const monthIndex = months.indexOf(selectedMonth) + 1
+    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+    return { start: startDate, end: endDate }
   }
 
   const fetchAllData = async () => {
@@ -161,10 +180,10 @@ export default function PlayerOverviewPage() {
       setLoading(true)
       const { start, end } = getDateRange()
       
-      console.log('📅 FETCHING DATA PERIODE:', { start, end })
+      console.log('📅 FETCHING DATA PERIODE:', { start, end, rangeType })
 
       // ===========================================
-      // 1. FETCH WINLOSE TRANSACTIONS - FILTER PERIOD_START
+      // 1. FETCH WINLOSE TRANSACTIONS
       // ===========================================
       const { data: winloseData, error: winloseError } = await supabase
         .from('winlose_transactions')
@@ -510,7 +529,7 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // RENDER
+  // RENDER - UPDATE DENGAN YESTERDAY
   // ===========================================
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
@@ -522,9 +541,10 @@ export default function PlayerOverviewPage() {
         <div className="text-[#FFD700] font-bold text-xl">👤 PLAYER OVERVIEW</div>
       </div>
 
-      {/* FILTER SECTION */}
+      {/* FILTER SECTION - DENGAN YESTERDAY */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
+          {/* ASSET FILTER */}
           <div>
             <label className="text-xs text-[#A7D8FF] block mb-1">ASSET</label>
             <select 
@@ -539,22 +559,30 @@ export default function PlayerOverviewPage() {
             </select>
           </div>
 
+          {/* RANGE TYPE TOGGLE - TAMBAH YESTERDAY */}
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => setUseCustomRange(false)} 
-              className={`px-4 py-2 rounded-lg ${!useCustomRange ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#0B1A33] text-white'}`}
+              onClick={() => setRangeType('monthly')} 
+              className={`px-4 py-2 rounded-lg ${rangeType === 'monthly' ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#0B1A33] text-white'}`}
             >
               Bulanan
             </button>
             <button 
-              onClick={() => setUseCustomRange(true)} 
-              className={`px-4 py-2 rounded-lg ${useCustomRange ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#0B1A33] text-white'}`}
+              onClick={() => setRangeType('yesterday')} 
+              className={`px-4 py-2 rounded-lg ${rangeType === 'yesterday' ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#0B1A33] text-white'}`}
+            >
+              Yesterday
+            </button>
+            <button 
+              onClick={() => setRangeType('custom')} 
+              className={`px-4 py-2 rounded-lg ${rangeType === 'custom' ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#0B1A33] text-white'}`}
             >
               Custom Range
             </button>
           </div>
 
-          {!useCustomRange && (
+          {/* MONTHLY FILTERS */}
+          {rangeType === 'monthly' && (
             <>
               <div>
                 <label className="text-xs text-[#A7D8FF] block mb-1">BULAN</label>
@@ -579,7 +607,8 @@ export default function PlayerOverviewPage() {
             </>
           )}
 
-          {useCustomRange && (
+          {/* CUSTOM RANGE FILTERS */}
+          {rangeType === 'custom' && (
             <>
               <div>
                 <label className="text-xs text-[#A7D8FF] block mb-1">DARI TANGGAL</label>
@@ -610,6 +639,8 @@ export default function PlayerOverviewPage() {
               </div>
             </>
           )}
+
+          {/* YESTERDAY - TIDAK PERLU FILTER TAMBAHAN */}
         </div>
       </div>
 
@@ -624,13 +655,14 @@ export default function PlayerOverviewPage() {
           <div className="text-6xl mb-4">👤</div>
           <h2 className="text-xl text-[#FFD700] font-bold mb-2">Belum Ada Data Player</h2>
           <p className="text-[#A7D8FF]">
-            Pilih periode yang ada datanya (Januari 2026) atau upload data dulu
+            Pilih periode yang ada datanya atau upload data dulu
           </p>
         </div>
       )}
 
       {!loading && hasData && (
         <>
+          {/* SUMMARY CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Unique Players</div>
@@ -652,6 +684,7 @@ export default function PlayerOverviewPage() {
             </div>
           </div>
 
+          {/* MAIN CONTENT GRID */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* LEFT COLUMN */}
             <div className="space-y-6">
