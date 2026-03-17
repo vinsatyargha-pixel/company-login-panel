@@ -13,27 +13,27 @@ interface MemberStats {
   account_id: string
   asset_code: string
   member_id: string
-  total_net_turnover: number      // dari net_turnover
-  member_total: number             // dari member_total (NET WIN/LOSE)
-  win_rate: number                 // (member_total / total_net_turnover) * 100
+  total_net_turnover: number
+  member_total: number
+  win_rate: number
   games_played: number
   biggest_win: number
 }
 
 interface ProductStats {
   product_type: string
-  total_net_turnover: number       // dari net_turnover
-  member_total: number              // dari member_total
+  total_net_turnover: number
+  member_total: number
   member_count: number
   bet_count: number
-  win_rate: number                  // (member_total / total_net_turnover) * 100
+  win_rate: number
 }
 
 interface WinDetail {
   account_id: string
   asset_code: string
   member_id: string
-  win_amount: number                // member_total positif (kemenangan)
+  win_amount: number
   product_type: string
   date: string
 }
@@ -81,8 +81,8 @@ export default function PlayerOverviewPage() {
   
   // Summary stats
   const [uniquePlayerCount, setUniquePlayerCount] = useState(0)
-  const [totalNetTurnover, setTotalNetTurnover] = useState(0)      // dari net_turnover
-  const [netWinLose, setNetWinLose] = useState(0)                   // dari member_total
+  const [totalNetTurnover, setTotalNetTurnover] = useState(0)
+  const [netWinLose, setNetWinLose] = useState(0)
   const [totalGames, setTotalGames] = useState(0)
   
   // Detail data
@@ -164,15 +164,17 @@ export default function PlayerOverviewPage() {
       console.log('📅 FETCHING DATA PERIODE:', { start, end })
 
       // ===========================================
-      // 1. FETCH WINLOSE TRANSACTIONS
+      // 1. FETCH WINLOSE TRANSACTIONS - FILTER PERIOD_START
       // ===========================================
       const { data: winloseData, error: winloseError } = await supabase
         .from('winlose_transactions')
         .select('*')
         .gte('period_start', start)
-        .lte('period_end', end)
+        .lte('period_start', end)
 
       if (winloseError) throw winloseError
+
+      console.log('📊 WINLOSE DATA:', winloseData?.length || 0, 'rows')
 
       // ===========================================
       // 2. FETCH DEPOSIT & WITHDRAWAL
@@ -194,6 +196,9 @@ export default function PlayerOverviewPage() {
       if (depositError || withdrawError) {
         console.error('Deposit/Withdraw error:', depositError || withdrawError)
       }
+
+      console.log('💰 DEPOSIT DATA:', depositData?.length || 0, 'rows')
+      console.log('💰 WITHDRAW DATA:', withdrawData?.length || 0, 'rows')
 
       // ===========================================
       // PROCESS WINLOSE DATA
@@ -218,33 +223,25 @@ export default function PlayerOverviewPage() {
       setHasData(true)
 
       // ===========================================
-      // SUMMARY STATS - PAKAI NET_TURNOVER & MEMBER_TOTAL
+      // SUMMARY STATS
       // ===========================================
       const validRows = filteredWinlose.filter((row: any) => 
         row.account_id && row.account_id !== '' && !row.account_id.toString().includes('Sub Total')
       )
 
-      // Hitung total dari data valid (skip Sub Total)
       const totalNetTurnover = validRows.reduce((sum: number, row: any) => sum + (row.net_turnover || 0), 0)
       const totalMemberTotal = validRows.reduce((sum: number, row: any) => sum + (row.member_total || 0), 0)
       const totalGames = validRows.reduce((sum: number, row: any) => sum + (row.bet_count || 0), 0)
-
-      console.log('📊 SUMMARY DARI DATA VALID:', {
-        netTurnover: totalNetTurnover,
-        memberTotal: totalMemberTotal,  // INI NET WIN/LOSE
-        games: totalGames
-      })
 
       setTotalNetTurnover(totalNetTurnover)
       setNetWinLose(totalMemberTotal)
       setTotalGames(totalGames)
 
-      // Unique player count
       const uniquePlayers = new Set(validRows.map((d: any) => d.account_id))
       setUniquePlayerCount(uniquePlayers.size)
 
       // ===========================================
-      // MEMBER STATS (untuk Top Members, Highest Turnover, Big Wins)
+      // MEMBER STATS
       // ===========================================
       const memberMap = new Map<string, MemberStats>()
       const winDetails: WinDetail[] = []
@@ -273,12 +270,10 @@ export default function PlayerOverviewPage() {
         stats.member_total += memberTotal
         stats.games_played += row.bet_count || 0
         
-        // Track biggest win (member_total positif)
         if (memberTotal > stats.biggest_win) {
           stats.biggest_win = memberTotal
         }
         
-        // Collect wins for Big Time Wins (member_total positif)
         if (memberTotal > 0) {
           winDetails.push({
             account_id: fullId,
@@ -291,7 +286,6 @@ export default function PlayerOverviewPage() {
         }
       })
 
-      // Hitung win rate untuk setiap member
       memberMap.forEach(stats => {
         stats.win_rate = stats.total_net_turnover > 0 
           ? (stats.member_total / stats.total_net_turnover) * 100 
@@ -300,7 +294,6 @@ export default function PlayerOverviewPage() {
 
       const membersArray = Array.from(memberMap.values())
 
-      // Top Members by Win Rate
       setTopMembers(
         [...membersArray]
           .filter(m => m.games_played >= 5)
@@ -308,14 +301,12 @@ export default function PlayerOverviewPage() {
           .slice(0, 100)
       )
 
-      // Highest Net Turnover
       setHighestNetTurnover(
         [...membersArray]
           .sort((a, b) => b.total_net_turnover - a.total_net_turnover)
           .slice(0, 100)
       )
 
-      // Big Time Wins
       setBigWins(
         winDetails
           .sort((a, b) => b.win_amount - a.win_amount)
@@ -348,7 +339,6 @@ export default function PlayerOverviewPage() {
         stats.bet_count += row.bet_count || 0
       })
 
-      // Hitung member count per product
       const memberPerProduct = new Map<string, Set<string>>()
       validRows.forEach((row: any) => {
         const product = row.product_type
@@ -361,7 +351,6 @@ export default function PlayerOverviewPage() {
         memberPerProduct.get(product)!.add(account)
       })
 
-      // Hitung win rate per product
       productMap.forEach((stats, product) => {
         stats.member_count = memberPerProduct.get(product)?.size || 0
         stats.win_rate = stats.total_net_turnover > 0 
@@ -381,7 +370,6 @@ export default function PlayerOverviewPage() {
       const depositMap = new Map<string, TopDeposit>()
       const withdrawMap = new Map<string, TopWithdrawal>()
 
-      // Process deposits
       depositData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         
@@ -421,7 +409,6 @@ export default function PlayerOverviewPage() {
         depStats.avg_deposit = depStats.total_deposit / depStats.transaction_count
       })
 
-      // Process withdrawals
       withdrawData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         
@@ -538,7 +525,6 @@ export default function PlayerOverviewPage() {
       {/* FILTER SECTION */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
-          {/* ASSET FILTER */}
           <div>
             <label className="text-xs text-[#A7D8FF] block mb-1">ASSET</label>
             <select 
@@ -553,7 +539,6 @@ export default function PlayerOverviewPage() {
             </select>
           </div>
 
-          {/* RANGE TYPE TOGGLE */}
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setUseCustomRange(false)} 
@@ -569,7 +554,6 @@ export default function PlayerOverviewPage() {
             </button>
           </div>
 
-          {/* MONTHLY FILTERS */}
           {!useCustomRange && (
             <>
               <div>
@@ -595,7 +579,6 @@ export default function PlayerOverviewPage() {
             </>
           )}
 
-          {/* CUSTOM DATE RANGE */}
           {useCustomRange && (
             <>
               <div>
@@ -630,14 +613,12 @@ export default function PlayerOverviewPage() {
         </div>
       </div>
 
-      {/* LOADING STATE */}
       {loading && (
         <div className="flex justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
         </div>
       )}
 
-      {/* NO DATA STATE */}
       {!loading && !hasData && (
         <div className="bg-[#1A2F4A] p-12 rounded-lg text-center">
           <div className="text-6xl mb-4">👤</div>
@@ -648,52 +629,35 @@ export default function PlayerOverviewPage() {
         </div>
       )}
 
-      {/* DATA DISPLAY */}
       {!loading && hasData && (
         <>
-          {/* SUMMARY CARDS */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Unique Players</div>
               <div className="text-2xl font-bold text-[#FFD700]">{formatNumber(uniquePlayerCount)}</div>
-              <div className="text-xs text-gray-400">Total ID unik</div>
             </div>
-            
-            {/* TOTAL NET TURNOVER */}
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Total Net Turnover</div>
               <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalNetTurnover)}</div>
-              <div className="text-xs text-gray-400">Total turnover bersih</div>
             </div>
-            
-            {/* NET WIN/LOSE */}
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Net Win/Lose</div>
               <div className={`text-2xl font-bold ${netWinLose <= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {formatCurrency(netWinLose)}
               </div>
-              <div className="text-xs text-gray-400">
-                {netWinLose <= 0 ? '💰 Profit' : '📉 Loss'}
-              </div>
             </div>
-            
-            {/* TOTAL GAMES */}
             <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
               <div className="text-sm text-[#A7D8FF]">Total Games</div>
               <div className="text-2xl font-bold text-purple-400">{formatNumber(totalGames)}</div>
-              <div className="text-xs text-gray-400">Total bet count</div>
             </div>
           </div>
 
-          {/* MAIN CONTENT GRID - 2 KOLOM ATAS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            {/* COLUMN 1: Member Performance */}
+            {/* LEFT COLUMN */}
             <div className="space-y-6">
-              {/* TOP MEMBERS BY WIN RATE */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">🏆 TOP 100 PLAYERS (Win Rate)</h2>
-                  <p className="text-xs text-[#A7D8FF]">Win Rate = (Member Total / Net Turnover) × 100%</p>
                 </div>
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
@@ -723,11 +687,9 @@ export default function PlayerOverviewPage() {
                 </div>
               </div>
 
-              {/* BIG TIME WINS */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">💰 BIG WINS (Top 50)</h2>
-                  <p className="text-xs text-[#A7D8FF]">Berdasarkan Member Total positif</p>
                 </div>
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
@@ -754,9 +716,8 @@ export default function PlayerOverviewPage() {
               </div>
             </div>
 
-            {/* COLUMN 2: Financial Performance */}
+            {/* RIGHT COLUMN */}
             <div className="space-y-6">
-              {/* HIGHEST NET TURNOVER */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">📊 HIGHEST NET TURNOVER (Top 100)</h2>
@@ -785,7 +746,6 @@ export default function PlayerOverviewPage() {
                 </div>
               </div>
 
-              {/* PROVIDER PERFORMANCE */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">🎰 PROVIDER PERFORMANCE</h2>
@@ -797,7 +757,6 @@ export default function PlayerOverviewPage() {
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Provider</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net Turnover</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Member Total</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Win Rate</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -808,7 +767,6 @@ export default function PlayerOverviewPage() {
                           <td className={`px-2 py-1 text-sm text-right ${product.member_total <= 0 ? 'text-green-400' : 'text-red-400'}`}>
                             {formatCurrency(product.member_total)}
                           </td>
-                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{formatPercent(product.win_rate)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -818,7 +776,7 @@ export default function PlayerOverviewPage() {
             </div>
           </div>
 
-          {/* ROW 3: NET DEPOSIT VS WITHDRAW */}
+          {/* NET DEPOSIT VS WITHDRAW */}
           <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
             <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
               <h2 className="text-[#FFD700] font-bold">💰 NET DEPOSIT VS WITHDRAW (Top 100)</h2>
@@ -855,9 +813,8 @@ export default function PlayerOverviewPage() {
             </div>
           </div>
 
-          {/* ROW 4: TOP DEPOSIT & TOP WITHDRAWAL */}
+          {/* TOP DEPOSIT & WITHDRAWAL */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* TOP DEPOSIT */}
             <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
               <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                 <h2 className="text-[#FFD700] font-bold">🏦 TOP DEPOSIT (By Total)</h2>
@@ -871,7 +828,6 @@ export default function PlayerOverviewPage() {
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Deposit</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
-                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Rata-rata</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -882,7 +838,6 @@ export default function PlayerOverviewPage() {
                         <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
                         <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(item.total_deposit)}</td>
                         <td className="px-2 py-1 text-sm text-right">{item.transaction_count}x</td>
-                        <td className="px-2 py-1 text-sm text-right text-gray-400">{formatCurrency(item.avg_deposit)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -890,7 +845,6 @@ export default function PlayerOverviewPage() {
               </div>
             </div>
 
-            {/* TOP WITHDRAWAL */}
             <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
               <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                 <h2 className="text-[#FFD700] font-bold">💸 TOP WITHDRAWAL (By Total)</h2>
@@ -904,7 +858,6 @@ export default function PlayerOverviewPage() {
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Withdraw</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
-                      <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Rata-rata</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -915,7 +868,6 @@ export default function PlayerOverviewPage() {
                         <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{item.asset_code}</td>
                         <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(item.total_withdraw)}</td>
                         <td className="px-2 py-1 text-sm text-right">{item.transaction_count}x</td>
-                        <td className="px-2 py-1 text-sm text-right text-gray-400">{formatCurrency(item.avg_withdraw)}</td>
                       </tr>
                     ))}
                   </tbody>
