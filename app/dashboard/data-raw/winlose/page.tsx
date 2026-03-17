@@ -388,20 +388,22 @@ export default function WinloseDataRawPage() {
       }
 
       // INSERT KE UPLOADS TRACKING (PAKAI PERIODE, BUKAN UPLOAD_DATE!)
-      setUploadProgress('Menyimpan tracking upload...')
-      
-      const { error: uploadError } = await supabase
-        .from('winlose_uploads')
-        .insert({
-          file_name: fileName,
-          total_rows: validTransactions.length,
-          status: 'completed',
-          website: 'XLY',
-          period_start: periodStart,
-          period_end: periodEnd,
-          active_unique_players: activePlayers,
-          uploaded_at: new Date().toISOString()
-        })
+      // INSERT KE UPLOADS TRACKING
+setUploadProgress('Menyimpan tracking upload...')
+
+const { error: uploadError } = await supabase
+  .from('winlose_uploads')
+  .insert({
+    file_name: fileName,
+    total_rows: validTransactions.length,
+    status: 'completed',
+    website: 'XLY',
+    period_start: periodStart,
+    period_end: periodEnd,
+    active_unique_players: activePlayers,
+    upload_date: new Date().toISOString().split('T')[0], // <-- GANTI INI!
+    // HAPUS uploaded_at
+  })
       
       if (uploadError) console.error('Error insert upload:', uploadError)
 
