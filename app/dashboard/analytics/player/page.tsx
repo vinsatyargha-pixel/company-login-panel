@@ -7,7 +7,7 @@ import DatePicker from 'react-datepicker'
 import "react-datepicker/dist/react-datepicker.css"
 
 // ===========================================
-// TYPES - TAMBAH INTERFACE UNTUK RATIO
+// TYPES
 // ===========================================
 interface MemberStats {
   account_id: string
@@ -66,7 +66,7 @@ interface TopWithdrawal {
   avg_withdraw: number
 }
 
-// INTERFACE BARU UNTUK RATIO WITHDRAW/DEPOSIT
+// INTERFACE UNTUK RATIO WITHDRAW/DEPOSIT
 interface PlayerRatio {
   member_id: string
   asset_code: string
@@ -96,7 +96,6 @@ export default function PlayerOverviewPage() {
   const [totalGames, setTotalGames] = useState(0)
   
   // Detail data
-  const [topMembers, setTopMembers] = useState<MemberStats[]>([])      // Masih dipake untuk HIGHEST NET TURNOVER
   const [productStats, setProductStats] = useState<ProductStats[]>([])
   const [bigWins, setBigWins] = useState<WinDetail[]>([])
   const [highestNetTurnover, setHighestNetTurnover] = useState<MemberStats[]>([])
@@ -104,7 +103,7 @@ export default function PlayerOverviewPage() {
   const [topDeposit, setTopDeposit] = useState<TopDeposit[]>([])
   const [topWithdrawal, setTopWithdrawal] = useState<TopWithdrawal[]>([])
   
-  // STATE BARU UNTUK RATIO WITHDRAW/DEPOSIT
+  // STATE UNTUK RATIO WITHDRAW/DEPOSIT
   const [topRatioPlayers, setTopRatioPlayers] = useState<PlayerRatio[]>([])
 
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
@@ -113,64 +112,95 @@ export default function PlayerOverviewPage() {
   const assets = ['XLY']
 
   // ===========================================
-  // HELPER FUNCTIONS
+  // HELPER FUNCTIONS - FIXED VERSION
   // ===========================================
+  
+  /**
+   * Format member ID dengan konsisten:
+   * - Selalu pake format: assetCode + userName (tanpa mengubah userName asli)
+   * - Contoh: 'XLYrobung', 'XLYjuma22345'
+   */
+  const formatMemberId = (userName: string, brand: string = 'XLY'): string => {
+    if (!userName) return ''
+    
+    // Bersihin userName dari spasi dan karakter aneh, tapi tetap pertahankan huruf/angka
+    const cleanName = userName.trim()
+    
+    // Ambil asset code dari brand (default XLY)
+    const assetCode = brand && brand.trim() !== '' ? brand.trim().toUpperCase() : 'XLY'
+    
+    // Format final: assetCode + userName (tanpa perubahan)
+    // Contoh: 'XLY' + 'robung' = 'XLYrobung'
+    return assetCode + cleanName
+  }
+
+  /**
+   * Parse account ID menjadi asset_code dan member_id
+   * - Format input: assetCode + memberId (contoh: 'XLYrobung')
+   */
   const parseAccountId = (fullId: string): { asset_code: string; member_id: string } => {
     if (!fullId) return { asset_code: 'XLY', member_id: '' }
-    const asset_code = fullId.substring(0, 3).toUpperCase()
-    const member_id = fullId.substring(3)
-    return { asset_code, member_id }
+    
+    // Deteksi kode asset dari 3 huruf pertama
+    const possibleAsset = fullId.substring(0, 3).toUpperCase()
+    
+    // Daftar asset yang valid
+    const validAssets = ['XLY', 'XLA', 'XLB', 'XLC']
+    
+    if (validAssets.includes(possibleAsset)) {
+      return {
+        asset_code: possibleAsset,
+        member_id: fullId.substring(3) // Sisa setelah 3 huruf pertama
+      }
+    }
+    
+    // Fallback: kalau tidak terdeteksi, anggap XLY dan fullId sebagai member_id
+    return {
+      asset_code: 'XLY',
+      member_id: fullId
+    }
   }
 
-  const formatMemberId = (userName: string, assetCode: string = 'XLY'): string => {
-    if (!userName) return ''
-    if (userName.startsWith('XLY')) return userName
-    return assetCode + userName
-  }
-
+  /**
+   * Filter by asset - FIXED VERSION
+   */
   const filterByAsset = (row: any): boolean => {
+    // 1. Kalau pilih 'all', semua data masuk
     if (selectedAsset === 'all') return true
-    if (row.brand) return row.brand === selectedAsset
+    
+    // 2. Cek dari kolom brand (untuk deposit/withdraw)
+    if (row.brand && row.brand.trim() !== '') {
+      return row.brand === selectedAsset
+    }
+    
+    // 3. Cek dari account_id atau user_name (untuk winlose)
     const id = row.account_id || row.user_name
     if (id) {
       const { asset_code } = parseAccountId(id)
       return asset_code === selectedAsset
     }
-    return false
+    
+    // 4. Default: kalau ragu, masukin aja
+    return true
   }
 
   // ===========================================
   // GET DATE RANGE - FIXED YESTERDAY WITH JAKARTA TIMEZONE
   // ===========================================
   const getDateRange = () => {
-    // YESTERDAY - PAKSA JAKARTA TIMEZONE (FIXED)
     if (rangeType === 'yesterday') {
-      // Paksa ke Jakarta time
       const jakartaNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
-      
-      // Kurangi 1 hari untuk yesterday
       const yesterday = new Date(jakartaNow)
       yesterday.setDate(yesterday.getDate() - 1)
       
-      // Format YYYY-MM-DD
       const year = yesterday.getFullYear()
       const month = String(yesterday.getMonth() + 1).padStart(2, '0')
       const day = String(yesterday.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
       
-      console.log('📅 YESTERDAY (JAKARTA):', {
-        jakartaNow: jakartaNow.toLocaleString('id-ID'),
-        yesterday: yesterday.toLocaleString('id-ID'),
-        dateStr: dateStr
-      })
-      
-      return {
-        start: dateStr,
-        end: dateStr
-      }
+      return { start: dateStr, end: dateStr }
     }
     
-    // CUSTOM RANGE
     if (rangeType === 'custom' && customStartDate && customEndDate) {
       return {
         start: customStartDate.toISOString().split('T')[0],
@@ -178,7 +208,6 @@ export default function PlayerOverviewPage() {
       }
     }
     
-    // MONTHLY (default)
     const monthIndex = months.indexOf(selectedMonth) + 1
     const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
     const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
@@ -187,7 +216,7 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // FETCH DATA
+  // FETCH DATA - FIXED VERSION
   // ===========================================
   useEffect(() => {
     if (rangeType === 'monthly' && selectedMonth && selectedYear) {
@@ -212,13 +241,7 @@ export default function PlayerOverviewPage() {
       setLoading(true)
       const { start, end } = getDateRange()
       
-      console.log('📅 FETCHING DATA PERIODE:', { 
-        start, 
-        end, 
-        rangeType,
-        startFull: start + ' 00:00:00',
-        endFull: end + ' 23:59:59'
-      })
+      console.log('📅 FETCHING DATA PERIODE:', { start, end, rangeType })
 
       // ===========================================
       // 1. FETCH WINLOSE TRANSACTIONS
@@ -231,31 +254,22 @@ export default function PlayerOverviewPage() {
 
       if (winloseError) throw winloseError
 
-      console.log('📊 WINLOSE DATA:', winloseData?.length || 0, 'rows')
-
       // ===========================================
       // 2. FETCH DEPOSIT & WITHDRAWAL
       // ===========================================
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
-        .select('user_name, nett_amount, brand')
+        .select('user_name, nett_amount, brand, approved_date')
         .eq('status', 'Approved')
         .gte('approved_date', start + ' 00:00:00')
         .lte('approved_date', end + ' 23:59:59')
 
       const { data: withdrawData, error: withdrawError } = await supabase
         .from('withdrawal_transactions')
-        .select('user_name, nett_amount, brand')
+        .select('user_name, nett_amount, brand, approved_date')
         .eq('status', 'Approved')
         .gte('approved_date', start + ' 00:00:00')
         .lte('approved_date', end + ' 23:59:59')
-
-      if (depositError || withdrawError) {
-        console.error('Deposit/Withdraw error:', depositError || withdrawError)
-      }
-
-      console.log('💰 DEPOSIT DATA:', depositData?.length || 0, 'rows')
-      console.log('💰 WITHDRAW DATA:', withdrawData?.length || 0, 'rows')
 
       // ===========================================
       // PROCESS WINLOSE DATA (UNTUK BOX LAINNYA)
@@ -267,7 +281,6 @@ export default function PlayerOverviewPage() {
         return
       }
 
-      // Filter by asset
       const filteredWinlose = winloseData.filter((row: any) => filterByAsset(row))
 
       if (filteredWinlose.length === 0) {
@@ -364,7 +377,7 @@ export default function PlayerOverviewPage() {
       )
 
       // ===========================================
-      // PRODUCT STATS (TETAP)
+      // PRODUCT STATS
       // ===========================================
       const productMap = new Map<string, ProductStats>()
       
@@ -414,23 +427,35 @@ export default function PlayerOverviewPage() {
       )
 
       // ===========================================
-      // PROCESS DEPOSIT & WITHDRAWAL (UNTUK NET DEPOSIT, TOP DEPOSIT, TOP WITHDRAW, DAN RATIO)
+      // PROCESS DEPOSIT & WITHDRAWAL - FIXED VERSION
       // ===========================================
       const netMap = new Map<string, NetDepositWithdraw>()
       const depositMap = new Map<string, TopDeposit>()
       const withdrawMap = new Map<string, TopWithdrawal>()
       
-      // MAP BARU UNTUK RATIO WITHDRAW/DEPOSIT
+      // MAP UNTUK RATIO WITHDRAW/DEPOSIT
       const ratioMap = new Map<string, PlayerRatio>()
 
+      // PROCESS DEPOSIT
       depositData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         
+        // FORMAT MEMBER ID DENGAN KONSISTEN
         const fullId = formatMemberId(row.user_name, row.brand || selectedAsset)
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
-        // NET MAP (tetap)
+        // DEBUG KHUSUS UNTUK ROBUNG
+        if (row.user_name === 'robung') {
+          console.log('💰 ROBUNG DEPOSIT:', {
+            user: row.user_name,
+            fullId,
+            amount,
+            date: row.approved_date
+          })
+        }
+        
+        // NET MAP
         if (!netMap.has(fullId)) {
           netMap.set(fullId, {
             account_id: fullId,
@@ -447,7 +472,7 @@ export default function PlayerOverviewPage() {
         netStats.net_amount += amount
         netStats.transaction_count += 1
 
-        // DEPOSIT MAP (tetap)
+        // DEPOSIT MAP
         if (!depositMap.has(fullId)) {
           depositMap.set(fullId, {
             account_id: fullId,
@@ -463,7 +488,7 @@ export default function PlayerOverviewPage() {
         depStats.transaction_count += 1
         depStats.avg_deposit = depStats.total_deposit / depStats.transaction_count
 
-        // RATIO MAP (baru)
+        // RATIO MAP
         if (!ratioMap.has(fullId)) {
           ratioMap.set(fullId, {
             member_id,
@@ -477,14 +502,26 @@ export default function PlayerOverviewPage() {
         ratioMap.get(fullId)!.total_deposit += amount
       })
 
+      // PROCESS WITHDRAW
       withdrawData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         
+        // FORMAT MEMBER ID DENGAN KONSISTEN - PAKAI FUNGSI YANG SAMA
         const fullId = formatMemberId(row.user_name, row.brand || selectedAsset)
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
-        // NET MAP (tetap)
+        // DEBUG KHUSUS UNTUK ROBUNG
+        if (row.user_name === 'robung') {
+          console.log('💰 ROBUNG WITHDRAW:', {
+            user: row.user_name,
+            fullId,
+            amount,
+            date: row.approved_date
+          })
+        }
+        
+        // NET MAP
         if (!netMap.has(fullId)) {
           netMap.set(fullId, {
             account_id: fullId,
@@ -501,7 +538,7 @@ export default function PlayerOverviewPage() {
         netStats.net_amount -= amount
         netStats.transaction_count += 1
 
-        // WITHDRAW MAP (tetap)
+        // WITHDRAW MAP
         if (!withdrawMap.has(fullId)) {
           withdrawMap.set(fullId, {
             account_id: fullId,
@@ -517,7 +554,7 @@ export default function PlayerOverviewPage() {
         wdStats.transaction_count += 1
         wdStats.avg_withdraw = wdStats.total_withdraw / wdStats.transaction_count
 
-        // RATIO MAP (baru)
+        // RATIO MAP
         if (!ratioMap.has(fullId)) {
           ratioMap.set(fullId, {
             member_id,
@@ -535,15 +572,27 @@ export default function PlayerOverviewPage() {
       ratioMap.forEach((player) => {
         if (player.total_deposit > 0) {
           player.ratio = player.total_withdraw / player.total_deposit
-          // Format dengan 1 desimal: contoh 10.5:1
           player.ratio_display = player.ratio.toFixed(1) + ':1'
         } else if (player.total_withdraw > 0) {
-          // Kalau deposit 0 tapi withdraw ada (freebet/jackpot) - ini yang paling untung
           player.ratio_display = '∞:1'
           player.ratio = Infinity
         } else {
           player.ratio_display = '0:1'
           player.ratio = 0
+        }
+      })
+
+      // DEBUG FINAL UNTUK ROBUNG
+      console.log('🔍 FINAL CHECK ROBUNG:')
+      ratioMap.forEach((value, key) => {
+        if (key.includes('robung') || value.member_id === 'robung') {
+          console.log('✅ ROBUNG FOUND:', {
+            key,
+            member_id: value.member_id,
+            deposit: value.total_deposit,
+            withdraw: value.total_withdraw,
+            ratio: value.ratio_display
+          })
         }
       })
 
@@ -566,21 +615,19 @@ export default function PlayerOverviewPage() {
           .slice(0, 100)
       )
 
-      // SET TOP RATIO PLAYERS - SORTING DARI TERTINGGI (PALING UNTUNG) KE TERENDAH
-      setTopRatioPlayers(
-        Array.from(ratioMap.values())
-          .sort((a, b) => {
-            // Infinity dianggap paling besar (paling untung)
-            if (a.ratio === Infinity && b.ratio === Infinity) return 0
-            if (a.ratio === Infinity) return -1
-            if (b.ratio === Infinity) return 1
-            return b.ratio - a.ratio // DESCENDING: dari terbesar ke terkecil
-          })
-          .slice(0, 100)
-      )
+      // SET TOP RATIO PLAYERS - SORTING DARI TERTINGGI
+      const sortedRatio = Array.from(ratioMap.values())
+        .sort((a, b) => {
+          if (a.ratio === Infinity && b.ratio === Infinity) return 0
+          if (a.ratio === Infinity) return -1
+          if (b.ratio === Infinity) return 1
+          return b.ratio - a.ratio
+        })
+        .slice(0, 100)
 
-      console.log('✅ SEMUA DATA BERHASIL DIPROSES')
-      console.log('📊 TOP RATIO PLAYERS (PALING UNTUNG):', topRatioPlayers.length)
+      setTopRatioPlayers(sortedRatio)
+
+      console.log('📊 TOP RATIO PLAYERS:', sortedRatio.length)
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -594,14 +641,13 @@ export default function PlayerOverviewPage() {
     setTotalNetTurnover(0)
     setNetWinLose(0)
     setTotalGames(0)
-    setTopMembers([])
     setProductStats([])
     setBigWins([])
     setHighestNetTurnover([])
     setNetDepositWithdraw([])
     setTopDeposit([])
     setTopWithdrawal([])
-    setTopRatioPlayers([]) // RESET JUGA
+    setTopRatioPlayers([])
   }
 
   // ===========================================
@@ -782,7 +828,7 @@ export default function PlayerOverviewPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* LEFT COLUMN */}
             <div className="space-y-6">
-              {/* BOX RATIO WITHDRAW/DEPOSIT - HEADER SUDAH DIGANTI */}
+              {/* BOX RATIO WITHDRAW/DEPOSIT */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">📊 TOP 100 RATIO WITHDRAW/DEPOSIT</h2>
@@ -801,31 +847,30 @@ export default function PlayerOverviewPage() {
                     </thead>
                     <tbody>
                       {topRatioPlayers.map((player, idx) => {
-                        // Tentukan warna berdasarkan ratio (semakin tinggi semakin untung)
                         let ratioColor = 'text-gray-400'
                         let badge = ''
                         
                         if (player.ratio === Infinity) {
                           ratioColor = 'text-purple-400 font-bold'
-                          badge = '🎁' // Freebet/Jackpot (paling untung)
+                          badge = '🎁'
                         } else if (player.ratio > 5) {
                           ratioColor = 'text-green-400 font-bold'
-                          badge = '🔥' // Panas banget
+                          badge = '🔥'
                         } else if (player.ratio > 2) {
                           ratioColor = 'text-green-400'
-                          badge = '👍' // Untung besar
+                          badge = '👍'
                         } else if (player.ratio > 1) {
                           ratioColor = 'text-blue-400'
-                          badge = '💰' // Untung
+                          badge = '💰'
                         } else if (player.ratio === 1) {
                           ratioColor = 'text-yellow-400'
-                          badge = '⚖️' // Balik modal
-                        } else if (player.ratio < 1 && player.ratio > 0) {
+                          badge = '⚖️'
+                        } else if (player.ratio > 0) {
                           ratioColor = 'text-red-400'
-                          badge = '📉' // Rugi
+                          badge = '📉'
                         } else {
                           ratioColor = 'text-gray-400'
-                          badge = '💤' // No activity
+                          badge = '💤'
                         }
                         
                         return (
@@ -846,7 +891,7 @@ export default function PlayerOverviewPage() {
                 </div>
               </div>
 
-              {/* BOX BIG WINS (TETAP) */}
+              {/* BOX BIG WINS */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">💰 BIG WINS (Top 50)</h2>
@@ -876,7 +921,7 @@ export default function PlayerOverviewPage() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN (TETAP) */}
+            {/* RIGHT COLUMN */}
             <div className="space-y-6">
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
@@ -936,7 +981,7 @@ export default function PlayerOverviewPage() {
             </div>
           </div>
 
-          {/* NET DEPOSIT VS WITHDRAW (TETAP) */}
+          {/* NET DEPOSIT VS WITHDRAW */}
           <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
             <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
               <h2 className="text-[#FFD700] font-bold">💰 NET DEPOSIT VS WITHDRAW (Top 100)</h2>
@@ -973,7 +1018,7 @@ export default function PlayerOverviewPage() {
             </div>
           </div>
 
-          {/* TOP DEPOSIT & WITHDRAWAL (TETAP) */}
+          {/* TOP DEPOSIT & WITHDRAWAL */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
               <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
