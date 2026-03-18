@@ -118,13 +118,14 @@ export default function DashboardContent() {
   });
 
   // ===========================================
-  // STATE UNTUK MOZART (MOUNTED/UNMOUNTED) PER BANK
+  // STATE UNTUK MOZART (MOUNTED/UNMOUNTED) PER BANK - GLOBAL (SUPABASE)
   // MOZART = Fitur untuk mount/unmount bank di sistem
   // MOUNTED = Bank aktif dan terpasang di sistem
   // UNMOUNT = Bank tidak aktif/dilepas dari sistem
   // ===========================================
-  const [mozartStates, setMozartStates] = useState({}); // Key: bank.id, Value: true = MOUNTED, false = UNMOUNT
-  const [updatingMozart, setUpdatingMozart] = useState(false); // Loading state pas toggle
++ const [mozartStates, setMozartStates] = useState({}); // Key: bank.id, Value: true = MOUNTED, false = UNMOUNT
++ const [updatingMozart, setUpdatingMozart] = useState(false); // Loading state pas toggle
++ const [loadingMozart, setLoadingMozart] = useState(false); // Loading state fetch awal
 
   // STATE UNTUK UPDATE
   const [updatingStatus, setUpdatingStatus] = useState({
@@ -288,6 +289,110 @@ export default function DashboardContent() {
 
     return () => subscription.unsubscribe();
   }, []);
+
++ // ===========================================
++ // FETCH MOZART STATES DARI SUPABASE (GLOBAL)
++ // ===========================================
++ const fetchMozartStates = async () => {
++   try {
++     setLoadingMozart(true);
++     
++     const { data, error } = await supabase
++       .from('bank_mozart_status')
++       .select('*');
++     
++     if (error) throw error;
++     
++     // Convert array ke object dengan key bank_id
++     const mozartMap = {};
++     data?.forEach(item => {
++       mozartMap[item.bank_id] = item.is_mounted;
++     });
++     
++     setMozartStates(mozartMap);
++     
++   } catch (error) {
++     console.error('Error fetching mozart states:', error);
++   } finally {
++     setLoadingMozart(false);
++   }
++ };
+
++ // ===========================================
++ // HANDLE TOGGLE MOZART (MOUNTED/UNMOUNTED) - GLOBAL
++ // bankId: ID bank yang di-toggle
++ // currentState: Status MOZART saat ini (true = MOUNTED, false = UNMOUNT)
++ // ===========================================
++ const handleToggleMozart = async (bankId, currentState) => {
++   try {
++     setUpdatingMozart(true);
++     
++     const newState = !currentState;
++     
++     // Update di Supabase
++     const { error } = await supabase
++       .from('bank_mozart_status')
++       .upsert({ 
++         bank_id: bankId, 
++         is_mounted: newState,
++         updated_at: new Date().toISOString(),
++         updated_by: user?.email || 'system'
++       }, { 
++         onConflict: 'bank_id' 
++       });
++     
++     if (error) throw error;
++     
++     // Update local state
++     setMozartStates(prev => ({
++       ...prev,
++       [bankId]: newState
++     }));
++     
++   } catch (error) {
++     console.error('Error updating mozart state:', error);
++     alert('Gagal update status MOZART');
++   } finally {
++     setUpdatingMozart(false);
++   }
++ };
+
++ // ===========================================
++ // REALTIME SUBSCRIPTION UNTUK MOZART STATES
++ // ===========================================
++ useEffect(() => {
++   const subscription = supabase
++     .channel('mozart-changes')
++     .on(
++       'postgres_changes',
++       {
++         event: '*', // LISTEN to all events (INSERT, UPDATE, DELETE)
++         schema: 'public',
++         table: 'bank_mozart_status'
++       },
++       (payload) => {
++         console.log('🔄 Mozart state changed:', payload);
++         
++         if (payload.eventType === 'DELETE') {
++           // Kalau dihapus, set ke default (false)
++           setMozartStates(prev => {
++             const newState = { ...prev };
++             delete newState[payload.old.bank_id];
++             return newState;
++           });
++         } else {
++           // INSERT or UPDATE
++           setMozartStates(prev => ({
++             ...prev,
++             [payload.new.bank_id]: payload.new.is_mounted
++           }));
++         }
++       }
++     )
++     .subscribe();
++ 
++   return () => subscription.unsubscribe();
++ }, []);
 
   // ===========================================
 // FETCH OFFICER PIE DATA - DETAIL (HUMAN: CHAT,DP,WD vs SYSTEM: CHAT,DP,WD)
@@ -1229,26 +1334,6 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
   };
 
   // ===========================================
-  // HANDLE TOGGLE MOZART (MOUNTED/UNMOUNTED)
-  // bankId: ID bank yang di-toggle
-  // currentState: Status MOZART saat ini (true = MOUNTED, false = UNMOUNT)
-  // ===========================================
-  const handleToggleMozart = (bankId, currentState) => {
-    setUpdatingMozart(true); // Aktifkan loading state
-    
-    // Update state MOZART untuk bank tertentu
-    // true = MOUNTED (bank terpasang)
-    // false = UNMOUNT (bank dilepas)
-    setMozartStates(prev => ({
-      ...prev,
-      [bankId]: !currentState // Balik statusnya
-    }));
-    
-    // Simulasi proses (bisa diganti dengan API call nanti)
-    setTimeout(() => setUpdatingMozart(false), 300);
-  };
-
-  // ===========================================
   // USE EFFECTS
   // ===========================================
 
@@ -1260,6 +1345,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
         fetchTransactionMetricsData(),
         fetchBankAccounts(),
         fetchOfficerPerformance(),
++       fetchMozartStates(), // FETCH MOZART STATES
       ]);
     };
     loadAllData();
@@ -1284,10 +1370,6 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     const savedWithdrawal = localStorage.getItem('withdrawalMethods');
     if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
     
-    // LOAD MOZART STATES DARI LOCALSTORAGE
-    const savedMozart = localStorage.getItem('mozartStates');
-    if (savedMozart) setMozartStates(JSON.parse(savedMozart));
-    
     const saved = localStorage.getItem('lastReadActivity');
     if (saved) setLastReadTimestamp(saved);
   }, []);
@@ -1296,11 +1378,8 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     if (typeof window !== 'undefined') {
       localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
       localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
-      
-      // SAVE MOZART STATES KE LOCALSTORAGE
-      localStorage.setItem('mozartStates', JSON.stringify(mozartStates));
     }
-  }, [depositMethods, withdrawalMethods, mozartStates]);
+  }, [depositMethods, withdrawalMethods]);
 
   useEffect(() => {
     if (activities.length > 0) {
@@ -1848,7 +1927,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
           {/* KETERANGAN MOZART */}
           <div className="flex items-center gap-2 mb-3 text-xs bg-purple-900/30 p-2 rounded-lg border border-purple-500/30">
             <span className="text-purple-400 font-bold">🎵 MOZART:</span>
-            <span className="text-[#A7D8FF]">Mount/Unmount bank di sistem</span>
+            <span className="text-[#A7D8FF]">Mount/Unmount bank di sistem (GLOBAL)</span>
             <span className="ml-auto flex items-center gap-2">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-600"></span> Mounted</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-600"></span> Unmount</span>
@@ -1856,7 +1935,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
           </div>
 
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {loadingBanks ? <div className="text-center text-[#A7D8FF]">Loading banks...</div> : 
+            {loadingBanks || loadingMozart ? <div className="text-center text-[#A7D8FF]">Loading banks...</div> : 
               bankAccounts.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
                 .map(bank => (
                   <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
@@ -1884,8 +1963,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
                       {/* STATUS ON dari database (tetep ada) */}
                       <span className="text-xs font-medium text-green-400">ON</span>
                       
-                      {/* MOZART MOUNT/UNMOUNT TOGGLE */}
-                      {/* true = MOUNTED (ungu), false = UNMOUNT (abu-abu) */}
+                      {/* MOZART MOUNT/UNMOUNT TOGGLE - GLOBAL */}
                       <button
                         onClick={() => handleToggleMozart(bank.id, mozartStates[bank.id])}
                         disabled={updatingMozart}
@@ -1894,7 +1972,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
                             ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/30' 
                             : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                         }`}
-                        title={mozartStates[bank.id] ? 'Klik untuk Unmount bank' : 'Klik untuk Mount bank'}
+                        title={mozartStates[bank.id] ? 'Klik untuk Unmount bank (global)' : 'Klik untuk Mount bank (global)'}
                       >
                         {/* Indikator MOZART */}
                         <span className={`w-1.5 h-1.5 rounded-full ${mozartStates[bank.id] ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></span>
@@ -1908,15 +1986,26 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
           
           {/* LEGEND / KETERANGAN TAMBAHAN */}
           <div className="mt-3 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-2">
-            <span className="text-purple-400 font-bold">🎵 Mozart Mode:</span> Mounted = Bank siap dipakai, Unmount = Bank disembunyikan sementara
+            <span className="text-purple-400 font-bold">🎵 Mozart Mode (GLOBAL):</span> Perubahan akan terlihat oleh semua staff
           </div>
         </div>
 
-        {/* KOLOM 3: WITHDRAWAL METHOD */}
+        {/* KOLOM 3: WITHDRAWAL METHOD - DENGAN MOZART JUGA (SESUAI PERMINTAAN) */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💸 Available Withdrawal Method</h3>
+          
+          {/* KETERANGAN MOZART */}
+          <div className="flex items-center gap-2 mb-3 text-xs bg-purple-900/30 p-2 rounded-lg border border-purple-500/30">
+            <span className="text-purple-400 font-bold">🎵 MOZART:</span>
+            <span className="text-[#A7D8FF]">Mount/Unmount bank di sistem (GLOBAL)</span>
+            <span className="ml-auto flex items-center gap-2">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-600"></span> Mounted</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-600"></span> Unmount</span>
+            </span>
+          </div>
+
           <div className="space-y-4 max-h-96 overflow-y-auto">
-            {loadingBanks ? <div className="text-center text-[#A7D8FF]">Loading banks...</div> : 
+            {loadingBanks || loadingMozart ? <div className="text-center text-[#A7D8FF]">Loading banks...</div> : 
               bankAccounts.filter(b => b.role?.toUpperCase() === 'WITHDRAW' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
                 .map(bank => (
                   <div key={bank.id} className="flex items-center justify-between border-b border-[#FFD700]/10 pb-3">
@@ -1938,10 +2027,36 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
                         <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
                       </div>
                     </div>
-                    <span className="text-xs font-medium text-green-400">ON</span>
+                    
+                    {/* CONTAINER UNTUK ON STATUS + MOZART TOGGLE */}
+                    <div className="flex items-center gap-3">
+                      {/* STATUS ON dari database (tetep ada) */}
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                      
+                      {/* MOZART MOUNT/UNMOUNT TOGGLE - GLOBAL */}
+                      <button
+                        onClick={() => handleToggleMozart(`wd-${bank.id}`, mozartStates[`wd-${bank.id}`])}
+                        disabled={updatingMozart}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-w-[85px] text-center flex items-center justify-center gap-1 ${
+                          mozartStates[`wd-${bank.id}`] 
+                            ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/30' 
+                            : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                        }`}
+                        title={mozartStates[`wd-${bank.id}`] ? 'Klik untuk Unmount bank (global)' : 'Klik untuk Mount bank (global)'}
+                      >
+                        {/* Indikator MOZART */}
+                        <span className={`w-1.5 h-1.5 rounded-full ${mozartStates[`wd-${bank.id}`] ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></span>
+                        {mozartStates[`wd-${bank.id}`] ? 'MOUNTED' : 'UNMOUNT'}
+                      </button>
+                    </div>
                   </div>
                 ))
             }
+          </div>
+          
+          {/* LEGEND / KETERANGAN TAMBAHAN */}
+          <div className="mt-3 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-2">
+            <span className="text-purple-400 font-bold">🎵 Mozart Mode (GLOBAL):</span> Perubahan akan terlihat oleh semua staff
           </div>
         </div>
       </div>
