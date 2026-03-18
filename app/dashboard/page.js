@@ -123,9 +123,9 @@ export default function DashboardContent() {
   // MOUNTED = Bank aktif dan terpasang di sistem
   // UNMOUNT = Bank tidak aktif/dilepas dari sistem
   // ===========================================
-+ const [mozartStates, setMozartStates] = useState({}); // Key: bank.id, Value: true = MOUNTED, false = UNMOUNT
-+ const [updatingMozart, setUpdatingMozart] = useState(false); // Loading state pas toggle
-+ const [loadingMozart, setLoadingMozart] = useState(false); // Loading state fetch awal
+const [mozartStates, setMozartStates] = useState({}); // Key: bank.id, Value: true = MOUNTED, false = UNMOUNT
+const [updatingMozart, setUpdatingMozart] = useState(false); // Loading state pas toggle
+const [loadingMozart, setLoadingMozart] = useState(false); // Loading state fetch awal
 
   // STATE UNTUK UPDATE
   const [updatingStatus, setUpdatingStatus] = useState({
@@ -290,109 +290,109 @@ export default function DashboardContent() {
     return () => subscription.unsubscribe();
   }, []);
 
-+ // ===========================================
-+ // FETCH MOZART STATES DARI SUPABASE (GLOBAL)
-+ // ===========================================
-+ const fetchMozartStates = async () => {
-+   try {
-+     setLoadingMozart(true);
-+     
-+     const { data, error } = await supabase
-+       .from('bank_mozart_status')
-+       .select('*');
-+     
-+     if (error) throw error;
-+     
-+     // Convert array ke object dengan key bank_id
-+     const mozartMap = {};
-+     data?.forEach(item => {
-+       mozartMap[item.bank_id] = item.is_mounted;
-+     });
-+     
-+     setMozartStates(mozartMap);
-+     
-+   } catch (error) {
-+     console.error('Error fetching mozart states:', error);
-+   } finally {
-+     setLoadingMozart(false);
-+   }
-+ };
+// ===========================================
+// FETCH MOZART STATES DARI SUPABASE (GLOBAL)
+// ===========================================
+const fetchMozartStates = async () => {
+   try {
+     setLoadingMozart(true);
+     
+     const { data, error } = await supabase
+      .from('bank_mozart_status')
+       .select('*');
+     
+     if (error) throw error;
+     
+     // Convert array ke object dengan key bank_id
+     const mozartMap = {};
+     data?.forEach(item => {
+       mozartMap[item.bank_id] = item.is_mounted;
+     });
+     
+     setMozartStates(mozartMap);
+     
+   } catch (error) {
+     console.error('Error fetching mozart states:', error);
+   } finally {
+     setLoadingMozart(false);
+   }
+ };
 
-+ // ===========================================
-+ // HANDLE TOGGLE MOZART (MOUNTED/UNMOUNTED) - GLOBAL
-+ // bankId: ID bank yang di-toggle
-+ // currentState: Status MOZART saat ini (true = MOUNTED, false = UNMOUNT)
-+ // ===========================================
-+ const handleToggleMozart = async (bankId, currentState) => {
-+   try {
-+     setUpdatingMozart(true);
-+     
-+     const newState = !currentState;
-+     
-+     // Update di Supabase
-+     const { error } = await supabase
-+       .from('bank_mozart_status')
-+       .upsert({ 
-+         bank_id: bankId, 
-+         is_mounted: newState,
-+         updated_at: new Date().toISOString(),
-+         updated_by: user?.email || 'system'
-+       }, { 
-+         onConflict: 'bank_id' 
-+       });
-+     
-+     if (error) throw error;
-+     
-+     // Update local state
-+     setMozartStates(prev => ({
-+       ...prev,
-+       [bankId]: newState
-+     }));
-+     
-+   } catch (error) {
-+     console.error('Error updating mozart state:', error);
-+     alert('Gagal update status MOZART');
-+   } finally {
-+     setUpdatingMozart(false);
-+   }
-+ };
+ // ===========================================
+ // HANDLE TOGGLE MOZART (MOUNTED/UNMOUNTED) - GLOBAL
+ // bankId: ID bank yang di-toggle
+ // currentState: Status MOZART saat ini (true = MOUNTED, false = UNMOUNT)
+ // ===========================================
+ const handleToggleMozart = async (bankId, currentState) => {
+   try {
+     setUpdatingMozart(true);
+     
+     const newState = !currentState;
+     
+     // Update di Supabase
+     const { error } = await supabase
+       .from('bank_mozart_status')
+       .upsert({ 
+         bank_id: bankId, 
+         is_mounted: newState,
+         updated_at: new Date().toISOString(),
+         updated_by: user?.email || 'system'
+       }, { 
+         onConflict: 'bank_id' 
+       });
+     
+     if (error) throw error;
+     
+     // Update local state
+     setMozartStates(prev => ({
+       ...prev,
+       [bankId]: newState
+     }));
+     
+   } catch (error) {
+     console.error('Error updating mozart state:', error);
+     alert('Gagal update status MOZART');
+   } finally {
+     setUpdatingMozart(false);
+   }
+ };
 
-+ // ===========================================
-+ // REALTIME SUBSCRIPTION UNTUK MOZART STATES
-+ // ===========================================
-+ useEffect(() => {
-+   const subscription = supabase
-+     .channel('mozart-changes')
-+     .on(
-+       'postgres_changes',
-+       {
-+         event: '*', // LISTEN to all events (INSERT, UPDATE, DELETE)
-+         schema: 'public',
-+         table: 'bank_mozart_status'
-+       },
-+       (payload) => {
-+         console.log('🔄 Mozart state changed:', payload);
-+         
-+         if (payload.eventType === 'DELETE') {
-+           // Kalau dihapus, set ke default (false)
-+           setMozartStates(prev => {
-+             const newState = { ...prev };
-+             delete newState[payload.old.bank_id];
-+             return newState;
-+           });
-+         } else {
-+           // INSERT or UPDATE
-+           setMozartStates(prev => ({
-+             ...prev,
-+             [payload.new.bank_id]: payload.new.is_mounted
-+           }));
-+         }
-+       }
-+     )
-+     .subscribe();
-+ 
-+   return () => subscription.unsubscribe();
-+ }, []);
+ // ===========================================
+ // REALTIME SUBSCRIPTION UNTUK MOZART STATES
+ // ===========================================
+ useEffect(() => {
+   const subscription = supabase
+     .channel('mozart-changes')
+     .on(
+       'postgres_changes',
+       {
+         event: '*', // LISTEN to all events (INSERT, UPDATE, DELETE)
+         schema: 'public',
+         table: 'bank_mozart_status'
+       },
+       (payload) => {
+         console.log('🔄 Mozart state changed:', payload);
+         
+         if (payload.eventType === 'DELETE') {
+           // Kalau dihapus, set ke default (false)
+           setMozartStates(prev => {
+             const newState = { ...prev };
+             delete newState[payload.old.bank_id];
+             return newState;
+           });
+         } else {
+           // INSERT or UPDATE
+           setMozartStates(prev => ({
+             ...prev,
+             [payload.new.bank_id]: payload.new.is_mounted
+           }));
+         }
+       }
+     )
+     .subscribe();
+ 
+   return () => subscription.unsubscribe();
+ }, []);
 
   // ===========================================
 // FETCH OFFICER PIE DATA - DETAIL (HUMAN: CHAT,DP,WD vs SYSTEM: CHAT,DP,WD)
