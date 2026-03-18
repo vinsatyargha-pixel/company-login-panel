@@ -437,24 +437,16 @@ export default function PlayerOverviewPage() {
       const ratioMap = new Map<string, PlayerRatio>()
 
       // PROCESS DEPOSIT - VERSION SEDERHANA DULU
-// PROCESS DEPOSIT - PAKAI user_name LANGSUNG (TANPA ASSET)
+// PROCESS DEPOSIT - PASTIKAN PAKE row.user_name LANGSUNG
 depositData?.forEach((row: any) => {
   if (!filterByAsset(row)) return
   
-  // PAKAI USERNAME LANGSUNG SEBAGAI KEY (tanpa asset)
-  const key = row.user_name
+  const key = row.user_name  // <-- HARUS INI, BUKAN formatMemberId
   const amount = row.nett_amount || 0
   
-  console.log('✅ DEPOSIT MASUK:', {
-    user: row.user_name,
-    key,  // 'robung' (tanpa XLY)
-    amount,
-    date: row.approved_date
-  })
-  
-  // ROBUNG CHECK
+  // DEBUG ROBUNG
   if (row.user_name === 'robung') {
-    console.log('💰 ROBUNG DEPOSIT DITEMUKAN:', {
+    console.log('💰 ROBUNG DEPOSIT DITEMUKAN (BENAR):', {
       user: row.user_name,
       key,
       amount,
@@ -462,7 +454,7 @@ depositData?.forEach((row: any) => {
     })
   }
   
-  // RATIO MAP - PAKAI KEY TANPA ASSET
+  // RATIO MAP
   if (!ratioMap.has(key)) {
     ratioMap.set(key, {
       member_id: row.user_name,
