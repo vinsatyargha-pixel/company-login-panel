@@ -437,17 +437,17 @@ export default function PlayerOverviewPage() {
       const ratioMap = new Map<string, PlayerRatio>()
 
       // PROCESS DEPOSIT - VERSION SEDERHANA DULU
-// PROCESS DEPOSIT - PAKAI formatMemberId LAGI!
+// PROCESS DEPOSIT - PAKAI user_name LANGSUNG (TANPA ASSET)
 depositData?.forEach((row: any) => {
   if (!filterByAsset(row)) return
   
-  // GINI BRO! PAKAI formatMemberId LAGI
-  const fullId = formatMemberId(row.user_name, row.brand || selectedAsset)
+  // PAKAI USERNAME LANGSUNG SEBAGAI KEY (tanpa asset)
+  const key = row.user_name
   const amount = row.nett_amount || 0
   
   console.log('✅ DEPOSIT MASUK:', {
     user: row.user_name,
-    fullId,  // Harusnya jadi 'XLYrobung'
+    key,  // 'robung' (tanpa XLY)
     amount,
     date: row.approved_date
   })
@@ -456,15 +456,15 @@ depositData?.forEach((row: any) => {
   if (row.user_name === 'robung') {
     console.log('💰 ROBUNG DEPOSIT DITEMUKAN:', {
       user: row.user_name,
-      fullId,
+      key,
       amount,
       date: row.approved_date
     })
   }
   
-  // RATIO MAP - PAKAI fullId YANG SAMA
-  if (!ratioMap.has(fullId)) {
-    ratioMap.set(fullId, {
+  // RATIO MAP - PAKAI KEY TANPA ASSET
+  if (!ratioMap.has(key)) {
+    ratioMap.set(key, {
       member_id: row.user_name,
       asset_code: row.brand || 'XLY',
       total_deposit: 0,
@@ -473,74 +473,47 @@ depositData?.forEach((row: any) => {
       ratio_display: '0:1'
     })
   }
-  ratioMap.get(fullId)!.total_deposit += amount
+  ratioMap.get(key)!.total_deposit += amount
 })
 
-      // PROCESS WITHDRAW
-      withdrawData?.forEach((row: any) => {
-        if (!filterByAsset(row)) return
-        
-        // FORMAT MEMBER ID DENGAN KONSISTEN - PAKAI FUNGSI YANG SAMA
-        const fullId = formatMemberId(row.user_name, row.brand || selectedAsset)
-        const { asset_code, member_id } = parseAccountId(fullId)
-        const amount = row.nett_amount || 0
-        
-        // DEBUG KHUSUS UNTUK ROBUNG
-        if (row.user_name === 'robung') {
-          console.log('💰 ROBUNG WITHDRAW:', {
-            user: row.user_name,
-            fullId,
-            amount,
-            date: row.approved_date
-          })
-        }
-        
-        // NET MAP
-        if (!netMap.has(fullId)) {
-          netMap.set(fullId, {
-            account_id: fullId,
-            asset_code,
-            member_id,
-            total_deposit: 0,
-            total_withdraw: 0,
-            net_amount: 0,
-            transaction_count: 0
-          })
-        }
-        const netStats = netMap.get(fullId)!
-        netStats.total_withdraw += amount
-        netStats.net_amount -= amount
-        netStats.transaction_count += 1
-
-        // WITHDRAW MAP
-        if (!withdrawMap.has(fullId)) {
-          withdrawMap.set(fullId, {
-            account_id: fullId,
-            asset_code,
-            member_id,
-            total_withdraw: 0,
-            transaction_count: 0,
-            avg_withdraw: 0
-          })
-        }
-        const wdStats = withdrawMap.get(fullId)!
-        wdStats.total_withdraw += amount
-        wdStats.transaction_count += 1
-        wdStats.avg_withdraw = wdStats.total_withdraw / wdStats.transaction_count
-
-        // RATIO MAP
-        if (!ratioMap.has(fullId)) {
-          ratioMap.set(fullId, {
-            member_id,
-            asset_code,
-            total_deposit: 0,
-            total_withdraw: 0,
-            ratio: 0,
-            ratio_display: '0:1'
-          })
-        }
-        ratioMap.get(fullId)!.total_withdraw += amount
-      })
+      // PROCESS WITHDRAW - PAKAI user_name LANGSUNG (TANPA ASSET)
+withdrawData?.forEach((row: any) => {
+  if (!filterByAsset(row)) return
+  
+  // PAKAI USERNAME LANGSUNG SEBAGAI KEY (tanpa asset)
+  const key = row.user_name
+  const amount = row.nett_amount || 0
+  
+  console.log('💰 WITHDRAW MASUK:', {
+    user: row.user_name,
+    key,  // 'robung' (tanpa XLY)
+    amount,
+    date: row.approved_date
+  })
+  
+  // ROBUNG CHECK
+  if (row.user_name === 'robung') {
+    console.log('💰 ROBUNG WITHDRAW DITEMUKAN:', {
+      user: row.user_name,
+      key,
+      amount,
+      date: row.approved_date
+    })
+  }
+  
+  // RATIO MAP - PAKAI KEY TANPA ASSET
+  if (!ratioMap.has(key)) {
+    ratioMap.set(key, {
+      member_id: row.user_name,
+      asset_code: row.brand || 'XLY',
+      total_deposit: 0,
+      total_withdraw: 0,
+      ratio: 0,
+      ratio_display: '0:1'
+    })
+  }
+  ratioMap.get(key)!.total_withdraw += amount
+})
 
       // HITUNG RATIO UNTUK SETIAP PLAYER (WITHDRAW / DEPOSIT)
       ratioMap.forEach((player) => {
