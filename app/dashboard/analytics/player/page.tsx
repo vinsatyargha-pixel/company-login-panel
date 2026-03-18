@@ -437,19 +437,17 @@ export default function PlayerOverviewPage() {
       const ratioMap = new Map<string, PlayerRatio>()
 
       // PROCESS DEPOSIT - VERSION SEDERHANA DULU
+// PROCESS DEPOSIT - PAKAI formatMemberId LAGI!
 depositData?.forEach((row: any) => {
-  if (!filterByAsset(row)) {
-    console.log('❌ DEPOSIT FILTERED OUT:', row.user_name)
-    return
-  }
+  if (!filterByAsset(row)) return
   
-  // PAKAI USERNAME LANGSUNG SEBAGAI KEY
-  const fullId = row.user_name  // ← PAKAI INI DULU
+  // GINI BRO! PAKAI formatMemberId LAGI
+  const fullId = formatMemberId(row.user_name, row.brand || selectedAsset)
   const amount = row.nett_amount || 0
   
   console.log('✅ DEPOSIT MASUK:', {
     user: row.user_name,
-    fullId,
+    fullId,  // Harusnya jadi 'XLYrobung'
     amount,
     date: row.approved_date
   })
@@ -464,10 +462,10 @@ depositData?.forEach((row: any) => {
     })
   }
   
-  // RATIO MAP - PAKAI USERNAME LANGSUNG
+  // RATIO MAP - PAKAI fullId YANG SAMA
   if (!ratioMap.has(fullId)) {
     ratioMap.set(fullId, {
-      member_id: row.user_name,  // ← LANGSUNG
+      member_id: row.user_name,
       asset_code: row.brand || 'XLY',
       total_deposit: 0,
       total_withdraw: 0,
