@@ -68,7 +68,7 @@ interface TopWithdrawal {
 
 export default function PlayerOverviewPage() {
   // ===========================================
-  // STATES - TAMBAH RANGE TYPE
+  // STATES
   // ===========================================
   const [selectedAsset, setSelectedAsset] = useState('all')
   const [selectedMonth, setSelectedMonth] = useState('Januari')
@@ -127,32 +127,30 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // FETCH DATA - UPDATE DENGAN YESTERDAY
+  // GET DATE RANGE - FIXED YESTERDAY WITH JAKARTA TIMEZONE
   // ===========================================
-  useEffect(() => {
-    if (rangeType === 'monthly' && selectedMonth && selectedYear) {
-      fetchAllData()
-    }
-  }, [selectedMonth, selectedYear, selectedAsset, rangeType])
-
-  useEffect(() => {
-    if (rangeType === 'yesterday') {
-      fetchAllData()
-    }
-  }, [selectedAsset, rangeType])
-
-  useEffect(() => {
-    if (rangeType === 'custom' && customStartDate && customEndDate) {
-      fetchAllData()
-    }
-  }, [customStartDate, customEndDate, selectedAsset, rangeType])
-
   const getDateRange = () => {
-    // YESTERDAY
+    // YESTERDAY - PAKSA JAKARTA TIMEZONE (FIXED)
     if (rangeType === 'yesterday') {
-      const yesterday = new Date()
+      // Paksa ke Jakarta time
+      const jakartaNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
+      
+      // Kurangi 1 hari untuk yesterday
+      const yesterday = new Date(jakartaNow)
       yesterday.setDate(yesterday.getDate() - 1)
-      const dateStr = yesterday.toISOString().split('T')[0]
+      
+      // Format YYYY-MM-DD
+      const year = yesterday.getFullYear()
+      const month = String(yesterday.getMonth() + 1).padStart(2, '0')
+      const day = String(yesterday.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
+      
+      console.log('📅 YESTERDAY (JAKARTA):', {
+        jakartaNow: jakartaNow.toLocaleString('id-ID'),
+        yesterday: yesterday.toLocaleString('id-ID'),
+        dateStr: dateStr
+      })
+      
       return {
         start: dateStr,
         end: dateStr
@@ -175,12 +173,39 @@ export default function PlayerOverviewPage() {
     return { start: startDate, end: endDate }
   }
 
+  // ===========================================
+  // FETCH DATA
+  // ===========================================
+  useEffect(() => {
+    if (rangeType === 'monthly' && selectedMonth && selectedYear) {
+      fetchAllData()
+    }
+  }, [selectedMonth, selectedYear, selectedAsset, rangeType])
+
+  useEffect(() => {
+    if (rangeType === 'yesterday') {
+      fetchAllData()
+    }
+  }, [selectedAsset, rangeType])
+
+  useEffect(() => {
+    if (rangeType === 'custom' && customStartDate && customEndDate) {
+      fetchAllData()
+    }
+  }, [customStartDate, customEndDate, selectedAsset, rangeType])
+
   const fetchAllData = async () => {
     try {
       setLoading(true)
       const { start, end } = getDateRange()
       
-      console.log('📅 FETCHING DATA PERIODE:', { start, end, rangeType })
+      console.log('📅 FETCHING DATA PERIODE:', { 
+        start, 
+        end, 
+        rangeType,
+        startFull: start + ' 00:00:00',
+        endFull: end + ' 23:59:59'
+      })
 
       // ===========================================
       // 1. FETCH WINLOSE TRANSACTIONS
@@ -529,7 +554,7 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // RENDER - UPDATE DENGAN YESTERDAY
+  // RENDER
   // ===========================================
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
@@ -541,7 +566,7 @@ export default function PlayerOverviewPage() {
         <div className="text-[#FFD700] font-bold text-xl">👤 PLAYER OVERVIEW</div>
       </div>
 
-      {/* FILTER SECTION - DENGAN YESTERDAY */}
+      {/* FILTER SECTION */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
           {/* ASSET FILTER */}
@@ -559,7 +584,7 @@ export default function PlayerOverviewPage() {
             </select>
           </div>
 
-          {/* RANGE TYPE TOGGLE - TAMBAH YESTERDAY */}
+          {/* RANGE TYPE TOGGLE */}
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setRangeType('monthly')} 
@@ -639,8 +664,6 @@ export default function PlayerOverviewPage() {
               </div>
             </>
           )}
-
-          {/* YESTERDAY - TIDAK PERLU FILTER TAMBAHAN */}
         </div>
       </div>
 
