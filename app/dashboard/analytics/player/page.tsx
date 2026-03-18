@@ -7,7 +7,7 @@ import DatePicker from 'react-datepicker'
 import "react-datepicker/dist/react-datepicker.css"
 
 // ===========================================
-// TYPES
+// TYPES - TAMBAH INTERFACE UNTUK RATIO
 // ===========================================
 interface MemberStats {
   account_id: string
@@ -66,6 +66,16 @@ interface TopWithdrawal {
   avg_withdraw: number
 }
 
+// INTERFACE BARU UNTUK PROFIT/LOSS RATIO
+interface PlayerRatio {
+  member_id: string
+  asset_code: string
+  total_deposit: number
+  total_withdraw: number
+  ratio: number
+  ratio_display: string
+}
+
 export default function PlayerOverviewPage() {
   // ===========================================
   // STATES
@@ -86,13 +96,16 @@ export default function PlayerOverviewPage() {
   const [totalGames, setTotalGames] = useState(0)
   
   // Detail data
-  const [topMembers, setTopMembers] = useState<MemberStats[]>([])
+  const [topMembers, setTopMembers] = useState<MemberStats[]>([])      // Masih dipake untuk HIGHEST NET TURNOVER
   const [productStats, setProductStats] = useState<ProductStats[]>([])
   const [bigWins, setBigWins] = useState<WinDetail[]>([])
   const [highestNetTurnover, setHighestNetTurnover] = useState<MemberStats[]>([])
   const [netDepositWithdraw, setNetDepositWithdraw] = useState<NetDepositWithdraw[]>([])
   const [topDeposit, setTopDeposit] = useState<TopDeposit[]>([])
   const [topWithdrawal, setTopWithdrawal] = useState<TopWithdrawal[]>([])
+  
+  // STATE BARU UNTUK PROFIT/LOSS RATIO
+  const [topRatioPlayers, setTopRatioPlayers] = useState<PlayerRatio[]>([])
 
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
                   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -245,7 +258,7 @@ export default function PlayerOverviewPage() {
       console.log('💰 WITHDRAW DATA:', withdrawData?.length || 0, 'rows')
 
       // ===========================================
-      // PROCESS WINLOSE DATA
+      // PROCESS WINLOSE DATA (UNTUK BOX LAINNYA)
       // ===========================================
       if (!winloseData || winloseData.length === 0) {
         setHasData(false)
@@ -267,7 +280,7 @@ export default function PlayerOverviewPage() {
       setHasData(true)
 
       // ===========================================
-      // SUMMARY STATS
+      // SUMMARY STATS (dari winlose)
       // ===========================================
       const validRows = filteredWinlose.filter((row: any) => 
         row.account_id && row.account_id !== '' && !row.account_id.toString().includes('Sub Total')
@@ -285,7 +298,7 @@ export default function PlayerOverviewPage() {
       setUniquePlayerCount(uniquePlayers.size)
 
       // ===========================================
-      // MEMBER STATS
+      // MEMBER STATS (untuk HIGHEST NET TURNOVER)
       // ===========================================
       const memberMap = new Map<string, MemberStats>()
       const winDetails: WinDetail[] = []
@@ -338,13 +351,6 @@ export default function PlayerOverviewPage() {
 
       const membersArray = Array.from(memberMap.values())
 
-      setTopMembers(
-        [...membersArray]
-          .filter(m => m.games_played >= 5)
-          .sort((a, b) => b.win_rate - a.win_rate)
-          .slice(0, 100)
-      )
-
       setHighestNetTurnover(
         [...membersArray]
           .sort((a, b) => b.total_net_turnover - a.total_net_turnover)
@@ -358,7 +364,7 @@ export default function PlayerOverviewPage() {
       )
 
       // ===========================================
-      // PRODUCT STATS
+      // PRODUCT STATS (TETAP)
       // ===========================================
       const productMap = new Map<string, ProductStats>()
       
@@ -408,11 +414,14 @@ export default function PlayerOverviewPage() {
       )
 
       // ===========================================
-      // PROCESS DEPOSIT & WITHDRAWAL
+      // PROCESS DEPOSIT & WITHDRAWAL (UNTUK NET DEPOSIT, TOP DEPOSIT, TOP WITHDRAW, DAN RATIO)
       // ===========================================
       const netMap = new Map<string, NetDepositWithdraw>()
       const depositMap = new Map<string, TopDeposit>()
       const withdrawMap = new Map<string, TopWithdrawal>()
+      
+      // MAP BARU UNTUK PROFIT/LOSS RATIO
+      const ratioMap = new Map<string, PlayerRatio>()
 
       depositData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
@@ -421,6 +430,7 @@ export default function PlayerOverviewPage() {
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
+        // NET MAP (tetap)
         if (!netMap.has(fullId)) {
           netMap.set(fullId, {
             account_id: fullId,
@@ -437,6 +447,7 @@ export default function PlayerOverviewPage() {
         netStats.net_amount += amount
         netStats.transaction_count += 1
 
+        // DEPOSIT MAP (tetap)
         if (!depositMap.has(fullId)) {
           depositMap.set(fullId, {
             account_id: fullId,
@@ -451,6 +462,19 @@ export default function PlayerOverviewPage() {
         depStats.total_deposit += amount
         depStats.transaction_count += 1
         depStats.avg_deposit = depStats.total_deposit / depStats.transaction_count
+
+        // RATIO MAP (baru)
+        if (!ratioMap.has(fullId)) {
+          ratioMap.set(fullId, {
+            member_id,
+            asset_code,
+            total_deposit: 0,
+            total_withdraw: 0,
+            ratio: 0,
+            ratio_display: '0:1'
+          })
+        }
+        ratioMap.get(fullId)!.total_deposit += amount
       })
 
       withdrawData?.forEach((row: any) => {
@@ -460,6 +484,7 @@ export default function PlayerOverviewPage() {
         const { asset_code, member_id } = parseAccountId(fullId)
         const amount = row.nett_amount || 0
         
+        // NET MAP (tetap)
         if (!netMap.has(fullId)) {
           netMap.set(fullId, {
             account_id: fullId,
@@ -476,6 +501,7 @@ export default function PlayerOverviewPage() {
         netStats.net_amount -= amount
         netStats.transaction_count += 1
 
+        // WITHDRAW MAP (tetap)
         if (!withdrawMap.has(fullId)) {
           withdrawMap.set(fullId, {
             account_id: fullId,
@@ -490,8 +516,38 @@ export default function PlayerOverviewPage() {
         wdStats.total_withdraw += amount
         wdStats.transaction_count += 1
         wdStats.avg_withdraw = wdStats.total_withdraw / wdStats.transaction_count
+
+        // RATIO MAP (baru)
+        if (!ratioMap.has(fullId)) {
+          ratioMap.set(fullId, {
+            member_id,
+            asset_code,
+            total_deposit: 0,
+            total_withdraw: 0,
+            ratio: 0,
+            ratio_display: '0:1'
+          })
+        }
+        ratioMap.get(fullId)!.total_withdraw += amount
       })
 
+      // HITUNG RATIO UNTUK SETIAP PLAYER
+      ratioMap.forEach((player) => {
+        if (player.total_deposit > 0) {
+          player.ratio = player.total_withdraw / player.total_deposit
+          // Format dengan 1 desimal: contoh 10.5:1
+          player.ratio_display = player.ratio.toFixed(1) + ':1'
+        } else if (player.total_withdraw > 0) {
+          // Kalau deposit 0 tapi withdraw ada (freebet/jackpot)
+          player.ratio_display = '∞:1'
+          player.ratio = Infinity
+        } else {
+          player.ratio_display = '0:1'
+          player.ratio = 0
+        }
+      })
+
+      // SET STATE UNTUK SEMUA BOX
       setNetDepositWithdraw(
         Array.from(netMap.values())
           .sort((a, b) => b.net_amount - a.net_amount)
@@ -510,7 +566,21 @@ export default function PlayerOverviewPage() {
           .slice(0, 100)
       )
 
+      // SET TOP RATIO PLAYERS (YANG BARU)
+      setTopRatioPlayers(
+        Array.from(ratioMap.values())
+          .sort((a, b) => {
+            // Infinity dianggap paling besar
+            if (a.ratio === Infinity && b.ratio === Infinity) return 0
+            if (a.ratio === Infinity) return -1
+            if (b.ratio === Infinity) return 1
+            return b.ratio - a.ratio
+          })
+          .slice(0, 100)
+      )
+
       console.log('✅ SEMUA DATA BERHASIL DIPROSES')
+      console.log('📊 TOP RATIO PLAYERS:', topRatioPlayers.length)
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -531,6 +601,7 @@ export default function PlayerOverviewPage() {
     setNetDepositWithdraw([])
     setTopDeposit([])
     setTopWithdrawal([])
+    setTopRatioPlayers([]) // RESET JUGA
   }
 
   // ===========================================
@@ -711,9 +782,10 @@ export default function PlayerOverviewPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* LEFT COLUMN */}
             <div className="space-y-6">
+              {/* BOX YANG DIGANTI - SEKARANG JADI PROFIT/LOSS RATIO */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-                  <h2 className="text-[#FFD700] font-bold">🏆 TOP 100 PLAYERS (Win Rate)</h2>
+                  <h2 className="text-[#FFD700] font-bold">📊 TOP 100 PLAYERS (Profit/Loss Ratio)</h2>
                 </div>
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
@@ -722,27 +794,39 @@ export default function PlayerOverviewPage() {
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Win Rate</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Deposit</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Withdraw</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Ratio</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {topMembers.map((member, idx) => (
-                        <tr key={member.account_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
-                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{member.member_id}</td>
-                          <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{member.asset_code}</td>
-                          <td className="px-2 py-1 text-sm text-right">
-                            <span className={member.win_rate > 0 ? 'text-red-400' : 'text-green-400'}>
-                              {formatPercent(member.win_rate)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {topRatioPlayers.map((player, idx) => {
+                        // Tentukan warna berdasarkan ratio
+                        let ratioColor = 'text-gray-400'
+                        if (player.ratio === Infinity) ratioColor = 'text-purple-400 font-bold'
+                        else if (player.ratio > 2) ratioColor = 'text-green-400 font-bold'
+                        else if (player.ratio > 1) ratioColor = 'text-blue-400'
+                        else if (player.ratio < 1) ratioColor = 'text-red-400'
+                        
+                        return (
+                          <tr key={player.member_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                            <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                            <td className="px-2 py-1 text-sm text-[#A7D8FF]">{player.member_id}</td>
+                            <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{player.asset_code}</td>
+                            <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(player.total_deposit)}</td>
+                            <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(player.total_withdraw)}</td>
+                            <td className={`px-2 py-1 text-sm text-right ${ratioColor}`}>
+                              {player.ratio_display}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
 
+              {/* BOX BIG WINS (TETAP) */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">💰 BIG WINS (Top 50)</h2>
@@ -772,7 +856,7 @@ export default function PlayerOverviewPage() {
               </div>
             </div>
 
-            {/* RIGHT COLUMN */}
+            {/* RIGHT COLUMN (TETAP) */}
             <div className="space-y-6">
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
@@ -832,7 +916,7 @@ export default function PlayerOverviewPage() {
             </div>
           </div>
 
-          {/* NET DEPOSIT VS WITHDRAW */}
+          {/* NET DEPOSIT VS WITHDRAW (TETAP) */}
           <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
             <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
               <h2 className="text-[#FFD700] font-bold">💰 NET DEPOSIT VS WITHDRAW (Top 100)</h2>
@@ -869,7 +953,7 @@ export default function PlayerOverviewPage() {
             </div>
           </div>
 
-          {/* TOP DEPOSIT & WITHDRAWAL */}
+          {/* TOP DEPOSIT & WITHDRAWAL (TETAP) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
               <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
