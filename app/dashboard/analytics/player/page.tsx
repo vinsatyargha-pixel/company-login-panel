@@ -436,71 +436,47 @@ export default function PlayerOverviewPage() {
       // MAP UNTUK RATIO WITHDRAW/DEPOSIT
       const ratioMap = new Map<string, PlayerRatio>()
 
-      // PROCESS DEPOSIT
-      depositData?.forEach((row: any) => {
-        if (!filterByAsset(row)) return
-        
-        // FORMAT MEMBER ID DENGAN KONSISTEN
-        const fullId = formatMemberId(row.user_name, row.brand || selectedAsset)
-        const { asset_code, member_id } = parseAccountId(fullId)
-        const amount = row.nett_amount || 0
-        
-        // DEBUG KHUSUS UNTUK ROBUNG
-        if (row.user_name === 'robung') {
-          console.log('💰 ROBUNG DEPOSIT:', {
-            user: row.user_name,
-            fullId,
-            amount,
-            date: row.approved_date
-          })
-        }
-        
-        // NET MAP
-        if (!netMap.has(fullId)) {
-          netMap.set(fullId, {
-            account_id: fullId,
-            asset_code,
-            member_id,
-            total_deposit: 0,
-            total_withdraw: 0,
-            net_amount: 0,
-            transaction_count: 0
-          })
-        }
-        const netStats = netMap.get(fullId)!
-        netStats.total_deposit += amount
-        netStats.net_amount += amount
-        netStats.transaction_count += 1
-
-        // DEPOSIT MAP
-        if (!depositMap.has(fullId)) {
-          depositMap.set(fullId, {
-            account_id: fullId,
-            asset_code,
-            member_id,
-            total_deposit: 0,
-            transaction_count: 0,
-            avg_deposit: 0
-          })
-        }
-        const depStats = depositMap.get(fullId)!
-        depStats.total_deposit += amount
-        depStats.transaction_count += 1
-        depStats.avg_deposit = depStats.total_deposit / depStats.transaction_count
-
-        // RATIO MAP
-        if (!ratioMap.has(fullId)) {
-          ratioMap.set(fullId, {
-            member_id,
-            asset_code,
-            total_deposit: 0,
-            total_withdraw: 0,
-            ratio: 0,
-            ratio_display: '0:1'
-          })
-        }
-        ratioMap.get(fullId)!.total_deposit += amount
-      })
+      // PROCESS DEPOSIT - VERSION SEDERHANA DULU
+depositData?.forEach((row: any) => {
+  if (!filterByAsset(row)) {
+    console.log('❌ DEPOSIT FILTERED OUT:', row.user_name)
+    return
+  }
+  
+  // PAKAI USERNAME LANGSUNG SEBAGAI KEY
+  const fullId = row.user_name  // ← PAKAI INI DULU
+  const amount = row.nett_amount || 0
+  
+  console.log('✅ DEPOSIT MASUK:', {
+    user: row.user_name,
+    fullId,
+    amount,
+    date: row.approved_date
+  })
+  
+  // ROBUNG CHECK
+  if (row.user_name === 'robung') {
+    console.log('💰 ROBUNG DEPOSIT DITEMUKAN:', {
+      user: row.user_name,
+      fullId,
+      amount,
+      date: row.approved_date
+    })
+  }
+  
+  // RATIO MAP - PAKAI USERNAME LANGSUNG
+  if (!ratioMap.has(fullId)) {
+    ratioMap.set(fullId, {
+      member_id: row.user_name,  // ← LANGSUNG
+      asset_code: row.brand || 'XLY',
+      total_deposit: 0,
+      total_withdraw: 0,
+      ratio: 0,
+      ratio_display: '0:1'
+    })
+  }
+  ratioMap.get(fullId)!.total_deposit += amount
+})
 
       // PROCESS WITHDRAW
       withdrawData?.forEach((row: any) => {
