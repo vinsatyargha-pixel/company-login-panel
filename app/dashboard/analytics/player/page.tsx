@@ -66,7 +66,7 @@ interface TopWithdrawal {
   avg_withdraw: number
 }
 
-// INTERFACE BARU UNTUK PROFIT/LOSS RATIO
+// INTERFACE BARU UNTUK RATIO WITHDRAW/DEPOSIT
 interface PlayerRatio {
   member_id: string
   asset_code: string
@@ -104,7 +104,7 @@ export default function PlayerOverviewPage() {
   const [topDeposit, setTopDeposit] = useState<TopDeposit[]>([])
   const [topWithdrawal, setTopWithdrawal] = useState<TopWithdrawal[]>([])
   
-  // STATE BARU UNTUK PROFIT/LOSS RATIO
+  // STATE BARU UNTUK RATIO WITHDRAW/DEPOSIT
   const [topRatioPlayers, setTopRatioPlayers] = useState<PlayerRatio[]>([])
 
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
@@ -420,7 +420,7 @@ export default function PlayerOverviewPage() {
       const depositMap = new Map<string, TopDeposit>()
       const withdrawMap = new Map<string, TopWithdrawal>()
       
-      // MAP BARU UNTUK PROFIT/LOSS RATIO
+      // MAP BARU UNTUK RATIO WITHDRAW/DEPOSIT
       const ratioMap = new Map<string, PlayerRatio>()
 
       depositData?.forEach((row: any) => {
@@ -531,14 +531,14 @@ export default function PlayerOverviewPage() {
         ratioMap.get(fullId)!.total_withdraw += amount
       })
 
-      // HITUNG RATIO UNTUK SETIAP PLAYER
+      // HITUNG RATIO UNTUK SETIAP PLAYER (WITHDRAW / DEPOSIT)
       ratioMap.forEach((player) => {
         if (player.total_deposit > 0) {
           player.ratio = player.total_withdraw / player.total_deposit
           // Format dengan 1 desimal: contoh 10.5:1
           player.ratio_display = player.ratio.toFixed(1) + ':1'
         } else if (player.total_withdraw > 0) {
-          // Kalau deposit 0 tapi withdraw ada (freebet/jackpot)
+          // Kalau deposit 0 tapi withdraw ada (freebet/jackpot) - ini yang paling untung
           player.ratio_display = '∞:1'
           player.ratio = Infinity
         } else {
@@ -566,21 +566,21 @@ export default function PlayerOverviewPage() {
           .slice(0, 100)
       )
 
-      // SET TOP RATIO PLAYERS (YANG BARU)
+      // SET TOP RATIO PLAYERS - SORTING DARI TERTINGGI (PALING UNTUNG) KE TERENDAH
       setTopRatioPlayers(
         Array.from(ratioMap.values())
           .sort((a, b) => {
-            // Infinity dianggap paling besar
+            // Infinity dianggap paling besar (paling untung)
             if (a.ratio === Infinity && b.ratio === Infinity) return 0
             if (a.ratio === Infinity) return -1
             if (b.ratio === Infinity) return 1
-            return b.ratio - a.ratio
+            return b.ratio - a.ratio // DESCENDING: dari terbesar ke terkecil
           })
           .slice(0, 100)
       )
 
       console.log('✅ SEMUA DATA BERHASIL DIPROSES')
-      console.log('📊 TOP RATIO PLAYERS:', topRatioPlayers.length)
+      console.log('📊 TOP RATIO PLAYERS (PALING UNTUNG):', topRatioPlayers.length)
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -782,10 +782,10 @@ export default function PlayerOverviewPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* LEFT COLUMN */}
             <div className="space-y-6">
-              {/* BOX YANG DIGANTI - SEKARANG JADI PROFIT/LOSS RATIO */}
+              {/* BOX RATIO WITHDRAW/DEPOSIT - HEADER SUDAH DIGANTI */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-                  <h2 className="text-[#FFD700] font-bold">📊 TOP 100 PLAYERS (Profit/Loss Ratio)</h2>
+                  <h2 className="text-[#FFD700] font-bold">📊 TOP 100 RATIO WITHDRAW/DEPOSIT</h2>
                 </div>
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
@@ -796,17 +796,37 @@ export default function PlayerOverviewPage() {
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Deposit</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Withdraw</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Ratio</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Ratio (W/D)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {topRatioPlayers.map((player, idx) => {
-                        // Tentukan warna berdasarkan ratio
+                        // Tentukan warna berdasarkan ratio (semakin tinggi semakin untung)
                         let ratioColor = 'text-gray-400'
-                        if (player.ratio === Infinity) ratioColor = 'text-purple-400 font-bold'
-                        else if (player.ratio > 2) ratioColor = 'text-green-400 font-bold'
-                        else if (player.ratio > 1) ratioColor = 'text-blue-400'
-                        else if (player.ratio < 1) ratioColor = 'text-red-400'
+                        let badge = ''
+                        
+                        if (player.ratio === Infinity) {
+                          ratioColor = 'text-purple-400 font-bold'
+                          badge = '🎁' // Freebet/Jackpot (paling untung)
+                        } else if (player.ratio > 5) {
+                          ratioColor = 'text-green-400 font-bold'
+                          badge = '🔥' // Panas banget
+                        } else if (player.ratio > 2) {
+                          ratioColor = 'text-green-400'
+                          badge = '👍' // Untung besar
+                        } else if (player.ratio > 1) {
+                          ratioColor = 'text-blue-400'
+                          badge = '💰' // Untung
+                        } else if (player.ratio === 1) {
+                          ratioColor = 'text-yellow-400'
+                          badge = '⚖️' // Balik modal
+                        } else if (player.ratio < 1 && player.ratio > 0) {
+                          ratioColor = 'text-red-400'
+                          badge = '📉' // Rugi
+                        } else {
+                          ratioColor = 'text-gray-400'
+                          badge = '💤' // No activity
+                        }
                         
                         return (
                           <tr key={player.member_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
@@ -816,7 +836,7 @@ export default function PlayerOverviewPage() {
                             <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(player.total_deposit)}</td>
                             <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(player.total_withdraw)}</td>
                             <td className={`px-2 py-1 text-sm text-right ${ratioColor}`}>
-                              {player.ratio_display}
+                              {badge} {player.ratio_display}
                             </td>
                           </tr>
                         )
