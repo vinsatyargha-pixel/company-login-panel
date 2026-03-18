@@ -117,6 +117,15 @@ export default function DashboardContent() {
     line: false
   });
 
+  // ===========================================
+  // STATE UNTUK MOZART (MOUNTED/UNMOUNTED) PER BANK
+  // MOZART = Fitur untuk mount/unmount bank di sistem
+  // MOUNTED = Bank aktif dan terpasang di sistem
+  // UNMOUNT = Bank tidak aktif/dilepas dari sistem
+  // ===========================================
+  const [mozartStates, setMozartStates] = useState({}); // Key: bank.id, Value: true = MOUNTED, false = UNMOUNT
+  const [updatingMozart, setUpdatingMozart] = useState(false); // Loading state pas toggle
+
   // STATE UNTUK UPDATE
   const [updatingStatus, setUpdatingStatus] = useState({
     deposit: false,
@@ -1220,6 +1229,26 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
   };
 
   // ===========================================
+  // HANDLE TOGGLE MOZART (MOUNTED/UNMOUNTED)
+  // bankId: ID bank yang di-toggle
+  // currentState: Status MOZART saat ini (true = MOUNTED, false = UNMOUNT)
+  // ===========================================
+  const handleToggleMozart = (bankId, currentState) => {
+    setUpdatingMozart(true); // Aktifkan loading state
+    
+    // Update state MOZART untuk bank tertentu
+    // true = MOUNTED (bank terpasang)
+    // false = UNMOUNT (bank dilepas)
+    setMozartStates(prev => ({
+      ...prev,
+      [bankId]: !currentState // Balik statusnya
+    }));
+    
+    // Simulasi proses (bisa diganti dengan API call nanti)
+    setTimeout(() => setUpdatingMozart(false), 300);
+  };
+
+  // ===========================================
   // USE EFFECTS
   // ===========================================
 
@@ -1255,6 +1284,10 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     const savedWithdrawal = localStorage.getItem('withdrawalMethods');
     if (savedWithdrawal) setWithdrawalMethods(JSON.parse(savedWithdrawal));
     
+    // LOAD MOZART STATES DARI LOCALSTORAGE
+    const savedMozart = localStorage.getItem('mozartStates');
+    if (savedMozart) setMozartStates(JSON.parse(savedMozart));
+    
     const saved = localStorage.getItem('lastReadActivity');
     if (saved) setLastReadTimestamp(saved);
   }, []);
@@ -1263,8 +1296,11 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     if (typeof window !== 'undefined') {
       localStorage.setItem('depositMethods', JSON.stringify(depositMethods));
       localStorage.setItem('withdrawalMethods', JSON.stringify(withdrawalMethods));
+      
+      // SAVE MOZART STATES KE LOCALSTORAGE
+      localStorage.setItem('mozartStates', JSON.stringify(mozartStates));
     }
-  }, [depositMethods, withdrawalMethods]);
+  }, [depositMethods, withdrawalMethods, mozartStates]);
 
   useEffect(() => {
     if (activities.length > 0) {
@@ -1805,9 +1841,20 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
           </Link>
         </div>
 
-        {/* KOLOM 2: DEPOSIT METHOD */}
+        {/* KOLOM 2: DEPOSIT METHOD - DENGAN MOZART MOUNT/UNMOUNT */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <h3 className="text-lg font-bold text-[#FFD700] mb-4">💰 Available Deposit Method</h3>
+          
+          {/* KETERANGAN MOZART */}
+          <div className="flex items-center gap-2 mb-3 text-xs bg-purple-900/30 p-2 rounded-lg border border-purple-500/30">
+            <span className="text-purple-400 font-bold">🎵 MOZART:</span>
+            <span className="text-[#A7D8FF]">Mount/Unmount bank di sistem</span>
+            <span className="ml-auto flex items-center gap-2">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-600"></span> Mounted</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-600"></span> Unmount</span>
+            </span>
+          </div>
+
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {loadingBanks ? <div className="text-center text-[#A7D8FF]">Loading banks...</div> : 
               bankAccounts.filter(b => b.role?.toUpperCase() === 'DEPOSIT' && b.display_used === 'YES' && (selectedAsset === 'all' || b.asset === selectedAsset))
@@ -1831,10 +1878,37 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
                         <span className="text-[#A7D8FF] text-xs">{bank.account_name} {bank.account_number}</span>
                       </div>
                     </div>
-                    <span className="text-xs font-medium text-green-400">ON</span>
+                    
+                    {/* CONTAINER UNTUK ON STATUS + MOZART TOGGLE */}
+                    <div className="flex items-center gap-3">
+                      {/* STATUS ON dari database (tetep ada) */}
+                      <span className="text-xs font-medium text-green-400">ON</span>
+                      
+                      {/* MOZART MOUNT/UNMOUNT TOGGLE */}
+                      {/* true = MOUNTED (ungu), false = UNMOUNT (abu-abu) */}
+                      <button
+                        onClick={() => handleToggleMozart(bank.id, mozartStates[bank.id])}
+                        disabled={updatingMozart}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-w-[85px] text-center flex items-center justify-center gap-1 ${
+                          mozartStates[bank.id] 
+                            ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/30' 
+                            : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                        }`}
+                        title={mozartStates[bank.id] ? 'Klik untuk Unmount bank' : 'Klik untuk Mount bank'}
+                      >
+                        {/* Indikator MOZART */}
+                        <span className={`w-1.5 h-1.5 rounded-full ${mozartStates[bank.id] ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></span>
+                        {mozartStates[bank.id] ? 'MOUNTED' : 'UNMOUNT'}
+                      </button>
+                    </div>
                   </div>
                 ))
             }
+          </div>
+          
+          {/* LEGEND / KETERANGAN TAMBAHAN */}
+          <div className="mt-3 text-[10px] text-[#A7D8FF] border-t border-[#FFD700]/10 pt-2">
+            <span className="text-purple-400 font-bold">🎵 Mozart Mode:</span> Mounted = Bank siap dipakai, Unmount = Bank disembunyikan sementara
           </div>
         </div>
 
