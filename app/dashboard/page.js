@@ -319,43 +319,78 @@ const fetchMozartStates = async () => {
  };
 
  // ===========================================
- // HANDLE TOGGLE MOZART (MOUNTED/UNMOUNTED) - GLOBAL
- // bankId: ID bank yang di-toggle
- // currentState: Status MOZART saat ini (true = MOUNTED, false = UNMOUNT)
- // ===========================================
- const handleToggleMozart = async (bankId, currentState) => {
-   try {
-     setUpdatingMozart(true);
-     
-     const newState = !currentState;
-     
-     // Update di Supabase
-     const { error } = await supabase
-       .from('bank_mozart_status')
-       .upsert({ 
-         bank_id: bankId, 
-         is_mounted: newState,
-         updated_at: new Date().toISOString(),
-         updated_by: user?.email || 'system'
-       }, { 
-         onConflict: 'bank_id' 
-       });
-     
-     if (error) throw error;
-     
-     // Update local state
-     setMozartStates(prev => ({
-       ...prev,
-       [bankId]: newState
-     }));
-     
-   } catch (error) {
-     console.error('Error updating mozart state:', error);
-     alert('Gagal update status MOZART');
-   } finally {
-     setUpdatingMozart(false);
-   }
- };
+// HANDLE TOGGLE MOZART (MOUNTED/UNMOUNTED) - GLOBAL + LOGGING PUBLIC
+// bankId: ID bank yang di-toggle
+// currentState: Status MOZART saat ini (true = MOUNTED, false = UNMOUNT)
+// bankData: Data bank (opsional)
+// ===========================================
+const handleToggleMozart = async (bankId, currentState, bankData = null) => {
+  try {
+    setUpdatingMozart(true);
+    
+    const newState = !currentState;
+    const action = newState ? 'MOUNT' : 'UNMOUNT';
+    
+    // 1. Update di bank_mozart_status
+    const { error: updateError } = await supabase
+      .from('bank_mozart_status')
+      .upsert({ 
+        bank_id: bankId, 
+        is_mounted: newState,
+        updated_at: new Date().toISOString(),
+        updated_by: user?.email || 'system'
+      }, { 
+        onConflict: 'bank_id' 
+      });
+    
+    if (updateError) throw updateError;
+    
+    // 2. DAPATKAN INFO BANK
+    const bankInfo = bankData || bankAccounts.find(b => b.id === bankId);
+    
+    // 3. DAPATKAN PANEL ID ATAU EMAIL USER
+    const userIdentifier = user?.user_metadata?.panel_id || 
+                          user?.email || 
+                          user?.id || 
+                          'Unknown User';
+    
+    // 4. LOG KE MOZART ACTIVITY LOG (PUBLIC ACCESS)
+    const { error: logError } = await supabase
+      .from('mozart_activity_log')
+      .insert({
+        bank_id: bankId,
+        bank_name: bankInfo?.bank || 'Unknown Bank',
+        account_name: bankInfo?.account_name || '',
+        action: action,
+        old_state: currentState,
+        new_state: newState,
+        changed_by: userIdentifier,
+        asset: bankInfo?.asset || selectedAsset || 'XLY'
+      });
+    
+    if (logError) {
+      console.error('Error logging mozart activity:', logError);
+    } else {
+      console.log(`✅ MOZART ${action} logged:`, {
+        bank: bankInfo?.bank,
+        by: userIdentifier,
+        action: action
+      });
+    }
+    
+    // 5. Update local state
+    setMozartStates(prev => ({
+      ...prev,
+      [bankId]: newState
+    }));
+    
+  } catch (error) {
+    console.error('Error updating mozart state:', error);
+    alert('Gagal update status MOZART: ' + error.message);
+  } finally {
+    setUpdatingMozart(false);
+  }
+};
 
  // ===========================================
  // REALTIME SUBSCRIPTION UNTUK MOZART STATES

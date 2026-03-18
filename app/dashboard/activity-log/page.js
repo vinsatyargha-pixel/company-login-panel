@@ -43,6 +43,52 @@ export default function ActivityLogPage() {
     }
   };
 
+  // ===========================================
+  // FETCH MOZART ACTIVITY LOGS (PUBLIC)
+  // ===========================================
+  const fetchMozartActivities = async () => {
+    try {
+      let query = supabase
+        .from('mozart_activity_log')
+        .select('*')
+        .order('changed_at', { ascending: false });
+      
+      // Apply limit biar gak berat
+      query = query.limit(100);
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      
+      return (data || []).map(item => ({
+        id: `mozart-${item.changed_at}-${item.id}`,
+        module: 'MOZART',
+        action: item.action, // 'MOUNT' or 'UNMOUNT'
+        officer: item.account_name || '-',
+        bulan: new Date(item.changed_at).toLocaleDateString('id-ID', { 
+          month: 'long', 
+          year: 'numeric' 
+        }),
+        timestamp: item.changed_at,
+        adminName: item.changed_by || 'System',
+        changes: [
+          `${item.action === 'MOUNT' ? '🔌 Mount' : '🔌 Unmount'} bank ${item.bank_name} ${item.account_name}`,
+          `Status: ${item.old_state ? 'MOUNTED' : 'UNMOUNT'} → ${item.new_state ? 'MOUNTED' : 'UNMOUNT'}`
+        ],
+        icon: item.action === 'MOUNT' ? '🔌' : '🔌',
+        table_name: 'mozart_status',
+        old_data: { is_mounted: item.old_state },
+        new_data: { is_mounted: item.new_state },
+        bank_name: item.bank_name,
+        account_name: item.account_name,
+        asset: item.asset
+      }));
+      
+    } catch (error) {
+      console.error('Error fetching mozart activities:', error);
+      return [];
+    }
+  };
+
   const fetchAllActivities = async () => {
     try {
       setLoading(true);
@@ -78,15 +124,17 @@ export default function ActivityLogPage() {
       if (filter !== 'all') {
         auditQuery = auditQuery.eq('action', filter.toUpperCase());
       }
-      if (moduleFilter !== 'all') {
+      if (moduleFilter !== 'all' && moduleFilter !== 'MOZART') {
         auditQuery = auditQuery.eq('module', moduleFilter);
       }
 
       const { data: auditData, error: auditError } = await auditQuery;
-
       if (auditError) throw auditError;
 
-      // 3. AMBIL DATA ADMIN UNTUK MEAL ALLOWANCE
+      // 3. AMBIL MOZART ACTIVITY LOGS (PUBLIC)
+      const mozartActivities = await fetchMozartActivities();
+
+      // 4. AMBIL DATA ADMIN UNTUK MEAL ALLOWANCE
       const adminIds = [...new Set(mealData.map(item => item.last_edited_by).filter(Boolean))];
       let adminMap = {};
       
@@ -102,7 +150,7 @@ export default function ActivityLogPage() {
         }, {});
       }
 
-      // 4. FORMAT MEAL ALLOWANCE ACTIVITIES
+      // 5. FORMAT MEAL ALLOWANCE ACTIVITIES
       const mealActivities = (mealData || []).map(item => ({
         id: `meal-${item.last_edited_at}-${item.officer_name}`,
         module: 'MEAL_ALLOWANCE',
@@ -116,7 +164,7 @@ export default function ActivityLogPage() {
         table_name: 'meal_allowance_snapshot'
       }));
 
-      // 5. FORMAT AUDIT LOGS ACTIVITIES (Semua module)
+      // 6. FORMAT AUDIT LOGS ACTIVITIES
       const auditActivities = (auditData || []).map(item => {
         const changes = formatChanges(item.old_data, item.new_data, item.table_name);
         const icon = getActionIcon(item.action);
@@ -137,9 +185,16 @@ export default function ActivityLogPage() {
         };
       });
 
-      // 6. GABUNGIN & SORTIR
-      const allActivities = [...mealActivities, ...auditActivities]
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      // 7. GABUNGIN SEMUA & SORTIR
+      let allActivities = [...mealActivities, ...auditActivities, ...mozartActivities];
+      
+      // Filter berdasarkan module jika perlu
+      if (moduleFilter !== 'all') {
+        allActivities = allActivities.filter(a => a.module === moduleFilter);
+      }
+      
+      // Sort by timestamp (latest first)
+      allActivities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
       setActivities(allActivities);
     } catch (error) {
@@ -264,6 +319,8 @@ export default function ActivityLogPage() {
       case 'UPDATE': return '✏️';
       case 'DELETE': return '❌';
       case 'UPLOAD': return '📤';
+      case 'MOUNT': return '🔌';
+      case 'UNMOUNT': return '🔌';
       default: return '📝';
     }
   };
@@ -274,6 +331,8 @@ export default function ActivityLogPage() {
       case 'UPDATE': return 'text-blue-400 bg-blue-500/10 border-blue-500/30';
       case 'DELETE': return 'text-red-400 bg-red-500/10 border-red-500/30';
       case 'UPLOAD': return 'text-purple-400 bg-purple-500/10 border-purple-500/30';
+      case 'MOUNT': return 'text-purple-400 bg-purple-500/10 border-purple-500/30';
+      case 'UNMOUNT': return 'text-gray-400 bg-gray-500/10 border-gray-500/30';
       default: return 'text-gray-400 bg-gray-500/10 border-gray-500/30';
     }
   };
@@ -287,6 +346,7 @@ export default function ActivityLogPage() {
       'DEPOSIT': '💰',
       'WITHDRAWAL': '💸',
       'SUPPORT_LINE': '💬',
+      'MOZART': '🎵',
       'UNKNOWN': '📋'
     };
     return icons[module] || '📋';
@@ -314,7 +374,7 @@ export default function ActivityLogPage() {
     });
   };
 
-  // Get unique modules for filter
+  // Get unique modules for filter (including MOZART)
   const modules = ['all', ...new Set(activities.map(a => a.module).filter(Boolean))];
 
   if (loading) {
@@ -357,19 +417,25 @@ export default function ActivityLogPage() {
             <option value="update">Update</option>
             <option value="delete">Delete</option>
             <option value="upload">Upload</option>
+            <option value="mount">Mount</option>
+            <option value="unmount">Unmount</option>
           </select>
 
-          {/* Module Filter */}
+          {/* Module Filter - Enhanced dengan MOZART */}
           <select 
             value={moduleFilter}
             onChange={(e) => setModuleFilter(e.target.value)}
             className="bg-[#0B1A33] border border-[#FFD700]/30 rounded px-3 py-1.5 text-sm text-white"
           >
-            {modules.map(module => (
-              <option key={module} value={module}>
-                {module === 'all' ? 'All Modules' : module}
-              </option>
-            ))}
+            <option value="all">All Modules</option>
+            <option value="OFFICERS">👤 Officers</option>
+            <option value="BANK_ACCOUNTS">🏦 Bank Accounts</option>
+            <option value="ASSETS">💎 Assets</option>
+            <option value="MEAL_ALLOWANCE">🍽️ Meal Allowance</option>
+            <option value="DEPOSIT">💰 Deposit</option>
+            <option value="WITHDRAWAL">💸 Withdrawal</option>
+            <option value="SUPPORT_LINE">💬 Support Line</option>
+            <option value="MOZART">🎵 Mozart (Mount/Unmount)</option>
           </select>
 
           {/* Refresh Button */}
@@ -414,7 +480,7 @@ export default function ActivityLogPage() {
                         {getActionIcon(activity.action)} {activity.action}
                       </span>
                       <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full text-[#FFD700] border border-[#FFD700]/30">
-                        {activity.module}
+                        {activity.module === 'MOZART' ? '🎵 ' : ''}{activity.module}
                       </span>
                       {activity.table_name && activity.table_name !== activity.module && (
                         <span className="text-xs bg-[#1A2F4A] px-2 py-0.5 rounded-full text-[#A7D8FF] border border-[#FFD700]/20">
@@ -423,8 +489,15 @@ export default function ActivityLogPage() {
                       )}
                     </div>
                     
+                    {/* Bank Info untuk MOZART (if applicable) */}
+                    {activity.module === 'MOZART' && activity.bank_name && (
+                      <div className="text-sm text-purple-400 mb-1">
+                        🏦 {activity.bank_name} {activity.account_name}
+                      </div>
+                    )}
+                    
                     {/* Officer Name (if applicable) */}
-                    {activity.officer && activity.officer !== '-' && (
+                    {activity.officer && activity.officer !== '-' && activity.module !== 'MOZART' && (
                       <div className="text-sm text-[#FFD700] mb-1">
                         👤 {activity.officer}
                       </div>
@@ -446,7 +519,7 @@ export default function ActivityLogPage() {
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
-                        <span className="text-white">{activity.adminName}</span>
+                        <span className="text-white font-mono text-xs">{activity.adminName}</span>
                       </span>
                       <span>•</span>
                       <span>{formatTimeAgo(activity.timestamp)}</span>
@@ -454,6 +527,14 @@ export default function ActivityLogPage() {
                       <span className="px-2 py-0.5 bg-[#1A2F4A] rounded-full text-xs border border-[#FFD700]/20">
                         {activity.bulan}
                       </span>
+                      {activity.asset && (
+                        <>
+                          <span>•</span>
+                          <span className="px-2 py-0.5 bg-purple-900/30 rounded-full text-xs border border-purple-500/30 text-purple-400">
+                            {activity.asset}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
