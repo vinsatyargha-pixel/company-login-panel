@@ -746,82 +746,51 @@ const fetchTrafficMetricsData = async () => {
   }
 };
 
-// ===========================================
-// PROCESS DAILY TRAFFIC DATA - FINAL FIX
-// ===========================================
+// PROCESS FUNCTIONS - UBAH PARAMETER DAN LOOP CHATNYA
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
-  // CONVERT ke number
-  const yearNum = Number(year);
-  const monthNum = Number(month);
-  
-  // HITUNG JUMLAH HARI DALAM BULAN (PAKAI month LANGSUNG, BUKAN month-1)
-  const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const today = new Date();
+  const currentDate = today.getDate();
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
   
   const days = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
+    const isPastDate = (year < currentYear) || 
+                      (year === currentYear && month < currentMonth) ||
+                      (year === currentYear && month === currentMonth && day <= currentDate);
+    
     return {
       name: `${day}`,
       day: day,
       chat: 0,
       deposit: 0,
-      withdrawal: 0
+      withdrawal: 0,
+      isPastDate: isPastDate,
+      fullDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     };
   });
   
-  console.log('📅 DAYS IN MONTH:', daysInMonth, 'untuk', monthNum, yearNum);
-  
-  // ========== DEPOSIT - PAKAI STRING, BUKAN NEW DATE() ==========
+  // DEPOSIT - TETAP
   deposits.forEach(deposit => {
-    if (!deposit.approved_date) return;
-    
-    // '2026-03-18 23:54:26' -> '2026-03-18' -> 18
-    const tgl = deposit.approved_date.split(' ')[0];
-    const [y, m, d] = tgl.split('-').map(Number);
-    
-    // VALIDASI TAHUN DAN BULAN
-    if (y === yearNum && m === monthNum) {
-      const idx = d - 1;
-      if (idx >= 0 && idx < days.length) {
-        days[idx].deposit++;
-      }
-    }
+    const date = new Date(deposit.approved_date);
+    const day = date.getDate() - 1;
+    if (days[day]) days[day].deposit++;
   });
   
-  // ========== WITHDRAWAL - PAKAI STRING JUGA ==========
+  // WITHDRAWAL - TETAP
   withdrawals.forEach(withdrawal => {
-    if (!withdrawal.approved_date) return;
-    
-    const tgl = withdrawal.approved_date.split(' ')[0];
-    const [y, m, d] = tgl.split('-').map(Number);
-    
-    if (y === yearNum && m === monthNum) {
-      const idx = d - 1;
-      if (idx >= 0 && idx < days.length) {
-        days[idx].withdrawal++;
-      }
-    }
+    const date = new Date(withdrawal.approved_date);
+    const day = date.getDate() - 1;
+    if (days[day]) days[day].withdrawal++;
   });
   
-  // ========== CHAT - PAKAI STRING JUGA ==========
+  // CHAT - DARI STARTED (INI YANG DITAMBAH)
   chats.forEach(chat => {
-    if (!chat.started) return;
-    
-    const tgl = chat.started.split(' ')[0];
-    const [y, m, d] = tgl.split('-').map(Number);
-    
-    if (y === yearNum && m === monthNum) {
-      const idx = d - 1;
-      if (idx >= 0 && idx < days.length) {
-        days[idx].chat++;
-      }
-    }
+    const date = new Date(chat.started);
+    const day = date.getDate() - 1;
+    if (days[day]) days[day].chat++;
   });
-  
-  // LOG VERIFIKASI
-  const totalDeposit = days.reduce((sum, d) => sum + d.deposit, 0);
-  console.log('📊 TOTAL DEPOSIT:', totalDeposit);
-  console.log('🔥 TANGGAL 18:', days[17]); // index 17 = tanggal 18
-  console.log('🔥 TANGGAL 19:', days[18]); // index 18 = tanggal 19
   
   return days;
 };
