@@ -638,41 +638,42 @@ const fetchOfficerPieData = async () => {
   };
 
 // ===========================================
-// FETCH TRAFFIC METRICS DATA - FIXED VERSION
+// FETCH TRAFFIC METRICS DATA - FIXED VERSION (DEPOSIT ONLY)
 // ===========================================
 const fetchTrafficMetricsData = async () => {
   try {
     setLoadingTrafficMetrics(true);
     
-    // ========== DAILY (1 BULAN) ==========
     if (trafficMetricsFilter === 'daily') {
       const startDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, trafficMetricsMonth, 0).getDate()} 23:59:59`;
       
-      console.log('📅 DAILY RANGE:', { startDate, endDate, month: trafficMetricsMonth, year: trafficMetricsYear });
-      
-      // ========== DEPOSIT ==========
+      // ========== DEPOSIT - DENGAN FILTER KHUSUS XLY + NULL ==========
       let depositQuery = supabase
         .from('deposit_transactions')
-        .select('approved_date, status, deposit_amount, brand')
+        .select('approved_date, brand')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
+      const { data: allDeposits, error: depError } = await depositQuery;
+      
+      // FILTER DEPOSIT MANUAL
+      let deposits = allDeposits || [];
       if (trafficMetricsAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', trafficMetricsAsset === 'XLY' ? 'XLY' : trafficMetricsAsset);
+        if (trafficMetricsAsset === 'XLY') {
+          // KHUSUS XLY: ambil brand = 'XLY' ATAU null
+          deposits = allDeposits?.filter(d => 
+            d.brand === 'XLY' || d.brand === null
+          ) || [];
+        } else {
+          // ASSET LAIN: exact match
+          deposits = allDeposits?.filter(d => 
+            d.brand === trafficMetricsAsset
+          ) || [];
+        }
       }
       
-      const { data: deposits, error: depError } = await depositQuery;
-      console.log('📊 DEPOSIT RAW COUNT:', deposits?.length || 0);
-      
-      // FILTER XLY + NULL
-      let filteredDeposits = deposits || [];
-      if (trafficMetricsAsset === 'XLY') {
-        filteredDeposits = deposits?.filter(d => d.brand === 'XLY' || d.brand === null) || [];
-        console.log('📊 DEPOSIT XLY (+null):', filteredDeposits.length);
-      }
-      
-      // ========== WITHDRAWAL ==========
+      // ========== WITHDRAWAL - TETAP PAKAI FILTER BIASA ==========
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('approved_date')
@@ -684,20 +685,19 @@ const fetchTrafficMetricsData = async () => {
       }
       
       const { data: withdrawals, error: wdError } = await withdrawalQuery;
-      console.log('📊 WITHDRAWAL RAW COUNT:', withdrawals?.length || 0);
       
-      // ========== CHAT ==========
-      const { data: chats, error: chatError } = await supabase
+      // ========== CHAT - TETAP ==========
+      let chatQuery = supabase
         .from('chat_cs_data')
         .select('started')
         .gte('started', startDate)
         .lte('started', endDate);
       
-      console.log('📊 CHAT RAW COUNT:', chats?.length || 0);
+      const { data: chats, error: chatError } = await chatQuery;
       
       // ========== PROCESS DATA ==========
       const data = processDailyTrafficData(
-        filteredDeposits, 
+        deposits,      // SUDAH DI-FILTER MANUAL
         withdrawals || [], 
         chats || [],
         trafficMetricsMonth, 
@@ -706,38 +706,38 @@ const fetchTrafficMetricsData = async () => {
       
       setTrafficMetrics(data);
       
-    // ========== MONTHLY (6 BULAN) ==========
-    } else if (trafficMetricsFilter === 'monthly') {
+    } else {
+      // MONTHLY
       const startMonth = trafficMetricsPeriod === 'jan-jun' ? 1 : 7;
       const endMonth = trafficMetricsPeriod === 'jan-jun' ? 6 : 12;
       
       const startDate = `${trafficMetricsYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${trafficMetricsYear}-${String(endMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, endMonth, 0).getDate()} 23:59:59`;
       
-      console.log('📅 MONTHLY RANGE:', { startDate, endDate, period: trafficMetricsPeriod, year: trafficMetricsYear });
-      
-      // ========== DEPOSIT ==========
+      // ========== DEPOSIT - DENGAN FILTER KHUSUS XLY + NULL ==========
       let depositQuery = supabase
         .from('deposit_transactions')
-        .select('approved_date, status, deposit_amount, brand')
+        .select('approved_date, brand')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
+      const { data: allDeposits, error: depError } = await depositQuery;
+      
+      // FILTER DEPOSIT MANUAL
+      let deposits = allDeposits || [];
       if (trafficMetricsAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', trafficMetricsAsset === 'XLY' ? 'XLY' : trafficMetricsAsset);
+        if (trafficMetricsAsset === 'XLY') {
+          deposits = allDeposits?.filter(d => 
+            d.brand === 'XLY' || d.brand === null
+          ) || [];
+        } else {
+          deposits = allDeposits?.filter(d => 
+            d.brand === trafficMetricsAsset
+          ) || [];
+        }
       }
       
-      const { data: deposits, error: depError } = await depositQuery;
-      console.log('📊 DEPOSIT RAW COUNT:', deposits?.length || 0);
-      
-      // FILTER XLY + NULL
-      let filteredDeposits = deposits || [];
-      if (trafficMetricsAsset === 'XLY') {
-        filteredDeposits = deposits?.filter(d => d.brand === 'XLY' || d.brand === null) || [];
-        console.log('📊 DEPOSIT XLY (+null):', filteredDeposits.length);
-      }
-      
-      // ========== WITHDRAWAL ==========
+      // ========== WITHDRAWAL - TETAP ==========
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('approved_date')
@@ -749,20 +749,19 @@ const fetchTrafficMetricsData = async () => {
       }
       
       const { data: withdrawals, error: wdError } = await withdrawalQuery;
-      console.log('📊 WITHDRAWAL RAW COUNT:', withdrawals?.length || 0);
       
-      // ========== CHAT ==========
-      const { data: chats, error: chatError } = await supabase
+      // ========== CHAT - TETAP ==========
+      let chatQuery = supabase
         .from('chat_cs_data')
         .select('started')
         .gte('started', startDate)
         .lte('started', endDate);
       
-      console.log('📊 CHAT RAW COUNT:', chats?.length || 0);
+      const { data: chats, error: chatError } = await chatQuery;
       
       // ========== PROCESS DATA ==========
       const data = processMonthlyTrafficData(
-        filteredDeposits, 
+        deposits,      // SUDAH DI-FILTER MANUAL
         withdrawals || [], 
         chats || [],
         trafficMetricsPeriod, 
@@ -779,9 +778,7 @@ const fetchTrafficMetricsData = async () => {
   }
 };
 
-// ===========================================
-// PROCESS DAILY TRAFFIC DATA - FIXED VERSION
-// ===========================================
+// PROCESS FUNCTIONS - UBAH PARAMETER DAN LOOP CHATNYA
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
@@ -789,7 +786,6 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
   const currentMonth = today.getMonth() + 1;
   const currentYear = today.getFullYear();
   
-  // BUAT ARRAY 31 HARI
   const days = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
     const isPastDate = (year < currentYear) || 
@@ -807,107 +803,35 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
     };
   });
   
-  console.log('🔍 PROCESSING DEPOSITS:', deposits.length);
-  
-  // ========== DEPOSIT ==========
+  // DEPOSIT - TETAP
   deposits.forEach(deposit => {
-    const dateStr = deposit.approved_date;
-    if (!dateStr) return;
-    
-    // FORMAT: '2026-03-18 19:10:11' atau '2026-03-18T19:10:11'
-    let datePart = dateStr;
-    if (dateStr.includes('T')) {
-      datePart = dateStr.split('T')[0];
-    } else {
-      datePart = dateStr.split(' ')[0];
-    }
-    
-    const [y, m, d] = datePart.split('-').map(Number);
-    
-    // VALIDASI TAHUN DAN BULAN
-    if (y === year && m === month) {
-      const dayIndex = d - 1;
-      if (dayIndex >= 0 && dayIndex < days.length) {
-        days[dayIndex].deposit++;
-      } else {
-        console.log('⚠️ DAY INDEX OUT OF RANGE:', { date: dateStr, day: d, index: dayIndex });
-      }
-    } else {
-      console.log('⚠️ YEAR/MONTH MISMATCH:', { 
-        date: dateStr, 
-        expected: `${year}-${month}`, 
-        got: `${y}-${m}`,
-        y, year, m, month
-      });
-    }
+    const date = new Date(deposit.approved_date);
+    const day = date.getDate() - 1;
+    if (days[day]) days[day].deposit++;
   });
   
-  // ========== WITHDRAWAL ==========
+  // WITHDRAWAL - TETAP
   withdrawals.forEach(withdrawal => {
-    const dateStr = withdrawal.approved_date;
-    if (!dateStr) return;
-    
-    let datePart = dateStr;
-    if (dateStr.includes('T')) {
-      datePart = dateStr.split('T')[0];
-    } else {
-      datePart = dateStr.split(' ')[0];
-    }
-    
-    const [y, m, d] = datePart.split('-').map(Number);
-    
-    if (y === year && m === month) {
-      const dayIndex = d - 1;
-      if (dayIndex >= 0 && dayIndex < days.length) {
-        days[dayIndex].withdrawal++;
-      }
-    }
+    const date = new Date(withdrawal.approved_date);
+    const day = date.getDate() - 1;
+    if (days[day]) days[day].withdrawal++;
   });
   
-  // ========== CHAT ==========
+  // CHAT - DARI STARTED (INI YANG DITAMBAH)
   chats.forEach(chat => {
-    const dateStr = chat.started;
-    if (!dateStr) return;
-    
-    let datePart = dateStr;
-    if (dateStr.includes('T')) {
-      datePart = dateStr.split('T')[0];
-    } else {
-      datePart = dateStr.split(' ')[0];
-    }
-    
-    const [y, m, d] = datePart.split('-').map(Number);
-    
-    if (y === year && m === month) {
-      const dayIndex = d - 1;
-      if (dayIndex >= 0 && dayIndex < days.length) {
-        days[dayIndex].chat++;
-      }
-    }
+    const date = new Date(chat.started);
+    const day = date.getDate() - 1;
+    if (days[day]) days[day].chat++;
   });
-  
-  // LOG HASIL
-  const totalDeposit = days.reduce((sum, d) => sum + d.deposit, 0);
-  const daysWithData = days.filter(d => d.deposit > 0 || d.withdrawal > 0 || d.chat > 0);
-  
-  console.log('📊 TOTAL DEPOSIT PROCESSED:', totalDeposit);
-  console.log('📊 DAYS WITH DATA:', daysWithData.length);
-  console.log('📊 SAMPLE DAYS:', daysWithData.slice(0, 5).map(d => ({ day: d.day, deposit: d.deposit, withdrawal: d.withdrawal, chat: d.chat })));
   
   return days;
 };
 
-// ===========================================
-// PROCESS MONTHLY TRAFFIC DATA - FIXED VERSION
-// ===========================================
 const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) => {
   const startMonth = period === 'jan-jun' ? 0 : 6;
-  const endMonth = period === 'jan-jun' ? 6 : 12;
   const today = new Date();
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth();
-  
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   
   const monthlyData = Array.from({ length: 6 }, (_, i) => {
     const monthIndex = startMonth + i;
@@ -924,84 +848,35 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     };
   });
   
-  console.log('🔍 PROCESSING MONTHLY DEPOSITS:', deposits.length);
-  
-  // ========== DEPOSIT ==========
+  // DEPOSIT - TETAP
   deposits.forEach(deposit => {
-    const dateStr = deposit.approved_date;
-    if (!dateStr) return;
-    
-    let datePart = dateStr;
-    if (dateStr.includes('T')) {
-      datePart = dateStr.split('T')[0];
-    } else {
-      datePart = dateStr.split(' ')[0];
-    }
-    
-    const [y, m] = datePart.split('-').map(Number);
-    
-    if (y === year) {
-      const monthIndex = m - 1; // 0-based
-      const arrayIndex = monthIndex - startMonth;
-      
-      if (arrayIndex >= 0 && arrayIndex < 6) {
-        monthlyData[arrayIndex].deposit++;
-      }
+    const date = new Date(deposit.approved_date);
+    const month = date.getMonth();
+    const monthIndex = month - startMonth;
+    if (monthIndex >= 0 && monthIndex < 6) {
+      monthlyData[monthIndex].deposit++;
     }
   });
   
-  // ========== WITHDRAWAL ==========
+  // WITHDRAWAL - TETAP
   withdrawals.forEach(withdrawal => {
-    const dateStr = withdrawal.approved_date;
-    if (!dateStr) return;
-    
-    let datePart = dateStr;
-    if (dateStr.includes('T')) {
-      datePart = dateStr.split('T')[0];
-    } else {
-      datePart = dateStr.split(' ')[0];
-    }
-    
-    const [y, m] = datePart.split('-').map(Number);
-    
-    if (y === year) {
-      const monthIndex = m - 1;
-      const arrayIndex = monthIndex - startMonth;
-      
-      if (arrayIndex >= 0 && arrayIndex < 6) {
-        monthlyData[arrayIndex].withdrawal++;
-      }
+    const date = new Date(withdrawal.approved_date);
+    const month = date.getMonth();
+    const monthIndex = month - startMonth;
+    if (monthIndex >= 0 && monthIndex < 6) {
+      monthlyData[monthIndex].withdrawal++;
     }
   });
   
-  // ========== CHAT ==========
+  // CHAT - DARI STARTED (INI YANG DITAMBAH)
   chats.forEach(chat => {
-    const dateStr = chat.started;
-    if (!dateStr) return;
-    
-    let datePart = dateStr;
-    if (dateStr.includes('T')) {
-      datePart = dateStr.split('T')[0];
-    } else {
-      datePart = dateStr.split(' ')[0];
-    }
-    
-    const [y, m] = datePart.split('-').map(Number);
-    
-    if (y === year) {
-      const monthIndex = m - 1;
-      const arrayIndex = monthIndex - startMonth;
-      
-      if (arrayIndex >= 0 && arrayIndex < 6) {
-        monthlyData[arrayIndex].chat++;
-      }
+    const date = new Date(chat.started);
+    const month = date.getMonth();
+    const monthIndex = month - startMonth;
+    if (monthIndex >= 0 && monthIndex < 6) {
+      monthlyData[monthIndex].chat++;
     }
   });
-  
-  // LOG HASIL
-  const totalDeposit = monthlyData.reduce((sum, m) => sum + m.deposit, 0);
-  console.log('📊 TOTAL MONTHLY DEPOSIT:', totalDeposit);
-  console.log('📊 MONTHLY DATA:', monthlyData.map(m => ({ month: m.month, deposit: m.deposit, withdrawal: m.withdrawal, chat: m.chat })));
   
   return monthlyData;
 };
