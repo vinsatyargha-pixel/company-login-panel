@@ -638,7 +638,7 @@ const fetchOfficerPieData = async () => {
   };
 
 // ===========================================
-// FETCH TRAFFIC METRICS DATA - FIXED VERSION
+// FETCH TRAFFIC METRICS DATA - FINAL FIXED VERSION
 // ===========================================
 const fetchTrafficMetricsData = async () => {
   try {
@@ -651,57 +651,50 @@ const fetchTrafficMetricsData = async () => {
       
       console.log('📅 DAILY RANGE:', { startDate, endDate, month: trafficMetricsMonth, year: trafficMetricsYear });
       
-      // ========== DEPOSIT ==========
-      let depositQuery = supabase
+      // ========== DEPOSIT - AMBIL SEMUA TANPA FILTER ==========
+      const { data: deposits, error: depError } = await supabase
         .from('deposit_transactions')
         .select('approved_date, status, deposit_amount, brand')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      if (trafficMetricsAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', trafficMetricsAsset === 'XLY' ? 'XLY' : trafficMetricsAsset);
-      }
+      if (depError) throw depError;
       
-      const { data: deposits, error: depError } = await depositQuery;
       console.log('📊 DEPOSIT RAW COUNT:', deposits?.length || 0);
+      console.log('📊 DEPOSIT BRAND STATS:', {
+        total: deposits?.length || 0,
+        XLY: deposits?.filter(d => d.brand === 'XLY').length || 0,
+        null: deposits?.filter(d => d.brand === null).length || 0,
+        others: deposits?.filter(d => d.brand && d.brand !== 'XLY').length || 0
+      });
       
-      // FILTER XLY + NULL
-      let filteredDeposits = deposits || [];
-      if (trafficMetricsAsset === 'XLY') {
-        filteredDeposits = deposits?.filter(d => d.brand === 'XLY' || d.brand === null) || [];
-        console.log('📊 DEPOSIT XLY (+null):', filteredDeposits.length);
-      }
-      
-      // ========== WITHDRAWAL ==========
-      let withdrawalQuery = supabase
+      // ========== WITHDRAWAL - AMBIL SEMUA ==========
+      const { data: withdrawals, error: wdError } = await supabase
         .from('withdrawal_transactions')
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      if (trafficMetricsAsset !== 'all') {
-        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
-      }
-      
-      const { data: withdrawals, error: wdError } = await withdrawalQuery;
+      if (wdError) throw wdError;
       console.log('📊 WITHDRAWAL RAW COUNT:', withdrawals?.length || 0);
       
-      // ========== CHAT ==========
+      // ========== CHAT - AMBIL SEMUA ==========
       const { data: chats, error: chatError } = await supabase
         .from('chat_cs_data')
         .select('started')
         .gte('started', startDate)
         .lte('started', endDate);
       
+      if (chatError) throw chatError;
       console.log('📊 CHAT RAW COUNT:', chats?.length || 0);
       
-      // ========== PROCESS DATA ==========
+      // ========== PROCESS DATA - PAKAI SEMUA DEPOSIT ==========
       const data = processDailyTrafficData(
-        filteredDeposits, 
+        deposits || [],      // PAKAI SEMUA, GA PAKE FILTER
         withdrawals || [], 
         chats || [],
-        Number(trafficMetricsMonth),  // PAKSA NUMBER
-        Number(trafficMetricsYear)    // PAKSA NUMBER
+        Number(trafficMetricsMonth),
+        Number(trafficMetricsYear)
       );
       
       setTrafficMetrics(data);
@@ -716,57 +709,50 @@ const fetchTrafficMetricsData = async () => {
       
       console.log('📅 MONTHLY RANGE:', { startDate, endDate, period: trafficMetricsPeriod, year: trafficMetricsYear });
       
-      // ========== DEPOSIT ==========
-      let depositQuery = supabase
+      // ========== DEPOSIT - AMBIL SEMUA ==========
+      const { data: deposits, error: depError } = await supabase
         .from('deposit_transactions')
         .select('approved_date, status, deposit_amount, brand')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      if (trafficMetricsAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', trafficMetricsAsset === 'XLY' ? 'XLY' : trafficMetricsAsset);
-      }
+      if (depError) throw depError;
       
-      const { data: deposits, error: depError } = await depositQuery;
       console.log('📊 DEPOSIT RAW COUNT:', deposits?.length || 0);
+      console.log('📊 DEPOSIT BRAND STATS:', {
+        total: deposits?.length || 0,
+        XLY: deposits?.filter(d => d.brand === 'XLY').length || 0,
+        null: deposits?.filter(d => d.brand === null).length || 0,
+        others: deposits?.filter(d => d.brand && d.brand !== 'XLY').length || 0
+      });
       
-      // FILTER XLY + NULL
-      let filteredDeposits = deposits || [];
-      if (trafficMetricsAsset === 'XLY') {
-        filteredDeposits = deposits?.filter(d => d.brand === 'XLY' || d.brand === null) || [];
-        console.log('📊 DEPOSIT XLY (+null):', filteredDeposits.length);
-      }
-      
-      // ========== WITHDRAWAL ==========
-      let withdrawalQuery = supabase
+      // ========== WITHDRAWAL - AMBIL SEMUA ==========
+      const { data: withdrawals, error: wdError } = await supabase
         .from('withdrawal_transactions')
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      if (trafficMetricsAsset !== 'all') {
-        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
-      }
-      
-      const { data: withdrawals, error: wdError } = await withdrawalQuery;
+      if (wdError) throw wdError;
       console.log('📊 WITHDRAWAL RAW COUNT:', withdrawals?.length || 0);
       
-      // ========== CHAT ==========
+      // ========== CHAT - AMBIL SEMUA ==========
       const { data: chats, error: chatError } = await supabase
         .from('chat_cs_data')
         .select('started')
         .gte('started', startDate)
         .lte('started', endDate);
       
+      if (chatError) throw chatError;
       console.log('📊 CHAT RAW COUNT:', chats?.length || 0);
       
-      // ========== PROCESS DATA ==========
+      // ========== PROCESS DATA - PAKAI SEMUA DEPOSIT ==========
       const data = processMonthlyTrafficData(
-        filteredDeposits, 
+        deposits || [],      // PAKAI SEMUA
         withdrawals || [], 
         chats || [],
         trafficMetricsPeriod, 
-        Number(trafficMetricsYear)    // PAKSA NUMBER
+        Number(trafficMetricsYear)
       );
       
       setTrafficMetrics(data);
@@ -780,10 +766,9 @@ const fetchTrafficMetricsData = async () => {
 };
 
 // ===========================================
-// PROCESS DAILY TRAFFIC DATA - FIXED VERSION
+// PROCESS DAILY TRAFFIC DATA - FIXED
 // ===========================================
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
-  // PASTIKAN month DAN year ADALAH NUMBER
   const monthNum = Number(month);
   const yearNum = Number(year);
   
@@ -814,64 +799,35 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
   console.log('🔍 PROCESSING DEPOSITS:', deposits.length, 'untuk bulan', monthNum, 'tahun', yearNum);
   
   // ========== DEPOSIT ==========
-deposits.forEach(deposit => {
-  const dateStr = deposit.approved_date;
-  if (!dateStr) return;
-  
-  // FORMAT: '2026-03-18 19:10:11' atau '2026-03-18T19:10:11'
-  let datePart = dateStr;
-  if (dateStr.includes('T')) {
-    datePart = dateStr.split('T')[0];
-  } else {
-    datePart = dateStr.split(' ')[0];
-  }
-  
-  const [y, m, d] = datePart.split('-').map(Number);
-  
-  // ===== LOG KHUSUS TANGGAL 18 =====
-  if (d === 18) {
-    console.log('🔥🔥🔥 TANGGAL 18 DITEMUKAN:', {
-      original: dateStr,
-      parsed: datePart,
-      y, m, d,
-      yearNum, monthNum,
-      match: (y === yearNum && m === monthNum),
-      dayIndex: d - 1,
-      willBeAdded: (y === yearNum && m === monthNum) ? '✅ YES' : '❌ NO'
-    });
-  }
-  
-  // VALIDASI TAHUN DAN BULAN
-  if (y === yearNum && m === monthNum) {
-    const dayIndex = d - 1;
-    if (dayIndex >= 0 && dayIndex < days.length) {
-      days[dayIndex].deposit++;
-      
-      // LOG KONFIRMASI TANGGAL 18 BERHASIL DITAMBAH
-      if (d === 18) {
-        console.log('✅✅✅ TANGGAL 18 BERHASIL DITAMBAH!', {
-          day: d,
-          index: dayIndex,
-          totalDepositHariIni: days[dayIndex].deposit
-        });
-      }
+  let depositCount = 0;
+  deposits.forEach(deposit => {
+    const dateStr = deposit.approved_date;
+    if (!dateStr) return;
+    
+    // FORMAT: '2026-03-18 19:10:11' atau '2026-03-18T19:10:11'
+    let datePart = dateStr;
+    if (dateStr.includes('T')) {
+      datePart = dateStr.split('T')[0];
     } else {
-      console.log('⚠️ DAY INDEX OUT OF RANGE:', { date: dateStr, day: d, index: dayIndex });
+      datePart = dateStr.split(' ')[0];
     }
-  } else {
-    // LOG UNTUK TANGGAL 18 YANG GAGAL MATCH
-    if (d === 18) {
-      console.log('❌❌❌ TANGGAL 18 GAGAL MATCH:', {
-        y, yearNum,
-        m, monthNum,
-        yEqual: y === yearNum,
-        mEqual: m === monthNum
-      });
+    
+    const [y, m, d] = datePart.split('-').map(Number);
+    
+    // VALIDASI TAHUN DAN BULAN
+    if (y === yearNum && m === monthNum) {
+      const dayIndex = d - 1;
+      if (dayIndex >= 0 && dayIndex < days.length) {
+        days[dayIndex].deposit++;
+        depositCount++;
+      }
     }
-  }
-});
+  });
+  
+  console.log('✅ DEPOSIT MASUK KE CHART:', depositCount);
   
   // ========== WITHDRAWAL ==========
+  let withdrawalCount = 0;
   withdrawals.forEach(withdrawal => {
     const dateStr = withdrawal.approved_date;
     if (!dateStr) return;
@@ -889,11 +845,15 @@ deposits.forEach(deposit => {
       const dayIndex = d - 1;
       if (dayIndex >= 0 && dayIndex < days.length) {
         days[dayIndex].withdrawal++;
+        withdrawalCount++;
       }
     }
   });
   
+  console.log('✅ WITHDRAWAL MASUK KE CHART:', withdrawalCount);
+  
   // ========== CHAT ==========
+  let chatCount = 0;
   chats.forEach(chat => {
     const dateStr = chat.started;
     if (!dateStr) return;
@@ -911,9 +871,12 @@ deposits.forEach(deposit => {
       const dayIndex = d - 1;
       if (dayIndex >= 0 && dayIndex < days.length) {
         days[dayIndex].chat++;
+        chatCount++;
       }
     }
   });
+  
+  console.log('✅ CHAT MASUK KE CHART:', chatCount);
   
   // LOG HASIL
   const totalDeposit = days.reduce((sum, d) => sum + d.deposit, 0);
@@ -921,16 +884,15 @@ deposits.forEach(deposit => {
   
   console.log('📊 TOTAL DEPOSIT PROCESSED:', totalDeposit);
   console.log('📊 DAYS WITH DATA:', daysWithData.length);
-  console.log('📊 SAMPLE DAYS:', daysWithData.slice(0, 5).map(d => ({ day: d.day, deposit: d.deposit, withdrawal: d.withdrawal, chat: d.chat })));
+  console.log('📊 SAMPLE DAYS:', daysWithData.slice(0, 5));
   
   return days;
 };
 
 // ===========================================
-// PROCESS MONTHLY TRAFFIC DATA - FIXED VERSION
+// PROCESS MONTHLY TRAFFIC DATA - FIXED
 // ===========================================
 const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) => {
-  // PASTIKAN year ADALAH NUMBER
   const yearNum = Number(year);
   
   const startMonth = period === 'jan-jun' ? 0 : 6;
@@ -959,6 +921,7 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
   console.log('🔍 PROCESSING MONTHLY DEPOSITS:', deposits.length, 'tahun', yearNum);
   
   // ========== DEPOSIT ==========
+  let depositCount = 0;
   deposits.forEach(deposit => {
     const dateStr = deposit.approved_date;
     if (!dateStr) return;
@@ -973,16 +936,20 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     const [y, m] = datePart.split('-').map(Number);
     
     if (y === yearNum) {
-      const monthIndex = m - 1; // 0-based
+      const monthIndex = m - 1;
       const arrayIndex = monthIndex - startMonth;
       
       if (arrayIndex >= 0 && arrayIndex < 6) {
         monthlyData[arrayIndex].deposit++;
+        depositCount++;
       }
     }
   });
   
+  console.log('✅ DEPOSIT MASUK KE CHART:', depositCount);
+  
   // ========== WITHDRAWAL ==========
+  let withdrawalCount = 0;
   withdrawals.forEach(withdrawal => {
     const dateStr = withdrawal.approved_date;
     if (!dateStr) return;
@@ -1002,11 +969,15 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
       
       if (arrayIndex >= 0 && arrayIndex < 6) {
         monthlyData[arrayIndex].withdrawal++;
+        withdrawalCount++;
       }
     }
   });
   
+  console.log('✅ WITHDRAWAL MASUK KE CHART:', withdrawalCount);
+  
   // ========== CHAT ==========
+  let chatCount = 0;
   chats.forEach(chat => {
     const dateStr = chat.started;
     if (!dateStr) return;
@@ -1026,14 +997,16 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
       
       if (arrayIndex >= 0 && arrayIndex < 6) {
         monthlyData[arrayIndex].chat++;
+        chatCount++;
       }
     }
   });
   
+  console.log('✅ CHAT MASUK KE CHART:', chatCount);
+  
   // LOG HASIL
   const totalDeposit = monthlyData.reduce((sum, m) => sum + m.deposit, 0);
   console.log('📊 TOTAL MONTHLY DEPOSIT:', totalDeposit);
-  console.log('📊 MONTHLY DATA:', monthlyData.map(m => ({ month: m.month, deposit: m.deposit, withdrawal: m.withdrawal, chat: m.chat })));
   
   return monthlyData;
 };
