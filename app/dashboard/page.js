@@ -750,7 +750,10 @@ const fetchTrafficMetricsData = async () => {
 // PROCESS DAILY TRAFFIC DATA - ANTI GAGAL VERSION
 // ===========================================
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
-  const daysInMonth = new Date(year, month, 0).getDate();
+  const yearNum = Number(year);
+  const monthNum = Number(month);
+  const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+  
   const days = Array.from({ length: daysInMonth }, (_, i) => ({
     name: `${i + 1}`,
     chat: 0,
@@ -758,44 +761,47 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
     withdrawal: 0
   }));
 
-  // Helper fungsi biar gak salah ambil tanggal (ANTI GAGAL)
-  const getDay = (str) => {
-    if (!str) return null;
-    // Ambil 10 karakter awal saja: "2026-03-18" (aman dari format apapun)
-    const dateOnly = str.substring(0, 10); 
-    const parts = dateOnly.split('-');
-    return parts.length === 3 ? parseInt(parts[2], 10) : null;
+  // Helper function - AMBIL TANGGAL DOANG
+  const getDayFromDate = (dateStr) => {
+    if (!dateStr) return null;
+    // Format: "2026-03-18 23:54:26" atau "2026-03-18T23:54:26"
+    const datePart = dateStr.split(' ')[0].split('T')[0];
+    const [y, m, d] = datePart.split('-').map(Number);
+    // LANGSUNG MATCH TAHUN + BULAN
+    if (y === yearNum && m === monthNum) {
+      return d;
+    }
+    return null;
   };
 
-  // Proses Deposit
+  // DEPOSIT
   deposits.forEach(d => {
-    const day = getDay(d.approved_date);
-    if (day && day <= daysInMonth) {
+    const day = getDayFromDate(d.approved_date);
+    if (day && day >= 1 && day <= daysInMonth) {
       days[day - 1].deposit++;
     }
   });
 
-  // Proses Withdrawal
+  // WITHDRAWAL
   withdrawals.forEach(w => {
-    const day = getDay(w.approved_date);
-    if (day && day <= daysInMonth) {
+    const day = getDayFromDate(w.approved_date);
+    if (day && day >= 1 && day <= daysInMonth) {
       days[day - 1].withdrawal++;
     }
   });
 
-  // Proses Chat
+  // CHAT
   chats.forEach(c => {
-    const day = getDay(c.started);
-    if (day && day <= daysInMonth) {
+    const day = getDayFromDate(c.started);
+    if (day && day >= 1 && day <= daysInMonth) {
       days[day - 1].chat++;
     }
   });
 
-  // Debug log
-  console.log('📊 DAILY DATA:', {
-    totalDeposit: days.reduce((sum, d) => sum + d.deposit, 0),
-    tanggal18: days[17] // index 17 = tanggal 18
-  });
+  // VERIFIKASI
+  console.log('🔥 DATA TANGGAL 18:', days[17]); // index 17 = 18
+  console.log('🔥 DATA TANGGAL 19:', days[18]); // index 18 = 19
+  console.log('📊 TOTAL DEPOSIT:', days.reduce((sum, d) => sum + d.deposit, 0));
 
   return days;
 };
