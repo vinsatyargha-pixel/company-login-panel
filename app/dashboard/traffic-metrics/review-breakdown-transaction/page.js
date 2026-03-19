@@ -92,6 +92,33 @@ export default function ReviewBreakdownTransactionPage() {
   };
 
   // ===========================================
+  // FETCH ALL DATA WITH PAGINATION
+  // ===========================================
+  const fetchAllDataWithPagination = async (table, query) => {
+    let allData = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await query
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...data];
+        page++;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allData;
+  };
+
+  // ===========================================
   // FETCH HOURLY DATA (24 JAM)
   // ===========================================
   const fetchHourlyData = async (date, asset, status) => {
@@ -101,8 +128,8 @@ export default function ReviewBreakdownTransactionPage() {
       
       const assetCode = asset === 'all' ? 'XLY' : asset;
       
-      // Fetch deposits
-      let depositQuery = supabase
+      // Build deposit query
+      let depositQueryBuilder = supabase
         .from('deposit_transactions')
         .select('approved_date, status, deposit_amount, brand')
         .eq('brand', assetCode)
@@ -112,11 +139,11 @@ export default function ReviewBreakdownTransactionPage() {
       if (status !== 'all') {
         const dbStatus = status === 'failed' ? 'Fail' : 
                         status.charAt(0).toUpperCase() + status.slice(1);
-        depositQuery = depositQuery.eq('status', dbStatus);
+        depositQueryBuilder = depositQueryBuilder.eq('status', dbStatus);
       }
       
-      // Fetch withdrawals
-      let withdrawalQuery = supabase
+      // Build withdrawal query
+      let withdrawalQueryBuilder = supabase
         .from('withdrawal_transactions')
         .select('approved_date, status, withdrawal_amount, brand')
         .eq('brand', assetCode)
@@ -125,30 +152,26 @@ export default function ReviewBreakdownTransactionPage() {
       
       if (status !== 'all' && status !== 'failed') {
         const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
-        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+        withdrawalQueryBuilder = withdrawalQueryBuilder.eq('status', dbStatus);
       } else if (status === 'failed') {
-        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
+        withdrawalQueryBuilder = withdrawalQueryBuilder.eq('status', 'NO_RESULT');
       }
       
-      // FETCH CHAT
-      let chatQuery = supabase
+      // Build chat query
+      let chatQueryBuilder = supabase
         .from('chat_cs_data')
         .select('started')
         .gte('started', startDate)
         .lte('started', endDate);
       
-      const [depositResult, withdrawalResult, chatResult] = await Promise.all([
-        depositQuery, 
-        withdrawalQuery,
-        chatQuery
+      // Fetch all with pagination
+      const [deposits, withdrawals, chats] = await Promise.all([
+        fetchAllDataWithPagination('deposit_transactions', depositQueryBuilder),
+        fetchAllDataWithPagination('withdrawal_transactions', withdrawalQueryBuilder),
+        fetchAllDataWithPagination('chat_cs_data', chatQueryBuilder)
       ]);
       
-      return processHourlyData(
-        depositResult.data || [], 
-        withdrawalResult.data || [], 
-        chatResult.data || [], 
-        date
-      );
+      return processHourlyData(deposits, withdrawals, chats, date);
       
     } catch (error) {
       console.error('Error fetching hourly data:', error);
@@ -269,8 +292,8 @@ export default function ReviewBreakdownTransactionPage() {
       
       const assetCode = asset === 'all' ? 'XLY' : asset;
       
-      // Fetch deposits
-      let depositQuery = supabase
+      // Build deposit query
+      let depositQueryBuilder = supabase
         .from('deposit_transactions')
         .select('approved_date, status, deposit_amount, brand')
         .eq('brand', assetCode)
@@ -280,11 +303,11 @@ export default function ReviewBreakdownTransactionPage() {
       if (status !== 'all') {
         const dbStatus = status === 'failed' ? 'Fail' : 
                         status.charAt(0).toUpperCase() + status.slice(1);
-        depositQuery = depositQuery.eq('status', dbStatus);
+        depositQueryBuilder = depositQueryBuilder.eq('status', dbStatus);
       }
       
-      // Fetch withdrawals
-      let withdrawalQuery = supabase
+      // Build withdrawal query
+      let withdrawalQueryBuilder = supabase
         .from('withdrawal_transactions')
         .select('approved_date, status, withdrawal_amount, brand')
         .eq('brand', assetCode)
@@ -293,25 +316,26 @@ export default function ReviewBreakdownTransactionPage() {
       
       if (status !== 'all' && status !== 'failed') {
         const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
-        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+        withdrawalQueryBuilder = withdrawalQueryBuilder.eq('status', dbStatus);
       } else if (status === 'failed') {
-        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
+        withdrawalQueryBuilder = withdrawalQueryBuilder.eq('status', 'NO_RESULT');
       }
       
-      // FETCH CHAT
-      let chatQuery = supabase
+      // Build chat query
+      let chatQueryBuilder = supabase
         .from('chat_cs_data')
         .select('started')
         .gte('started', startDate)
         .lte('started', endDate);
       
-      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
-        depositQuery, 
-        withdrawalQuery,
-        chatQuery
+      // Fetch all with pagination
+      const [deposits, withdrawals, chats] = await Promise.all([
+        fetchAllDataWithPagination('deposit_transactions', depositQueryBuilder),
+        fetchAllDataWithPagination('withdrawal_transactions', withdrawalQueryBuilder),
+        fetchAllDataWithPagination('chat_cs_data', chatQueryBuilder)
       ]);
       
-      return processDailyData(deposits || [], withdrawals || [], chats || [], month, year);
+      return processDailyData(deposits, withdrawals, chats, month, year);
       
     } catch (error) {
       console.error('Error fetching daily data:', error);
@@ -440,8 +464,8 @@ export default function ReviewBreakdownTransactionPage() {
       
       const assetCode = asset === 'all' ? 'XLY' : asset;
       
-      // Fetch deposits
-      let depositQuery = supabase
+      // Build deposit query
+      let depositQueryBuilder = supabase
         .from('deposit_transactions')
         .select('approved_date, status, deposit_amount, brand')
         .eq('brand', assetCode)
@@ -451,11 +475,11 @@ export default function ReviewBreakdownTransactionPage() {
       if (status !== 'all') {
         const dbStatus = status === 'failed' ? 'Fail' : 
                         status.charAt(0).toUpperCase() + status.slice(1);
-        depositQuery = depositQuery.eq('status', dbStatus);
+        depositQueryBuilder = depositQueryBuilder.eq('status', dbStatus);
       }
       
-      // Fetch withdrawals
-      let withdrawalQuery = supabase
+      // Build withdrawal query
+      let withdrawalQueryBuilder = supabase
         .from('withdrawal_transactions')
         .select('approved_date, status, withdrawal_amount, brand')
         .eq('brand', assetCode)
@@ -464,25 +488,26 @@ export default function ReviewBreakdownTransactionPage() {
       
       if (status !== 'all' && status !== 'failed') {
         const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
-        withdrawalQuery = withdrawalQuery.eq('status', dbStatus);
+        withdrawalQueryBuilder = withdrawalQueryBuilder.eq('status', dbStatus);
       } else if (status === 'failed') {
-        withdrawalQuery = withdrawalQuery.eq('status', 'NO_RESULT');
+        withdrawalQueryBuilder = withdrawalQueryBuilder.eq('status', 'NO_RESULT');
       }
       
-      // FETCH CHAT
-      let chatQuery = supabase
+      // Build chat query
+      let chatQueryBuilder = supabase
         .from('chat_cs_data')
         .select('started')
         .gte('started', startDate)
         .lte('started', endDate);
       
-      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
-        depositQuery, 
-        withdrawalQuery,
-        chatQuery
+      // Fetch all with pagination
+      const [deposits, withdrawals, chats] = await Promise.all([
+        fetchAllDataWithPagination('deposit_transactions', depositQueryBuilder),
+        fetchAllDataWithPagination('withdrawal_transactions', withdrawalQueryBuilder),
+        fetchAllDataWithPagination('chat_cs_data', chatQueryBuilder)
       ]);
       
-      return processMonthlyData(deposits || [], withdrawals || [], chats || [], period, year);
+      return processMonthlyData(deposits, withdrawals, chats, period, year);
       
     } catch (error) {
       console.error('Error fetching monthly data:', error);
