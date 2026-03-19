@@ -816,12 +816,13 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     };
   });
   
-  // DEPOSIT - PAKAI STRING LANGSUNG
+ // DEPOSIT - PAKAI STRING LANGSUNG
 deposits.forEach(deposit => {
   if (!deposit.approved_date) return;
   
-  // '2026-03-18 23:54:26' -> '2026-03-18' -> 18
-  const day = parseInt(deposit.approved_date.split(' ')[0].split('-')[2]);
+  // '2026-03-18 23:54:26' -> '2026-03-18' -> ambil tanggalnya = 18
+  const tgl = deposit.approved_date.split(' ')[0];  // "2026-03-18"
+  const day = parseInt(tgl.split('-')[2]);          // 18
   const idx = day - 1;
   
   if (idx >= 0 && idx < days.length) {
