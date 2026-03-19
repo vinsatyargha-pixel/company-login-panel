@@ -814,39 +814,62 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
   console.log('🔍 PROCESSING DEPOSITS:', deposits.length, 'untuk bulan', monthNum, 'tahun', yearNum);
   
   // ========== DEPOSIT ==========
-  deposits.forEach(deposit => {
-    const dateStr = deposit.approved_date;
-    if (!dateStr) return;
-    
-    // FORMAT: '2026-03-18 19:10:11' atau '2026-03-18T19:10:11'
-    let datePart = dateStr;
-    if (dateStr.includes('T')) {
-      datePart = dateStr.split('T')[0];
-    } else {
-      datePart = dateStr.split(' ')[0];
-    }
-    
-    const [y, m, d] = datePart.split('-').map(Number);
-    
-    // VALIDASI TAHUN DAN BULAN - PAKAI NUMBER
-    if (y === yearNum && m === monthNum) {
-      const dayIndex = d - 1;
-      if (dayIndex >= 0 && dayIndex < days.length) {
-        days[dayIndex].deposit++;
-      } else {
-        console.log('⚠️ DAY INDEX OUT OF RANGE:', { date: dateStr, day: d, index: dayIndex });
+deposits.forEach(deposit => {
+  const dateStr = deposit.approved_date;
+  if (!dateStr) return;
+  
+  // FORMAT: '2026-03-18 19:10:11' atau '2026-03-18T19:10:11'
+  let datePart = dateStr;
+  if (dateStr.includes('T')) {
+    datePart = dateStr.split('T')[0];
+  } else {
+    datePart = dateStr.split(' ')[0];
+  }
+  
+  const [y, m, d] = datePart.split('-').map(Number);
+  
+  // ===== LOG KHUSUS TANGGAL 18 =====
+  if (d === 18) {
+    console.log('🔥🔥🔥 TANGGAL 18 DITEMUKAN:', {
+      original: dateStr,
+      parsed: datePart,
+      y, m, d,
+      yearNum, monthNum,
+      match: (y === yearNum && m === monthNum),
+      dayIndex: d - 1,
+      willBeAdded: (y === yearNum && m === monthNum) ? '✅ YES' : '❌ NO'
+    });
+  }
+  
+  // VALIDASI TAHUN DAN BULAN
+  if (y === yearNum && m === monthNum) {
+    const dayIndex = d - 1;
+    if (dayIndex >= 0 && dayIndex < days.length) {
+      days[dayIndex].deposit++;
+      
+      // LOG KONFIRMASI TANGGAL 18 BERHASIL DITAMBAH
+      if (d === 18) {
+        console.log('✅✅✅ TANGGAL 18 BERHASIL DITAMBAH!', {
+          day: d,
+          index: dayIndex,
+          totalDepositHariIni: days[dayIndex].deposit
+        });
       }
     } else {
-      console.log('⚠️ YEAR/MONTH MISMATCH:', { 
-        date: dateStr, 
-        expected: `${yearNum}-${monthNum}`, 
-        got: `${y}-${m}`,
-        y, yearNum, m, monthNum,
+      console.log('⚠️ DAY INDEX OUT OF RANGE:', { date: dateStr, day: d, index: dayIndex });
+    }
+  } else {
+    // LOG UNTUK TANGGAL 18 YANG GAGAL MATCH
+    if (d === 18) {
+      console.log('❌❌❌ TANGGAL 18 GAGAL MATCH:', {
+        y, yearNum,
+        m, monthNum,
         yEqual: y === yearNum,
         mEqual: m === monthNum
       });
     }
-  });
+  }
+});
   
   // ========== WITHDRAWAL ==========
   withdrawals.forEach(withdrawal => {
