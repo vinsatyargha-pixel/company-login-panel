@@ -800,26 +800,67 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
     };
   });
   
-  // DEPOSIT - TETAP
+  // LOG UNTUK DEBUG
+  console.log('🔍 PROCESSING DEPOSITS:', deposits.length);
+  
+  // DEPOSIT - PARSE MANUAL
   deposits.forEach(deposit => {
-    const date = new Date(deposit.approved_date);
-    const day = date.getDate() - 1;
-    if (days[day]) days[day].deposit++;
+    const dateStr = deposit.approved_date;
+    if (!dateStr) return;
+    
+    // Ambil tanggal dari string '2026-03-18 19:10:11'
+    const [datePart] = dateStr.split(' ');
+    const [y, m, d] = datePart.split('-').map(Number);
+    
+    // Validasi tahun dan bulan sesuai filter
+    if (y === year && m === month) {
+      const dayIndex = d - 1;
+      if (days[dayIndex]) {
+        days[dayIndex].deposit++;
+      } else {
+        console.log('⚠️ DAY INDEX OUT OF RANGE:', { date: dateStr, day: d, index: dayIndex });
+      }
+    } else {
+      console.log('⚠️ YEAR/MONTH MISMATCH:', { date: dateStr, expected: `${year}-${month}`, got: `${y}-${m}` });
+    }
   });
   
-  // WITHDRAWAL - TETAP
+  // WITHDRAWAL - PARSE MANUAL
   withdrawals.forEach(withdrawal => {
-    const date = new Date(withdrawal.approved_date);
-    const day = date.getDate() - 1;
-    if (days[day]) days[day].withdrawal++;
+    const dateStr = withdrawal.approved_date;
+    if (!dateStr) return;
+    
+    const [datePart] = dateStr.split(' ');
+    const [y, m, d] = datePart.split('-').map(Number);
+    
+    if (y === year && m === month) {
+      const dayIndex = d - 1;
+      if (days[dayIndex]) {
+        days[dayIndex].withdrawal++;
+      }
+    }
   });
   
-  // CHAT - DARI STARTED (INI YANG DITAMBAH)
+  // CHAT - PARSE MANUAL
   chats.forEach(chat => {
-    const date = new Date(chat.started);
-    const day = date.getDate() - 1;
-    if (days[day]) days[day].chat++;
+    const dateStr = chat.started;
+    if (!dateStr) return;
+    
+    const [datePart] = dateStr.split(' ');
+    const [y, m, d] = datePart.split('-').map(Number);
+    
+    if (y === year && m === month) {
+      const dayIndex = d - 1;
+      if (days[dayIndex]) {
+        days[dayIndex].chat++;
+      }
+    }
   });
+  
+  // LOG HASIL
+  const totalDeposit = days.reduce((sum, d) => sum + d.deposit, 0);
+  console.log('📊 TOTAL DEPOSIT PROCESSED:', totalDeposit);
+  console.log('📊 DEPOSIT PER DAY:', days.map(d => ({ day: d.day, count: d.deposit })).filter(d => d.count > 0));
   
   return days;
 };
