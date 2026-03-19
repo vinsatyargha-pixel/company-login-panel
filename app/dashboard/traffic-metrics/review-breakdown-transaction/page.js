@@ -320,112 +320,116 @@ export default function ReviewBreakdownTransactionPage() {
   };
 
   const processDailyData = (deposits, withdrawals, chats, month, year) => {
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const monthName = months[month - 1];
-    
-    const days = Array.from({ length: daysInMonth }, (_, i) => {
-      const day = i + 1;
-      return {
-        period: `${monthName} ${day}`,
-        type: 'day',
-        chat: 0,
-        
-        depositApproved: 0,
-        depositRejected: 0,
-        depositFailed: 0,
-        depositApprovedAmount: 0,
-        depositRejectedAmount: 0,
-        depositFailedAmount: 0,
-        depositVolume: 0,
-        depositHighest: 0,
-        depositTotal: 0,
-        
-        withdrawalApproved: 0,
-        withdrawalRejected: 0,
-        withdrawalFailed: 0,
-        withdrawalApprovedAmount: 0,
-        withdrawalRejectedAmount: 0,
-        withdrawalFailedAmount: 0,
-        withdrawalVolume: 0,
-        withdrawalHighest: 0,
-        withdrawalTotal: 0,
-        
-        total: 0,
-        totalVolume: 0,
-        asset: 'XLY'
-      };
-    });
-    
-    // Proses deposits
-    deposits.forEach(deposit => {
-      const date = new Date(deposit.approved_date);
-      const day = date.getDate() - 1;
-      const dayData = days[day];
-      
-      if (dayData) {
-        dayData.depositTotal++;
-        dayData.depositVolume += deposit.deposit_amount || 0;
-        
-        if (deposit.deposit_amount > dayData.depositHighest) {
-          dayData.depositHighest = deposit.deposit_amount;
-        }
-        
-        const status = deposit.status?.toLowerCase() || '';
-        if (status === 'approved') {
-          dayData.depositApproved++;
-          dayData.depositApprovedAmount += deposit.deposit_amount || 0;
-        } else if (status === 'rejected') {
-          dayData.depositRejected++;
-          dayData.depositRejectedAmount += deposit.deposit_amount || 0;
-        } else if (status === 'fail') {
-          dayData.depositFailed++;
-          dayData.depositFailedAmount += deposit.deposit_amount || 0;
-        }
-      }
-    });
-    
-    // Proses withdrawals
-    withdrawals.forEach(withdrawal => {
-      const date = new Date(withdrawal.approved_date);
-      const day = date.getDate() - 1;
-      const dayData = days[day];
-      
-      if (dayData) {
-        dayData.withdrawalTotal++;
-        dayData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
-        
-        if (withdrawal.withdrawal_amount > dayData.withdrawalHighest) {
-          dayData.withdrawalHighest = withdrawal.withdrawal_amount;
-        }
-        
-        const status = withdrawal.status?.toLowerCase() || '';
-        if (status === 'approved') {
-          dayData.withdrawalApproved++;
-          dayData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
-        } else if (status === 'rejected') {
-          dayData.withdrawalRejected++;
-          dayData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
-        }
-      }
-    });
-    
-    // PROSES CHAT
-    chats.forEach(chat => {
-      const date = new Date(chat.started);
-      const day = date.getDate() - 1;
-      const dayData = days[day];
-      if (dayData) {
-        dayData.chat++;
-      }
-    });
-    
-    days.forEach(day => {
-      day.total = day.depositTotal + day.withdrawalTotal;
-      day.totalVolume = day.depositVolume + day.withdrawalVolume;
-    });
-    
-    return days;
+  const yearNum = Number(year);
+  const monthNum = Number(month);
+  const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+  const monthName = months[monthNum - 1];
+  
+  const days = Array.from({ length: daysInMonth }, (_, i) => ({
+    period: `${monthName} ${i + 1}`,
+    type: 'day',
+    chat: 0,
+    depositApproved: 0,
+    depositRejected: 0,
+    depositFailed: 0,
+    depositApprovedAmount: 0,
+    depositRejectedAmount: 0,
+    depositFailedAmount: 0,
+    depositVolume: 0,
+    depositHighest: 0,
+    depositTotal: 0,
+    withdrawalApproved: 0,
+    withdrawalRejected: 0,
+    withdrawalFailed: 0,
+    withdrawalApprovedAmount: 0,
+    withdrawalRejectedAmount: 0,
+    withdrawalFailedAmount: 0,
+    withdrawalVolume: 0,
+    withdrawalHighest: 0,
+    withdrawalTotal: 0,
+    total: 0,
+    totalVolume: 0,
+    asset: 'XLY'
+  }));
+
+  // HELPER: ambil tanggal dari UTC string
+  const getDayFromUTC = (dateStr) => {
+    if (!dateStr) return null;
+    // "2026-03-18 23:54:26" -> "2026-03-18" -> 18
+    const datePart = dateStr.split(' ')[0];
+    const [y, m, d] = datePart.split('-').map(Number);
+    if (y === yearNum && m === monthNum) return d;
+    return null;
   };
+
+  // DEPOSIT
+  deposits.forEach(deposit => {
+    const day = getDayFromUTC(deposit.approved_date);
+    if (day) {
+      const idx = day - 1;
+      const dayData = days[idx];
+      
+      dayData.depositTotal++;
+      dayData.depositVolume += deposit.deposit_amount || 0;
+      
+      if (deposit.deposit_amount > dayData.depositHighest) {
+        dayData.depositHighest = deposit.deposit_amount;
+      }
+      
+      const status = deposit.status?.toLowerCase() || '';
+      if (status === 'approved') {
+        dayData.depositApproved++;
+        dayData.depositApprovedAmount += deposit.deposit_amount || 0;
+      } else if (status === 'rejected') {
+        dayData.depositRejected++;
+        dayData.depositRejectedAmount += deposit.deposit_amount || 0;
+      } else if (status === 'fail') {
+        dayData.depositFailed++;
+        dayData.depositFailedAmount += deposit.deposit_amount || 0;
+      }
+    }
+  });
+
+  // WITHDRAWAL
+  withdrawals.forEach(withdrawal => {
+    const day = getDayFromUTC(withdrawal.approved_date);
+    if (day) {
+      const idx = day - 1;
+      const dayData = days[idx];
+      
+      dayData.withdrawalTotal++;
+      dayData.withdrawalVolume += withdrawal.withdrawal_amount || 0;
+      
+      if (withdrawal.withdrawal_amount > dayData.withdrawalHighest) {
+        dayData.withdrawalHighest = withdrawal.withdrawal_amount;
+      }
+      
+      const status = withdrawal.status?.toLowerCase() || '';
+      if (status === 'approved') {
+        dayData.withdrawalApproved++;
+        dayData.withdrawalApprovedAmount += withdrawal.withdrawal_amount || 0;
+      } else if (status === 'rejected') {
+        dayData.withdrawalRejected++;
+        dayData.withdrawalRejectedAmount += withdrawal.withdrawal_amount || 0;
+      }
+    }
+  });
+
+  // CHAT
+  chats.forEach(chat => {
+    const day = getDayFromUTC(chat.started);
+    if (day) {
+      days[day - 1].chat++;
+    }
+  });
+
+  days.forEach(day => {
+    day.total = day.depositTotal + day.withdrawalTotal;
+    day.totalVolume = day.depositVolume + day.withdrawalVolume;
+  });
+
+  return days;
+};
 
   // ===========================================
   // FETCH MONTHLY DATA (6 BULAN)
