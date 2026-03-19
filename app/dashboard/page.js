@@ -746,7 +746,7 @@ const fetchTrafficMetricsData = async () => {
   }
 };
 
-// PROCESS FUNCTIONS - UBAH PARAMETER DAN LOOP CHATNYA
+// PROCESS FUNCTIONS - FIXED DEPOSIT ONLY
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
@@ -771,21 +771,28 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
     };
   });
   
-  // DEPOSIT - TETAP
+  // ========== DEPOSIT - PAKAI STRING (FIX) ==========
   deposits.forEach(deposit => {
-    const date = new Date(deposit.approved_date);
-    const day = date.getDate() - 1;
-    if (days[day]) days[day].deposit++;
+    if (!deposit.approved_date) return;
+    
+    // '2026-03-18 23:54:26' -> '2026-03-18' -> ambil tanggal = 18
+    const tgl = deposit.approved_date.split(' ')[0];
+    const day = parseInt(tgl.split('-')[2]);
+    const idx = day - 1;
+    
+    if (idx >= 0 && idx < days.length) {
+      days[idx].deposit++;
+    }
   });
   
-  // WITHDRAWAL - TETAP
+  // ========== WITHDRAWAL - TETAP ==========
   withdrawals.forEach(withdrawal => {
     const date = new Date(withdrawal.approved_date);
     const day = date.getDate() - 1;
     if (days[day]) days[day].withdrawal++;
   });
   
-  // CHAT - DARI STARTED (INI YANG DITAMBAH)
+  // ========== CHAT - TETAP ==========
   chats.forEach(chat => {
     const date = new Date(chat.started);
     const day = date.getDate() - 1;
