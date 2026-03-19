@@ -816,15 +816,18 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     };
   });
   
-  // DEPOSIT - TETAP
-  deposits.forEach(deposit => {
-    const date = new Date(deposit.approved_date);
-    const month = date.getMonth();
-    const monthIndex = month - startMonth;
-    if (monthIndex >= 0 && monthIndex < 6) {
-      monthlyData[monthIndex].deposit++;
-    }
-  });
+  // DEPOSIT - PAKAI STRING LANGSUNG
+deposits.forEach(deposit => {
+  if (!deposit.approved_date) return;
+  
+  // '2026-03-18 23:54:26' -> '2026-03-18' -> 18
+  const day = parseInt(deposit.approved_date.split(' ')[0].split('-')[2]);
+  const idx = day - 1;
+  
+  if (idx >= 0 && idx < days.length) {
+    days[idx].deposit++;
+  }
+});
   
   // WITHDRAWAL - TETAP
   withdrawals.forEach(withdrawal => {
