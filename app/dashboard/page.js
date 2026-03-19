@@ -2229,48 +2229,43 @@ useEffect(() => {
             )}
           </div>
           
-          <div style={{ height: '380px', width: '100%', minHeight: '380px' }}>
+          <div style={{ height: '350px', width: '100%', minHeight: '350px', position: 'relative' }}>
   {loadingTrafficMetrics ? (
-    <div style={{ height: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="h-full flex items-center justify-center">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
     </div>
   ) : (
-    <ResponsiveContainer width="100%" height={380}>
+    /* Pakai aspect={2} sebagai fallback agar chart punya rasio jika ResponsiveContainer gagal */
+    <ResponsiveContainer width="99%" height="100%" aspect={undefined}> 
       <LineChart 
         data={trafficMetrics}
-        margin={{ top: 20, right: 30, left: 5, bottom: 25 }}
+        margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" vertical={false} />
         <XAxis 
           dataKey="name" 
           stroke="#A7D8FF" 
           tick={{ fontSize: 10 }}
-          tickMargin={8}
-          axisLine={{ stroke: '#FFD70030' }}
-          interval={0}
-          angle={-45}
-          textAnchor="end"
-          height={60}
+          tickMargin={10}
+          axisLine={{ stroke: '#FFD70020' }}
         />
         <YAxis 
           stroke="#A7D8FF" 
           tick={{ fontSize: 10 }}
-          tickMargin={8}
-          axisLine={{ stroke: '#FFD70030' }}
-          domain={[0, 500]}
+          tickMargin={10}
+          axisLine={false}
+          domain={[0, 'auto']} 
           allowDecimals={false}
-          width={40}
         />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700', borderRadius: '8px' }}
-          itemStyle={{ color: '#fff', fontSize: '12px' }}
-          labelStyle={{ color: '#FFD700', fontWeight: 'bold' }}
+          contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700', borderRadius: '8px', color: '#fff' }}
+          itemStyle={{ fontSize: '12px' }}
         />
         <Legend 
           verticalAlign="top"
           align="right"
           iconType="circle"
-          wrapperStyle={{ paddingBottom: 15, fontSize: '12px' }}
+          wrapperStyle={{ paddingBottom: '20px' }}
           formatter={(value) => {
             if (value === 'chat') return 'CS (Chat)';
             if (value === 'deposit') return 'Deposit';
@@ -2278,32 +2273,32 @@ useEffect(() => {
             return value;
           }}
         />
+        
         <Line 
           type="monotone" 
           dataKey="chat" 
           stroke="#FFD700" 
-          strokeWidth={2.5} 
-          dot={{ r: 3, fill: '#0B1A33', stroke: '#FFD700', strokeWidth: 2 }} 
-          activeDot={{ r: 5 }}
-          name="chat"
+          strokeWidth={3} 
+          dot={{ r: 4, fill: '#0B1A33', stroke: '#FFD700', strokeWidth: 2 }} 
+          activeDot={{ r: 6 }}
+          isAnimationActive={true}
         />
         <Line 
           type="monotone" 
           dataKey="deposit" 
           stroke="#3b82f6" 
-          strokeWidth={2.5} 
-          dot={{ r: 3, fill: '#0B1A33', stroke: '#3b82f6', strokeWidth: 2 }} 
-          activeDot={{ r: 5 }}
-          name="deposit"
+          strokeWidth={3} 
+          dot={{ r: 4, fill: '#0B1A33', stroke: '#3b82f6', strokeWidth: 2 }} 
+          activeDot={{ r: 6 }}
+          isAnimationActive={true}
         />
         <Line 
           type="monotone" 
           dataKey="withdrawal" 
           stroke="#ef4444" 
-          strokeWidth={2.5} 
-          dot={{ r: 3, fill: '#0B1A33', stroke: '#ef4444', strokeWidth: 2 }} 
-          activeDot={{ r: 5 }}
-          name="withdrawal"
+          strokeWidth={2} 
+          dot={{ r: 4, fill: '#0B1A33', stroke: '#ef4444', strokeWidth: 2 }} 
+          isAnimationActive={true}
         />
       </LineChart>
     </ResponsiveContainer>
