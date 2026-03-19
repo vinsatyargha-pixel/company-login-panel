@@ -747,54 +747,46 @@ const fetchTrafficMetricsData = async () => {
 };
 
 // ===========================================
-// PROCESS DAILY TRAFFIC DATA - FIXED
+// PROCESS DAILY TRAFFIC DATA - ANTI GAGAL VERSION
 // ===========================================
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
-  const yearNum = Number(year);
-  const monthNum = Number(month);
-  const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
-  
-  // Buat array 31 hari
+  const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => ({
     name: `${i + 1}`,
-    day: i + 1,
     chat: 0,
     deposit: 0,
     withdrawal: 0
   }));
 
-  // Helper function untuk parsing tanggal
-  const getDayFromDate = (dateStr) => {
-    if (!dateStr) return null;
-    // Format: "2026-03-18 23:54:26" atau "2026-03-18T23:54:26"
-    const datePart = dateStr.split(' ')[0].split('T')[0];
-    const [y, m, d] = datePart.split('-').map(Number);
-    if (y === yearNum && m === monthNum) {
-      return d;
-    }
-    return null;
+  // Helper fungsi biar gak salah ambil tanggal (ANTI GAGAL)
+  const getDay = (str) => {
+    if (!str) return null;
+    // Ambil 10 karakter awal saja: "2026-03-18" (aman dari format apapun)
+    const dateOnly = str.substring(0, 10); 
+    const parts = dateOnly.split('-');
+    return parts.length === 3 ? parseInt(parts[2], 10) : null;
   };
 
-  // DEPOSIT
+  // Proses Deposit
   deposits.forEach(d => {
-    const day = getDayFromDate(d.approved_date);
-    if (day && day >= 1 && day <= daysInMonth) {
+    const day = getDay(d.approved_date);
+    if (day && day <= daysInMonth) {
       days[day - 1].deposit++;
     }
   });
 
-  // WITHDRAWAL
+  // Proses Withdrawal
   withdrawals.forEach(w => {
-    const day = getDayFromDate(w.approved_date);
-    if (day && day >= 1 && day <= daysInMonth) {
+    const day = getDay(w.approved_date);
+    if (day && day <= daysInMonth) {
       days[day - 1].withdrawal++;
     }
   });
 
-  // CHAT
+  // Proses Chat
   chats.forEach(c => {
-    const day = getDayFromDate(c.started);
-    if (day && day >= 1 && day <= daysInMonth) {
+    const day = getDay(c.started);
+    if (day && day <= daysInMonth) {
       days[day - 1].chat++;
     }
   });
@@ -802,7 +794,6 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
   // Debug log
   console.log('📊 DAILY DATA:', {
     totalDeposit: days.reduce((sum, d) => sum + d.deposit, 0),
-    sample: days.slice(0, 5),
     tanggal18: days[17] // index 17 = tanggal 18
   });
 
@@ -2332,9 +2323,11 @@ useEffect(() => {
             )}
           </div>
           
-          <div className="h-64">
+          <div style={{ height: '300px', width: '100%' }}>
   {loadingTrafficMetrics ? (
-    <div className="h-full flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div></div>
+    <div className="h-full flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+    </div>
   ) : (
     <ResponsiveContainer width="100%" height="100%">
       <LineChart 
