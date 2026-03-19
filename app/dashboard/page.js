@@ -761,15 +761,18 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
     withdrawal: 0
   }));
 
-  // Helper function - AMBIL TANGGAL DOANG
+  // Helper function - VERSI LEBIH MANTAP
   const getDayFromDate = (dateStr) => {
     if (!dateStr) return null;
-    // Format: "2026-03-18 23:54:26" atau "2026-03-18T23:54:26"
-    const datePart = dateStr.split(' ')[0].split('T')[0];
+    
+    // Pakai substring untuk ambil YYYY-MM-DD (10 karakter pertama)
+    // Cara ini lebih aman daripada split spasi/T
+    const datePart = dateStr.substring(0, 10); 
     const [y, m, d] = datePart.split('-').map(Number);
-    // LANGSUNG MATCH TAHUN + BULAN
+
+    // Filter ketat: Harus tahun yang sama DAN bulan yang sama
     if (y === yearNum && m === monthNum) {
-      return d;
+      return d; // Mengembalikan angka tanggal (1-31)
     }
     return null;
   };
