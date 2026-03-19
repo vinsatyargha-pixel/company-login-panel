@@ -638,7 +638,7 @@ const fetchOfficerPieData = async () => {
   };
 
 // ===========================================
-// FETCH TRAFFIC METRICS DATA - FIXED VERSION (DEPOSIT ONLY)
+// FETCH TRAFFIC METRICS DATA - FIXED VERSION (COPY FROM TRAFFIC METRICS PAGE)
 // ===========================================
 const fetchTrafficMetricsData = async () => {
   try {
@@ -648,32 +648,31 @@ const fetchTrafficMetricsData = async () => {
       const startDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, trafficMetricsMonth, 0).getDate()} 23:59:59`;
       
-      // ========== DEPOSIT - DENGAN FILTER KHUSUS XLY + NULL ==========
+      // ========== DEPOSIT - PAKAI QUERY LENGKAP SEPERTI DI HALAMAN TRAFFIC METRICS ==========
       let depositQuery = supabase
         .from('deposit_transactions')
-        .select('approved_date, brand')
+        .select('approved_date, status, deposit_amount, brand')  // LENGKAP!
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      const { data: allDeposits, error: depError } = await depositQuery;
-      
-      // FILTER DEPOSIT MANUAL
-      let deposits = allDeposits || [];
+      // FILTER BRAND
       if (trafficMetricsAsset !== 'all') {
-        if (trafficMetricsAsset === 'XLY') {
-          // KHUSUS XLY: ambil brand = 'XLY' ATAU null
-          deposits = allDeposits?.filter(d => 
-            d.brand === 'XLY' || d.brand === null
-          ) || [];
-        } else {
-          // ASSET LAIN: exact match
-          deposits = allDeposits?.filter(d => 
-            d.brand === trafficMetricsAsset
-          ) || [];
-        }
+        depositQuery = depositQuery.eq('brand', trafficMetricsAsset === 'XLY' ? 'XLY' : trafficMetricsAsset);
       }
       
-      // ========== WITHDRAWAL - TETAP PAKAI FILTER BIASA ==========
+      const { data: deposits, error: depError } = await depositQuery;
+      
+      // FILTER MANUAL UNTUK NULL (KHUSUS XLY)
+      let filteredDeposits = deposits || [];
+      if (trafficMetricsAsset === 'XLY') {
+        // AMBIL JUGA YANG BRAND = NULL
+        filteredDeposits = deposits?.filter(d => d.brand === 'XLY' || d.brand === null) || [];
+        console.log('📊 DEPOSIT XLY (+null):', filteredDeposits.length);
+      } else {
+        console.log('📊 DEPOSIT COUNT:', filteredDeposits.length);
+      }
+      
+      // ========== WITHDRAWAL - TETAP ==========
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('approved_date')
@@ -697,7 +696,7 @@ const fetchTrafficMetricsData = async () => {
       
       // ========== PROCESS DATA ==========
       const data = processDailyTrafficData(
-        deposits,      // SUDAH DI-FILTER MANUAL
+        filteredDeposits,  // PAKAI YANG SUDAH DI-FILTER
         withdrawals || [], 
         chats || [],
         trafficMetricsMonth, 
@@ -714,27 +713,25 @@ const fetchTrafficMetricsData = async () => {
       const startDate = `${trafficMetricsYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${trafficMetricsYear}-${String(endMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, endMonth, 0).getDate()} 23:59:59`;
       
-      // ========== DEPOSIT - DENGAN FILTER KHUSUS XLY + NULL ==========
+      // ========== DEPOSIT - PAKAI QUERY LENGKAP ==========
       let depositQuery = supabase
         .from('deposit_transactions')
-        .select('approved_date, brand')
+        .select('approved_date, status, deposit_amount, brand')  // LENGKAP!
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      const { data: allDeposits, error: depError } = await depositQuery;
-      
-      // FILTER DEPOSIT MANUAL
-      let deposits = allDeposits || [];
+      // FILTER BRAND
       if (trafficMetricsAsset !== 'all') {
-        if (trafficMetricsAsset === 'XLY') {
-          deposits = allDeposits?.filter(d => 
-            d.brand === 'XLY' || d.brand === null
-          ) || [];
-        } else {
-          deposits = allDeposits?.filter(d => 
-            d.brand === trafficMetricsAsset
-          ) || [];
-        }
+        depositQuery = depositQuery.eq('brand', trafficMetricsAsset === 'XLY' ? 'XLY' : trafficMetricsAsset);
+      }
+      
+      const { data: deposits, error: depError } = await depositQuery;
+      
+      // FILTER MANUAL UNTUK NULL (KHUSUS XLY)
+      let filteredDeposits = deposits || [];
+      if (trafficMetricsAsset === 'XLY') {
+        filteredDeposits = deposits?.filter(d => d.brand === 'XLY' || d.brand === null) || [];
+        console.log('📊 DEPOSIT XLY (+null):', filteredDeposits.length);
       }
       
       // ========== WITHDRAWAL - TETAP ==========
@@ -761,7 +758,7 @@ const fetchTrafficMetricsData = async () => {
       
       // ========== PROCESS DATA ==========
       const data = processMonthlyTrafficData(
-        deposits,      // SUDAH DI-FILTER MANUAL
+        filteredDeposits,  // PAKAI YANG SUDAH DI-FILTER
         withdrawals || [], 
         chats || [],
         trafficMetricsPeriod, 
