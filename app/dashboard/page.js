@@ -2323,43 +2323,51 @@ useEffect(() => {
             )}
           </div>
           
-          <div style={{ height: '300px', width: '100%' }}>
+          <div style={{ height: '1000px', width: '100%', position: 'relative' }}>
   {loadingTrafficMetrics ? (
-    <div className="h-full flex items-center justify-center">
+    <div style={{ height: '1000px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
     </div>
   ) : (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart 
-        data={trafficMetrics}
-        margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
-        <XAxis 
-          dataKey="name" 
-          stroke="#A7D8FF" 
-          tick={{ fontSize: 10 }}
-          tickMargin={5}
-        />
-        <YAxis 
-          stroke="#A7D8FF" 
-          tick={{ fontSize: 10 }}
-          tickMargin={5}
-        />
-        <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
-        <Legend 
-          formatter={(value) => {
-            if (value === 'CS') return 'CS (Chat Volume)';
-            if (value === 'Deposit') return 'Deposit (All Status)';
-            if (value === 'Withdrawal') return 'Withdrawal (All Status)';
-            return value;
-          }}
-        />
-        <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
-        <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
-        <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
-      </LineChart>
-    </ResponsiveContainer>
+    trafficMetrics && trafficMetrics.length > 0 ? (
+      <ResponsiveContainer width="100%" height={1000}>
+        <LineChart 
+          data={trafficMetrics}
+          margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" />
+          <XAxis 
+            dataKey="name" 
+            stroke="#A7D8FF" 
+            tick={{ fontSize: 10 }}
+            tickMargin={5}
+          />
+          <YAxis 
+            stroke="#A7D8FF" 
+            tick={{ fontSize: 10 }}
+            tickMargin={5}
+            domain={[0, 'auto']}
+            allowDecimals={false}
+          />
+          <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
+          <Legend 
+            formatter={(value) => {
+              if (value === 'CS') return 'CS (Chat Volume)';
+              if (value === 'Deposit') return 'Deposit (All Status)';
+              if (value === 'Withdrawal') return 'Withdrawal (All Status)';
+              return value;
+            }}
+          />
+          <Line type="monotone" dataKey="chat" stroke="#FFD700" name="CS" strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="deposit" stroke="#3b82f6" name="Deposit" strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="withdrawal" stroke="#ef4444" name="Withdrawal" strokeWidth={2} dot={{ r: 3 }} />
+        </LineChart>
+      </ResponsiveContainer>
+    ) : (
+      <div style={{ height: '1000px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#A7D8FF' }}>
+        No data available
+      </div>
+    )
   )}
 </div>
           
