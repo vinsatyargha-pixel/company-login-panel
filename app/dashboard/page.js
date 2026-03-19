@@ -638,7 +638,7 @@ const fetchOfficerPieData = async () => {
   };
 
 // ===========================================
-// FETCH TRAFFIC METRICS DATA - TOTAL SEMUA CHAT (BOT + HUMAN)
+// FETCH TRAFFIC METRICS DATA - FIXED VERSION (DEPOSIT ONLY)
 // ===========================================
 const fetchTrafficMetricsData = async () => {
   try {
@@ -648,94 +648,126 @@ const fetchTrafficMetricsData = async () => {
       const startDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, trafficMetricsMonth, 0).getDate()} 23:59:59`;
       
-      // AMBIL DEPOSIT - TETAP
+      // ========== DEPOSIT - DENGAN FILTER KHUSUS XLY + NULL ==========
       let depositQuery = supabase
         .from('deposit_transactions')
-        .select('approved_date')
+        .select('approved_date, brand')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      // AMBIL WITHDRAWAL - TETAP
+      const { data: allDeposits, error: depError } = await depositQuery;
+      
+      // FILTER DEPOSIT MANUAL
+      let deposits = allDeposits || [];
+      if (trafficMetricsAsset !== 'all') {
+        if (trafficMetricsAsset === 'XLY') {
+          // KHUSUS XLY: ambil brand = 'XLY' ATAU null
+          deposits = allDeposits?.filter(d => 
+            d.brand === 'XLY' || d.brand === null
+          ) || [];
+        } else {
+          // ASSET LAIN: exact match
+          deposits = allDeposits?.filter(d => 
+            d.brand === trafficMetricsAsset
+          ) || [];
+        }
+      }
+      
+      // ========== WITHDRAWAL - TETAP PAKAI FILTER BIASA ==========
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      // AMBIL CHAT - DARI CHAT_CS_DATA PAKE STARTED (INI YANG DITAMBAH)
+      if (trafficMetricsAsset !== 'all') {
+        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
+      }
+      
+      const { data: withdrawals, error: wdError } = await withdrawalQuery;
+      
+      // ========== CHAT - TETAP ==========
       let chatQuery = supabase
         .from('chat_cs_data')
         .select('started')
         .gte('started', startDate)
         .lte('started', endDate);
       
-      if (trafficMetricsAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
-        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
-        // CHAT GA ADA BRAND, JADI FILTER BY ASSET GA BISA
-      }
+      const { data: chats, error: chatError } = await chatQuery;
       
-      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
-        depositQuery, 
-        withdrawalQuery,
-        chatQuery  // INI YANG DITAMBAH
-      ]);
-      
+      // ========== PROCESS DATA ==========
       const data = processDailyTrafficData(
-        deposits || [], 
+        deposits,      // SUDAH DI-FILTER MANUAL
         withdrawals || [], 
-        chats || [],  // INI YANG DITAMBAH
+        chats || [],
         trafficMetricsMonth, 
         trafficMetricsYear
       );
+      
       setTrafficMetrics(data);
       
     } else {
+      // MONTHLY
       const startMonth = trafficMetricsPeriod === 'jan-jun' ? 1 : 7;
       const endMonth = trafficMetricsPeriod === 'jan-jun' ? 6 : 12;
       
       const startDate = `${trafficMetricsYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${trafficMetricsYear}-${String(endMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, endMonth, 0).getDate()} 23:59:59`;
       
-      // AMBIL DEPOSIT - TETAP
+      // ========== DEPOSIT - DENGAN FILTER KHUSUS XLY + NULL ==========
       let depositQuery = supabase
         .from('deposit_transactions')
-        .select('approved_date')
+        .select('approved_date, brand')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      // AMBIL WITHDRAWAL - TETAP
+      const { data: allDeposits, error: depError } = await depositQuery;
+      
+      // FILTER DEPOSIT MANUAL
+      let deposits = allDeposits || [];
+      if (trafficMetricsAsset !== 'all') {
+        if (trafficMetricsAsset === 'XLY') {
+          deposits = allDeposits?.filter(d => 
+            d.brand === 'XLY' || d.brand === null
+          ) || [];
+        } else {
+          deposits = allDeposits?.filter(d => 
+            d.brand === trafficMetricsAsset
+          ) || [];
+        }
+      }
+      
+      // ========== WITHDRAWAL - TETAP ==========
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('approved_date')
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
       
-      // AMBIL CHAT - DARI CHAT_CS_DATA PAKE STARTED (INI YANG DITAMBAH)
+      if (trafficMetricsAsset !== 'all') {
+        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
+      }
+      
+      const { data: withdrawals, error: wdError } = await withdrawalQuery;
+      
+      // ========== CHAT - TETAP ==========
       let chatQuery = supabase
         .from('chat_cs_data')
         .select('started')
         .gte('started', startDate)
         .lte('started', endDate);
       
-      if (trafficMetricsAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
-        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
-      }
+      const { data: chats, error: chatError } = await chatQuery;
       
-      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
-        depositQuery, 
-        withdrawalQuery,
-        chatQuery  // INI YANG DITAMBAH
-      ]);
-      
+      // ========== PROCESS DATA ==========
       const data = processMonthlyTrafficData(
-        deposits || [], 
+        deposits,      // SUDAH DI-FILTER MANUAL
         withdrawals || [], 
-        chats || [],  // INI YANG DITAMBAH
+        chats || [],
         trafficMetricsPeriod, 
         trafficMetricsYear
       );
+      
       setTrafficMetrics(data);
     }
     
@@ -1559,57 +1591,18 @@ useEffect(() => {
             </button>
             
             {showActivityTooltip && activities.length > 0 && (
-  <div className="absolute right-0 mt-2 w-80 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg p-3 z-50 shadow-xl">
-    <p className="text-[#FFD700] text-sm font-bold mb-2">🔔 Recent Updates</p>
-    {activities.slice(0, 3).map((act, idx) => (
-      <div key={idx} className="text-xs text-[#A7D8FF] mb-2 pb-2 border-b border-[#FFD700]/20 last:border-b-0">
-        <div className="flex items-center gap-1 mb-1">
-          {/* Icon berdasarkan module */}
-          <span className="text-sm">
-            {act.module === 'MOZART' ? '🎵' : 
-             act.module === 'DEPOSIT' ? '💰' :
-             act.module === 'WITHDRAWAL' ? '💸' :
-             act.module === 'BANK_ACCOUNTS' ? '🏦' :
-             act.module === 'OFFICERS' ? '👤' : '📝'}
-          </span>
-          <span className="text-white font-bold">{act.officer}</span>
-          <span className="text-[10px] text-[#A7D8FF]">• {formatTimeAgo(act.timestamp)}</span>
-        </div>
-        
-        {/* Tampilkan perubahan */}
-        <div className="text-[10px] text-[#A7D8FF] ml-4">
-          {act.module === 'MOZART' ? (
-            // Format khusus untuk MOZART
-            <span className="text-purple-400">
-              {act.action === 'MOUNT' ? '🔌 Mount' : '🔌 Unmount'} bank
-            </span>
-          ) : (
-            // Format umum untuk lainnya
-            <span>
-              {act.changes && act.changes[0] ? act.changes[0].substring(0, 30) + '...' : '📝 Updated'}
-            </span>
-          )}
-        </div>
-      </div>
-    ))}
-    
-    {activities.length > 3 && (
-      <div className="text-center text-[10px] text-[#FFD700] mt-2 pt-1 border-t border-[#FFD700]/20">
-        +{activities.length - 3} more activities
-      </div>
-    )}
-    
-    {/* Link ke Activity Log */}
-    <div className="text-center mt-2">
-      <span 
-        onClick={() => window.location.href = '/dashboard/activity-log'}
-        className="text-[10px] text-[#FFD700] hover:text-[#FFD700]/80 cursor-pointer"
-      >
-        View all activities →
-      </span>
-    </div>
-  </div>
-)}
+              <div className="absolute right-0 mt-2 w-72 bg-[#1A2F4A] border border-[#FFD700]/30 rounded-lg p-3 z-50 shadow-xl">
+                <p className="text-[#FFD700] text-sm font-bold mb-2">🔔 Recent Updates</p>
+                {activities.slice(0, 3).map((act, idx) => (
+                  <div key={idx} className="text-xs text-[#A7D8FF] mb-2 pb-2 border-b border-[#FFD700]/20">
+                    <div className="flex items-center gap-1">
+                      <span className="text-white font-bold">{act.officer}</span>
+                      <span className="text-[10px]">• {formatTimeAgo(act.timestamp)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* User Profile */}
