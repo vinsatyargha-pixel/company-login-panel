@@ -746,51 +746,64 @@ const fetchTrafficMetricsData = async () => {
   }
 };
 
-// PROCESS FUNCTIONS - UBAH PARAMETER DAN LOOP CHATNYA
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const today = new Date();
-  const currentDate = today.getDate();
-  const currentMonth = today.getMonth() + 1;
-  const currentYear = today.getFullYear();
+  // CONVERT ke number
+  const yearNum = Number(year);
+  const monthNum = Number(month);
   
-  const days = Array.from({ length: daysInMonth }, (_, i) => {
-    const day = i + 1;
-    const isPastDate = (year < currentYear) || 
-                      (year === currentYear && month < currentMonth) ||
-                      (year === currentYear && month === currentMonth && day <= currentDate);
+  // HITUNG JUMLAH HARI (month - 1 karena JS bulan dimulai dari 0)
+  const daysInMonth = new Date(yearNum, monthNum - 1, 0).getDate();
+  
+  const days = Array.from({ length: daysInMonth }, (_, i) => ({
+    name: `${i + 1}`,
+    day: i + 1,
+    chat: 0,
+    deposit: 0,
+    withdrawal: 0
+  }));
+  
+  console.log('📅 DAYS IN MONTH:', daysInMonth, 'untuk', monthNum, yearNum);
+  
+  // DEPOSIT
+  deposits.forEach(d => {
+    if (!d.approved_date) return;
     
-    return {
-      name: `${day}`,
-      day: day,
-      chat: 0,
-      deposit: 0,
-      withdrawal: 0,
-      isPastDate: isPastDate,
-      fullDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    };
+    const tgl = d.approved_date.split(' ')[0];
+    const [y, m, dNum] = tgl.split('-').map(Number);
+    
+    // VALIDASI TAHUN DAN BULAN
+    if (y === yearNum && m === monthNum) {
+      const idx = dNum - 1;
+      if (idx >= 0 && idx < days.length) {
+        days[idx].deposit++;
+      }
+    }
   });
   
-  // DEPOSIT - TETAP
-  deposits.forEach(deposit => {
-    const date = new Date(deposit.approved_date);
-    const day = date.getDate() - 1;
-    if (days[day]) days[day].deposit++;
+  // WITHDRAWAL (sama)
+  withdrawals.forEach(w => {
+    if (!w.approved_date) return;
+    const tgl = w.approved_date.split(' ')[0];
+    const [y, m, dNum] = tgl.split('-').map(Number);
+    if (y === yearNum && m === monthNum) {
+      const idx = dNum - 1;
+      if (idx >= 0 && idx < days.length) days[idx].withdrawal++;
+    }
   });
   
-  // WITHDRAWAL - TETAP
-  withdrawals.forEach(withdrawal => {
-    const date = new Date(withdrawal.approved_date);
-    const day = date.getDate() - 1;
-    if (days[day]) days[day].withdrawal++;
+  // CHAT (sama)
+  chats.forEach(c => {
+    if (!c.started) return;
+    const tgl = c.started.split(' ')[0];
+    const [y, m, dNum] = tgl.split('-').map(Number);
+    if (y === yearNum && m === monthNum) {
+      const idx = dNum - 1;
+      if (idx >= 0 && idx < days.length) days[idx].chat++;
+    }
   });
   
-  // CHAT - DARI STARTED (INI YANG DITAMBAH)
-  chats.forEach(chat => {
-    const date = new Date(chat.started);
-    const day = date.getDate() - 1;
-    if (days[day]) days[day].chat++;
-  });
+  // CEK TANGGAL 18
+  console.log('🔥 TANGGAL 18:', days[17]); // index 17 = tanggal 18
   
   return days;
 };
