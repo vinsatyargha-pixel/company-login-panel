@@ -746,59 +746,60 @@ const fetchTrafficMetricsData = async () => {
   }
 };
 
-// PROCESS FUNCTIONS - FIXED DEPOSIT ONLY
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
   const daysInMonth = new Date(year, month, 0).getDate();
   const today = new Date();
-  const currentDate = today.getDate();
-  const currentMonth = today.getMonth() + 1;
-  const currentYear = today.getFullYear();
   
+  // Buat array kosong untuk setiap tanggal di bulan tersebut
   const days = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
-    const isPastDate = (year < currentYear) || 
-                      (year === currentYear && month < currentMonth) ||
-                      (year === currentYear && month === currentMonth && day <= currentDate);
-    
     return {
       name: `${day}`,
       day: day,
       chat: 0,
       deposit: 0,
       withdrawal: 0,
-      isPastDate: isPastDate,
       fullDate: `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     };
   });
-  
-  // ========== DEPOSIT - PAKAI STRING (FIX) ==========
+
+  // Fungsi helper supaya parsing tanggal konsisten
+  const getDayFromDateString = (dateStr) => {
+    if (!dateStr) return null;
+    // Kadang Supabase kirim "2026-03-18T..." atau "2026-03-18 ..."
+    // Kita ambil 10 karakter pertama (YYYY-MM-DD)
+    const dateOnly = dateStr.substring(0, 10); 
+    const parts = dateOnly.split('-');
+    if (parts.length === 3) {
+      return parseInt(parts[2], 10); // Ambil angka tanggalnya
+    }
+    return null;
+  };
+
+  // 1. PROSES DEPOSIT (Yang bermasalah di tanggal 18-19)
   deposits.forEach(deposit => {
-    if (!deposit.approved_date) return;
-    
-    // '2026-03-18 23:54:26' -> '2026-03-18' -> ambil tanggal = 18
-    const tgl = deposit.approved_date.split(' ')[0];
-    const day = parseInt(tgl.split('-')[2]);
-    const idx = day - 1;
-    
-    if (idx >= 0 && idx < days.length) {
-      days[idx].deposit++;
+    const day = getDayFromDateString(deposit.approved_date);
+    if (day && day <= daysInMonth) {
+      days[day - 1].deposit++;
     }
   });
-  
-  // ========== WITHDRAWAL - TETAP ==========
+
+  // 2. PROSES WITHDRAWAL
   withdrawals.forEach(withdrawal => {
-    const date = new Date(withdrawal.approved_date);
-    const day = date.getDate() - 1;
-    if (days[day]) days[day].withdrawal++;
+    const day = getDayFromDateString(withdrawal.approved_date);
+    if (day && day <= daysInMonth) {
+      days[day - 1].withdrawal++;
+    }
   });
-  
-  // ========== CHAT - TETAP ==========
+
+  // 3. PROSES CHAT
   chats.forEach(chat => {
-    const date = new Date(chat.started);
-    const day = date.getDate() - 1;
-    if (days[day]) days[day].chat++;
+    const day = getDayFromDateString(chat.started);
+    if (day && day <= daysInMonth) {
+      days[day - 1].chat++;
+    }
   });
-  
+
   return days;
 };
 
