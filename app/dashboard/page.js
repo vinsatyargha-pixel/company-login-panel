@@ -2229,16 +2229,17 @@ useEffect(() => {
             )}
           </div>
           
-          <div style={{ height: '350px', width: '100%', minHeight: '350px' }}> {/* Tambah height dikit & minHeight */}
+          <div style={{ height: '350px', width: '100%', minHeight: '350px', position: 'relative' }}>
   {loadingTrafficMetrics ? (
     <div className="h-full flex items-center justify-center">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
     </div>
   ) : (
-    <ResponsiveContainer width="100%" height="100%">
+    /* Pakai aspect={2} sebagai fallback agar chart punya rasio jika ResponsiveContainer gagal */
+    <ResponsiveContainer width="99%" height="100%" aspect={undefined}> 
       <LineChart 
         data={trafficMetrics}
-        margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+        margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
       >
         <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" vertical={false} />
         <XAxis 
@@ -2246,18 +2247,18 @@ useEffect(() => {
           stroke="#A7D8FF" 
           tick={{ fontSize: 10 }}
           tickMargin={10}
-          axisLine={false}
+          axisLine={{ stroke: '#FFD70020' }}
         />
         <YAxis 
           stroke="#A7D8FF" 
           tick={{ fontSize: 10 }}
           tickMargin={10}
           axisLine={false}
-          domain={[0, 'auto']} // Pakai 'auto' lebih aman kalau tiba-tiba transaksi tembus 500
+          domain={[0, 'auto']} 
           allowDecimals={false}
         />
         <Tooltip 
-          contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700', borderRadius: '8px' }}
+          contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700', borderRadius: '8px', color: '#fff' }}
           itemStyle={{ fontSize: '12px' }}
         />
         <Legend 
@@ -2266,39 +2267,38 @@ useEffect(() => {
           iconType="circle"
           wrapperStyle={{ paddingBottom: '20px' }}
           formatter={(value) => {
-            if (value === 'chat') return 'CS (Chat Volume)';
-            if (value === 'deposit') return 'Deposit (All Status)';
-            if (value === 'withdrawal') return 'Withdrawal (All Status)';
+            if (value === 'chat') return 'CS (Chat)';
+            if (value === 'deposit') return 'Deposit';
+            if (value === 'withdrawal') return 'Withdraw';
             return value;
           }}
         />
         
-        {/* Pastikan dataKey sesuai dengan properti di object trafficMetrics lo */}
         <Line 
           type="monotone" 
           dataKey="chat" 
           stroke="#FFD700" 
           strokeWidth={3} 
-          dot={{ r: 4, fill: '#FFD700' }} 
+          dot={{ r: 4, fill: '#0B1A33', stroke: '#FFD700', strokeWidth: 2 }} 
           activeDot={{ r: 6 }}
-          animationDuration={1000}
+          isAnimationActive={true}
         />
         <Line 
           type="monotone" 
           dataKey="deposit" 
           stroke="#3b82f6" 
           strokeWidth={3} 
-          dot={{ r: 4, fill: '#3b82f6' }} 
+          dot={{ r: 4, fill: '#0B1A33', stroke: '#3b82f6', strokeWidth: 2 }} 
           activeDot={{ r: 6 }}
-          animationDuration={1000}
+          isAnimationActive={true}
         />
         <Line 
           type="monotone" 
           dataKey="withdrawal" 
           stroke="#ef4444" 
           strokeWidth={2} 
-          dot={{ r: 4, fill: '#ef4444' }} 
-          animationDuration={1000}
+          dot={{ r: 4, fill: '#0B1A33', stroke: '#ef4444', strokeWidth: 2 }} 
+          isAnimationActive={true}
         />
       </LineChart>
     </ResponsiveContainer>
