@@ -638,122 +638,67 @@ const fetchOfficerPieData = async () => {
   };
 
 // ===========================================
-// FETCH TRAFFIC METRICS DATA - FIXED VERSION
+// FETCH TRAFFIC METRICS DATA - FINAL OPTIMIZED
 // ===========================================
 const fetchTrafficMetricsData = async () => {
   try {
     setLoadingTrafficMetrics(true);
     
+    // Pastikan year dan month dalam format Number untuk perbandingan
+    const yearNum = parseInt(trafficMetricsYear);
+    const monthNum = parseInt(trafficMetricsMonth);
+
+    let startDate, endDate;
+
     if (trafficMetricsFilter === 'daily') {
-      const startDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-01 00:00:00`;
-      const endDate = `${trafficMetricsYear}-${String(trafficMetricsMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, trafficMetricsMonth, 0).getDate()} 23:59:59`;
-      
-      // AMBIL DEPOSIT
-      let depositQuery = supabase
-        .from('deposit_transactions')
-        .select('approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      // AMBIL WITHDRAWAL
-      let withdrawalQuery = supabase
-        .from('withdrawal_transactions')
-        .select('approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      // AMBIL CHAT
-      let chatQuery = supabase
-        .from('chat_cs_data')
-        .select('started')
-        .gte('started', startDate)
-        .lte('started', endDate);
-      
-      if (trafficMetricsAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
-        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
-      }
-      
-      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
-        depositQuery, 
-        withdrawalQuery,
-        chatQuery
-      ]);
-      
-      const data = processDailyTrafficData(
-        deposits || [], 
-        withdrawals || [], 
-        chats || [],
-        trafficMetricsMonth, 
-        trafficMetricsYear
-      );
-      setTrafficMetrics(data);
-      
+      startDate = `${yearNum}-${String(monthNum).padStart(2, '0')}-01 00:00:00`;
+      const lastDay = new Date(yearNum, monthNum, 0).getDate();
+      endDate = `${yearNum}-${String(monthNum).padStart(2, '0')}-${lastDay} 23:59:59`;
     } else {
-      // MONTHLY - 6 BULAN
       const startMonth = trafficMetricsPeriod === 'jan-jun' ? 1 : 7;
       const endMonth = trafficMetricsPeriod === 'jan-jun' ? 6 : 12;
-      
-      const startDate = `${trafficMetricsYear}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
-      const endDate = `${trafficMetricsYear}-${String(endMonth).padStart(2, '0')}-${new Date(trafficMetricsYear, endMonth, 0).getDate()} 23:59:59`;
-      
-      // AMBIL DEPOSIT
-      let depositQuery = supabase
-        .from('deposit_transactions')
-        .select('approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      // AMBIL WITHDRAWAL
-      let withdrawalQuery = supabase
-        .from('withdrawal_transactions')
-        .select('approved_date')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-      
-      // AMBIL CHAT
-      let chatQuery = supabase
-        .from('chat_cs_data')
-        .select('started')
-        .gte('started', startDate)
-        .lte('started', endDate);
-      
-      if (trafficMetricsAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', trafficMetricsAsset);
-        withdrawalQuery = withdrawalQuery.eq('brand', trafficMetricsAsset);
-      }
-      
-      const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
-        depositQuery, 
-        withdrawalQuery,
-        chatQuery
-      ]);
-      
-      const data = processMonthlyTrafficData(
-        deposits || [], 
-        withdrawals || [], 
-        chats || [],
-        trafficMetricsPeriod, 
-        trafficMetricsYear
-      );
-      setTrafficMetrics(data);
+      startDate = `${yearNum}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
+      const lastDay = new Date(yearNum, endMonth, 0).getDate();
+      endDate = `${yearNum}-${String(endMonth).padStart(2, '0')}-${lastDay} 23:59:59`;
     }
+
+    // Buat Query
+    let depQuery = supabase.from('deposit_transactions').select('approved_date, brand').gte('approved_date', startDate).lte('approved_date', endDate);
+    let wdQuery = supabase.from('withdrawal_transactions').select('approved_date, brand').gte('approved_date', startDate).lte('approved_date', endDate);
+    let chatQuery = supabase.from('chat_cs_data').select('started').gte('started', startDate).lte('started', endDate);
+
+    // Filter Brand (Hanya jika bukan 'all')
+    if (trafficMetricsAsset !== 'all') {
+      depQuery = depQuery.eq('brand', trafficMetricsAsset);
+      wdQuery = wdQuery.eq('brand', trafficMetricsAsset);
+    }
+
+    const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
+      depQuery, wdQuery, chatQuery
+    ]);
+
+    // Proses Data berdasarkan filter
+    let finalData = [];
+    if (trafficMetricsFilter === 'daily') {
+      finalData = processDailyTrafficData(deposits || [], withdrawals || [], chats || [], monthNum, yearNum);
+    } else {
+      finalData = processMonthlyTrafficData(deposits || [], withdrawals || [], chats || [], trafficMetricsPeriod, yearNum);
+    }
+
+    setTrafficMetrics(finalData);
     
   } catch (error) {
-    console.error('Error fetching traffic metrics:', error);
+    console.error('❌ Error fetching traffic metrics:', error);
   } finally {
     setLoadingTrafficMetrics(false);
   }
 };
 
 // ===========================================
-// PROCESS DAILY TRAFFIC DATA - ANTI GAGAL VERSION
+// PROCESS DAILY TRAFFIC DATA - FIXED PARSING
 // ===========================================
 const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
-  const yearNum = Number(year);
-  const monthNum = Number(month);
-  const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
-  
+  const daysInMonth = new Date(year, month, 0).getDate();
   const days = Array.from({ length: daysInMonth }, (_, i) => ({
     name: `${i + 1}`,
     chat: 0,
@@ -761,123 +706,75 @@ const processDailyTrafficData = (deposits, withdrawals, chats, month, year) => {
     withdrawal: 0
   }));
 
-  // Helper function - VERSI LEBIH MANTAP
-  const getDayFromDate = (dateStr) => {
+  const extractDay = (dateStr) => {
     if (!dateStr) return null;
+    // Mengambil "2026-03-18" dari format ISO atau Space-separated
+    const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.split(' ')[0];
+    const [y, m, d] = dateOnly.split('-').map(Number);
     
-    // Pakai substring untuk ambil YYYY-MM-DD (10 karakter pertama)
-    // Cara ini lebih aman daripada split spasi/T
-    const datePart = dateStr.substring(0, 10); 
-    const [y, m, d] = datePart.split('-').map(Number);
-
-    // Filter ketat: Harus tahun yang sama DAN bulan yang sama
-    if (y === yearNum && m === monthNum) {
-      return d; // Mengembalikan angka tanggal (1-31)
-    }
+    // Validasi: Harus masuk ke tahun dan bulan yang sedang difilter
+    if (y === year && m === month) return d;
     return null;
   };
 
-  // DEPOSIT
   deposits.forEach(d => {
-    const day = getDayFromDate(d.approved_date);
-    if (day && day >= 1 && day <= daysInMonth) {
-      days[day - 1].deposit++;
-    }
+    const day = extractDay(d.approved_date);
+    if (day) days[day - 1].deposit++;
   });
 
-  // WITHDRAWAL
   withdrawals.forEach(w => {
-    const day = getDayFromDate(w.approved_date);
-    if (day && day >= 1 && day <= daysInMonth) {
-      days[day - 1].withdrawal++;
-    }
+    const day = extractDay(w.approved_date);
+    if (day) days[day - 1].withdrawal++;
   });
 
-  // CHAT
   chats.forEach(c => {
-    const day = getDayFromDate(c.started);
-    if (day && day >= 1 && day <= daysInMonth) {
-      days[day - 1].chat++;
-    }
+    const day = extractDay(c.started);
+    if (day) days[day - 1].chat++;
   });
 
-  // VERIFIKASI
-  console.log('🔥 DATA TANGGAL 18:', days[17]); // index 17 = 18
-  console.log('🔥 DATA TANGGAL 19:', days[18]); // index 18 = 19
-  console.log('📊 TOTAL DEPOSIT:', days.reduce((sum, d) => sum + d.deposit, 0));
-
+  console.log(`📊 Hasil Akhir Tgl 18-19:`, { tgl18: days[17], tgl19: days[18] });
   return days;
 };
 
 // ===========================================
-// PROCESS MONTHLY TRAFFIC DATA - FIXED
+// PROCESS MONTHLY TRAFFIC DATA - FIXED PARSING
 // ===========================================
 const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) => {
-  const yearNum = Number(year);
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const startIdx = period === 'jan-jun' ? 0 : 6;
   
-  const startMonth = period === 'jan-jun' ? 0 : 6;
-  
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
-    const monthIndex = startMonth + i;
-    return {
-      name: monthNames[monthIndex],
-      month: monthNames[monthIndex],
-      monthNum: monthIndex + 1,
-      chat: 0,
-      deposit: 0,
-      withdrawal: 0
-    };
-  });
+  const monthlyData = Array.from({ length: 6 }, (_, i) => ({
+    name: monthNames[startIdx + i],
+    deposit: 0,
+    withdrawal: 0,
+    chat: 0,
+    mIdx: startIdx + i + 1
+  }));
 
-  // Helper function untuk parsing bulan
-  const getMonthFromDate = (dateStr) => {
+  const extractMonth = (dateStr) => {
     if (!dateStr) return null;
-    const datePart = dateStr.split(' ')[0].split('T')[0];
-    const [y, m] = datePart.split('-').map(Number);
-    if (y === yearNum) {
-      return m;
-    }
+    const dateOnly = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr.split(' ')[0];
+    const [y, m] = dateOnly.split('-').map(Number);
+    if (y === year) return m;
     return null;
   };
 
-  // DEPOSIT
   deposits.forEach(d => {
-    const month = getMonthFromDate(d.approved_date);
-    if (month) {
-      const idx = month - 1 - startMonth;
-      if (idx >= 0 && idx < 6) {
-        monthlyData[idx].deposit++;
-      }
-    }
+    const m = extractMonth(d.approved_date);
+    const targetIdx = m - 1 - startIdx;
+    if (targetIdx >= 0 && targetIdx < 6) monthlyData[targetIdx].deposit++;
   });
 
-  // WITHDRAWAL
   withdrawals.forEach(w => {
-    const month = getMonthFromDate(w.approved_date);
-    if (month) {
-      const idx = month - 1 - startMonth;
-      if (idx >= 0 && idx < 6) {
-        monthlyData[idx].withdrawal++;
-      }
-    }
+    const m = extractMonth(w.approved_date);
+    const targetIdx = m - 1 - startIdx;
+    if (targetIdx >= 0 && targetIdx < 6) monthlyData[targetIdx].withdrawal++;
   });
 
-  // CHAT
   chats.forEach(c => {
-    const month = getMonthFromDate(c.started);
-    if (month) {
-      const idx = month - 1 - startMonth;
-      if (idx >= 0 && idx < 6) {
-        monthlyData[idx].chat++;
-      }
-    }
-  });
-
-  // Debug log
-  console.log('📊 MONTHLY DATA:', {
-    data: monthlyData,
-    totalDeposit: monthlyData.reduce((sum, m) => sum + m.deposit, 0)
+    const m = extractMonth(c.started);
+    const targetIdx = m - 1 - startIdx;
+    if (targetIdx >= 0 && targetIdx < 6) monthlyData[targetIdx].chat++;
   });
 
   return monthlyData;
