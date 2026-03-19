@@ -16,11 +16,7 @@ export default function ReviewBreakdownTransactionPage() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedPeriod, setSelectedPeriod] = useState('jan-jun');
-  const [selectedAsset, setSelectedAsset] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
-  
-  // ASSET LIST
-  const [assetList, setAssetList] = useState([]);
   
   // DATA
   const [traficData, setTraficData] = useState([]);
@@ -60,27 +56,6 @@ export default function ReviewBreakdownTransactionPage() {
     { value: 'failed', label: 'Failed' }
   ];
 
-  // ===========================================
-  // FETCH ASSET LIST
-  // ===========================================
-  useEffect(() => {
-    fetchAssetList();
-  }, []);
-
-  const fetchAssetList = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('assets')
-        .select('asset_code, asset_name')
-        .order('asset_code', { ascending: true });
-
-      if (error) throw error;
-      setAssetList(data || []);
-    } catch (error) {
-      console.error('Error fetching assets:', error);
-    }
-  };
-
   // Format IDR
   const formatIDR = (amount) => {
     return new Intl.NumberFormat('id-ID', {
@@ -94,17 +69,17 @@ export default function ReviewBreakdownTransactionPage() {
   // ===========================================
   // FETCH HOURLY DATA (24 JAM)
   // ===========================================
-  const fetchHourlyData = async (date, asset, status) => {
+  const fetchHourlyData = async (date, status) => {
     try {
       const startDate = `${date} 00:00:00`;
       const endDate = `${date} 23:59:59`;
       
-      const assetCode = asset === 'all' ? 'XLY' : asset;
+      const assetCode = 'XLY'; // <<< FIXED ASSET
       
       // Fetch deposits
       let depositQuery = supabase
         .from('deposit_transactions')
-        .select('approved_date, status, deposit_amount, brand')
+        .select('approved_date, status, deposit_amount')
         .eq('brand', assetCode)
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
@@ -118,7 +93,7 @@ export default function ReviewBreakdownTransactionPage() {
       // Fetch withdrawals
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
-        .select('approved_date, status, withdrawal_amount, brand')
+        .select('approved_date, status, withdrawal_amount')
         .eq('brand', assetCode)
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
@@ -262,17 +237,17 @@ export default function ReviewBreakdownTransactionPage() {
   // ===========================================
   // FETCH DAILY DATA (1 BULAN)
   // ===========================================
-  const fetchDailyData = async (month, year, asset, status) => {
+  const fetchDailyData = async (month, year, status) => {
     try {
       const startDate = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${year}-${String(month).padStart(2, '0')}-${new Date(year, month, 0).getDate()} 23:59:59`;
       
-      const assetCode = asset === 'all' ? 'XLY' : asset;
+      const assetCode = 'XLY'; // <<< FIXED ASSET
       
       // Fetch deposits
       let depositQuery = supabase
         .from('deposit_transactions')
-        .select('approved_date, status, deposit_amount, brand')
+        .select('approved_date, status, deposit_amount')
         .eq('brand', assetCode)
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
@@ -286,7 +261,7 @@ export default function ReviewBreakdownTransactionPage() {
       // Fetch withdrawals
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
-        .select('approved_date, status, withdrawal_amount, brand')
+        .select('approved_date, status, withdrawal_amount')
         .eq('brand', assetCode)
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
@@ -430,7 +405,7 @@ export default function ReviewBreakdownTransactionPage() {
   // ===========================================
   // FETCH MONTHLY DATA (6 BULAN)
   // ===========================================
-  const fetchMonthlyData = async (period, year, asset, status) => {
+  const fetchMonthlyData = async (period, year, status) => {
     try {
       const startMonth = period === 'jan-jun' ? 1 : 7;
       const endMonth = period === 'jan-jun' ? 6 : 12;
@@ -438,12 +413,12 @@ export default function ReviewBreakdownTransactionPage() {
       const startDate = `${year}-${String(startMonth).padStart(2, '0')}-01 00:00:00`;
       const endDate = `${year}-${String(endMonth).padStart(2, '0')}-${new Date(year, endMonth, 0).getDate()} 23:59:59`;
       
-      const assetCode = asset === 'all' ? 'XLY' : asset;
+      const assetCode = 'XLY'; // <<< FIXED ASSET
       
       // Fetch deposits
       let depositQuery = supabase
         .from('deposit_transactions')
-        .select('approved_date, status, deposit_amount, brand')
+        .select('approved_date, status, deposit_amount')
         .eq('brand', assetCode)
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
@@ -457,7 +432,7 @@ export default function ReviewBreakdownTransactionPage() {
       // Fetch withdrawals
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
-        .select('approved_date, status, withdrawal_amount, brand')
+        .select('approved_date, status, withdrawal_amount')
         .eq('brand', assetCode)
         .gte('approved_date', startDate)
         .lte('approved_date', endDate);
@@ -606,7 +581,7 @@ export default function ReviewBreakdownTransactionPage() {
   // ===========================================
   useEffect(() => {
     fetchData();
-  }, [filterType, selectedDate, selectedMonth, selectedYear, selectedPeriod, selectedAsset, selectedStatus]);
+  }, [filterType, selectedDate, selectedMonth, selectedYear, selectedPeriod, selectedStatus]);
 
   const fetchData = async () => {
     try {
@@ -616,13 +591,13 @@ export default function ReviewBreakdownTransactionPage() {
       
       switch (filterType) {
         case 'hourly':
-          data = await fetchHourlyData(selectedDate, selectedAsset, selectedStatus);
+          data = await fetchHourlyData(selectedDate, selectedStatus);
           break;
         case 'daily':
-          data = await fetchDailyData(selectedMonth, selectedYear, selectedAsset, selectedStatus);
+          data = await fetchDailyData(selectedMonth, selectedYear, selectedStatus);
           break;
         case 'monthly':
-          data = await fetchMonthlyData(selectedPeriod, selectedYear, selectedAsset, selectedStatus);
+          data = await fetchMonthlyData(selectedPeriod, selectedYear, selectedStatus);
           break;
       }
       
@@ -691,7 +666,7 @@ export default function ReviewBreakdownTransactionPage() {
   };
 
   const getDisplayTitle = () => {
-    const assetName = selectedAsset === 'all' ? 'All Assets' : selectedAsset;
+    const assetName = 'XLY';
     const statusName = statusOptions.find(s => s.value === selectedStatus)?.label || 'All Status';
     
     switch (filterType) {
@@ -746,20 +721,10 @@ export default function ReviewBreakdownTransactionPage() {
             <option value="monthly">📊 Monthly (6 Bulan)</option>
           </select>
 
-          <div className="flex items-center gap-2">
+          {/* ASSET FIXED DISPLAY */}
+          <div className="flex items-center gap-2 bg-[#0B1A33] px-3 py-2 rounded-lg border border-[#FFD700]/30">
             <span className="text-[#A7D8FF] text-sm">Asset:</span>
-            <select
-              value={selectedAsset}
-              onChange={(e) => setSelectedAsset(e.target.value)}
-              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-3 py-2 text-white text-sm"
-            >
-              <option value="all">All Assets</option>
-              {assetList.map(asset => (
-                <option key={asset.asset_code} value={asset.asset_code}>
-                  {asset.asset_code} - {asset.asset_name}
-                </option>
-              ))}
-            </select>
+            <span className="text-white font-bold">XLY (Fixed)</span>
           </div>
 
           <div className="flex items-center gap-2">
