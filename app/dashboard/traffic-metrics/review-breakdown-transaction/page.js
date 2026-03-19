@@ -103,11 +103,11 @@ export default function ReviewBreakdownTransactionPage() {
       
       // Fetch deposits
       let depositQuery = supabase
-  .from('deposit_transactions')
-  .select('approved_date, status, deposit_amount, brand')
-  .or(`brand.eq.${assetCode},brand.is.null`)  // ← GANTI INI
-  .gte('approved_date', startDate)
-  .lte('approved_date', endDate);
+        .from('deposit_transactions')
+        .select('approved_date, status, deposit_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
       
       if (status !== 'all') {
         const dbStatus = status === 'failed' ? 'Fail' : 
@@ -456,11 +456,11 @@ export default function ReviewBreakdownTransactionPage() {
       
       // Fetch withdrawals
       let withdrawalQuery = supabase
-  .from('withdrawal_transactions')
-  .select('approved_date, status, withdrawal_amount, brand')
-  .or(`brand.eq.${assetCode},brand.is.null`)  // ← GANTI INI
-  .gte('approved_date', startDate)
-  .lte('approved_date', endDate);
+        .from('withdrawal_transactions')
+        .select('approved_date, status, withdrawal_amount, brand')
+        .eq('brand', assetCode)
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate);
       
       if (status !== 'all' && status !== 'failed') {
         const dbStatus = status.charAt(0).toUpperCase() + status.slice(1);
