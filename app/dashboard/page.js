@@ -2345,7 +2345,7 @@ useEffect(() => {
           stroke="#A7D8FF" 
           tick={{ fontSize: 10 }}
           tickMargin={5}
-          domain={[0, 1000]} // ← INI YANG NGEBENTANG SAMPE 1000
+          domain={[0, 500]} // ← UBAH JADI 500
           allowDecimals={false}
         />
         <Tooltip contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700' }} />
