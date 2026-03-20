@@ -638,7 +638,34 @@ const fetchOfficerPieData = async () => {
   };
 
 // ===========================================
-// FETCH TRAFFIC METRICS DATA - FINAL OPTIMIZED
+// FETCH ALL DATA WITH PAGINATION (TAMBAHAN UNTUK TRAFFIC METRICS)
+// ===========================================
+const fetchAllDataWithPagination = async (query) => {
+  let allData = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await query
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (error) throw error;
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+      page++;
+      hasMore = data.length === pageSize;
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allData;
+};
+
+// ===========================================
+// FETCH TRAFFIC METRICS DATA - DENGAN PAGINATION
 // ===========================================
 const fetchTrafficMetricsData = async () => {
   try {
@@ -662,10 +689,24 @@ const fetchTrafficMetricsData = async () => {
       endDate = `${yearNum}-${String(endMonth).padStart(2, '0')}-${lastDay} 23:59:59`;
     }
 
-    // Buat Query
-    let depQuery = supabase.from('deposit_transactions').select('approved_date, brand').gte('approved_date', startDate).lte('approved_date', endDate);
-    let wdQuery = supabase.from('withdrawal_transactions').select('approved_date, brand').gte('approved_date', startDate).lte('approved_date', endDate);
-    let chatQuery = supabase.from('chat_cs_data').select('started').gte('started', startDate).lte('started', endDate);
+    // Buat Query Builder
+    let depQuery = supabase
+      .from('deposit_transactions')
+      .select('approved_date, brand')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate);
+      
+    let wdQuery = supabase
+      .from('withdrawal_transactions')
+      .select('approved_date, brand')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate);
+      
+    let chatQuery = supabase
+      .from('chat_cs_data')
+      .select('started')
+      .gte('started', startDate)
+      .lte('started', endDate);
 
     // Filter Brand (Hanya jika bukan 'all')
     if (trafficMetricsAsset !== 'all') {
@@ -673,9 +714,18 @@ const fetchTrafficMetricsData = async () => {
       wdQuery = wdQuery.eq('brand', trafficMetricsAsset);
     }
 
-    const [{ data: deposits }, { data: withdrawals }, { data: chats }] = await Promise.all([
-      depQuery, wdQuery, chatQuery
+    // FETCH DENGAN PAGINATION
+    const [deposits, withdrawals, chats] = await Promise.all([
+      fetchAllDataWithPagination(depQuery),
+      fetchAllDataWithPagination(wdQuery),
+      fetchAllDataWithPagination(chatQuery)
     ]);
+
+    console.log(`📊 Traffic Metrics - Total data:`, {
+      deposits: deposits.length,
+      withdrawals: withdrawals.length,
+      chats: chats.length
+    });
 
     // Proses Data berdasarkan filter
     let finalData = [];
@@ -2039,18 +2089,18 @@ useEffect(() => {
                       
                       {/* MOZART MOUNT/UNMOUNT TOGGLE - GLOBAL */}
                       <button
-                        onClick={() => handleToggleMozart(`wd-${bank.id}`, mozartStates[`wd-${bank.id}`])}
+                        onClick={() => handleToggleMozart(bank.id, mozartStates[bank.id])}
                         disabled={updatingMozart}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all min-w-[85px] text-center flex items-center justify-center gap-1 ${
-                          mozartStates[`wd-${bank.id}`] 
+                          mozartStates[bank.id] 
                             ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/30' 
                             : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
                         }`}
-                        title={mozartStates[`wd-${bank.id}`] ? 'Klik untuk Unmount bank (global)' : 'Klik untuk Mount bank (global)'}
+                        title={mozartStates[bank.id] ? 'Klik untuk Unmount bank (global)' : 'Klik untuk Mount bank (global)'}
                       >
                         {/* Indikator MOZART */}
-                        <span className={`w-1.5 h-1.5 rounded-full ${mozartStates[`wd-${bank.id}`] ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></span>
-                        {mozartStates[`wd-${bank.id}`] ? 'MOUNTED' : 'UNMOUNT'}
+                        <span className={`w-1.5 h-1.5 rounded-full ${mozartStates[bank.id] ? 'bg-white animate-pulse' : 'bg-gray-400'}`}></span>
+                        {mozartStates[bank.id] ? 'MOUNTED' : 'UNMOUNT'}
                       </button>
                     </div>
                   </div>
@@ -2154,7 +2204,7 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* KOLOM 2: TRAFFIC METRICS */}
+        {/* KOLOM 2: TRAFFIC METRICS - DENGAN PAGINATION */}
         <div className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-6">
           <div className="flex items-center justify-between mb-2">
             <Link href="/dashboard/traffic-metrics" className="block group flex-1">
@@ -2230,80 +2280,79 @@ useEffect(() => {
           </div>
           
           <div style={{ height: '350px', width: '100%', minHeight: '350px', position: 'relative' }}>
-  {loadingTrafficMetrics ? (
-    <div className="h-full flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
-    </div>
-  ) : (
-    /* Pakai aspect={2} sebagai fallback agar chart punya rasio jika ResponsiveContainer gagal */
-    <ResponsiveContainer width="99%" height="100%" aspect={undefined}> 
-      <LineChart 
-        data={trafficMetrics}
-        margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" vertical={false} />
-        <XAxis 
-          dataKey="name" 
-          stroke="#A7D8FF" 
-          tick={{ fontSize: 10 }}
-          tickMargin={10}
-          axisLine={{ stroke: '#FFD70020' }}
-        />
-        <YAxis 
-          stroke="#A7D8FF" 
-          tick={{ fontSize: 10 }}
-          tickMargin={10}
-          axisLine={false}
-          domain={[0, 'auto']} 
-          allowDecimals={false}
-        />
-        <Tooltip 
-          contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700', borderRadius: '8px', color: '#fff' }}
-          itemStyle={{ fontSize: '12px' }}
-        />
-        <Legend 
-          verticalAlign="top"
-          align="right"
-          iconType="circle"
-          wrapperStyle={{ paddingBottom: '20px' }}
-          formatter={(value) => {
-            if (value === 'chat') return 'CS (Chat)';
-            if (value === 'deposit') return 'Deposit';
-            if (value === 'withdrawal') return 'Withdraw';
-            return value;
-          }}
-        />
-        
-        <Line 
-          type="monotone" 
-          dataKey="chat" 
-          stroke="#FFD700" 
-          strokeWidth={3} 
-          dot={{ r: 4, fill: '#0B1A33', stroke: '#FFD700', strokeWidth: 2 }} 
-          activeDot={{ r: 6 }}
-          isAnimationActive={true}
-        />
-        <Line 
-          type="monotone" 
-          dataKey="deposit" 
-          stroke="#3b82f6" 
-          strokeWidth={3} 
-          dot={{ r: 4, fill: '#0B1A33', stroke: '#3b82f6', strokeWidth: 2 }} 
-          activeDot={{ r: 6 }}
-          isAnimationActive={true}
-        />
-        <Line 
-          type="monotone" 
-          dataKey="withdrawal" 
-          stroke="#ef4444" 
-          strokeWidth={2} 
-          dot={{ r: 4, fill: '#0B1A33', stroke: '#ef4444', strokeWidth: 2 }} 
-          isAnimationActive={true}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  )}
-</div>
+            {loadingTrafficMetrics ? (
+              <div className="h-full flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="99%" height="100%" aspect={undefined}> 
+                <LineChart 
+                  data={trafficMetrics}
+                  margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#FFD70020" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#A7D8FF" 
+                    tick={{ fontSize: 10 }}
+                    tickMargin={10}
+                    axisLine={{ stroke: '#FFD70020' }}
+                  />
+                  <YAxis 
+                    stroke="#A7D8FF" 
+                    tick={{ fontSize: 10 }}
+                    tickMargin={10}
+                    axisLine={false}
+                    domain={[0, 'auto']} 
+                    allowDecimals={false}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#0B1A33', borderColor: '#FFD700', borderRadius: '8px', color: '#fff' }}
+                    itemStyle={{ fontSize: '12px' }}
+                  />
+                  <Legend 
+                    verticalAlign="top"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ paddingBottom: '20px' }}
+                    formatter={(value) => {
+                      if (value === 'chat') return 'CS (Chat)';
+                      if (value === 'deposit') return 'Deposit';
+                      if (value === 'withdrawal') return 'Withdraw';
+                      return value;
+                    }}
+                  />
+                  
+                  <Line 
+                    type="monotone" 
+                    dataKey="chat" 
+                    stroke="#FFD700" 
+                    strokeWidth={3} 
+                    dot={{ r: 4, fill: '#0B1A33', stroke: '#FFD700', strokeWidth: 2 }} 
+                    activeDot={{ r: 6 }}
+                    isAnimationActive={true}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="deposit" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3} 
+                    dot={{ r: 4, fill: '#0B1A33', stroke: '#3b82f6', strokeWidth: 2 }} 
+                    activeDot={{ r: 6 }}
+                    isAnimationActive={true}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="withdrawal" 
+                    stroke="#ef4444" 
+                    strokeWidth={2} 
+                    dot={{ r: 4, fill: '#0B1A33', stroke: '#ef4444', strokeWidth: 2 }} 
+                    isAnimationActive={true}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
           
           <Link href="/dashboard/traffic-metrics" className="block mt-2 text-right">
             <span className="text-xs text-[#A7D8FF] hover:text-[#FFD700] transition-colors">
