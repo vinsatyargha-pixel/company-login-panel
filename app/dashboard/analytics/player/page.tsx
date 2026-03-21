@@ -66,7 +66,6 @@ interface TopWithdrawal {
   avg_withdraw: number
 }
 
-// INTERFACE UNTUK RATIO WITHDRAW/DEPOSIT
 interface PlayerRatio {
   member_id: string
   asset_code: string
@@ -102,8 +101,6 @@ export default function PlayerOverviewPage() {
   const [netDepositWithdraw, setNetDepositWithdraw] = useState<NetDepositWithdraw[]>([])
   const [topDeposit, setTopDeposit] = useState<TopDeposit[]>([])
   const [topWithdrawal, setTopWithdrawal] = useState<TopWithdrawal[]>([])
-  
-  // STATE UNTUK RATIO WITHDRAW/DEPOSIT
   const [topRatioPlayers, setTopRatioPlayers] = useState<PlayerRatio[]>([])
 
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
@@ -112,92 +109,57 @@ export default function PlayerOverviewPage() {
   const assets = ['XLY']
 
   // ===========================================
-  // HELPER FUNCTIONS - FIXED VERSION
+  // HELPER FUNCTIONS
   // ===========================================
   
-  /**
-   * Format member ID dengan konsisten:
-   * - Selalu pake format: assetCode + userName (tanpa mengubah userName asli)
-   * - Contoh: 'XLYrobung', 'XLYjuma22345'
-   */
   const formatMemberId = (userName: string, brand: string = 'XLY'): string => {
     if (!userName) return ''
-    
-    // Bersihin userName dari spasi dan karakter aneh, tapi tetap pertahankan huruf/angka
     const cleanName = userName.trim()
-    
-    // Ambil asset code dari brand (default XLY)
     const assetCode = brand && brand.trim() !== '' ? brand.trim().toUpperCase() : 'XLY'
-    
-    // Format final: assetCode + userName (tanpa perubahan)
-    // Contoh: 'XLY' + 'robung' = 'XLYrobung'
     return assetCode + cleanName
   }
 
-  /**
-   * Parse account ID menjadi asset_code dan member_id
-   * - Format input: assetCode + memberId (contoh: 'XLYrobung')
-   */
   const parseAccountId = (fullId: string): { asset_code: string; member_id: string } => {
     if (!fullId) return { asset_code: 'XLY', member_id: '' }
-    
-    // Deteksi kode asset dari 3 huruf pertama
     const possibleAsset = fullId.substring(0, 3).toUpperCase()
-    
-    // Daftar asset yang valid
     const validAssets = ['XLY', 'XLA', 'XLB', 'XLC']
-    
     if (validAssets.includes(possibleAsset)) {
       return {
         asset_code: possibleAsset,
-        member_id: fullId.substring(3) // Sisa setelah 3 huruf pertama
+        member_id: fullId.substring(3)
       }
     }
-    
-    // Fallback: kalau tidak terdeteksi, anggap XLY dan fullId sebagai member_id
     return {
       asset_code: 'XLY',
       member_id: fullId
     }
   }
 
-  /**
-   * Filter by asset - FIXED VERSION
-   */
   const filterByAsset = (row: any): boolean => {
-    // 1. Kalau pilih 'all', semua data masuk
     if (selectedAsset === 'all') return true
-    
-    // 2. Cek dari kolom brand (untuk deposit/withdraw)
     if (row.brand && row.brand.trim() !== '') {
       return row.brand === selectedAsset
     }
-    
-    // 3. Cek dari account_id atau user_name (untuk winlose)
     const id = row.account_id || row.user_name
     if (id) {
       const { asset_code } = parseAccountId(id)
       return asset_code === selectedAsset
     }
-    
-    // 4. Default: kalau ragu, masukin aja
     return true
   }
 
   // ===========================================
-  // GET DATE RANGE - FIXED YESTERDAY WITH JAKARTA TIMEZONE
+  // GET DATE RANGE
   // ===========================================
   const getDateRange = () => {
     if (rangeType === 'yesterday') {
       const jakartaNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
       const yesterday = new Date(jakartaNow)
       yesterday.setDate(yesterday.getDate() - 1)
-      
       const year = yesterday.getFullYear()
       const month = String(yesterday.getMonth() + 1).padStart(2, '0')
       const day = String(yesterday.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
-      
       return { start: dateStr, end: dateStr }
     }
     
@@ -216,7 +178,7 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // FETCH DATA - FIXED VERSION
+  // FETCH DATA - LENGKAP
   // ===========================================
   useEffect(() => {
     if (rangeType === 'monthly' && selectedMonth && selectedYear) {
@@ -272,7 +234,7 @@ export default function PlayerOverviewPage() {
         .lte('approved_date', end + ' 23:59:59')
 
       // ===========================================
-      // PROCESS WINLOSE DATA (UNTUK BOX LAINNYA)
+      // PROCESS WINLOSE DATA
       // ===========================================
       if (!winloseData || winloseData.length === 0) {
         setHasData(false)
@@ -292,9 +254,6 @@ export default function PlayerOverviewPage() {
 
       setHasData(true)
 
-      // ===========================================
-      // SUMMARY STATS (dari winlose)
-      // ===========================================
       const validRows = filteredWinlose.filter((row: any) => 
         row.account_id && row.account_id !== '' && !row.account_id.toString().includes('Sub Total')
       )
@@ -310,9 +269,7 @@ export default function PlayerOverviewPage() {
       const uniquePlayers = new Set(validRows.map((d: any) => d.account_id))
       setUniquePlayerCount(uniquePlayers.size)
 
-      // ===========================================
-      // MEMBER STATS (untuk HIGHEST NET TURNOVER)
-      // ===========================================
+      // MEMBER STATS
       const memberMap = new Map<string, MemberStats>()
       const winDetails: WinDetail[] = []
 
@@ -376,9 +333,7 @@ export default function PlayerOverviewPage() {
           .slice(0, 50)
       )
 
-      // ===========================================
       // PRODUCT STATS
-      // ===========================================
       const productMap = new Map<string, ProductStats>()
       
       validRows.forEach((row: any) => {
@@ -427,87 +382,46 @@ export default function PlayerOverviewPage() {
       )
 
       // ===========================================
-      // PROCESS DEPOSIT & WITHDRAWAL - FIXED VERSION
+      // PROCESS RATIO WITHDRAW/DEPOSIT
       // ===========================================
-      const netMap = new Map<string, NetDepositWithdraw>()
-      const depositMap = new Map<string, TopDeposit>()
-      const withdrawMap = new Map<string, TopWithdrawal>()
-      
-      // MAP UNTUK RATIO WITHDRAW/DEPOSIT
       const ratioMap = new Map<string, PlayerRatio>()
 
-      // PROCESS DEPOSIT - VERSION SEDERHANA DULU
-// PROCESS DEPOSIT - PASTIKAN PAKE row.user_name LANGSUNG
-depositData?.forEach((row: any) => {
-  if (!filterByAsset(row)) return
-  
-  const key = row.user_name  // <-- HARUS INI, BUKAN formatMemberId
-  const amount = row.nett_amount || 0
-  
-  // DEBUG ROBUNG
-  if (row.user_name === 'robung') {
-    console.log('💰 ROBUNG DEPOSIT DITEMUKAN (BENAR):', {
-      user: row.user_name,
-      key,
-      amount,
-      date: row.approved_date
-    })
-  }
-  
-  // RATIO MAP
-  if (!ratioMap.has(key)) {
-    ratioMap.set(key, {
-      member_id: row.user_name,
-      asset_code: row.brand || 'XLY',
-      total_deposit: 0,
-      total_withdraw: 0,
-      ratio: 0,
-      ratio_display: '0:1'
-    })
-  }
-  ratioMap.get(key)!.total_deposit += amount
-})
+      depositData?.forEach((row: any) => {
+        if (!filterByAsset(row)) return
+        const key = row.user_name
+        const amount = row.nett_amount || 0
+        
+        if (!ratioMap.has(key)) {
+          ratioMap.set(key, {
+            member_id: row.user_name,
+            asset_code: row.brand || 'XLY',
+            total_deposit: 0,
+            total_withdraw: 0,
+            ratio: 0,
+            ratio_display: '0:1'
+          })
+        }
+        ratioMap.get(key)!.total_deposit += amount
+      })
 
-      // PROCESS WITHDRAW - PAKAI user_name LANGSUNG (TANPA ASSET)
-withdrawData?.forEach((row: any) => {
-  if (!filterByAsset(row)) return
-  
-  // PAKAI USERNAME LANGSUNG SEBAGAI KEY (tanpa asset)
-  const key = row.user_name
-  const amount = row.nett_amount || 0
-  
-  console.log('💰 WITHDRAW MASUK:', {
-    user: row.user_name,
-    key,  // 'robung' (tanpa XLY)
-    amount,
-    date: row.approved_date
-  })
-  
-  // ROBUNG CHECK
-  if (row.user_name === 'robung') {
-    console.log('💰 ROBUNG WITHDRAW DITEMUKAN:', {
-      user: row.user_name,
-      key,
-      amount,
-      date: row.approved_date
-    })
-  }
-  
-  // RATIO MAP - PAKAI KEY TANPA ASSET
-  if (!ratioMap.has(key)) {
-    ratioMap.set(key, {
-      member_id: row.user_name,
-      asset_code: row.brand || 'XLY',
-      total_deposit: 0,
-      total_withdraw: 0,
-      ratio: 0,
-      ratio_display: '0:1'
-    })
-  }
-  ratioMap.get(key)!.total_withdraw += amount
-})
+      withdrawData?.forEach((row: any) => {
+        if (!filterByAsset(row)) return
+        const key = row.user_name
+        const amount = row.nett_amount || 0
+        
+        if (!ratioMap.has(key)) {
+          ratioMap.set(key, {
+            member_id: row.user_name,
+            asset_code: row.brand || 'XLY',
+            total_deposit: 0,
+            total_withdraw: 0,
+            ratio: 0,
+            ratio_display: '0:1'
+          })
+        }
+        ratioMap.get(key)!.total_withdraw += amount
+      })
 
-      // HITUNG RATIO UNTUK SETIAP PLAYER (WITHDRAW / DEPOSIT)
       ratioMap.forEach((player) => {
         if (player.total_deposit > 0) {
           player.ratio = player.total_withdraw / player.total_deposit
@@ -521,21 +435,105 @@ withdrawData?.forEach((row: any) => {
         }
       })
 
-      // DEBUG FINAL UNTUK ROBUNG
-      console.log('🔍 FINAL CHECK ROBUNG:')
-      ratioMap.forEach((value, key) => {
-        if (key.includes('robung') || value.member_id === 'robung') {
-          console.log('✅ ROBUNG FOUND:', {
-            key,
-            member_id: value.member_id,
-            deposit: value.total_deposit,
-            withdraw: value.total_withdraw,
-            ratio: value.ratio_display
+      setTopRatioPlayers(
+        Array.from(ratioMap.values())
+          .sort((a, b) => {
+            if (a.ratio === Infinity && b.ratio === Infinity) return 0
+            if (a.ratio === Infinity) return -1
+            if (b.ratio === Infinity) return 1
+            return b.ratio - a.ratio
+          })
+          .slice(0, 100)
+      )
+
+      // ===========================================
+      // PROCESS NET DEPOSIT VS WITHDRAW, TOP DEPOSIT, TOP WITHDRAWAL
+      // ===========================================
+      const netMap = new Map<string, NetDepositWithdraw>()
+      const depositMap = new Map<string, TopDeposit>()
+      const withdrawMap = new Map<string, TopWithdrawal>()
+
+      // PROCESS DEPOSIT
+      depositData?.forEach((row: any) => {
+        if (!filterByAsset(row)) return
+        const key = row.user_name
+        const amount = row.nett_amount || 0
+
+        // NET MAP
+        if (!netMap.has(key)) {
+          netMap.set(key, {
+            account_id: key,
+            asset_code: row.brand || 'XLY',
+            member_id: row.user_name,
+            total_deposit: 0,
+            total_withdraw: 0,
+            net_amount: 0,
+            transaction_count: 0
           })
         }
+        const netData = netMap.get(key)!
+        netData.total_deposit += amount
+        netData.net_amount = netData.total_deposit - netData.total_withdraw
+        netData.transaction_count++
+
+        // DEPOSIT MAP
+        if (!depositMap.has(key)) {
+          depositMap.set(key, {
+            account_id: key,
+            asset_code: row.brand || 'XLY',
+            member_id: row.user_name,
+            total_deposit: 0,
+            transaction_count: 0,
+            avg_deposit: 0
+          })
+        }
+        const depData = depositMap.get(key)!
+        depData.total_deposit += amount
+        depData.transaction_count++
+        depData.avg_deposit = depData.total_deposit / depData.transaction_count
       })
 
-      // SET STATE UNTUK SEMUA BOX
+      // PROCESS WITHDRAW
+      withdrawData?.forEach((row: any) => {
+        if (!filterByAsset(row)) return
+        const key = row.user_name
+        const amount = row.nett_amount || 0
+
+        // NET MAP
+        if (!netMap.has(key)) {
+          netMap.set(key, {
+            account_id: key,
+            asset_code: row.brand || 'XLY',
+            member_id: row.user_name,
+            total_deposit: 0,
+            total_withdraw: 0,
+            net_amount: 0,
+            transaction_count: 0
+          })
+        }
+        const netData = netMap.get(key)!
+        netData.total_withdraw += amount
+        netData.net_amount = netData.total_deposit - netData.total_withdraw
+        netData.transaction_count++
+
+        // WITHDRAW MAP
+        if (!withdrawMap.has(key)) {
+          withdrawMap.set(key, {
+            account_id: key,
+            asset_code: row.brand || 'XLY',
+            member_id: row.user_name,
+            total_withdraw: 0,
+            transaction_count: 0,
+            avg_withdraw: 0
+          })
+        }
+        const wdData = withdrawMap.get(key)!
+        wdData.total_withdraw += amount
+        wdData.transaction_count++
+        wdData.avg_withdraw = wdData.total_withdraw / wdData.transaction_count
+      })
+
+      // SET STATE UNTUK NET DEPOSIT VS WITHDRAW, TOP DEPOSIT, TOP WITHDRAWAL
       setNetDepositWithdraw(
         Array.from(netMap.values())
           .sort((a, b) => b.net_amount - a.net_amount)
@@ -554,19 +552,12 @@ withdrawData?.forEach((row: any) => {
           .slice(0, 100)
       )
 
-      // SET TOP RATIO PLAYERS - SORTING DARI TERTINGGI
-      const sortedRatio = Array.from(ratioMap.values())
-        .sort((a, b) => {
-          if (a.ratio === Infinity && b.ratio === Infinity) return 0
-          if (a.ratio === Infinity) return -1
-          if (b.ratio === Infinity) return 1
-          return b.ratio - a.ratio
-        })
-        .slice(0, 100)
-
-      setTopRatioPlayers(sortedRatio)
-
-      console.log('📊 TOP RATIO PLAYERS:', sortedRatio.length)
+      console.log('📊 FINAL DATA:', {
+        netDepositWithdraw: netMap.size,
+        topDeposit: depositMap.size,
+        topWithdrawal: withdrawMap.size,
+        topRatio: ratioMap.size
+      })
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -625,7 +616,6 @@ withdrawData?.forEach((row: any) => {
       {/* FILTER SECTION */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
-          {/* ASSET FILTER */}
           <div>
             <label className="text-xs text-[#A7D8FF] block mb-1">ASSET</label>
             <select 
@@ -640,7 +630,6 @@ withdrawData?.forEach((row: any) => {
             </select>
           </div>
 
-          {/* RANGE TYPE TOGGLE */}
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setRangeType('monthly')} 
@@ -662,7 +651,6 @@ withdrawData?.forEach((row: any) => {
             </button>
           </div>
 
-          {/* MONTHLY FILTERS */}
           {rangeType === 'monthly' && (
             <>
               <div>
@@ -688,7 +676,6 @@ withdrawData?.forEach((row: any) => {
             </>
           )}
 
-          {/* CUSTOM RANGE FILTERS */}
           {rangeType === 'custom' && (
             <>
               <div>
@@ -874,7 +861,7 @@ withdrawData?.forEach((row: any) => {
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net Turnover</th>
-                      </tr>
+                       </tr>
                     </thead>
                     <tbody>
                       {highestNetTurnover.map((member, idx) => (
