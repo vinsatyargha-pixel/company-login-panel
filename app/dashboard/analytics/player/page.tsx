@@ -109,6 +109,33 @@ export default function PlayerOverviewPage() {
   const assets = ['XLY']
 
   // ===========================================
+  // FETCH ALL DATA WITH PAGINATION
+  // ===========================================
+  const fetchAllDataWithPagination = async (queryBuilder: any) => {
+    let allData: any[] = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
+
+    while (hasMore) {
+      const { data, error } = await queryBuilder
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+
+      if (error) throw error
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...data]
+        page++
+        hasMore = data.length === pageSize
+      } else {
+        hasMore = false
+      }
+    }
+
+    return allData
+  }
+
+  // ===========================================
   // HELPER FUNCTIONS
   // ===========================================
   
@@ -178,7 +205,7 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // FETCH DATA - LENGKAP
+  // FETCH DATA - LENGKAP DENGAN PAGINATION
   // ===========================================
   useEffect(() => {
     if (rangeType === 'monthly' && selectedMonth && selectedYear) {
@@ -206,7 +233,7 @@ export default function PlayerOverviewPage() {
       console.log('📅 FETCHING DATA PERIODE:', { start, end, rangeType })
 
       // ===========================================
-      // 1. FETCH WINLOSE TRANSACTIONS
+      // 1. FETCH WINLOSE TRANSACTIONS (LANGSUNG, TIDAK PAKAI PAGINATION KARENA JUMLAHNYA SEDIKIT)
       // ===========================================
       const { data: winloseData, error: winloseError } = await supabase
         .from('winlose_transactions')
@@ -217,21 +244,27 @@ export default function PlayerOverviewPage() {
       if (winloseError) throw winloseError
 
       // ===========================================
-      // 2. FETCH DEPOSIT & WITHDRAWAL
+      // 2. FETCH DEPOSIT & WITHDRAWAL DENGAN PAGINATION
       // ===========================================
-      const { data: depositData, error: depositError } = await supabase
+      let depositQuery = supabase
         .from('deposit_transactions')
         .select('user_name, nett_amount, brand, approved_date')
         .eq('status', 'Approved')
         .gte('approved_date', start + ' 00:00:00')
         .lte('approved_date', end + ' 23:59:59')
 
-      const { data: withdrawData, error: withdrawError } = await supabase
+      let withdrawQuery = supabase
         .from('withdrawal_transactions')
         .select('user_name, nett_amount, brand, approved_date')
         .eq('status', 'Approved')
         .gte('approved_date', start + ' 00:00:00')
         .lte('approved_date', end + ' 23:59:59')
+
+      const depositData = await fetchAllDataWithPagination(depositQuery)
+      const withdrawData = await fetchAllDataWithPagination(withdrawQuery)
+
+      console.log('📊 DEPOSIT DATA TOTAL (dengan pagination):', depositData.length, 'rows')
+      console.log('📊 WITHDRAW DATA TOTAL (dengan pagination):', withdrawData.length, 'rows')
 
       // ===========================================
       // PROCESS WINLOSE DATA
@@ -450,8 +483,8 @@ export default function PlayerOverviewPage() {
       // PROCESS NET DEPOSIT VS WITHDRAW, TOP DEPOSIT, TOP WITHDRAWAL
       // ===========================================
       const netMap = new Map<string, NetDepositWithdraw>()
-      const depositMap = new Map<string, TopDeposit>()
-      const withdrawMap = new Map<string, TopWithdrawal>()
+      const depositMapData = new Map<string, TopDeposit>()
+      const withdrawMapData = new Map<string, TopWithdrawal>()
 
       // PROCESS DEPOSIT
       depositData?.forEach((row: any) => {
@@ -477,8 +510,8 @@ export default function PlayerOverviewPage() {
         netData.transaction_count++
 
         // DEPOSIT MAP
-        if (!depositMap.has(key)) {
-          depositMap.set(key, {
+        if (!depositMapData.has(key)) {
+          depositMapData.set(key, {
             account_id: key,
             asset_code: row.brand || 'XLY',
             member_id: row.user_name,
@@ -487,7 +520,7 @@ export default function PlayerOverviewPage() {
             avg_deposit: 0
           })
         }
-        const depData = depositMap.get(key)!
+        const depData = depositMapData.get(key)!
         depData.total_deposit += amount
         depData.transaction_count++
         depData.avg_deposit = depData.total_deposit / depData.transaction_count
@@ -517,8 +550,8 @@ export default function PlayerOverviewPage() {
         netData.transaction_count++
 
         // WITHDRAW MAP
-        if (!withdrawMap.has(key)) {
-          withdrawMap.set(key, {
+        if (!withdrawMapData.has(key)) {
+          withdrawMapData.set(key, {
             account_id: key,
             asset_code: row.brand || 'XLY',
             member_id: row.user_name,
@@ -527,7 +560,7 @@ export default function PlayerOverviewPage() {
             avg_withdraw: 0
           })
         }
-        const wdData = withdrawMap.get(key)!
+        const wdData = withdrawMapData.get(key)!
         wdData.total_withdraw += amount
         wdData.transaction_count++
         wdData.avg_withdraw = wdData.total_withdraw / wdData.transaction_count
@@ -541,22 +574,24 @@ export default function PlayerOverviewPage() {
       )
 
       setTopDeposit(
-        Array.from(depositMap.values())
+        Array.from(depositMapData.values())
           .sort((a, b) => b.total_deposit - a.total_deposit)
           .slice(0, 100)
       )
 
       setTopWithdrawal(
-        Array.from(withdrawMap.values())
+        Array.from(withdrawMapData.values())
           .sort((a, b) => b.total_withdraw - a.total_withdraw)
           .slice(0, 100)
       )
 
       console.log('📊 FINAL DATA:', {
         netDepositWithdraw: netMap.size,
-        topDeposit: depositMap.size,
-        topWithdrawal: withdrawMap.size,
-        topRatio: ratioMap.size
+        topDeposit: depositMapData.size,
+        topWithdrawal: withdrawMapData.size,
+        topRatio: ratioMap.size,
+        totalDepositRows: depositData.length,
+        totalWithdrawRows: withdrawData.length
       })
 
     } catch (error) {
@@ -769,7 +804,7 @@ export default function PlayerOverviewPage() {
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Deposit</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Withdraw</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Ratio (W/D)</th>
-                      </tr>
+                       </tr>
                     </thead>
                     <tbody>
                       {topRatioPlayers.map((player, idx) => {
@@ -801,7 +836,7 @@ export default function PlayerOverviewPage() {
                         
                         return (
                           <tr key={player.member_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                            <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                            <td className="px-2 py-1 text-sm">#{idx + 1} </td>
                             <td className="px-2 py-1 text-sm text-[#A7D8FF]">{player.member_id}</td>
                             <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{player.asset_code}</td>
                             <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(player.total_deposit)}</td>
@@ -835,14 +870,14 @@ export default function PlayerOverviewPage() {
                     <tbody>
                       {bigWins.map((win, idx) => (
                         <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
-                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{win.member_id}</td>
-                          <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(win.win_amount)}</td>
-                          <td className="px-2 py-1 text-sm">{win.product_type}</td>
-                        </tr>
+                          <td className="px-2 py-1 text-sm">#{idx + 1}  \)\)
+                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{win.member_id}  \)\)
+                          <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(win.win_amount)}  \)\)
+                          <td className="px-2 py-1 text-sm">{win.product_type}  \)\)
+                         \)\)
                       ))}
                     </tbody>
-                  </table>
+                   </>
                 </div>
               </div>
             </div>
@@ -861,7 +896,7 @@ export default function PlayerOverviewPage() {
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net Turnover</th>
-                       </tr>
+                      </tr>
                     </thead>
                     <tbody>
                       {highestNetTurnover.map((member, idx) => (
