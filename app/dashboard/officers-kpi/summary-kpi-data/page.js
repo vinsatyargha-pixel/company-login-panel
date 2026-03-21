@@ -491,43 +491,66 @@ export default function SummaryKPIDataPage() {
       const csvText = await response.text();
       console.log('📄 RAW CSV (first 500 chars):', csvText.substring(0, 500));
       
-      // Parse CSV manual
+      // Parse CSV dengan method split yang lebih baik (handle quoted fields)
+      const parseCSVLine = (line) => {
+        const result = [];
+        let inQuote = false;
+        let current = '';
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuote = !inQuote;
+          } else if (char === ',' && !inQuote) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+      
       const rows = csvText.trim().split('\n');
       const headers = rows[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
       
       console.log('📋 Headers:', headers);
+      
+      // Cari index kolom yang benar (case insensitive)
+      const findColumnIndex = (keyword) => {
+        return headers.findIndex(h => h.toLowerCase().includes(keyword.toLowerCase()));
+      };
+      
+      const idxOfficer = findColumnIndex('officer id');
+      const idxTicket = findColumnIndex('no ticket');
+      const idxCategory = findColumnIndex('categories');
+      const idxAmount = findColumnIndex('amount');
+      const idxDate = findColumnIndex('date');
+      const idxMonth = findColumnIndex('month');
+      const idxYear = findColumnIndex('years');
+      
+      console.log('📍 Column indexes:', { idxOfficer, idxTicket, idxCategory, idxAmount, idxDate, idxMonth, idxYear });
       
       const data = [];
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         if (!row.trim()) continue;
         
-        const values = [];
-        let inQuote = false;
-        let current = '';
+        const values = parseCSVLine(row);
+        if (values.length < 2) continue;
         
-        for (let j = 0; j < row.length; j++) {
-          const char = row[j];
-          if (char === '"') {
-            inQuote = !inQuote;
-          } else if (char === ',' && !inQuote) {
-            values.push(current.replace(/^"|"$/g, '').trim());
-            current = '';
-          } else {
-            current += char;
-          }
-        }
-        values.push(current.replace(/^"|"$/g, '').trim());
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = values[idx] || ''; });
         
-        if (values.length >= 15 && values[1] && values[1] !== '') {
-          const obj = {};
-          headers.forEach((h, idx) => { obj[h] = values[idx] || ''; });
-          data.push(obj);
-        }
+        // Skip baris kosong (tidak ada data di kolom DATE)
+        if (!obj['DATE'] || obj['DATE'] === '') continue;
+        
+        data.push(obj);
       }
       
       console.log('📊 Parsed data rows:', data.length);
-      console.log('📊 Sample data:', data.slice(0, 3));
+      console.log('📊 Sample data (first 2 rows):', data.slice(0, 2));
       
       // Kelompokkan berdasarkan officer_id dan divisi (dari ticket)
       const grouped = {};
@@ -537,9 +560,8 @@ export default function SummaryKPIDataPage() {
       const monthMap = { 'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12 };
       
       data.forEach(item => {
-        // CLEAN DATA - coba beberapa kemungkinan nama kolom
-        const officerIdRaw = item['OFFICER ID'] || item['OFFICER_ID'] || item['OFFICERID'] || '';
-        const officerId = officerIdRaw.toString().trim();
+        // Ambil nilai dengan key asli
+        const officerId = (item['OFFICER ID'] || item['OFFICER_ID'] || '').toString().trim();
         const ticket = (item['NO TICKET'] || '').toString().trim();
         const category = (item['CATEGORIES'] || '').toString().toUpperCase().trim();
         const amountRaw = String(item['AMOUNT'] || '0').replace(/[^0-9.-]/g, '');
@@ -553,7 +575,6 @@ export default function SummaryKPIDataPage() {
         const year = yearRaw ? parseInt(yearRaw) : null;
         
         console.log('🔍 Row data:', { 
-          officerIdRaw, 
           officerId, 
           date, 
           month, 
