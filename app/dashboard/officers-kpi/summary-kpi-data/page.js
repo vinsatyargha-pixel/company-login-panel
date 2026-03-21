@@ -486,63 +486,52 @@ export default function SummaryKPIDataPage() {
     );
     
     const csvText = await response.text();
+    console.log('📄 RAW CSV length:', csvText.length);
     
-    // Parsing CSV yang lebih robust
-    const parseCSV = (text) => {
-      const rows = [];
-      let currentRow = [];
-      let currentField = '';
-      let inQuotes = false;
+    // Gunakan Papa Parse untuk parsing CSV
+    // Papa Parse tersedia di browser via CDN? Kita pake manual tapi lebih baik
+    // Karena Papa Parse mungkin gak tersedia, kita pake fungsi yang sudah diperbaiki
+    
+    // Parsing CSV dengan metode yang lebih robust
+    const parseCSVLine = (line) => {
+      const result = [];
+      let inQuote = false;
+      let current = '';
       
-      for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        const nextChar = text[i + 1];
-        
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
         if (char === '"') {
-          if (inQuotes && nextChar === '"') {
-            // Double quote escape
-            currentField += '"';
-            i++;
-          } else {
-            inQuotes = !inQuotes;
-          }
-        } else if (char === ',' && !inQuotes) {
-          // End of field
-          currentRow.push(currentField.trim());
-          currentField = '';
-        } else if (char === '\n' && !inQuotes) {
-          // End of row
-          currentRow.push(currentField.trim());
-          if (currentRow.length > 1) {
-            rows.push(currentRow);
-          }
-          currentRow = [];
-          currentField = '';
+          inQuote = !inQuote;
+        } else if (char === ',' && !inQuote) {
+          result.push(current);
+          current = '';
         } else {
-          currentField += char;
+          current += char;
         }
       }
-      // Push last row
-      if (currentField || currentRow.length > 0) {
-        currentRow.push(currentField.trim());
-        if (currentRow.length > 1) {
-          rows.push(currentRow);
-        }
-      }
-      
-      return rows;
+      result.push(current);
+      return result;
     };
     
-    const rows = parseCSV(csvText);
-    console.log('📊 Parsed rows count:', rows.length);
+    // Split baris, skip baris kosong di awal
+    const lines = csvText.split('\n').filter(line => line.trim() !== '');
     
-    if (rows.length < 2) {
-      console.log('❌ No data rows found');
+    // Cari baris pertama yang mengandung "PERIODE" (header)
+    let headerIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes('PERIODE') || lines[i].includes('DATE')) {
+        headerIndex = i;
+        break;
+      }
+    }
+    
+    if (headerIndex === -1) {
+      console.error('❌ Header not found');
       setHumanErrorData({});
       return;
     }
     
-    const headers = rows[0];
+    const headers = parseCSVLine(lines[headerIndex]).map(h => h.replace(/^"|"$/g, '').trim());
     console.log('📋 Headers:', headers);
     
     // Cari index kolom
@@ -561,20 +550,24 @@ export default function SummaryKPIDataPage() {
     console.log('📍 Column indexes:', { idxOfficer, idxTicket, idxCategory, idxAmount, idxDate, idxMonth, idxYear });
     
     const data = [];
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i];
-      if (!row || row.length < 2) continue;
+    for (let i = headerIndex + 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim()) continue;
       
-      // Skip baris kosong (semua kolom kosong)
-      const hasData = row.some(cell => cell && cell !== '');
-      if (!hasData) continue;
+      const values = parseCSVLine(line);
+      if (values.length < 2) continue;
       
       const obj = {};
       headers.forEach((h, idx) => {
-        obj[h] = row[idx] || '';
+        let val = values[idx] || '';
+        val = val.replace(/^"|"$/g, '').trim();
+        obj[h] = val;
       });
       
-      data.push(obj);
+      // Skip baris yang tidak memiliki DATE (baris kosong data)
+      if (obj['DATE'] && obj['DATE'] !== '') {
+        data.push(obj);
+      }
     }
     
     console.log('📊 Valid data rows:', data.length);
