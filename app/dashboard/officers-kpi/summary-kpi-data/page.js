@@ -489,50 +489,98 @@ export default function SummaryKPIDataPage() {
     );
     
     const csvText = await response.text();
-    console.log('📄 RAW CSV (full):', csvText);
     
-    // Parse CSV dengan split simple dan hapus quote
-    const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
-    
-    const data = [];
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line.trim()) continue;
+    // Parsing CSV yang lebih robust
+    const parseCSV = (text) => {
+      const rows = [];
+      let currentRow = [];
+      let currentField = '';
+      let inQuotes = false;
       
-      // Split dengan regex yang handle quote
-      const values = [];
-      let current = '';
-      let inQuote = false;
-      
-      for (let j = 0; j < line.length; j++) {
-        const char = line[j];
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+        
         if (char === '"') {
-          inQuote = !inQuote;
-        } else if (char === ',' && !inQuote) {
-          values.push(current.trim());
-          current = '';
+          if (inQuotes && nextChar === '"') {
+            // Double quote escape
+            currentField += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          // End of field
+          currentRow.push(currentField.trim());
+          currentField = '';
+        } else if (char === '\n' && !inQuotes) {
+          // End of row
+          currentRow.push(currentField.trim());
+          if (currentRow.length > 1) {
+            rows.push(currentRow);
+          }
+          currentRow = [];
+          currentField = '';
         } else {
-          current += char;
+          currentField += char;
         }
       }
-      values.push(current.trim());
-      
-      // Buat object
-      const obj = {};
-      headers.forEach((h, idx) => {
-        let val = values[idx] || '';
-        val = val.replace(/^"|"$/g, '').trim();
-        obj[h] = val;
-      });
-      
-      // Skip baris kosong (tidak ada DATE)
-      if (obj['DATE'] && obj['DATE'] !== '') {
-        data.push(obj);
+      // Push last row
+      if (currentField || currentRow.length > 0) {
+        currentRow.push(currentField.trim());
+        if (currentRow.length > 1) {
+          rows.push(currentRow);
+        }
       }
+      
+      return rows;
+    };
+    
+    const rows = parseCSV(csvText);
+    console.log('📊 Parsed rows count:', rows.length);
+    
+    if (rows.length < 2) {
+      console.log('❌ No data rows found');
+      setHumanErrorData({});
+      return;
     }
     
-    console.log('📊 Parsed data rows:', data.length);
+    const headers = rows[0];
+    console.log('📋 Headers:', headers);
+    
+    // Cari index kolom
+    const findIndex = (keyword) => {
+      return headers.findIndex(h => h && h.toLowerCase().includes(keyword.toLowerCase()));
+    };
+    
+    const idxOfficer = findIndex('officer id');
+    const idxTicket = findIndex('no ticket');
+    const idxCategory = findIndex('categories');
+    const idxAmount = findIndex('amount');
+    const idxDate = findIndex('date');
+    const idxMonth = findIndex('month');
+    const idxYear = findIndex('years');
+    
+    console.log('📍 Column indexes:', { idxOfficer, idxTicket, idxCategory, idxAmount, idxDate, idxMonth, idxYear });
+    
+    const data = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length < 2) continue;
+      
+      // Skip baris kosong (semua kolom kosong)
+      const hasData = row.some(cell => cell && cell !== '');
+      if (!hasData) continue;
+      
+      const obj = {};
+      headers.forEach((h, idx) => {
+        obj[h] = row[idx] || '';
+      });
+      
+      data.push(obj);
+    }
+    
+    console.log('📊 Valid data rows:', data.length);
     console.log('📊 Sample data:', data.slice(0, 3));
     
     // Kelompokkan data
@@ -556,15 +604,21 @@ export default function SummaryKPIDataPage() {
       console.log('🔍 Row:', { officerId, date, month, year, category, ticket, amount });
       
       if (!officerId || !date || !month || !year) {
-        console.log('❌ Skip - missing data');
+        console.log('❌ Skip - missing required data');
         return;
       }
       
       const itemMonth = monthMap[month.substring(0,3)] || 0;
-      if (year !== targetYear || itemMonth < startMonth || itemMonth > endMonth) {
-        console.log(`❌ Filter out: ${year}/${itemMonth}`);
+      if (year !== targetYear) {
+        console.log(`❌ Filter out: year ${year} != ${targetYear}`);
         return;
       }
+      if (itemMonth < startMonth || itemMonth > endMonth) {
+        console.log(`❌ Filter out: month ${itemMonth} not in ${startMonth}-${endMonth}`);
+        return;
+      }
+      
+      console.log(`✅ Pass filter: ${officerId} - ${month}/${year}`);
       
       const divisi = ticket.toUpperCase().startsWith('W') ? 'withdrawal' : 'deposit';
       
@@ -578,14 +632,21 @@ export default function SummaryKPIDataPage() {
       if (category === 'REPORT MISTAKE') {
         grouped[officerId][divisi].mistakeQty++;
         grouped[officerId][divisi].mistakeAmount += amount;
-      } else if (category === 'REPORT BLOCK BANK') {
+        console.log(`✅ Added MISTAKE to ${officerId} - ${divisi}: +${amount}`);
+      }
+      else if (category === 'REPORT BLOCK BANK') {
         grouped[officerId][divisi].blockBank++;
-      } else if (category === 'REPORT CROSSBANK') {
+        console.log(`✅ Added BLOCK BANK to ${officerId} - ${divisi}`);
+      }
+      else if (category === 'REPORT CROSSBANK') {
         grouped[officerId][divisi].crossBankQty++;
         grouped[officerId][divisi].crossBankAmount += amount;
-      } else if (category === 'REPORT CROSSASSET') {
+        console.log(`✅ Added CROSSBANK to ${officerId} - ${divisi}: +${amount}`);
+      }
+      else if (category === 'REPORT CROSSASSET') {
         grouped[officerId][divisi].crossAssetQty++;
         grouped[officerId][divisi].crossAssetAmount += amount;
+        console.log(`✅ Added CROSSASSET to ${officerId} - ${divisi}: +${amount}`);
       }
     });
     
@@ -593,7 +654,7 @@ export default function SummaryKPIDataPage() {
     setHumanErrorData(grouped);
     
   } catch (error) {
-    console.error('❌ Error:', error);
+    console.error('❌ Error fetching human error data:', error);
   } finally {
     setLoadingHumanError(false);
   }
