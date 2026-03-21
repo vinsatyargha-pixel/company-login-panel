@@ -475,9 +475,6 @@ export default function SummaryKPIDataPage() {
     }
   }, [tahun, bulanAwal, bulanAkhir]);
 
-  // ===========================================
-  // FETCH HUMAN ERROR & PROBLEM SOLVING DATA DARI GOOGLE SHEETS
-  // ===========================================
   const fetchHumanErrorData = async () => {
   try {
     setLoadingHumanError(true);
