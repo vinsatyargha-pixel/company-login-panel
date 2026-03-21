@@ -178,7 +178,7 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // FETCH DATA - LENGKAP DENGAN DEBUG
+  // FETCH DATA - LENGKAP
   // ===========================================
   useEffect(() => {
     if (rangeType === 'monthly' && selectedMonth && selectedYear) {
@@ -232,39 +232,6 @@ export default function PlayerOverviewPage() {
         .eq('status', 'Approved')
         .gte('approved_date', start + ' 00:00:00')
         .lte('approved_date', end + ' 23:59:59')
-
-      // ===========================================
-      // DEBUG: CEK DATA DEPOSIT & WITHDRAW
-      // ===========================================
-      console.log('📊 DEPOSIT DATA TOTAL:', depositData?.length || 0, 'rows')
-      console.log('📊 WITHDRAW DATA TOTAL:', withdrawData?.length || 0, 'rows')
-      
-      // Sample 5 data pertama
-      console.log('📝 SAMPLE DEPOSIT:', depositData?.slice(0, 3).map(d => ({ user: d.user_name, amount: d.nett_amount })))
-      console.log('📝 SAMPLE WITHDRAW:', withdrawData?.slice(0, 3).map(w => ({ user: w.user_name, amount: w.nett_amount })))
-      
-      // Cek player yang depositnya 0 di ratio
-      const playersToCheck = ['robung', 'juma22345', 'zakiyxops', 'andicrows', 'pengky11']
-      playersToCheck.forEach(player => {
-        const depositMatch = depositData?.filter(d => d.user_name === player)
-        const withdrawMatch = withdrawData?.filter(w => w.user_name === player)
-        
-        const depositTotal = depositMatch?.reduce((sum, d) => sum + (d.nett_amount || 0), 0) || 0
-        const withdrawTotal = withdrawMatch?.reduce((sum, w) => sum + (w.nett_amount || 0), 0) || 0
-        
-        console.log(`🔍 PLAYER: ${player}`)
-        console.log(`   DEPOSIT: ${depositMatch?.length || 0} transaksi, total: ${depositTotal.toLocaleString()}`)
-        console.log(`   WITHDRAW: ${withdrawMatch?.length || 0} transaksi, total: ${withdrawTotal.toLocaleString()}`)
-        
-        if (depositMatch?.length === 0 && withdrawMatch?.length > 0) {
-          console.log(`   ⚠️ PLAYER ${player} HANYA PUNYA WITHDRAW, TIDAK ADA DEPOSIT!`)
-          // Cek case insensitive
-          const similarDeposit = depositData?.filter(d => d.user_name?.toLowerCase() === player.toLowerCase())
-          if (similarDeposit?.length > 0) {
-            console.log(`   💡 TAPI ADA DEPOSIT dengan case berbeda:`, similarDeposit.map(d => d.user_name))
-          }
-        }
-      })
 
       // ===========================================
       // PROCESS WINLOSE DATA
@@ -863,12 +830,12 @@ export default function PlayerOverviewPage() {
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Win</th>
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Provider</th>
-                       </tr>
+                      </tr>
                     </thead>
                     <tbody>
                       {bigWins.map((win, idx) => (
                         <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-2 py-1 text-sm">#{idx + 1} </td>
+                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
                           <td className="px-2 py-1 text-sm text-[#A7D8FF]">{win.member_id}</td>
                           <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(win.win_amount)}</td>
                           <td className="px-2 py-1 text-sm">{win.product_type}</td>
@@ -894,7 +861,7 @@ export default function PlayerOverviewPage() {
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net Turnover</th>
-                      </tr>
+                       </tr>
                     </thead>
                     <tbody>
                       {highestNetTurnover.map((member, idx) => (
