@@ -20,6 +20,19 @@ const formatTime = (minutes) => {
 };
 
 // ===========================================
+// HELPER: Format IDR
+// ===========================================
+const formatIDR = (amount) => {
+  if (!amount || amount === '-' || amount === 0) return '-';
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(amount);
+};
+
+// ===========================================
 // HELPER: Get first and last day of month
 // ===========================================
 const getMonthDateRange = (tahun, bulan) => {
@@ -32,15 +45,12 @@ const getMonthDateRange = (tahun, bulan) => {
 // AGENT MAPPING (ALIAS → NAMA LENGKAP)
 // ===========================================
 const AGENT_MAP = {
-  // Agent Alias → Nama Lengkap (sesuai tabel lo)
   'Novita Airin': 'Achmad Naufal Zakiy',
   'Rissa Aulita': 'Goldie Mountana',
   'Layla Diyah': 'Lie Fung Kien (Vini)',
   'Melissa Lin': 'Mushollina Nul Hakim',
   'Fania Lolita': 'Ronaldo Ichwan',
   'Lisa saraswati': 'Sulaeman',
-  
-  // BOT & System
   'BOT': 'BOT',
   'System': 'System',
   'SYSTEM': 'System'
@@ -66,6 +76,10 @@ export default function SummaryKPIDataPage() {
   const [chatData, setChatData] = useState({});
   const [botChatCount, setBotChatCount] = useState(0);
   const [loadingChat, setLoadingChat] = useState(false);
+  
+  // ===== STATE UNTUK HUMAN ERROR & PROBLEM SOLVING =====
+  const [humanErrorData, setHumanErrorData] = useState({});
+  const [loadingHumanError, setLoadingHumanError] = useState(false);
 
   // Daftar bulan
   const bulanList = [
@@ -84,7 +98,7 @@ export default function SummaryKPIDataPage() {
   ];
 
   // ===========================================
-  // CEK USER ROLE (PERBAIKAN)
+  // CEK USER ROLE
   // ===========================================
   useEffect(() => {
     const checkUserRole = async () => {
@@ -92,7 +106,6 @@ export default function SummaryKPIDataPage() {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-          // Coba cari berdasarkan email dulu (lebih umum)
           const { data, error } = await supabase
             .from('officers')
             .select('role')
@@ -102,7 +115,6 @@ export default function SummaryKPIDataPage() {
           if (!error && data) {
             setUserRole(data.role);
           } else {
-            // Default role staff kalau tidak ditemukan
             setUserRole('staff');
           }
         } else {
@@ -135,7 +147,6 @@ export default function SummaryKPIDataPage() {
 
         if (error) throw error;
         
-        // Tambah System secara manual
         const systemOfficer = {
           full_name: 'System',
           panel_id: 'System',
@@ -164,7 +175,7 @@ export default function SummaryKPIDataPage() {
   }, []);
 
   // ===========================================
-  // FETCH DEPOSIT TRANSACTIONS (DATA REAL)
+  // FETCH DEPOSIT TRANSACTIONS
   // ===========================================
   useEffect(() => {
     const fetchDepositTransactions = async () => {
@@ -243,7 +254,7 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
-  // FETCH WITHDRAWAL TRANSACTIONS (DATA REAL)
+  // FETCH WITHDRAWAL TRANSACTIONS
   // ===========================================
   useEffect(() => {
     const fetchWithdrawalTransactions = async () => {
@@ -322,7 +333,7 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
-  // FETCH ATTENDANCE FROM API SCHEDULE (MULTI MONTH)
+  // FETCH ATTENDANCE FROM API SCHEDULE
   // ===========================================
   const [attendanceData, setAttendanceData] = useState({});
 
@@ -334,7 +345,6 @@ export default function SummaryKPIDataPage() {
         
         const grouped = {};
         
-        // Loop setiap bulan dalam range
         for (let month = startMonth; month <= endMonth; month++) {
           const bulanNama = [
             'January', 'February', 'March', 'April', 'May', 'June',
@@ -355,10 +365,9 @@ export default function SummaryKPIDataPage() {
             const date = new Date(dateStr);
             const monthNum = date.getMonth() + 1;
             
-            // Filter sesuai range bulan
             if (monthNum < startMonth || monthNum > endMonth) return;
             
-            const officers = [
+            const officersList = [
               'Sulaeman',
               'Goldie Mountana',
               'Achmad Naufal Zakiy',
@@ -367,7 +376,7 @@ export default function SummaryKPIDataPage() {
               'Ronaldo Ichwan'
             ];
             
-            officers.forEach(officerName => {
+            officersList.forEach(officerName => {
               const status = day[officerName];
               if (!status) return;
               
@@ -377,7 +386,6 @@ export default function SummaryKPIDataPage() {
               
               const statusUpper = status.toUpperCase().trim();
               
-              // HANYA 4 STATUS YANG DIPROSES
               if (statusUpper === 'SAKIT') {
                 grouped[officerName].s += 1;
               }
@@ -395,7 +403,6 @@ export default function SummaryKPIDataPage() {
         }
         
         setAttendanceData(grouped);
-        console.log('Attendance data (S/I/A/U):', grouped);
         
       } catch (error) {
         console.error('Error fetching attendance:', error);
@@ -408,7 +415,7 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
-  // FETCH CHAT CS DATA (AMBIL DARI AGENT_ALIAS)
+  // FETCH CHAT CS DATA
   // ===========================================
   useEffect(() => {
     const fetchChatCSData = async () => {
@@ -422,8 +429,6 @@ export default function SummaryKPIDataPage() {
         const lastDay = new Date(parseInt(tahun), endMonth, 0).getDate();
         const endDate = `${tahun}-${endMonth.toString().padStart(2, '0')}-${lastDay}`;
         
-        console.log('📅 Range Chat:', { startDate, endDate });
-        
         const { data, error } = await supabase
           .from('chat_cs_data')
           .select('*')
@@ -432,31 +437,22 @@ export default function SummaryKPIDataPage() {
         
         if (error) throw error;
         
-        console.log('✅ Data chat ditemukan:', data?.length || 0, 'baris');
-        
-        // Group by agent_alias setelah di-mapping
         const grouped = {};
         let botTotal = 0;
         
         data.forEach(chat => {
-          // AMBIL DARI AGENT_ALIAS (sesuai tabel lo)
           const agentAlias = chat.agent_alias || 'Unknown';
-          
-          // MAP ALIAS KE NAMA LENGKAP pake AGENT_MAP
           let officerName = AGENT_MAP[agentAlias] || agentAlias;
           
-          // Khusus BOT (pake agentAlias atau officerName)
           if (agentAlias === 'BOT' || officerName === 'BOT') {
             botTotal++;
             return;
           }
           
-          // Abaikan SYSTEM
           if (officerName === 'System' || officerName === 'SYSTEM') {
             return;
           }
           
-          // Group berdasarkan nama officer
           if (!grouped[officerName]) {
             grouped[officerName] = { totalChat: 0 };
           }
@@ -464,7 +460,6 @@ export default function SummaryKPIDataPage() {
           grouped[officerName].totalChat++;
         });
         
-        console.log('🔥 Chat data grouped:', grouped);
         setChatData(grouped);
         setBotChatCount(botTotal);
         
@@ -477,6 +472,154 @@ export default function SummaryKPIDataPage() {
     
     if (tahun && bulanAwal && bulanAkhir) {
       fetchChatCSData();
+    }
+  }, [tahun, bulanAwal, bulanAkhir]);
+
+  // ===========================================
+  // FETCH HUMAN ERROR & PROBLEM SOLVING DATA DARI GOOGLE SHEETS
+  // ===========================================
+  const fetchHumanErrorData = async () => {
+    try {
+      setLoadingHumanError(true);
+      
+      console.log('📥 Fetching HUMAN ERROR data from Google Sheets...');
+      
+      const response = await fetch(
+        'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9VI82RFmJJECM1dwHgAk9YlFSGGVcuAgf5sexjLal3U5OZ6BJL35oAxLd2h17vgsBBC6o0JXEcV-Z/pub?gid=70613788&single=true&output=csv'
+      );
+      
+      const csvText = await response.text();
+      console.log('📄 RAW CSV (first 500 chars):', csvText.substring(0, 500));
+      
+      // Parse CSV manual
+      const rows = csvText.trim().split('\n');
+      const headers = rows[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+      
+      console.log('📋 Headers:', headers);
+      
+      const data = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row.trim()) continue;
+        
+        const values = [];
+        let inQuote = false;
+        let current = '';
+        
+        for (let j = 0; j < row.length; j++) {
+          const char = row[j];
+          if (char === '"') {
+            inQuote = !inQuote;
+          } else if (char === ',' && !inQuote) {
+            values.push(current.replace(/^"|"$/g, '').trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        values.push(current.replace(/^"|"$/g, '').trim());
+        
+        if (values.length >= 15 && values[1] && values[1] !== '') {
+          const obj = {};
+          headers.forEach((h, idx) => { obj[h] = values[idx] || ''; });
+          data.push(obj);
+        }
+      }
+      
+      console.log('📊 Parsed data rows:', data.length);
+      console.log('📊 Sample data:', data.slice(0, 3));
+      
+      // Kelompokkan berdasarkan officer_id dan divisi (dari ticket)
+      const grouped = {};
+      const startMonth = parseInt(bulanAwal);
+      const endMonth = parseInt(bulanAkhir);
+      const targetYear = parseInt(tahun);
+      const monthMap = { 'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12 };
+      
+      data.forEach(item => {
+        const officerId = item['OFFICER ID']?.trim();
+        const ticket = item['NO TICKET'] || '';
+        const category = item['CATEGORIES']?.toUpperCase() || '';
+        const amount = parseFloat(String(item['AMOUNT'] || '0').replace(/[^0-9.-]/g, '')) || 0;
+        const date = item['DATE'] ? parseInt(item['DATE']) : null;
+        const month = item['MONTH']?.trim() || '';
+        const year = item['YEARS'] ? parseInt(item['YEARS']) : null;
+        
+        if (!officerId || !date || !month || !year) {
+          console.log('❌ Skip row - missing data:', { officerId, date, month, year });
+          return;
+        }
+        
+        // Filter periode
+        const itemMonth = monthMap[month.substring(0,3)] || 0;
+        if (year !== targetYear) {
+          console.log(`❌ Filter out: year ${year} != ${targetYear}`);
+          return;
+        }
+        if (itemMonth < startMonth || itemMonth > endMonth) {
+          console.log(`❌ Filter out: month ${itemMonth} not in ${startMonth}-${endMonth}`);
+          return;
+        }
+        
+        // Tentukan divisi dari nomor ticket
+        const divisi = ticket.toUpperCase().startsWith('W') ? 'withdrawal' : 'deposit';
+        
+        if (!grouped[officerId]) {
+          grouped[officerId] = {
+            deposit: {
+              mistakeQty: 0,
+              mistakeAmount: 0,
+              blockBank: 0,
+              crossBankQty: 0,
+              crossBankAmount: 0,
+              crossAssetQty: 0,
+              crossAssetAmount: 0
+            },
+            withdrawal: {
+              mistakeQty: 0,
+              mistakeAmount: 0,
+              blockBank: 0,
+              crossBankQty: 0,
+              crossBankAmount: 0,
+              crossAssetQty: 0,
+              crossAssetAmount: 0
+            }
+          };
+        }
+        
+        console.log(`✅ Adding to ${officerId} - ${divisi}: ${category}, amount ${amount}`);
+        
+        if (category === 'REPORT MISTAKE') {
+          grouped[officerId][divisi].mistakeQty++;
+          grouped[officerId][divisi].mistakeAmount += amount;
+        }
+        else if (category === 'REPORT BLOCK BANK') {
+          grouped[officerId][divisi].blockBank++;
+        }
+        else if (category === 'REPORT CROSSBANK') {
+          grouped[officerId][divisi].crossBankQty++;
+          grouped[officerId][divisi].crossBankAmount += amount;
+        }
+        else if (category === 'REPORT CROSSASSET') {
+          grouped[officerId][divisi].crossAssetQty++;
+          grouped[officerId][divisi].crossAssetAmount += amount;
+        }
+      });
+      
+      console.log('📊 Final grouped data:', grouped);
+      setHumanErrorData(grouped);
+      
+    } catch (error) {
+      console.error('❌ Error fetching human error data:', error);
+    } finally {
+      setLoadingHumanError(false);
+    }
+  };
+
+  // Panggil fetchHumanErrorData ketika periode berubah
+  useEffect(() => {
+    if (tahun && bulanAwal && bulanAkhir) {
+      fetchHumanErrorData();
     }
   }, [tahun, bulanAwal, bulanAkhir]);
 
@@ -496,18 +639,15 @@ export default function SummaryKPIDataPage() {
   };
 
   const totalDays = getTotalDaysInRange();
-  
-  // Hitung OFF day (4 per bulan)
   const monthsInRange = parseInt(bulanAkhir) - parseInt(bulanAwal) + 1;
   const totalOffDays = monthsInRange * 4;
-  
-  // Target untuk SEMUA officer sama
   const targetPerOfficer = totalDays - totalOffDays;
 
   // ===========================================
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
   // ===========================================
   const getDepositDataForOfficer = (officer) => {
+    // System officer
     if (officer.panel_id === 'System' || officer.full_name === 'System') {
       const data = depositData['SYSTEM'] || depositData['system'] || {};
       return {
@@ -540,6 +680,7 @@ export default function SummaryKPIDataPage() {
       };
     }
 
+    // Cari data deposit dari transaksi
     const handlerVariants = [
       officer.panel_id?.toLowerCase(),
       officer.panel_id,
@@ -555,6 +696,32 @@ export default function SummaryKPIDataPage() {
       }
     }
     
+    // Ambil data human error untuk deposit
+    // Coba match dengan panel_id, full_name, atau username
+    let humanError = { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 };
+    
+    // Coba match dengan panel_id
+    if (humanErrorData[officer.panel_id]?.deposit) {
+      humanError = humanErrorData[officer.panel_id].deposit;
+      console.log(`✅ Match deposit for ${officer.panel_id}:`, humanError);
+    } 
+    // Coba match dengan full_name
+    else if (humanErrorData[officer.full_name]?.deposit) {
+      humanError = humanErrorData[officer.full_name].deposit;
+      console.log(`✅ Match deposit for ${officer.full_name}:`, humanError);
+    }
+    // Coba match dengan username
+    else if (officer.username && humanErrorData[officer.username]?.deposit) {
+      humanError = humanErrorData[officer.username].deposit;
+      console.log(`✅ Match deposit for ${officer.username}:`, humanError);
+    }
+    
+    const totalHeQty = humanError.mistakeQty + humanError.blockBank;
+    
+    // Hitung P2 dan P3
+    const p2Score = totalHeQty === 0 ? 100 : Math.max(0, 100 - (totalHeQty * 10));
+    const p3Score = (humanError.crossBankQty + humanError.crossAssetQty) === 0 ? 100 : Math.max(0, 100 - ((humanError.crossBankQty + humanError.crossAssetQty) * 10));
+    
     return {
       totalApproved: data.totalApproved || 0,
       totalReject: data.totalReject || 0,
@@ -563,29 +730,33 @@ export default function SummaryKPIDataPage() {
       nonSop: data.totalNonSOP || 0,
       intervalApp: data.avgApprovalTime || 0,
       intervalRej: data.avgRejectTime || 0,
-      heQty: 0,
-      heAmount: '-',
-      mistakeQty: 0,
-      mistakeAmount: '-',
-      blockBank: 0,
-      crossBankQty: 0,
-      crossBankAmount: '-',
-      crossAssetQty: 0,
-      crossAssetAmount: '-',
+      // HUMAN ERROR
+      heQty: totalHeQty,
+      heAmount: humanError.mistakeAmount > 0 ? humanError.mistakeAmount : '-',
+      mistakeQty: humanError.mistakeQty,
+      mistakeAmount: humanError.mistakeAmount > 0 ? humanError.mistakeAmount : '-',
+      blockBank: humanError.blockBank,
+      // PROBLEM SOLVING
+      crossBankQty: humanError.crossBankQty,
+      crossBankAmount: humanError.crossBankAmount > 0 ? humanError.crossBankAmount : '-',
+      crossAssetQty: humanError.crossAssetQty,
+      crossAssetAmount: humanError.crossAssetAmount > 0 ? humanError.crossAssetAmount : '-',
+      // FOLLOW SOP (masih dummy)
       bukuDosa: 0,
       sp1: 0,
       sp2: 0,
       sus: 0,
       totalPoin4: 100,
       p1: data.sopPercentage || 0,
-      p2: 100,
-      p3: 100,
+      p2: p2Score,
+      p3: p3Score,
       p4: 100,
-      avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
+      avg: data.sopPercentage ? Math.round((data.sopPercentage + p2Score + p3Score + 100) / 4) : 0
     };
   };
 
   const getWithdrawalDataForOfficer = (officer) => {
+    // System officer
     if (officer.panel_id === 'System' || officer.full_name === 'System') {
       const data = withdrawalData['SYSTEM'] || withdrawalData['system'] || {};
       return {
@@ -618,6 +789,7 @@ export default function SummaryKPIDataPage() {
       };
     }
 
+    // Cari data withdrawal dari transaksi
     const handlerVariants = [
       officer.panel_id?.toLowerCase(),
       officer.panel_id,
@@ -633,6 +805,26 @@ export default function SummaryKPIDataPage() {
       }
     }
     
+    // Ambil data human error untuk withdrawal
+    let humanError = { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 };
+    
+    if (humanErrorData[officer.panel_id]?.withdrawal) {
+      humanError = humanErrorData[officer.panel_id].withdrawal;
+      console.log(`✅ Match withdrawal for ${officer.panel_id}:`, humanError);
+    } 
+    else if (humanErrorData[officer.full_name]?.withdrawal) {
+      humanError = humanErrorData[officer.full_name].withdrawal;
+      console.log(`✅ Match withdrawal for ${officer.full_name}:`, humanError);
+    }
+    else if (officer.username && humanErrorData[officer.username]?.withdrawal) {
+      humanError = humanErrorData[officer.username].withdrawal;
+      console.log(`✅ Match withdrawal for ${officer.username}:`, humanError);
+    }
+    
+    const totalHeQty = humanError.mistakeQty + humanError.blockBank;
+    const p2Score = totalHeQty === 0 ? 100 : Math.max(0, 100 - (totalHeQty * 10));
+    const p3Score = (humanError.crossBankQty + humanError.crossAssetQty) === 0 ? 100 : Math.max(0, 100 - ((humanError.crossBankQty + humanError.crossAssetQty) * 10));
+    
     return {
       totalApproved: data.totalApproved || 0,
       totalReject: data.totalReject || 0,
@@ -641,25 +833,28 @@ export default function SummaryKPIDataPage() {
       nonSop: data.totalNonSOP || 0,
       intervalApp: data.avgApprovalTime || 0,
       intervalRej: data.avgRejectTime || 0,
-      heQty: 0,
-      heAmount: '-',
-      mistakeQty: 0,
-      mistakeAmount: '-',
-      blockBank: 0,
-      crossBankQty: 0,
-      crossBankAmount: '-',
-      crossAssetQty: 0,
-      crossAssetAmount: '-',
+      // HUMAN ERROR
+      heQty: totalHeQty,
+      heAmount: humanError.mistakeAmount > 0 ? humanError.mistakeAmount : '-',
+      mistakeQty: humanError.mistakeQty,
+      mistakeAmount: humanError.mistakeAmount > 0 ? humanError.mistakeAmount : '-',
+      blockBank: humanError.blockBank,
+      // PROBLEM SOLVING
+      crossBankQty: humanError.crossBankQty,
+      crossBankAmount: humanError.crossBankAmount > 0 ? humanError.crossBankAmount : '-',
+      crossAssetQty: humanError.crossAssetQty,
+      crossAssetAmount: humanError.crossAssetAmount > 0 ? humanError.crossAssetAmount : '-',
+      // FOLLOW SOP (masih dummy)
       bukuDosa: 0,
       sp1: 0,
       sp2: 0,
       sus: 0,
       totalPoin4: 100,
       p1: data.sopPercentage || 0,
-      p2: 100,
-      p3: 100,
+      p2: p2Score,
+      p3: p3Score,
       p4: 100,
-      avg: data.sopPercentage ? Math.round((data.sopPercentage + 100 + 100 + 100) / 4) : 0
+      avg: data.sopPercentage ? Math.round((data.sopPercentage + p2Score + p3Score + 100) / 4) : 0
     };
   };
 
@@ -667,16 +862,12 @@ export default function SummaryKPIDataPage() {
   const getChatDataForOfficer = (officer) => {
     const officerName = officer.full_name;
     
-    // Skip untuk System
     if (officerName === 'System' || officerName === 'SYSTEM') {
       return { totalChat: 0 };
     }
     
     const data = chatData[officerName];
-    
-    return {
-      totalChat: data?.totalChat || 0
-    };
+    return { totalChat: data?.totalChat || 0 };
   };
 
   // Generate data dengan real attendance
@@ -685,20 +876,12 @@ export default function SummaryKPIDataPage() {
     const withdrawalReal = getWithdrawalDataForOfficer(officer);
     const chatReal = getChatDataForOfficer(officer);
     
-    // Ambil data attendance berdasarkan nama officer
     const officerName = officer.full_name;
     const attendance = attendanceData[officerName] || { s: 0, i: 0, a: 0, u: 0 };
     
-    // Target SAMA untuk semua officer
     const target = targetPerOfficer;
-    
-    // Total kejadian (S + I + A + U)
     const totalKejadian = attendance.s + attendance.i + attendance.a + attendance.u;
-    
-    // Achieve = Target - Total Kejadian
     const achieve = target - totalKejadian;
-    
-    // Presentase = (Achieve / Target) * 100%
     const presentase = target > 0 ? Math.round((achieve / target) * 100) : 100;
     
     return {
@@ -720,16 +903,11 @@ export default function SummaryKPIDataPage() {
       },
       
       cs: {
-        // Poin 1 - Total Chat (REAL)
         totalChat: chatReal.totalChat,
-        
-        // Poin 2-5 (DUMMY 0)
         missedChat: 0,
         timeMgmt: 0,
         commSkill: 0,
         problemSolving: 0,
-        
-        // Poin 6 - Attendance (REAL)
         s: attendance.s,
         i: attendance.i,
         a: attendance.a,
@@ -738,8 +916,6 @@ export default function SummaryKPIDataPage() {
         target: target,
         achieve: achieve,
         presentase: presentase,
-        
-        // Sub score (0 dulu)
         p1: 0,
         p2: 0,
         p3: 0,
@@ -763,7 +939,7 @@ export default function SummaryKPIDataPage() {
 
   return (
     <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white">
-      {/* BACK LINK & WEIGHTING BUTTON - DIPERBAIKI */}
+      {/* BACK LINK & WEIGHTING BUTTON */}
       <div className="mb-6 flex justify-between items-center">
         <Link 
           href="/dashboard/officers-kpi"
@@ -775,7 +951,6 @@ export default function SummaryKPIDataPage() {
           BACK TO OFFICERS KPI
         </Link>
         
-        {/* WEIGHTING MENU - TAMPIL UNTUK SEMUA USER DULU */}
         <button
           onClick={() => router.push('/dashboard/officers-kpi/summary-kpi-data/kpi-weighting')}
           className="inline-flex items-center gap-2 bg-[#FFD700] text-[#0B1A33] px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#FFD700]/90 transition-colors"
@@ -855,7 +1030,7 @@ export default function SummaryKPIDataPage() {
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">PROBLEM SOLVING</th>
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP</th>
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE</th>
-              </tr>
+               </tr>
               
               {/* SUB HEADER */}
               <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
@@ -931,32 +1106,32 @@ export default function SummaryKPIDataPage() {
                     <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.deposit.intervalRej)}</td>
                     
                     {/* HUMAN ERROR */}
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">-</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">-</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">100%</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.heQty}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.heAmount !== '-' ? formatIDR(officer.deposit.heAmount) : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.mistakeQty}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.mistakeAmount !== '-' ? formatIDR(officer.deposit.mistakeAmount) : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.blockBank}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.p2}%</td>
                     
                     {/* PROBLEM SOLVING */}
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">-</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">-</td>
-                    <td className="text-center py-2 px-2">100%</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.crossBankQty}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.crossBankAmount !== '-' ? formatIDR(officer.deposit.crossBankAmount) : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.crossAssetQty}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.crossAssetAmount !== '-' ? formatIDR(officer.deposit.crossAssetAmount) : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.p3}%</td>
                     
                     {/* FOLLOW SOP */}
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">100</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.bukuDosa}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sp1}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sp2}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.sus}</td>
+                    <td className="text-center py-2 px-2">{officer.deposit.p4}%</td>
                     
                     {/* SUB SCORE */}
                     <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.deposit.p1 ? `${officer.deposit.p1}%` : '-'}</td>
-                    <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
-                    <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
-                    <td className="text-center py-2 px-2 font-bold text-green-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-red-400">{officer.deposit.p2}%</td>
+                    <td className="text-center py-2 px-2 font-bold text-yellow-400">{officer.deposit.p3}%</td>
+                    <td className="text-center py-2 px-2 font-bold text-green-400">{officer.deposit.p4}%</td>
                     <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.deposit.avg || '-'}</td>
                   </tr>
 
@@ -980,32 +1155,32 @@ export default function SummaryKPIDataPage() {
                     <td className="text-center py-2 px-2 text-blue-300 font-mono">{formatTime(officer.withdrawal.intervalRej)}</td>
                     
                     {/* HUMAN ERROR */}
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">-</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">-</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">100%</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.heQty}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.heAmount !== '-' ? formatIDR(officer.withdrawal.heAmount) : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.mistakeQty}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.mistakeAmount !== '-' ? formatIDR(officer.withdrawal.mistakeAmount) : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.blockBank}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.p2}%</td>
                     
                     {/* PROBLEM SOLVING */}
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">-</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">-</td>
-                    <td className="text-center py-2 px-2">100%</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.crossBankQty}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.crossBankAmount !== '-' ? formatIDR(officer.withdrawal.crossBankAmount) : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.crossAssetQty}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.crossAssetAmount !== '-' ? formatIDR(officer.withdrawal.crossAssetAmount) : '-'}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.p3}%</td>
                     
                     {/* FOLLOW SOP */}
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">100</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.bukuDosa}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sp1}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sp2}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.sus}</td>
+                    <td className="text-center py-2 px-2">{officer.withdrawal.p4}%</td>
                     
                     {/* SUB SCORE */}
                     <td className="text-center py-2 px-2 font-bold text-blue-400">{officer.withdrawal.p1 ? `${officer.withdrawal.p1}%` : '-'}</td>
-                    <td className="text-center py-2 px-2 font-bold text-red-400">100%</td>
-                    <td className="text-center py-2 px-2 font-bold text-yellow-400">100%</td>
-                    <td className="text-center py-2 px-2 font-bold text-green-400">100%</td>
+                    <td className="text-center py-2 px-2 font-bold text-red-400">{officer.withdrawal.p2}%</td>
+                    <td className="text-center py-2 px-2 font-bold text-yellow-400">{officer.withdrawal.p3}%</td>
+                    <td className="text-center py-2 px-2 font-bold text-green-400">{officer.withdrawal.p4}%</td>
                     <td className="text-center py-2 px-2 font-bold text-[#FFD700]">{officer.withdrawal.avg || '-'}</td>
                   </tr>
                 </React.Fragment>
@@ -1022,7 +1197,6 @@ export default function SummaryKPIDataPage() {
         <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
           <table className="w-full text-xs min-w-[1600px]">
             <thead>
-              {/* MAIN HEADER CS */}
               <tr className="border-b border-[#FFD700]/20">
                 <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
                 <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
@@ -1034,22 +1208,17 @@ export default function SummaryKPIDataPage() {
                 <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-pink-500/10">SUB SCORE CS</th>
               </tr>
               
-              {/* SUB HEADER CS */}
               <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
                 <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
                 <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
                 <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
                 <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
                 <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
-                
-                {/* Poin 1-5 */}
                 <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Missed Chat</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
                 <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
                 <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
-                
-                {/* Poin 6 - Attendance */}
                 <th className="text-center py-2 px-2 min-w-[40px]">S</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">I</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">A</th>
@@ -1058,8 +1227,6 @@ export default function SummaryKPIDataPage() {
                 <th className="text-center py-2 px-2 min-w-[50px]">Target</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Achieve</th>
                 <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
-                
-                {/* Sub Score CS */}
                 <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
                 <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
@@ -1070,7 +1237,6 @@ export default function SummaryKPIDataPage() {
             </thead>
             <tbody>
               {officerDataList.map((officer, idx) => {
-                // Skip System di tabel CS
                 if (officer.name === 'System' || officer.name === 'SYSTEM') return null;
                 
                 return (
@@ -1082,17 +1248,11 @@ export default function SummaryKPIDataPage() {
                     <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
                       <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
                     </td>
-                    
-                    {/* Poin 1 - Total Chat (REAL) */}
                     <td className="text-center py-2 px-2">{officer.cs.totalChat}</td>
-                    
-                    {/* Poin 2-5 (DUMMY 0) */}
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
-                    
-                    {/* Poin 6 - Attendance (REAL) */}
                     <td className="text-center py-2 px-2">{officer.cs.s}</td>
                     <td className="text-center py-2 px-2">{officer.cs.i}</td>
                     <td className="text-center py-2 px-2">{officer.cs.a}</td>
@@ -1101,8 +1261,6 @@ export default function SummaryKPIDataPage() {
                     <td className="text-center py-2 px-2">{officer.cs.target}</td>
                     <td className="text-center py-2 px-2">{officer.cs.achieve}</td>
                     <td className="text-center py-2 px-2">{officer.cs.presentase}%</td>
-                    
-                    {/* Sub Score CS - 0 semua */}
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
                     <td className="text-center py-2 px-2">0</td>
@@ -1122,17 +1280,11 @@ export default function SummaryKPIDataPage() {
                 <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
                   <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">BOT</span>
                 </td>
-                
-                {/* Poin 1 - Total Chat BOT (REAL) */}
                 <td className="text-center py-2 px-2">{botChatCount}</td>
-                
-                {/* Poin 2-5 (0) */}
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
-                
-                {/* Poin 6 - Attendance (kosong) */}
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
@@ -1141,8 +1293,6 @@ export default function SummaryKPIDataPage() {
                 <td className="text-center py-2 px-2">-</td>
                 <td className="text-center py-2 px-2">-</td>
                 <td className="text-center py-2 px-2">-</td>
-                
-                {/* Sub Score BOT - 0 */}
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
@@ -1168,7 +1318,8 @@ export default function SummaryKPIDataPage() {
         <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
         <p className="mt-1 text-blue-400">✓ Attendance (S/I/A/U) dari API Schedule real</p>
         <p className="mt-1 text-purple-400">✓ Total Chat dari tabel chat_cs_data berdasarkan agent_alias</p>
-        <p className="mt-1 text-purple-400">✓ Target: {totalDays} hari - {totalOffDays} OFF = {targetPerOfficer} hari</p>
+        <p className="mt-1 text-red-400">✓ Human Error & Problem Solving dari Google Sheets (REPORT MISTAKE, REPORT BLOCK BANK, REPORT CROSSBANK, REPORT CROSSASSET)</p>
+        <p className="mt-1 text-red-400">✓ Target: {totalDays} hari - {totalOffDays} OFF = {targetPerOfficer} hari</p>
       </div>
     </div>
   );
