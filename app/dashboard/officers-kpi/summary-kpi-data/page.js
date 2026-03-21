@@ -479,182 +479,125 @@ export default function SummaryKPIDataPage() {
   // FETCH HUMAN ERROR & PROBLEM SOLVING DATA DARI GOOGLE SHEETS
   // ===========================================
   const fetchHumanErrorData = async () => {
-    try {
-      setLoadingHumanError(true);
+  try {
+    setLoadingHumanError(true);
+    
+    console.log('📥 Fetching HUMAN ERROR data from Google Sheets...');
+    
+    const response = await fetch(
+      'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9VI82RFmJJECM1dwHgAk9YlFSGGVcuAgf5sexjLal3U5OZ6BJL35oAxLd2h17vgsBBC6o0JXEcV-Z/pub?gid=70613788&single=true&output=csv'
+    );
+    
+    const csvText = await response.text();
+    console.log('📄 RAW CSV (full):', csvText);
+    
+    // Parse CSV dengan split simple dan hapus quote
+    const lines = csvText.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+    
+    const data = [];
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim()) continue;
       
-      console.log('📥 Fetching HUMAN ERROR data from Google Sheets...');
+      // Split dengan regex yang handle quote
+      const values = [];
+      let current = '';
+      let inQuote = false;
       
-      const response = await fetch(
-        'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9VI82RFmJJECM1dwHgAk9YlFSGGVcuAgf5sexjLal3U5OZ6BJL35oAxLd2h17vgsBBC6o0JXEcV-Z/pub?gid=70613788&single=true&output=csv'
-      );
-      
-      const csvText = await response.text();
-      console.log('📄 RAW CSV (first 500 chars):', csvText.substring(0, 500));
-      
-      // Parse CSV dengan method split yang lebih baik (handle quoted fields)
-      const parseCSVLine = (line) => {
-        const result = [];
-        let inQuote = false;
-        let current = '';
-        
-        for (let i = 0; i < line.length; i++) {
-          const char = line[i];
-          if (char === '"') {
-            inQuote = !inQuote;
-          } else if (char === ',' && !inQuote) {
-            result.push(current.trim());
-            current = '';
-          } else {
-            current += char;
-          }
+      for (let j = 0; j < line.length; j++) {
+        const char = line[j];
+        if (char === '"') {
+          inQuote = !inQuote;
+        } else if (char === ',' && !inQuote) {
+          values.push(current.trim());
+          current = '';
+        } else {
+          current += char;
         }
-        result.push(current.trim());
-        return result;
-      };
-      
-      const rows = csvText.trim().split('\n');
-      const headers = rows[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
-      
-      console.log('📋 Headers:', headers);
-      
-      // Cari index kolom yang benar (case insensitive)
-      const findColumnIndex = (keyword) => {
-        return headers.findIndex(h => h.toLowerCase().includes(keyword.toLowerCase()));
-      };
-      
-      const idxOfficer = findColumnIndex('officer id');
-      const idxTicket = findColumnIndex('no ticket');
-      const idxCategory = findColumnIndex('categories');
-      const idxAmount = findColumnIndex('amount');
-      const idxDate = findColumnIndex('date');
-      const idxMonth = findColumnIndex('month');
-      const idxYear = findColumnIndex('years');
-      
-      console.log('📍 Column indexes:', { idxOfficer, idxTicket, idxCategory, idxAmount, idxDate, idxMonth, idxYear });
-      
-      const data = [];
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row.trim()) continue;
-        
-        const values = parseCSVLine(row);
-        if (values.length < 2) continue;
-        
-        const obj = {};
-        headers.forEach((h, idx) => { obj[h] = values[idx] || ''; });
-        
-        // Skip baris kosong (tidak ada data di kolom DATE)
-        if (!obj['DATE'] || obj['DATE'] === '') continue;
-        
-        data.push(obj);
       }
+      values.push(current.trim());
       
-      console.log('📊 Parsed data rows:', data.length);
-      console.log('📊 Sample data (first 2 rows):', data.slice(0, 2));
-      
-      // Kelompokkan berdasarkan officer_id dan divisi (dari ticket)
-      const grouped = {};
-      const startMonth = parseInt(bulanAwal);
-      const endMonth = parseInt(bulanAkhir);
-      const targetYear = parseInt(tahun);
-      const monthMap = { 'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12 };
-      
-      data.forEach(item => {
-        // Ambil nilai dengan key asli
-        const officerId = (item['OFFICER ID'] || item['OFFICER_ID'] || '').toString().trim();
-        const ticket = (item['NO TICKET'] || '').toString().trim();
-        const category = (item['CATEGORIES'] || '').toString().toUpperCase().trim();
-        const amountRaw = String(item['AMOUNT'] || '0').replace(/[^0-9.-]/g, '');
-        const amount = parseFloat(amountRaw) || 0;
-        
-        const dateRaw = item['DATE']?.toString().trim();
-        const date = dateRaw ? parseInt(dateRaw) : null;
-        const monthRaw = item['MONTH']?.toString().trim();
-        const month = monthRaw ? monthRaw.replace(/\s/g, '') : '';
-        const yearRaw = item['YEARS']?.toString().trim();
-        const year = yearRaw ? parseInt(yearRaw) : null;
-        
-        console.log('🔍 Row data:', { 
-          officerId, 
-          date, 
-          month, 
-          year, 
-          category, 
-          ticket, 
-          amount 
-        });
-        
-        if (!officerId) {
-          console.log('❌ Skip - missing officerId');
-          return;
-        }
-        if (!date || isNaN(date)) {
-          console.log('❌ Skip - invalid date:', dateRaw);
-          return;
-        }
-        if (!month) {
-          console.log('❌ Skip - missing month');
-          return;
-        }
-        if (!year || isNaN(year)) {
-          console.log('❌ Skip - invalid year:', yearRaw);
-          return;
-        }
-        
-        // Filter periode
-        const itemMonth = monthMap[month.substring(0,3)] || 0;
-        
-        if (year !== targetYear) {
-          console.log(`❌ Filter out: year ${year} != ${targetYear}`);
-          return;
-        }
-        if (itemMonth < startMonth || itemMonth > endMonth) {
-          console.log(`❌ Filter out: month ${itemMonth} not in ${startMonth}-${endMonth}`);
-          return;
-        }
-        
-        console.log(`✅ Pass filter: ${officerId} - ${month}/${year}`);
-        
-        // Tentukan divisi dari nomor ticket
-        const divisi = ticket.toUpperCase().startsWith('W') ? 'withdrawal' : 'deposit';
-        
-        if (!grouped[officerId]) {
-          grouped[officerId] = {
-            deposit: { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 },
-            withdrawal: { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 }
-          };
-        }
-        
-        if (category === 'REPORT MISTAKE') {
-          grouped[officerId][divisi].mistakeQty++;
-          grouped[officerId][divisi].mistakeAmount += amount;
-          console.log(`✅ Added MISTAKE to ${officerId} - ${divisi}: +${amount}`);
-        }
-        else if (category === 'REPORT BLOCK BANK') {
-          grouped[officerId][divisi].blockBank++;
-          console.log(`✅ Added BLOCK BANK to ${officerId} - ${divisi}`);
-        }
-        else if (category === 'REPORT CROSSBANK') {
-          grouped[officerId][divisi].crossBankQty++;
-          grouped[officerId][divisi].crossBankAmount += amount;
-          console.log(`✅ Added CROSSBANK to ${officerId} - ${divisi}: +${amount}`);
-        }
-        else if (category === 'REPORT CROSSASSET') {
-          grouped[officerId][divisi].crossAssetQty++;
-          grouped[officerId][divisi].crossAssetAmount += amount;
-          console.log(`✅ Added CROSSASSET to ${officerId} - ${divisi}: +${amount}`);
-        }
+      // Buat object
+      const obj = {};
+      headers.forEach((h, idx) => {
+        let val = values[idx] || '';
+        val = val.replace(/^"|"$/g, '').trim();
+        obj[h] = val;
       });
       
-      console.log('📊 Final grouped data:', grouped);
-      setHumanErrorData(grouped);
-      
-    } catch (error) {
-      console.error('❌ Error fetching human error data:', error);
-    } finally {
-      setLoadingHumanError(false);
+      // Skip baris kosong (tidak ada DATE)
+      if (obj['DATE'] && obj['DATE'] !== '') {
+        data.push(obj);
+      }
     }
-  };
+    
+    console.log('📊 Parsed data rows:', data.length);
+    console.log('📊 Sample data:', data.slice(0, 3));
+    
+    // Kelompokkan data
+    const grouped = {};
+    const startMonth = parseInt(bulanAwal);
+    const endMonth = parseInt(bulanAkhir);
+    const targetYear = parseInt(tahun);
+    const monthMap = { 'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12 };
+    
+    data.forEach(item => {
+      const officerId = (item['OFFICER ID'] || '').trim();
+      const ticket = (item['NO TICKET'] || '').trim();
+      const category = (item['CATEGORIES'] || '').toUpperCase().trim();
+      const amount = parseFloat(String(item['AMOUNT'] || '0').replace(/[^0-9.-]/g, '')) || 0;
+      
+      const date = parseInt(item['DATE']) || null;
+      const monthRaw = (item['MONTH'] || '').trim();
+      const month = monthRaw.replace(/\s/g, '');
+      const year = parseInt(item['YEARS']) || null;
+      
+      console.log('🔍 Row:', { officerId, date, month, year, category, ticket, amount });
+      
+      if (!officerId || !date || !month || !year) {
+        console.log('❌ Skip - missing data');
+        return;
+      }
+      
+      const itemMonth = monthMap[month.substring(0,3)] || 0;
+      if (year !== targetYear || itemMonth < startMonth || itemMonth > endMonth) {
+        console.log(`❌ Filter out: ${year}/${itemMonth}`);
+        return;
+      }
+      
+      const divisi = ticket.toUpperCase().startsWith('W') ? 'withdrawal' : 'deposit';
+      
+      if (!grouped[officerId]) {
+        grouped[officerId] = {
+          deposit: { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 },
+          withdrawal: { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 }
+        };
+      }
+      
+      if (category === 'REPORT MISTAKE') {
+        grouped[officerId][divisi].mistakeQty++;
+        grouped[officerId][divisi].mistakeAmount += amount;
+      } else if (category === 'REPORT BLOCK BANK') {
+        grouped[officerId][divisi].blockBank++;
+      } else if (category === 'REPORT CROSSBANK') {
+        grouped[officerId][divisi].crossBankQty++;
+        grouped[officerId][divisi].crossBankAmount += amount;
+      } else if (category === 'REPORT CROSSASSET') {
+        grouped[officerId][divisi].crossAssetQty++;
+        grouped[officerId][divisi].crossAssetAmount += amount;
+      }
+    });
+    
+    console.log('📊 Final grouped data:', grouped);
+    setHumanErrorData(grouped);
+    
+  } catch (error) {
+    console.error('❌ Error:', error);
+  } finally {
+    setLoadingHumanError(false);
+  }
+};
 
   // ===========================================
   // PANGGIL FETCH HUMAN ERROR DATA
