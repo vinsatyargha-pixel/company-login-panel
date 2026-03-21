@@ -537,10 +537,11 @@ export default function SummaryKPIDataPage() {
       const monthMap = { 'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12 };
       
       data.forEach(item => {
-        // CLEAN DATA - trim semua whitespace
-        const officerId = item['OFFICER ID']?.trim();
-        const ticket = item['NO TICKET'] || '';
-        const category = item['CATEGORIES']?.toUpperCase().trim() || '';
+        // CLEAN DATA - coba beberapa kemungkinan nama kolom
+        const officerIdRaw = item['OFFICER ID'] || item['OFFICER_ID'] || item['OFFICERID'] || '';
+        const officerId = officerIdRaw.toString().trim();
+        const ticket = (item['NO TICKET'] || '').toString().trim();
+        const category = (item['CATEGORIES'] || '').toString().toUpperCase().trim();
         const amountRaw = String(item['AMOUNT'] || '0').replace(/[^0-9.-]/g, '');
         const amount = parseFloat(amountRaw) || 0;
         
@@ -551,7 +552,16 @@ export default function SummaryKPIDataPage() {
         const yearRaw = item['YEARS']?.toString().trim();
         const year = yearRaw ? parseInt(yearRaw) : null;
         
-        console.log('🔍 Row data:', { officerId, date, month, year, category, ticket, amount });
+        console.log('🔍 Row data:', { 
+          officerIdRaw, 
+          officerId, 
+          date, 
+          month, 
+          year, 
+          category, 
+          ticket, 
+          amount 
+        });
         
         if (!officerId) {
           console.log('❌ Skip - missing officerId');
@@ -1022,7 +1032,7 @@ export default function SummaryKPIDataPage() {
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">PROBLEM SOLVING</th>
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP</th>
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE</th>
-              </tr>
+               </tr>
               <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
                 <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
                 <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
