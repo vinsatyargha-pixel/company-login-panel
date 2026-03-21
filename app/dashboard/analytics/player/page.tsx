@@ -233,7 +233,7 @@ export default function PlayerOverviewPage() {
       console.log('📅 FETCHING DATA PERIODE:', { start, end, rangeType })
 
       // ===========================================
-      // 1. FETCH WINLOSE TRANSACTIONS (LANGSUNG, TIDAK PAKAI PAGINATION KARENA JUMLAHNYA SEDIKIT)
+      // 1. FETCH WINLOSE TRANSACTIONS
       // ===========================================
       const { data: winloseData, error: winloseError } = await supabase
         .from('winlose_transactions')
@@ -263,8 +263,8 @@ export default function PlayerOverviewPage() {
       const depositData = await fetchAllDataWithPagination(depositQuery)
       const withdrawData = await fetchAllDataWithPagination(withdrawQuery)
 
-      console.log('📊 DEPOSIT DATA TOTAL (dengan pagination):', depositData.length, 'rows')
-      console.log('📊 WITHDRAW DATA TOTAL (dengan pagination):', withdrawData.length, 'rows')
+      console.log('📊 DEPOSIT DATA TOTAL:', depositData.length, 'rows')
+      console.log('📊 WITHDRAW DATA TOTAL:', withdrawData.length, 'rows')
 
       // ===========================================
       // PROCESS WINLOSE DATA
@@ -421,7 +421,7 @@ export default function PlayerOverviewPage() {
 
       depositData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
-        const key = row.user_name
+        const key = row.user_name?.toLowerCase().trim() || ''
         const amount = row.nett_amount || 0
         
         if (!ratioMap.has(key)) {
@@ -439,7 +439,7 @@ export default function PlayerOverviewPage() {
 
       withdrawData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
-        const key = row.user_name
+        const key = row.user_name?.toLowerCase().trim() || ''
         const amount = row.nett_amount || 0
         
         if (!ratioMap.has(key)) {
@@ -489,7 +489,7 @@ export default function PlayerOverviewPage() {
       // PROCESS DEPOSIT
       depositData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
-        const key = row.user_name
+        const key = row.user_name?.toLowerCase().trim() || ''
         const amount = row.nett_amount || 0
 
         // NET MAP
@@ -529,7 +529,7 @@ export default function PlayerOverviewPage() {
       // PROCESS WITHDRAW
       withdrawData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
-        const key = row.user_name
+        const key = row.user_name?.toLowerCase().trim() || ''
         const amount = row.nett_amount || 0
 
         // NET MAP
@@ -566,7 +566,7 @@ export default function PlayerOverviewPage() {
         wdData.avg_withdraw = wdData.total_withdraw / wdData.transaction_count
       })
 
-      // SET STATE UNTUK NET DEPOSIT VS WITHDRAW, TOP DEPOSIT, TOP WITHDRAWAL
+      // SET STATE
       setNetDepositWithdraw(
         Array.from(netMap.values())
           .sort((a, b) => b.net_amount - a.net_amount)
@@ -804,7 +804,7 @@ export default function PlayerOverviewPage() {
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Deposit</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Withdraw</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Ratio (W/D)</th>
-                       </tr>
+                      </tr>
                     </thead>
                     <tbody>
                       {topRatioPlayers.map((player, idx) => {
@@ -836,7 +836,7 @@ export default function PlayerOverviewPage() {
                         
                         return (
                           <tr key={player.member_id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                            <td className="px-2 py-1 text-sm">#{idx + 1} </td>
+                            <td className="px-2 py-1 text-sm">#{idx + 1}</td>
                             <td className="px-2 py-1 text-sm text-[#A7D8FF]">{player.member_id}</td>
                             <td className="px-2 py-1 text-sm text-right text-[#FFD700]">{player.asset_code}</td>
                             <td className="px-2 py-1 text-sm text-right text-green-400">{formatCurrency(player.total_deposit)}</td>
@@ -870,14 +870,14 @@ export default function PlayerOverviewPage() {
                     <tbody>
                       {bigWins.map((win, idx) => (
                         <tr key={idx} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-2 py-1 text-sm">#{idx + 1}  \)\)
-                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{win.member_id}  \)\)
-                          <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(win.win_amount)}  \)\)
-                          <td className="px-2 py-1 text-sm">{win.product_type}  \)\)
-                         \)\)
+                          <td className="px-2 py-1 text-sm">#{idx + 1}</td>
+                          <td className="px-2 py-1 text-sm text-[#A7D8FF]">{win.member_id}</td>
+                          <td className="px-2 py-1 text-sm text-right text-red-400">{formatCurrency(win.win_amount)}</td>
+                          <td className="px-2 py-1 text-sm">{win.product_type}</td>
+                        </tr>
                       ))}
                     </tbody>
-                   </>
+                  </table>
                 </div>
               </div>
             </div>
