@@ -521,62 +521,71 @@ const fetchOfficerPieData = async () => {
     });
     
     // BUAT PIE DATA - 6 SLICE
-    const pieData = [];
-    
-    // HUMAN SLICES (WARNA BIRU GRADASI)
-    if (humanChat > 0) {
-      pieData.push({ 
-        name: 'Human Chat', 
-        value: humanChat, 
-        color: '#93c5fd', // biru muda
-        category: 'human'
-      });
-    }
-    if (humanDeposit > 0) {
-      pieData.push({ 
-        name: 'Human Deposit', 
-        value: humanDeposit, 
-        color: '#3b82f6', // biru
-        category: 'human'
-      });
-    }
-    if (humanWithdrawal > 0) {
-      pieData.push({ 
-        name: 'Human Withdrawal', 
-        value: humanWithdrawal, 
-        color: '#1e3a8a', // biru tua
-        category: 'human'
-      });
-    }
-    
-    // SYSTEM SLICES (WARNA MERAH GRADASI)
-    if (systemChat > 0) {
-      pieData.push({ 
-        name: 'System Chat', 
-        value: systemChat, 
-        color: '#fca5a5', // merah muda
-        category: 'system'
-      });
-    }
-    if (systemDeposit > 0) {
-      pieData.push({ 
-        name: 'System Deposit', 
-        value: systemDeposit, 
-        color: '#ef4444', // merah
-        category: 'system'
-      });
-    }
-    if (systemWithdrawal > 0) {
-      pieData.push({ 
-        name: 'System Withdrawal', 
-        value: systemWithdrawal, 
-        color: '#7f1d1d', // merah tua
-        category: 'system'
-      });
-    }
-    
-    console.log('📊 PIE DATA FINAL:', pieData);
-    setOfficerPieData(pieData);
+const pieData = [];
+
+// HUMAN SLICES (WARNA BIRU GRADASI)
+if (humanChat > 0) {
+  pieData.push({ 
+    name: 'Human Chat', 
+    value: humanChat, 
+    color: '#93c5fd',
+    category: 'human',
+    order: 1  // Tambahkan order
+  });
+}
+if (humanDeposit > 0) {
+  pieData.push({ 
+    name: 'Human Deposit', 
+    value: humanDeposit, 
+    color: '#3b82f6',
+    category: 'human',
+    order: 2
+  });
+}
+if (humanWithdrawal > 0) {
+  pieData.push({ 
+    name: 'Human Withdrawal', 
+    value: humanWithdrawal, 
+    color: '#1e3a8a',
+    category: 'human',
+    order: 3
+  });
+}
+
+// SYSTEM SLICES (WARNA MERAH GRADASI)
+if (systemChat > 0) {
+  pieData.push({ 
+    name: 'System Chat', 
+    value: systemChat, 
+    color: '#fca5a5',
+    category: 'system',
+    order: 4
+  });
+}
+if (systemDeposit > 0) {
+  pieData.push({ 
+    name: 'System Deposit', 
+    value: systemDeposit, 
+    color: '#ef4444',
+    category: 'system',
+    order: 5
+  });
+}
+if (systemWithdrawal > 0) {
+  pieData.push({ 
+    name: 'System Withdrawal', 
+    value: systemWithdrawal, 
+    color: '#7f1d1d',
+    category: 'system',
+    order: 6
+  });
+}
+
+// SORT berdasarkan order (Human dulu, System belakangan)
+pieData.sort((a, b) => a.order - b.order);
+
+console.log('📊 PIE DATA FINAL (sorted):', pieData);
+setOfficerPieData(pieData);
     
   } catch (error) {
     console.error('Error fetching officer pie data:', error);
