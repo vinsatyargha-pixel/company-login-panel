@@ -114,7 +114,8 @@ export default function MemberSpecificationPage() {
     ))
 
     try {
-      const cleanMemberId = memberId.trim().toLowerCase()
+      // LANGSUNG PAKE memberId tanpa toLowerCase
+      const cleanMemberId = memberId.trim()
       
       // Fetch deposit transactions
       const { data: depositData, error: depositError } = await supabase
