@@ -2507,9 +2507,6 @@ useEffect(() => {
               </div>
             )}
           </div>
-          <div className="mt-2 text-right text-xs text-[#A7D8FF] group-hover:text-[#FFD700] transition-colors">
-            Click to see detailed performance →
-          </div>
         </div>
       </div>
 
