@@ -432,7 +432,7 @@ const handleToggleMozart = async (bankId, currentState, bankData = null) => {
    return () => subscription.unsubscribe();
  }, []);
 
-  // ===========================================
+// ===========================================
 // FETCH OFFICER PIE DATA - DETAIL (HUMAN: CHAT,DP,WD vs SYSTEM: CHAT,DP,WD)
 // ===========================================
 const fetchOfficerPieData = async () => {
@@ -520,72 +520,54 @@ const fetchOfficerPieData = async () => {
       }
     });
     
-    // BUAT PIE DATA - 6 SLICE
-const pieData = [];
-
-// HUMAN SLICES (WARNA BIRU GRADASI)
-if (humanChat > 0) {
-  pieData.push({ 
-    name: 'Human Chat', 
-    value: humanChat, 
-    color: '#93c5fd',
-    category: 'human',
-    order: 1  // Tambahkan order
-  });
-}
-if (humanDeposit > 0) {
-  pieData.push({ 
-    name: 'Human Deposit', 
-    value: humanDeposit, 
-    color: '#3b82f6',
-    category: 'human',
-    order: 2
-  });
-}
-if (humanWithdrawal > 0) {
-  pieData.push({ 
-    name: 'Human Withdrawal', 
-    value: humanWithdrawal, 
-    color: '#1e3a8a',
-    category: 'human',
-    order: 3
-  });
-}
-
-// SYSTEM SLICES (WARNA MERAH GRADASI)
-if (systemChat > 0) {
-  pieData.push({ 
-    name: 'System Chat', 
-    value: systemChat, 
-    color: '#fca5a5',
-    category: 'system',
-    order: 4
-  });
-}
-if (systemDeposit > 0) {
-  pieData.push({ 
-    name: 'System Deposit', 
-    value: systemDeposit, 
-    color: '#ef4444',
-    category: 'system',
-    order: 5
-  });
-}
-if (systemWithdrawal > 0) {
-  pieData.push({ 
-    name: 'System Withdrawal', 
-    value: systemWithdrawal, 
-    color: '#7f1d1d',
-    category: 'system',
-    order: 6
-  });
-}
-
-// SORT berdasarkan order (Human dulu, System belakangan)
-pieData.sort((a, b) => a.order - b.order);
-
-console.log('📊 PIE DATA FINAL (sorted):', pieData);
-setOfficerPieData(pieData);
+    // BUAT PIE DATA DENGAN URUTAN: System Chat, Human Chat, System Deposit, Human Deposit, System Withdrawal, Human Withdrawal
+    const pieData = [
+      { 
+        name: 'System Chat', 
+        value: systemChat, 
+        color: '#fca5a5', // Light red for system
+        category: 'system',
+        order: 1
+      },
+      { 
+        name: 'Human Chat', 
+        value: humanChat, 
+        color: '#93c5fd', // Light blue for human
+        category: 'human',
+        order: 2
+      },
+      { 
+        name: 'System Deposit', 
+        value: systemDeposit, 
+        color: '#ef4444', // Red for system
+        category: 'system',
+        order: 3
+      },
+      { 
+        name: 'Human Deposit', 
+        value: humanDeposit, 
+        color: '#3b82f6', // Blue for human
+        category: 'human',
+        order: 4
+      },
+      { 
+        name: 'System Withdrawal', 
+        value: systemWithdrawal, 
+        color: '#7f1d1d', // Dark red for system
+        category: 'system',
+        order: 5
+      },
+      { 
+        name: 'Human Withdrawal', 
+        value: humanWithdrawal, 
+        color: '#1e3a8a', // Dark blue for human
+        category: 'human',
+        order: 6
+      }
+    ];
+    
+    console.log('📊 PIE DATA FINAL:', pieData);
+    setOfficerPieData(pieData);
     
   } catch (error) {
     console.error('Error fetching officer pie data:', error);
