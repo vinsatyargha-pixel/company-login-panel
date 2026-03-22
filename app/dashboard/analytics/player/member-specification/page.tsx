@@ -365,9 +365,10 @@ export default function MemberSpecificationPage() {
                     <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                   </div>
 
+                  {/* Spider Chart - FIXED CONTAINER */}
                   <div className="mb-6">
                     <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
-                    <div style={{ height: '280px', width: '100%' }}>
+                    <div className="w-full h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={getSpiderData(box.data)}>
                           <PolarGrid stroke="#FFD70030" />
