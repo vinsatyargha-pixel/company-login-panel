@@ -33,9 +33,9 @@ interface MemberDetailData {
   avg_withdrawal_interval_hours: number
   deposit_frequency_days: number
   withdrawal_frequency_days: number
-  slot_intensity: number
-  live_casino_intensity: number
-  sportbook_intensity: number
+  slot_turnover: number
+  live_casino_turnover: number
+  sportbook_turnover: number
   last_updated: string
 }
 
@@ -47,13 +47,6 @@ interface MemberBox {
   error: string | null
 }
 
-interface SpiderDataItem {
-  subject: string
-  value: number
-  originalValue: number
-  maxDomain: number
-}
-
 export default function MemberSpecificationPage() {
   const [memberBoxes, setMemberBoxes] = useState<MemberBox[]>([
     { id: 1, searchValue: '', data: null, loading: false, error: null },
@@ -62,6 +55,31 @@ export default function MemberSpecificationPage() {
   ])
   
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
+
+  // ===========================================
+  // DOMAIN TETAP UNTUK SPIDER CHART
+  // Kelipatan x10: 1jt, 10jt, 100jt, 1M, 10M, 100M, 1T...
+  // ===========================================
+  const SPIDER_DOMAINS = [
+    0,
+    1_000_000,      // 1jt
+    10_000_000,     // 10jt
+    100_000_000,    // 100jt
+    1_000_000_000,  // 1M
+    10_000_000_000, // 10M
+    100_000_000_000,// 100M
+    1_000_000_000_000 // 1T
+  ]
+  
+  // Domain maksimal yang ditampilkan (sesuai nilai tertinggi member, tapi pake kelipatan)
+  const getMaxDomain = (maxValue: number): number => {
+    for (let i = SPIDER_DOMAINS.length - 1; i >= 0; i--) {
+      if (maxValue >= SPIDER_DOMAINS[i]) {
+        return SPIDER_DOMAINS[i + 1] || SPIDER_DOMAINS[i] * 10
+      }
+    }
+    return SPIDER_DOMAINS[1] // default 1jt
+  }
 
   // ===========================================
   // PAGINATION HELPER
@@ -174,7 +192,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // FETCH MEMBER DATA
+  // FETCH MEMBER DATA (ALL TIME - TANPA FILTER TANGGAL)
   // ===========================================
   const fetchMemberData = async (boxId: number, memberId: string) => {
     if (!memberId || memberId.trim() === '') return
@@ -206,6 +224,7 @@ export default function MemberSpecificationPage() {
       
       console.log(`✅ Found actual member ID: ${actualId}`)
 
+      // Fetch ALL deposit transactions (tanpa filter tanggal)
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
@@ -214,8 +233,9 @@ export default function MemberSpecificationPage() {
         .order('approved_date', { ascending: true })
 
       const depositData = await fetchAllWithPagination(depositQuery)
-      console.log(`📊 Deposit data count: ${depositData.length}`)
+      console.log(`📊 Deposit data count (all time): ${depositData.length}`)
 
+      // Fetch ALL withdrawal transactions
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
@@ -224,15 +244,16 @@ export default function MemberSpecificationPage() {
         .order('approved_date', { ascending: true })
 
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
-      console.log(`📊 Withdrawal data count: ${withdrawalData.length}`)
+      console.log(`📊 Withdrawal data count (all time): ${withdrawalData.length}`)
 
+      // Fetch ALL winlose data
       let winloseQuery = supabase
         .from('winlose_transactions')
         .select('*')
         .eq('account_id', actualId)
 
       const winloseData = await fetchAllWithPagination(winloseQuery)
-      console.log(`📊 Winlose data count: ${winloseData.length}`)
+      console.log(`📊 Winlose data count (all time): ${winloseData.length}`)
 
       // Calculate metrics
       const totalDeposit = depositData.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0)
@@ -245,7 +266,6 @@ export default function MemberSpecificationPage() {
 
       const totalTurnover = winloseData.reduce((sum, tx) => sum + (tx.net_turnover || 0), 0)
       
-      // Hitung turnover per game (BUKAN persentase, tapi nilai uang)
       const gameTurnovers = calculateGameTurnover(winloseData)
       
       const avgDepositInterval = calculateAverageInterval(depositData.map(tx => tx.approved_date))
@@ -275,9 +295,9 @@ export default function MemberSpecificationPage() {
         avg_withdrawal_interval_hours: avgWithdrawalInterval,
         deposit_frequency_days: depositFrequency,
         withdrawal_frequency_days: withdrawalFrequency,
-        slot_intensity: gameTurnovers.slot,
-        live_casino_intensity: gameTurnovers.live_casino,
-        sportbook_intensity: gameTurnovers.sportbook,
+        slot_turnover: gameTurnovers.slot,
+        live_casino_turnover: gameTurnovers.live_casino,
+        sportbook_turnover: gameTurnovers.sportbook,
         last_updated: new Date().toISOString()
       }
 
@@ -339,79 +359,37 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - SEMUA SUMPU PAKAI SKALA UANG X10
+  // SPIDER CHART - DOMAIN TETAP (0, 1jt, 10jt, 100jt, 1M, 10M, ...)
   // ===========================================
-  const getSpiderData = (data: MemberDetailData | null): SpiderDataItem[] => {
+  const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    // Semua nilai yang akan ditampilkan di chart (semua dalam Rupiah)
+    // Cari nilai maksimum dari semua metric untuk menentukan domain maksimal
     const values = [
       data.total_deposit,
       data.total_turnover,
-      data.slot_intensity,        // sekarang ini nilai turnover slot (Rupiah)
-      data.live_casino_intensity, // sekarang ini nilai turnover live casino (Rupiah)
-      data.sportbook_intensity,   // sekarang ini nilai turnover sportbook (Rupiah)
+      data.slot_turnover,
+      data.live_casino_turnover,
+      data.sportbook_turnover,
       data.total_withdrawal
     ]
-    
-    // Cari nilai maksimum dari semua sumbu
     const maxValue = Math.max(...values)
     
-    // Tentukan domain maksimal berdasarkan kelipatan x10 (1jt, 10jt, 100jt, 1M, 10M, dst)
-    let maxDomain: number
-    if (maxValue <= 0) {
-      maxDomain = 1000000 // default 1jt
-    } else if (maxValue <= 1000000) {
-      maxDomain = 1000000 // 1jt
-    } else if (maxValue <= 10000000) {
-      maxDomain = 10000000 // 10jt
-    } else if (maxValue <= 100000000) {
-      maxDomain = 100000000 // 100jt
-    } else if (maxValue <= 1000000000) {
-      maxDomain = 1000000000 // 1M
-    } else {
-      // Untuk nilai > 1M, naikkan ke kelipatan milyar terdekat
-      maxDomain = Math.ceil(maxValue / 1000000000) * 1000000000
+    // Domain maksimal yang ditampilkan (kelipatan x10)
+    const maxDomain = getMaxDomain(maxValue)
+    
+    // Fungsi untuk menghitung persentase berdasarkan domain tetap
+    const getPercentage = (value: number): number => {
+      return Math.min((value / maxDomain) * 100, 100)
     }
     
-    // Semua nilai diskalakan ke 0-100 berdasarkan maxDomain
     return [
-      { 
-        subject: 'Total Deposit', 
-        value: Math.min((data.total_deposit / maxDomain) * 100, 100), 
-        originalValue: data.total_deposit,
-        maxDomain: maxDomain
-      },
-      { 
-        subject: 'Total Turnover', 
-        value: Math.min((data.total_turnover / maxDomain) * 100, 100), 
-        originalValue: data.total_turnover,
-        maxDomain: maxDomain
-      },
-      { 
-        subject: 'Slot Turnover', 
-        value: Math.min((data.slot_intensity / maxDomain) * 100, 100), 
-        originalValue: data.slot_intensity,
-        maxDomain: maxDomain
-      },
-      { 
-        subject: 'Live Casino Turnover', 
-        value: Math.min((data.live_casino_intensity / maxDomain) * 100, 100), 
-        originalValue: data.live_casino_intensity,
-        maxDomain: maxDomain
-      },
-      { 
-        subject: 'Sportbook Turnover', 
-        value: Math.min((data.sportbook_intensity / maxDomain) * 100, 100), 
-        originalValue: data.sportbook_intensity,
-        maxDomain: maxDomain
-      },
-      { 
-        subject: 'Total Withdrawal', 
-        value: Math.min((data.total_withdrawal / maxDomain) * 100, 100), 
-        originalValue: data.total_withdrawal,
-        maxDomain: maxDomain
-      }
+      { subject: 'Total Deposit', value: getPercentage(data.total_deposit), originalValue: data.total_deposit, maxDomain: maxDomain },
+      { subject: 'Total Turnover', value: getPercentage(data.total_turnover), originalValue: data.total_turnover, maxDomain: maxDomain },
+      { subject: 'Slot Turnover', value: getPercentage(data.slot_turnover), originalValue: data.slot_turnover, maxDomain: maxDomain },
+      { subject: 'Live Casino Turnover', value: getPercentage(data.live_casino_turnover), originalValue: data.live_casino_turnover, maxDomain: maxDomain },
+      { subject: 'Sportbook Turnover', value: getPercentage(data.sportbook_turnover), originalValue: data.sportbook_turnover, maxDomain: maxDomain },
+      { subject: 'Total Withdrawal', value: getPercentage(data.total_withdrawal), originalValue: data.total_withdrawal, maxDomain: maxDomain }
     ]
   }
 
@@ -422,21 +400,11 @@ export default function MemberSpecificationPage() {
       const originalValue = data.originalValue
       const maxDomain = data.maxDomain
       
-      const displayValue = formatCurrency(originalValue || 0)
-      
-      // Format info skala
-      let scaleInfo = ''
-      if (maxDomain === 1000000) scaleInfo = `Skala: 0 - 1jt`
-      else if (maxDomain === 10000000) scaleInfo = `Skala: 0 - 10jt`
-      else if (maxDomain === 100000000) scaleInfo = `Skala: 0 - 100jt`
-      else if (maxDomain === 1000000000) scaleInfo = `Skala: 0 - 1M`
-      else scaleInfo = `Skala: 0 - ${formatCurrency(maxDomain)}`
-      
       return (
         <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
           <p className="text-[#FFD700] font-bold text-xs">{subject}</p>
-          <p className="text-white text-xs">{displayValue}</p>
-          <p className="text-[#A7D8FF] text-[10px] mt-1">{scaleInfo}</p>
+          <p className="text-white text-xs">{formatCurrency(originalValue || 0)}</p>
+          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - {formatCurrency(maxDomain)}</p>
         </div>
       )
     }
@@ -512,7 +480,7 @@ export default function MemberSpecificationPage() {
                     <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                   </div>
 
-                  {/* Spider Chart - 6 SUMBU SEMUA UANG */}
+                  {/* Spider Chart */}
                   <div className="mb-6">
                     <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
                     <div style={{ minHeight: '300px', height: '300px', width: '100%', position: 'relative' }}>
@@ -527,9 +495,10 @@ export default function MemberSpecificationPage() {
                               tick={{ fill: '#FFD700', fontSize: 8 }}
                               tickFormatter={(value) => {
                                 if (value === 0) return '0'
-                                if (value === 25) return '25%'
-                                if (value === 50) return '50%'
-                                if (value === 75) return '75%'
+                                if (value === 20) return '20%'
+                                if (value === 40) return '40%'
+                                if (value === 60) return '60%'
+                                if (value === 80) return '80%'
                                 if (value === 100) return '100%'
                                 return `${value}%`
                               }}
@@ -543,6 +512,9 @@ export default function MemberSpecificationPage() {
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
                         </div>
                       )}
+                    </div>
+                    <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
+                      Lingkaran: 1jt | 10jt | 100jt | 1M | 10M | 100M | 1T
                     </div>
                   </div>
 
@@ -574,9 +546,9 @@ export default function MemberSpecificationPage() {
                     <div className="bg-[#0B1A33]/30 rounded-lg p-3">
                       <h5 className="text-purple-400 font-bold text-sm mb-2">🎮 GAME TURNOVER</h5>
                       <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div><span className="text-[#A7D8FF]">Slot:</span> <span className="text-white">{formatCurrency(box.data.slot_intensity)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Live Casino:</span> <span className="text-white">{formatCurrency(box.data.live_casino_intensity)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Sportbook:</span> <span className="text-white">{formatCurrency(box.data.sportbook_intensity)}</span></div>
+                        <div><span className="text-[#A7D8FF]">Slot:</span> <span className="text-white">{formatCurrency(box.data.slot_turnover)}</span></div>
+                        <div><span className="text-[#A7D8FF]">Live Casino:</span> <span className="text-white">{formatCurrency(box.data.live_casino_turnover)}</span></div>
+                        <div><span className="text-[#A7D8FF]">Sportbook:</span> <span className="text-white">{formatCurrency(box.data.sportbook_turnover)}</span></div>
                         <div><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400">{formatCurrency(box.data.total_turnover)}</span></div>
                       </div>
                     </div>
