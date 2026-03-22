@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import {
@@ -54,7 +54,6 @@ export default function MemberSpecificationPage() {
     { id: 3, searchValue: '', data: null, loading: false, error: null }
   ])
   
-  // Track mounted state untuk chart
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
@@ -134,7 +133,52 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // FETCH MEMBER DATA WITH PAGINATION
+  // GET ACTUAL MEMBER ID FROM DATABASE
+  // ===========================================
+  const getActualMemberId = async (searchId: string): Promise<string | null> => {
+    try {
+      // Coba cari di deposit dulu dengan ILIKE (case insensitive)
+      const { data: depositData } = await supabase
+        .from('deposit_transactions')
+        .select('user_name')
+        .ilike('user_name', searchId)
+        .limit(1)
+      
+      if (depositData && depositData.length > 0) {
+        return depositData[0].user_name
+      }
+      
+      // Coba cari di withdrawal
+      const { data: withdrawalData } = await supabase
+        .from('withdrawal_transactions')
+        .select('user_name')
+        .ilike('user_name', searchId)
+        .limit(1)
+      
+      if (withdrawalData && withdrawalData.length > 0) {
+        return withdrawalData[0].user_name
+      }
+      
+      // Coba cari di winlose
+      const { data: winloseData } = await supabase
+        .from('winlose_transactions')
+        .select('account_id')
+        .ilike('account_id', searchId)
+        .limit(1)
+      
+      if (winloseData && winloseData.length > 0) {
+        return winloseData[0].account_id
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Error finding member:', error)
+      return null
+    }
+  }
+
+  // ===========================================
+  // FETCH MEMBER DATA WITH PAGINATION & CASE-INSENSITIVE
   // ===========================================
   const fetchMemberData = async (boxId: number, memberId: string) => {
     if (!memberId || memberId.trim() === '') return
@@ -143,19 +187,35 @@ export default function MemberSpecificationPage() {
       box.id === boxId ? { ...box, loading: true, error: null, data: null } : box
     ))
     
-    // Reset chart ready state untuk box ini
     setChartReady(prev => ({ ...prev, [boxId]: false }))
 
     try {
-      const cleanMemberId = memberId.trim()
+      const searchTerm = memberId.trim()
       
-      console.log(`🔍 Fetching data for member: ${cleanMemberId}`)
+      console.log(`🔍 Searching for member: ${searchTerm}`)
+      
+      // Cari ID asli di database (case insensitive)
+      const actualId = await getActualMemberId(searchTerm)
+      
+      if (!actualId) {
+        setMemberBoxes(prev => prev.map(box => 
+          box.id === boxId ? { 
+            ...box, 
+            loading: false, 
+            error: `Member "${searchTerm}" tidak ditemukan`, 
+            data: null 
+          } : box
+        ))
+        return
+      }
+      
+      console.log(`✅ Found actual member ID: ${actualId}`)
 
-      // Fetch deposit transactions with pagination
+      // Fetch deposit transactions with pagination - pake actualId
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
-        .eq('user_name', cleanMemberId)
+        .eq('user_name', actualId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
 
@@ -166,7 +226,7 @@ export default function MemberSpecificationPage() {
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
-        .eq('user_name', cleanMemberId)
+        .eq('user_name', actualId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
 
@@ -177,23 +237,10 @@ export default function MemberSpecificationPage() {
       let winloseQuery = supabase
         .from('winlose_transactions')
         .select('*')
-        .eq('account_id', cleanMemberId)
+        .eq('account_id', actualId)
 
       const winloseData = await fetchAllWithPagination(winloseQuery)
       console.log(`📊 Winlose data count: ${winloseData.length}`)
-
-      // Check if member exists
-      if (depositData.length === 0 && withdrawalData.length === 0 && winloseData.length === 0) {
-        setMemberBoxes(prev => prev.map(box => 
-          box.id === boxId ? { 
-            ...box, 
-            loading: false, 
-            error: 'Member tidak ditemukan', 
-            data: null 
-          } : box
-        ))
-        return
-      }
 
       // Calculate metrics
       const totalDeposit = depositData.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0)
@@ -214,7 +261,7 @@ export default function MemberSpecificationPage() {
       const gameIntensities = calculateGameIntensities(winloseData)
       
       const memberData: MemberDetailData = {
-        member_id: cleanMemberId,
+        member_id: actualId,  // Pake ID asli dari database
         asset_code: 'XLY',
         total_deposit: totalDeposit,
         total_deposit_count: totalDepositCount,
@@ -247,7 +294,6 @@ export default function MemberSpecificationPage() {
         box.id === boxId ? { ...box, loading: false, data: memberData, error: null } : box
       ))
       
-      // Trigger chart ready setelah data loaded dengan delay
       setTimeout(() => {
         setChartReady(prev => ({ ...prev, [boxId]: true }))
       }, 100)
@@ -372,7 +418,7 @@ export default function MemberSpecificationPage() {
                     ))
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch(box.id, box.searchValue)}
-                  placeholder="Masukkan ID Member..."
+                  placeholder="Masukkan ID Member (case insensitive)..."
                   className="flex-1 bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#FFD700]"
                 />
                 <button
@@ -396,6 +442,7 @@ export default function MemberSpecificationPage() {
                 <div className="text-center py-12">
                   <div className="text-4xl mb-2">😞</div>
                   <p className="text-red-400">{box.error}</p>
+                  <p className="text-xs text-[#A7D8FF] mt-2">Coba dengan ID member yang lain (contoh: surya28, Bradley2020)</p>
                 </div>
               )}
 
@@ -407,7 +454,7 @@ export default function MemberSpecificationPage() {
                     <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                   </div>
 
-                  {/* Spider Chart - FIXED CONTAINER */}
+                  {/* Spider Chart */}
                   <div className="mb-6">
                     <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                     <div style={{ minHeight: '300px', height: '300px', width: '100%', position: 'relative' }}>
@@ -507,6 +554,7 @@ export default function MemberSpecificationPage() {
                 <div className="text-center py-12">
                   <div className="text-4xl mb-2">🔍</div>
                   <p className="text-[#A7D8FF] text-sm">Masukkan ID member untuk melihat detail</p>
+                  <p className="text-xs text-[#A7D8FF] mt-1">Contoh: surya28, Bradley2020, Memelah1233</p>
                 </div>
               )}
             </div>
