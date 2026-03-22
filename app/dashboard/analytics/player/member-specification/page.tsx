@@ -55,6 +55,33 @@ export default function MemberSpecificationPage() {
   ])
 
   // ===========================================
+  // PAGINATION HELPER
+  // ===========================================
+  const fetchAllWithPagination = async (queryBuilder: any) => {
+    let allData: any[] = []
+    let page = 0
+    const pageSize = 1000
+    let hasMore = true
+
+    while (hasMore) {
+      const { data, error } = await queryBuilder
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+
+      if (error) throw error
+
+      if (data && data.length > 0) {
+        allData = [...allData, ...data]
+        page++
+        hasMore = data.length === pageSize
+      } else {
+        hasMore = false
+      }
+    }
+
+    return allData
+  }
+
+  // ===========================================
   // HELPER FUNCTIONS
   // ===========================================
   const calculateAverageInterval = (dates: string[]): number => {
@@ -104,7 +131,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // FETCH MEMBER DATA
+  // FETCH MEMBER DATA WITH PAGINATION
   // ===========================================
   const fetchMemberData = async (boxId: number, memberId: string) => {
     if (!memberId || memberId.trim() === '') return
@@ -114,41 +141,43 @@ export default function MemberSpecificationPage() {
     ))
 
     try {
-      // LANGSUNG PAKE memberId tanpa toLowerCase
       const cleanMemberId = memberId.trim()
       
-      // Fetch deposit transactions
-      const { data: depositData, error: depositError } = await supabase
+      console.log(`🔍 Fetching data for member: ${cleanMemberId}`)
+
+      // Fetch deposit transactions with pagination
+      let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
         .eq('user_name', cleanMemberId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
 
-      if (depositError) throw depositError
+      const depositData = await fetchAllWithPagination(depositQuery)
+      console.log(`📊 Deposit data count: ${depositData.length}`)
 
-      // Fetch withdrawal transactions
-      const { data: withdrawalData, error: withdrawalError } = await supabase
+      // Fetch withdrawal transactions with pagination
+      let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
         .eq('user_name', cleanMemberId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
 
-      if (withdrawalError) throw withdrawalError
+      const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
+      console.log(`📊 Withdrawal data count: ${withdrawalData.length}`)
 
-      // Fetch winlose data for turnover and game intensities
-      const { data: winloseData, error: winloseError } = await supabase
+      // Fetch winlose data with pagination
+      let winloseQuery = supabase
         .from('winlose_transactions')
         .select('*')
         .eq('account_id', cleanMemberId)
 
-      if (winloseError) throw winloseError
+      const winloseData = await fetchAllWithPagination(winloseQuery)
+      console.log(`📊 Winlose data count: ${winloseData.length}`)
 
       // Check if member exists
-      if ((!depositData || depositData.length === 0) && 
-          (!withdrawalData || withdrawalData.length === 0) && 
-          (!winloseData || winloseData.length === 0)) {
+      if (depositData.length === 0 && withdrawalData.length === 0 && winloseData.length === 0) {
         setMemberBoxes(prev => prev.map(box => 
           box.id === boxId ? { 
             ...box, 
@@ -161,22 +190,22 @@ export default function MemberSpecificationPage() {
       }
 
       // Calculate metrics
-      const totalDeposit = depositData?.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0) || 0
-      const totalDepositCount = depositData?.length || 0
+      const totalDeposit = depositData.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0)
+      const totalDepositCount = depositData.length
       const avgDeposit = totalDepositCount > 0 ? totalDeposit / totalDepositCount : 0
 
-      const totalWithdrawal = withdrawalData?.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0) || 0
-      const totalWithdrawalCount = withdrawalData?.length || 0
+      const totalWithdrawal = withdrawalData.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0)
+      const totalWithdrawalCount = withdrawalData.length
       const avgWithdrawal = totalWithdrawalCount > 0 ? totalWithdrawal / totalWithdrawalCount : 0
 
-      const totalTurnover = winloseData?.reduce((sum, tx) => sum + (tx.net_turnover || 0), 0) || 0
+      const totalTurnover = winloseData.reduce((sum, tx) => sum + (tx.net_turnover || 0), 0)
       
-      const avgDepositInterval = calculateAverageInterval(depositData?.map(tx => tx.approved_date) || [])
-      const avgWithdrawalInterval = calculateAverageInterval(withdrawalData?.map(tx => tx.approved_date) || [])
-      const depositFrequency = calculateFrequency(depositData?.map(tx => tx.approved_date) || [])
-      const withdrawalFrequency = calculateFrequency(withdrawalData?.map(tx => tx.approved_date) || [])
+      const avgDepositInterval = calculateAverageInterval(depositData.map(tx => tx.approved_date))
+      const avgWithdrawalInterval = calculateAverageInterval(withdrawalData.map(tx => tx.approved_date))
+      const depositFrequency = calculateFrequency(depositData.map(tx => tx.approved_date))
+      const withdrawalFrequency = calculateFrequency(withdrawalData.map(tx => tx.approved_date))
       
-      const gameIntensities = calculateGameIntensities(winloseData || [])
+      const gameIntensities = calculateGameIntensities(winloseData)
       
       const memberData: MemberDetailData = {
         member_id: cleanMemberId,
@@ -189,10 +218,10 @@ export default function MemberSpecificationPage() {
         avg_withdrawal: avgWithdrawal,
         total_turnover: totalTurnover,
         total_bonus: 0,
-        highest_deposit: depositData?.length ? Math.max(...depositData.map(tx => tx.nett_amount)) : 0,
-        lowest_deposit: depositData?.length ? Math.min(...depositData.map(tx => tx.nett_amount)) : 0,
-        highest_withdrawal: withdrawalData?.length ? Math.max(...withdrawalData.map(tx => tx.nett_amount)) : 0,
-        lowest_withdrawal: withdrawalData?.length ? Math.min(...withdrawalData.map(tx => tx.nett_amount)) : 0,
+        highest_deposit: depositData.length ? Math.max(...depositData.map(tx => tx.nett_amount)) : 0,
+        lowest_deposit: depositData.length ? Math.min(...depositData.map(tx => tx.nett_amount)) : 0,
+        highest_withdrawal: withdrawalData.length ? Math.max(...withdrawalData.map(tx => tx.nett_amount)) : 0,
+        lowest_withdrawal: withdrawalData.length ? Math.min(...withdrawalData.map(tx => tx.nett_amount)) : 0,
         highest_bet: 0,
         lowest_bet: 0,
         avg_bet: 0,
@@ -205,6 +234,8 @@ export default function MemberSpecificationPage() {
         sportbook_intensity: gameIntensities.sportbook,
         last_updated: new Date().toISOString()
       }
+
+      console.log(`✅ Member data loaded:`, memberData)
 
       setMemberBoxes(prev => prev.map(box => 
         box.id === boxId ? { ...box, loading: false, data: memberData, error: null } : box
@@ -365,7 +396,7 @@ export default function MemberSpecificationPage() {
                     <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                   </div>
 
-                  {/* Spider Chart - FIXED CONTAINER */}
+                  {/* Spider Chart */}
                   <div className="mb-6">
                     <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                     <div className="w-full h-[300px]">
