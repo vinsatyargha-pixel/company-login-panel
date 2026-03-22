@@ -302,8 +302,8 @@ export default function MemberSpecificationPage() {
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
       <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
-        <Link href="/dashboard/analytics" className="text-[#FFD700] hover:underline">
-          ← BACK TO ANALYTICS
+        <Link href="/dashboard/analytics/player" className="text-[#FFD700] hover:underline">
+          ← BACK TO ANALYTICS PLAYER
         </Link>
         <div className="text-[#FFD700] font-bold text-xl">👥 MEMBER SPECIFICATION</div>
       </div>
