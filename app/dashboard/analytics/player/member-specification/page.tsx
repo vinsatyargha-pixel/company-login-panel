@@ -47,12 +47,6 @@ interface MemberBox {
   error: string | null
 }
 
-interface SpiderDataItem {
-  subject: string
-  value: number
-  originalValue: number
-}
-
 export default function MemberSpecificationPage() {
   const [memberBoxes, setMemberBoxes] = useState<MemberBox[]>([
     { id: 1, searchValue: '', data: null, loading: false, error: null },
@@ -125,7 +119,7 @@ export default function MemberSpecificationPage() {
       // Fetch deposit transactions
       const { data: depositData, error: depositError } = await supabase
         .from('deposit_transactions')
-        .select('nett_amount, approved_date, created_at, status')
+        .select('nett_amount, approved_date')
         .eq('user_name', cleanMemberId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
@@ -135,7 +129,7 @@ export default function MemberSpecificationPage() {
       // Fetch withdrawal transactions
       const { data: withdrawalData, error: withdrawalError } = await supabase
         .from('withdrawal_transactions')
-        .select('nett_amount, approved_date, created_at, status')
+        .select('nett_amount, approved_date')
         .eq('user_name', cleanMemberId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
@@ -149,15 +143,6 @@ export default function MemberSpecificationPage() {
         .eq('account_id', cleanMemberId)
 
       if (winloseError) throw winloseError
-
-      // Fetch bonus data
-      const { data: bonusData, error: bonusError } = await supabase
-        .from('bonus_transactions')
-        .select('amount')
-        .eq('user_name', cleanMemberId)
-        .eq('status', 'Approved')
-
-      if (bonusError) throw bonusError
 
       // Check if member exists
       if ((!depositData || depositData.length === 0) && 
@@ -175,52 +160,23 @@ export default function MemberSpecificationPage() {
       }
 
       // Calculate metrics
-      const totalDeposit = depositData?.reduce((sum: number, tx: any) => sum + (tx.nett_amount || 0), 0) || 0
+      const totalDeposit = depositData?.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0) || 0
       const totalDepositCount = depositData?.length || 0
       const avgDeposit = totalDepositCount > 0 ? totalDeposit / totalDepositCount : 0
 
-      const totalWithdrawal = withdrawalData?.reduce((sum: number, tx: any) => sum + (tx.nett_amount || 0), 0) || 0
+      const totalWithdrawal = withdrawalData?.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0) || 0
       const totalWithdrawalCount = withdrawalData?.length || 0
       const avgWithdrawal = totalWithdrawalCount > 0 ? totalWithdrawal / totalWithdrawalCount : 0
 
-      const totalTurnover = winloseData?.reduce((sum: number, tx: any) => sum + (tx.net_turnover || 0), 0) || 0
-      const totalBonus = bonusData?.reduce((sum: number, tx: any) => sum + (tx.amount || 0), 0) || 0
-
-      const highestDeposit = depositData?.length > 0 
-        ? Math.max(...depositData.map((tx: any) => tx.nett_amount || 0)) 
-        : 0
-      const lowestDeposit = depositData?.length > 0 
-        ? Math.min(...depositData.map((tx: any) => tx.nett_amount || 0)) 
-        : 0
-
-      const highestWithdrawal = withdrawalData?.length > 0 
-        ? Math.max(...withdrawalData.map((tx: any) => tx.nett_amount || 0)) 
-        : 0
-      const lowestWithdrawal = withdrawalData?.length > 0 
-        ? Math.min(...withdrawalData.map((tx: any) => tx.nett_amount || 0)) 
-        : 0
-
-      // Calculate bet metrics from winlose data
-      const allBets = winloseData?.flatMap((tx: any) => tx.bet_amounts || []) || []
-      const highestBet = allBets.length > 0 ? Math.max(...allBets) : 0
-      const lowestBet = allBets.length > 0 ? Math.min(...allBets) : 0
-      const avgBet = allBets.length > 0 ? allBets.reduce((a: number, b: number) => a + b, 0) / allBets.length : 0
-
-      // Calculate intervals
-      const avgDepositInterval = calculateAverageInterval(depositData?.map((tx: any) => tx.approved_date) || [])
-      const avgWithdrawalInterval = calculateAverageInterval(withdrawalData?.map((tx: any) => tx.approved_date) || [])
-
-      // Calculate frequencies
-      const depositFrequency = calculateFrequency(depositData?.map((tx: any) => tx.approved_date) || [])
-      const withdrawalFrequency = calculateFrequency(withdrawalData?.map((tx: any) => tx.approved_date) || [])
-
-      // Calculate game intensities
+      const totalTurnover = winloseData?.reduce((sum, tx) => sum + (tx.net_turnover || 0), 0) || 0
+      
+      const avgDepositInterval = calculateAverageInterval(depositData?.map(tx => tx.approved_date) || [])
+      const avgWithdrawalInterval = calculateAverageInterval(withdrawalData?.map(tx => tx.approved_date) || [])
+      const depositFrequency = calculateFrequency(depositData?.map(tx => tx.approved_date) || [])
+      const withdrawalFrequency = calculateFrequency(withdrawalData?.map(tx => tx.approved_date) || [])
+      
       const gameIntensities = calculateGameIntensities(winloseData || [])
       
-      const slotIntensity = gameIntensities.slot
-      const liveCasinoIntensity = gameIntensities.live_casino
-      const sportbookIntensity = gameIntensities.sportbook
-
       const memberData: MemberDetailData = {
         member_id: cleanMemberId,
         asset_code: 'XLY',
@@ -231,21 +187,21 @@ export default function MemberSpecificationPage() {
         total_withdrawal_count: totalWithdrawalCount,
         avg_withdrawal: avgWithdrawal,
         total_turnover: totalTurnover,
-        total_bonus: totalBonus,
-        highest_deposit: highestDeposit,
-        lowest_deposit: lowestDeposit,
-        highest_withdrawal: highestWithdrawal,
-        lowest_withdrawal: lowestWithdrawal,
-        highest_bet: highestBet,
-        lowest_bet: lowestBet,
-        avg_bet: avgBet,
+        total_bonus: 0,
+        highest_deposit: depositData?.length ? Math.max(...depositData.map(tx => tx.nett_amount)) : 0,
+        lowest_deposit: depositData?.length ? Math.min(...depositData.map(tx => tx.nett_amount)) : 0,
+        highest_withdrawal: withdrawalData?.length ? Math.max(...withdrawalData.map(tx => tx.nett_amount)) : 0,
+        lowest_withdrawal: withdrawalData?.length ? Math.min(...withdrawalData.map(tx => tx.nett_amount)) : 0,
+        highest_bet: 0,
+        lowest_bet: 0,
+        avg_bet: 0,
         avg_deposit_interval_hours: avgDepositInterval,
         avg_withdrawal_interval_hours: avgWithdrawalInterval,
         deposit_frequency_days: depositFrequency,
         withdrawal_frequency_days: withdrawalFrequency,
-        slot_intensity: slotIntensity,
-        live_casino_intensity: liveCasinoIntensity,
-        sportbook_intensity: sportbookIntensity,
+        slot_intensity: gameIntensities.slot,
+        live_casino_intensity: gameIntensities.live_casino,
+        sportbook_intensity: gameIntensities.sportbook,
         last_updated: new Date().toISOString()
       }
 
@@ -300,7 +256,7 @@ export default function MemberSpecificationPage() {
     return `${days.toFixed(1)} hari`
   }
 
-  const getSpiderData = (data: MemberDetailData | null): SpiderDataItem[] => {
+  const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
     const maxDeposit = 100000000
@@ -317,7 +273,6 @@ export default function MemberSpecificationPage() {
     ]
   }
 
-  // Custom tooltip component to avoid TypeScript errors
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
@@ -346,7 +301,6 @@ export default function MemberSpecificationPage() {
   // ===========================================
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-      {/* HEADER */}
       <div className="mb-6 flex flex-wrap justify-between items-center gap-4">
         <Link href="/dashboard/analytics" className="text-[#FFD700] hover:underline">
           ← BACK TO ANALYTICS
@@ -354,11 +308,9 @@ export default function MemberSpecificationPage() {
         <div className="text-[#FFD700] font-bold text-xl">👥 MEMBER SPECIFICATION</div>
       </div>
 
-      {/* 3 COLUMN GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {memberBoxes.map((box) => (
           <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
-            {/* Search Header */}
             <div className="bg-[#0B1A33] p-4 border-b border-[#FFD700]/30">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-8 rounded-full bg-[#FFD700]/20 flex items-center justify-center">
@@ -390,7 +342,6 @@ export default function MemberSpecificationPage() {
               </div>
             </div>
 
-            {/* Content */}
             <div className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
               {box.loading && (
                 <div className="flex justify-center py-12">
@@ -402,47 +353,33 @@ export default function MemberSpecificationPage() {
                 <div className="text-center py-12">
                   <div className="text-4xl mb-2">😞</div>
                   <p className="text-red-400">{box.error}</p>
-                  <p className="text-xs text-[#A7D8FF] mt-2">Coba dengan ID member yang lain</p>
                 </div>
               )}
 
               {box.data && !box.loading && (
                 <>
-                  {/* Member Header */}
                   <div className="bg-[#0B1A33]/50 rounded-lg p-3 mb-4 text-center">
                     <div className="text-xs text-[#A7D8FF]">Member ID</div>
                     <div className="text-[#FFD700] font-bold text-lg">{box.data.member_id}</div>
                     <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                   </div>
 
-                  {/* Spider Chart */}
                   <div className="mb-6">
                     <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                     <div style={{ height: '280px', width: '100%' }}>
                       <ResponsiveContainer width="100%" height="100%">
                         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={getSpiderData(box.data)}>
                           <PolarGrid stroke="#FFD70030" />
-                          <PolarAngleAxis 
-                            dataKey="subject" 
-                            tick={{ fill: '#A7D8FF', fontSize: 10 }}
-                          />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#A7D8FF', fontSize: 10 }} />
                           <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#FFD700', fontSize: 8 }} />
-                          <Radar
-                            name="Member"
-                            dataKey="value"
-                            stroke="#FFD700"
-                            fill="#FFD700"
-                            fillOpacity={0.3}
-                          />
+                          <Radar name="Member" dataKey="value" stroke="#FFD700" fill="#FFD700" fillOpacity={0.3} />
                           <Tooltip content={<CustomTooltip />} />
                         </RadarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
 
-                  {/* Metrics Grid */}
                   <div className="space-y-3">
-                    {/* Deposit Section */}
                     <div className="bg-[#0B1A33]/30 rounded-lg p-3">
                       <h5 className="text-green-400 font-bold text-sm mb-2">💰 DEPOSIT</h5>
                       <div className="grid grid-cols-2 gap-2 text-xs">
@@ -455,7 +392,6 @@ export default function MemberSpecificationPage() {
                       </div>
                     </div>
 
-                    {/* Withdrawal Section */}
                     <div className="bg-[#0B1A33]/30 rounded-lg p-3">
                       <h5 className="text-red-400 font-bold text-sm mb-2">💸 WITHDRAWAL</h5>
                       <div className="grid grid-cols-2 gap-2 text-xs">
@@ -468,19 +404,13 @@ export default function MemberSpecificationPage() {
                       </div>
                     </div>
 
-                    {/* Game & Bet Section */}
                     <div className="bg-[#0B1A33]/30 rounded-lg p-3">
                       <h5 className="text-purple-400 font-bold text-sm mb-2">🎮 GAME & BETTING</h5>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400">{formatCurrency(box.data.total_turnover)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Total Bonus:</span> <span className="text-yellow-400">{formatCurrency(box.data.total_bonus)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Highest Bet:</span> <span className="text-white">{formatCurrency(box.data.highest_bet)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Lowest Bet:</span> <span className="text-white">{formatCurrency(box.data.lowest_bet)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Average Bet:</span> <span className="text-white">{formatCurrency(box.data.avg_bet)}</span></div>
                       </div>
                     </div>
 
-                    {/* Frequency Section */}
                     <div className="bg-[#0B1A33]/30 rounded-lg p-3">
                       <h5 className="text-[#FFD700] font-bold text-sm mb-2">📅 ACTIVITY FREQUENCY</h5>
                       <div className="grid grid-cols-2 gap-2 text-xs">
@@ -489,7 +419,6 @@ export default function MemberSpecificationPage() {
                       </div>
                     </div>
 
-                    {/* Game Intensities */}
                     <div className="bg-[#0B1A33]/30 rounded-lg p-3">
                       <h5 className="text-cyan-400 font-bold text-sm mb-2">🎯 GAME INTENSITY</h5>
                       <div className="space-y-1">
