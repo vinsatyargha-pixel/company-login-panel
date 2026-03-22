@@ -47,6 +47,13 @@ interface MemberBox {
   error: string | null
 }
 
+interface SpiderDataItem {
+  subject: string
+  value: number
+  originalValue: number
+  maxDomain: number
+}
+
 export default function MemberSpecificationPage() {
   const [memberBoxes, setMemberBoxes] = useState<MemberBox[]>([
     { id: 1, searchValue: '', data: null, loading: false, error: null },
@@ -105,31 +112,23 @@ export default function MemberSpecificationPage() {
     return daysDiff / (dates.length - 1)
   }
 
-  const calculateGameIntensities = (winloseData: any[]): { slot: number; live_casino: number; sportbook: number } => {
-    const intensities = { slot: 0, live_casino: 0, sportbook: 0 }
-    let totalBets = 0
+  const calculateGameTurnover = (winloseData: any[]): { slot: number; live_casino: number; sportbook: number } => {
+    const turnovers = { slot: 0, live_casino: 0, sportbook: 0 }
     
     winloseData.forEach(tx => {
       const productType = tx.product_type?.toLowerCase() || ''
-      const betCount = tx.bet_count || 0
-      totalBets += betCount
+      const netTurnover = tx.net_turnover || 0
       
       if (productType.includes('slot')) {
-        intensities.slot += betCount
+        turnovers.slot += netTurnover
       } else if (productType.includes('live') || productType.includes('casino')) {
-        intensities.live_casino += betCount
+        turnovers.live_casino += netTurnover
       } else if (productType.includes('sport')) {
-        intensities.sportbook += betCount
+        turnovers.sportbook += netTurnover
       }
     })
     
-    if (totalBets > 0) {
-      intensities.slot = (intensities.slot / totalBets) * 100
-      intensities.live_casino = (intensities.live_casino / totalBets) * 100
-      intensities.sportbook = (intensities.sportbook / totalBets) * 100
-    }
-    
-    return intensities
+    return turnovers
   }
 
   // ===========================================
@@ -137,7 +136,6 @@ export default function MemberSpecificationPage() {
   // ===========================================
   const getActualMemberId = async (searchId: string): Promise<string | null> => {
     try {
-      // Coba cari di deposit dulu dengan ILIKE (case insensitive)
       const { data: depositData } = await supabase
         .from('deposit_transactions')
         .select('user_name')
@@ -148,7 +146,6 @@ export default function MemberSpecificationPage() {
         return depositData[0].user_name
       }
       
-      // Coba cari di withdrawal
       const { data: withdrawalData } = await supabase
         .from('withdrawal_transactions')
         .select('user_name')
@@ -159,7 +156,6 @@ export default function MemberSpecificationPage() {
         return withdrawalData[0].user_name
       }
       
-      // Coba cari di winlose
       const { data: winloseData } = await supabase
         .from('winlose_transactions')
         .select('account_id')
@@ -178,7 +174,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // FETCH MEMBER DATA WITH PAGINATION & CASE-INSENSITIVE
+  // FETCH MEMBER DATA
   // ===========================================
   const fetchMemberData = async (boxId: number, memberId: string) => {
     if (!memberId || memberId.trim() === '') return
@@ -194,7 +190,6 @@ export default function MemberSpecificationPage() {
       
       console.log(`🔍 Searching for member: ${searchTerm}`)
       
-      // Cari ID asli di database (case insensitive)
       const actualId = await getActualMemberId(searchTerm)
       
       if (!actualId) {
@@ -211,7 +206,6 @@ export default function MemberSpecificationPage() {
       
       console.log(`✅ Found actual member ID: ${actualId}`)
 
-      // Fetch deposit transactions with pagination - pake actualId
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
@@ -222,7 +216,6 @@ export default function MemberSpecificationPage() {
       const depositData = await fetchAllWithPagination(depositQuery)
       console.log(`📊 Deposit data count: ${depositData.length}`)
 
-      // Fetch withdrawal transactions with pagination
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
@@ -233,7 +226,6 @@ export default function MemberSpecificationPage() {
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
       console.log(`📊 Withdrawal data count: ${withdrawalData.length}`)
 
-      // Fetch winlose data with pagination
       let winloseQuery = supabase
         .from('winlose_transactions')
         .select('*')
@@ -253,15 +245,16 @@ export default function MemberSpecificationPage() {
 
       const totalTurnover = winloseData.reduce((sum, tx) => sum + (tx.net_turnover || 0), 0)
       
+      // Hitung turnover per game (BUKAN persentase, tapi nilai uang)
+      const gameTurnovers = calculateGameTurnover(winloseData)
+      
       const avgDepositInterval = calculateAverageInterval(depositData.map(tx => tx.approved_date))
       const avgWithdrawalInterval = calculateAverageInterval(withdrawalData.map(tx => tx.approved_date))
       const depositFrequency = calculateFrequency(depositData.map(tx => tx.approved_date))
       const withdrawalFrequency = calculateFrequency(withdrawalData.map(tx => tx.approved_date))
       
-      const gameIntensities = calculateGameIntensities(winloseData)
-      
       const memberData: MemberDetailData = {
-        member_id: actualId,  // Pake ID asli dari database
+        member_id: actualId,
         asset_code: 'XLY',
         total_deposit: totalDeposit,
         total_deposit_count: totalDepositCount,
@@ -282,9 +275,9 @@ export default function MemberSpecificationPage() {
         avg_withdrawal_interval_hours: avgWithdrawalInterval,
         deposit_frequency_days: depositFrequency,
         withdrawal_frequency_days: withdrawalFrequency,
-        slot_intensity: gameIntensities.slot,
-        live_casino_intensity: gameIntensities.live_casino,
-        sportbook_intensity: gameIntensities.sportbook,
+        slot_intensity: gameTurnovers.slot,
+        live_casino_intensity: gameTurnovers.live_casino,
+        sportbook_intensity: gameTurnovers.sportbook,
         last_updated: new Date().toISOString()
       }
 
@@ -345,20 +338,80 @@ export default function MemberSpecificationPage() {
     return `${days.toFixed(1)} hari`
   }
 
-  const getSpiderData = (data: MemberDetailData | null) => {
+  // ===========================================
+  // SPIDER CHART - SEMUA SUMPU PAKAI SKALA UANG X10
+  // ===========================================
+  const getSpiderData = (data: MemberDetailData | null): SpiderDataItem[] => {
     if (!data) return []
     
-    const maxDeposit = 100000000
-    const maxTurnover = 500000000
-    const maxWithdrawal = 100000000
+    // Semua nilai yang akan ditampilkan di chart (semua dalam Rupiah)
+    const values = [
+      data.total_deposit,
+      data.total_turnover,
+      data.slot_intensity,        // sekarang ini nilai turnover slot (Rupiah)
+      data.live_casino_intensity, // sekarang ini nilai turnover live casino (Rupiah)
+      data.sportbook_intensity,   // sekarang ini nilai turnover sportbook (Rupiah)
+      data.total_withdrawal
+    ]
     
+    // Cari nilai maksimum dari semua sumbu
+    const maxValue = Math.max(...values)
+    
+    // Tentukan domain maksimal berdasarkan kelipatan x10 (1jt, 10jt, 100jt, 1M, 10M, dst)
+    let maxDomain: number
+    if (maxValue <= 0) {
+      maxDomain = 1000000 // default 1jt
+    } else if (maxValue <= 1000000) {
+      maxDomain = 1000000 // 1jt
+    } else if (maxValue <= 10000000) {
+      maxDomain = 10000000 // 10jt
+    } else if (maxValue <= 100000000) {
+      maxDomain = 100000000 // 100jt
+    } else if (maxValue <= 1000000000) {
+      maxDomain = 1000000000 // 1M
+    } else {
+      // Untuk nilai > 1M, naikkan ke kelipatan milyar terdekat
+      maxDomain = Math.ceil(maxValue / 1000000000) * 1000000000
+    }
+    
+    // Semua nilai diskalakan ke 0-100 berdasarkan maxDomain
     return [
-      { subject: 'Total Deposit', value: Math.min((data.total_deposit / maxDeposit) * 100, 100), originalValue: data.total_deposit },
-      { subject: 'Total Turnover', value: Math.min((data.total_turnover / maxTurnover) * 100, 100), originalValue: data.total_turnover },
-      { subject: 'Slot Intensity', value: data.slot_intensity, originalValue: data.slot_intensity },
-      { subject: 'Live Casino', value: data.live_casino_intensity, originalValue: data.live_casino_intensity },
-      { subject: 'Sportbook', value: data.sportbook_intensity, originalValue: data.sportbook_intensity },
-      { subject: 'Total Withdrawal', value: Math.min((data.total_withdrawal / maxWithdrawal) * 100, 100), originalValue: data.total_withdrawal }
+      { 
+        subject: 'Total Deposit', 
+        value: Math.min((data.total_deposit / maxDomain) * 100, 100), 
+        originalValue: data.total_deposit,
+        maxDomain: maxDomain
+      },
+      { 
+        subject: 'Total Turnover', 
+        value: Math.min((data.total_turnover / maxDomain) * 100, 100), 
+        originalValue: data.total_turnover,
+        maxDomain: maxDomain
+      },
+      { 
+        subject: 'Slot Turnover', 
+        value: Math.min((data.slot_intensity / maxDomain) * 100, 100), 
+        originalValue: data.slot_intensity,
+        maxDomain: maxDomain
+      },
+      { 
+        subject: 'Live Casino Turnover', 
+        value: Math.min((data.live_casino_intensity / maxDomain) * 100, 100), 
+        originalValue: data.live_casino_intensity,
+        maxDomain: maxDomain
+      },
+      { 
+        subject: 'Sportbook Turnover', 
+        value: Math.min((data.sportbook_intensity / maxDomain) * 100, 100), 
+        originalValue: data.sportbook_intensity,
+        maxDomain: maxDomain
+      },
+      { 
+        subject: 'Total Withdrawal', 
+        value: Math.min((data.total_withdrawal / maxDomain) * 100, 100), 
+        originalValue: data.total_withdrawal,
+        maxDomain: maxDomain
+      }
     ]
   }
 
@@ -367,18 +420,23 @@ export default function MemberSpecificationPage() {
       const data = payload[0].payload
       const subject = data.subject
       const originalValue = data.originalValue
+      const maxDomain = data.maxDomain
       
-      let displayValue = ''
-      if (subject === 'Slot Intensity' || subject === 'Live Casino' || subject === 'Sportbook') {
-        displayValue = `${data.value.toFixed(1)}%`
-      } else {
-        displayValue = formatCurrency(originalValue || 0)
-      }
+      const displayValue = formatCurrency(originalValue || 0)
+      
+      // Format info skala
+      let scaleInfo = ''
+      if (maxDomain === 1000000) scaleInfo = `Skala: 0 - 1jt`
+      else if (maxDomain === 10000000) scaleInfo = `Skala: 0 - 10jt`
+      else if (maxDomain === 100000000) scaleInfo = `Skala: 0 - 100jt`
+      else if (maxDomain === 1000000000) scaleInfo = `Skala: 0 - 1M`
+      else scaleInfo = `Skala: 0 - ${formatCurrency(maxDomain)}`
       
       return (
         <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
           <p className="text-[#FFD700] font-bold text-xs">{subject}</p>
           <p className="text-white text-xs">{displayValue}</p>
+          <p className="text-[#A7D8FF] text-[10px] mt-1">{scaleInfo}</p>
         </div>
       )
     }
@@ -454,16 +512,28 @@ export default function MemberSpecificationPage() {
                     <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                   </div>
 
-                  {/* Spider Chart */}
+                  {/* Spider Chart - 6 SUMBU SEMUA UANG */}
                   <div className="mb-6">
-                    <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
+                    <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
                     <div style={{ minHeight: '300px', height: '300px', width: '100%', position: 'relative' }}>
                       {chartReady[box.id] && getSpiderData(box.data).length > 0 ? (
                         <ResponsiveContainer width="100%" height="100%">
                           <RadarChart cx="50%" cy="50%" outerRadius="70%" data={getSpiderData(box.data)}>
                             <PolarGrid stroke="#FFD70030" />
                             <PolarAngleAxis dataKey="subject" tick={{ fill: '#A7D8FF', fontSize: 10 }} />
-                            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#FFD700', fontSize: 8 }} />
+                            <PolarRadiusAxis 
+                              angle={90} 
+                              domain={[0, 100]} 
+                              tick={{ fill: '#FFD700', fontSize: 8 }}
+                              tickFormatter={(value) => {
+                                if (value === 0) return '0'
+                                if (value === 25) return '25%'
+                                if (value === 50) return '50%'
+                                if (value === 75) return '75%'
+                                if (value === 100) return '100%'
+                                return `${value}%`
+                              }}
+                            />
                             <Radar name="Member" dataKey="value" stroke="#FFD700" fill="#FFD700" fillOpacity={0.3} />
                             <Tooltip content={<CustomTooltip />} />
                           </RadarChart>
@@ -502,8 +572,11 @@ export default function MemberSpecificationPage() {
                     </div>
 
                     <div className="bg-[#0B1A33]/30 rounded-lg p-3">
-                      <h5 className="text-purple-400 font-bold text-sm mb-2">🎮 GAME & BETTING</h5>
+                      <h5 className="text-purple-400 font-bold text-sm mb-2">🎮 GAME TURNOVER</h5>
                       <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div><span className="text-[#A7D8FF]">Slot:</span> <span className="text-white">{formatCurrency(box.data.slot_intensity)}</span></div>
+                        <div><span className="text-[#A7D8FF]">Live Casino:</span> <span className="text-white">{formatCurrency(box.data.live_casino_intensity)}</span></div>
+                        <div><span className="text-[#A7D8FF]">Sportbook:</span> <span className="text-white">{formatCurrency(box.data.sportbook_intensity)}</span></div>
                         <div><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400">{formatCurrency(box.data.total_turnover)}</span></div>
                       </div>
                     </div>
@@ -513,33 +586,6 @@ export default function MemberSpecificationPage() {
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div><span className="text-[#A7D8FF]">Deposit Routine:</span> <span className="text-white">{formatDays(box.data.deposit_frequency_days)}</span></div>
                         <div><span className="text-[#A7D8FF]">Withdrawal Routine:</span> <span className="text-white">{formatDays(box.data.withdrawal_frequency_days)}</span></div>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#0B1A33]/30 rounded-lg p-3">
-                      <h5 className="text-cyan-400 font-bold text-sm mb-2">🎯 GAME INTENSITY</h5>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[#A7D8FF]">Slot Games:</span>
-                          <div className="flex-1 mx-2 h-2 bg-gray-700 rounded-full overflow-hidden">
-                            <div className="h-full bg-purple-500 rounded-full" style={{ width: `${box.data.slot_intensity}%` }}></div>
-                          </div>
-                          <span className="text-white">{box.data.slot_intensity.toFixed(1)}%</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[#A7D8FF]">Live Casino:</span>
-                          <div className="flex-1 mx-2 h-2 bg-gray-700 rounded-full overflow-hidden">
-                            <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${box.data.live_casino_intensity}%` }}></div>
-                          </div>
-                          <span className="text-white">{box.data.live_casino_intensity.toFixed(1)}%</span>
-                        </div>
-                        <div className="flex justify-between text-xs">
-                          <span className="text-[#A7D8FF]">Sportbook:</span>
-                          <div className="flex-1 mx-2 h-2 bg-gray-700 rounded-full overflow-hidden">
-                            <div className="h-full bg-green-500 rounded-full" style={{ width: `${box.data.sportbook_intensity}%` }}></div>
-                          </div>
-                          <span className="text-white">{box.data.sportbook_intensity.toFixed(1)}%</span>
-                        </div>
                       </div>
                     </div>
                   </div>
