@@ -4,31 +4,28 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
-// Format number tanpa koma, langsung angka polos
 const formatNumber = (num) => {
-  if (num === 0) return '0';
-  return num?.toString() || '0';
+  if (num === 0 || num === null || num === undefined) return '0';
+  return num.toLocaleString('id-ID');
 };
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState([]);
   const [selectedAsset, setSelectedAsset] = useState('XLY');
-  const [summary, setSummary] = useState({
-    trx: 0,
-    amt: 0,
-    new_register: 0,
-    new_member_deposit: 0,
+  const [data, setData] = useState({
+    new_register: { count: 0, amount: 0 },
+    new_member_deposit: { count: 0, amount: 0 },
     percentage: 0,
-    total_deposit: 0,
-    total_withdrawal: 0,
+    total_deposit: { count: 0, amount: 0 },
+    total_withdrawal: { count: 0, amount: 0 },
     active_member: 0,
     turnover: 0,
     winlose: 0,
-    bonus: 0,
-    commission: 0,
-    cashback: 0,
-    adjustment: 0,
-    referral: 0
+    bonus: { count: 0, amount: 0 },
+    commission: { count: 0, amount: 0 },
+    cashback: { count: 0, amount: 0 },
+    adjustment: { count: 0, amount: 0 },
+    referral: { count: 0, amount: 0 }
   });
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('yesterday');
@@ -141,38 +138,41 @@ export default function AssetsPage() {
         .gte('period_start', startDate)
         .lte('period_start', endDate);
 
-      const totalDeposit = deposits?.reduce((sum, d) => sum + (d.nett_amount || 0), 0) || 0;
-      const totalWithdrawal = withdrawals?.reduce((sum, w) => sum + (w.nett_amount || 0), 0) || 0;
-      const trx = (deposits?.length || 0) + (withdrawals?.length || 0);
-      const amt = totalDeposit + totalWithdrawal;
+      const totalDepositAmount = deposits?.reduce((sum, d) => sum + (d.nett_amount || 0), 0) || 0;
+      const totalDepositCount = deposits?.length || 0;
+      
+      const totalWithdrawalAmount = withdrawals?.reduce((sum, w) => sum + (w.nett_amount || 0), 0) || 0;
+      const totalWithdrawalCount = withdrawals?.length || 0;
+
       const turnover = winlose?.reduce((sum, w) => sum + (w.net_turnover || 0), 0) || 0;
       const winloseTotal = winlose?.reduce((sum, w) => sum + (w.member_total || 0), 0) || 0;
 
+      const newRegisterCount = newMembers?.length || 0;
+      
       const newMemberIds = new Set(newMembers?.map(m => m.user_name) || []);
       const newMemberDeposit = deposits?.filter(d => newMemberIds.has(d.user_name)) || [];
       const newMemberDepositCount = newMemberDeposit.length;
-      const newRegisterCount = newMembers?.length || 0;
+      const newMemberDepositAmount = newMemberDeposit.reduce((sum, d) => sum + (d.nett_amount || 0), 0) || 0;
+      
       const percentage = newRegisterCount > 0 ? (newMemberDepositCount / newRegisterCount) * 100 : 0;
 
       const activeMembers = deposits?.filter(d => d.user_name).map(d => d.user_name) || [];
       const uniqueActiveMembers = [...new Set(activeMembers)];
 
-      setSummary({
-        trx: trx,
-        amt: amt,
-        new_register: newRegisterCount,
-        new_member_deposit: newMemberDepositCount,
+      setData({
+        new_register: { count: newRegisterCount, amount: 0 },
+        new_member_deposit: { count: newMemberDepositCount, amount: newMemberDepositAmount },
         percentage: percentage,
-        total_deposit: totalDeposit,
-        total_withdrawal: totalWithdrawal,
+        total_deposit: { count: totalDepositCount, amount: totalDepositAmount },
+        total_withdrawal: { count: totalWithdrawalCount, amount: -totalWithdrawalAmount },
         active_member: uniqueActiveMembers.length,
         turnover: turnover,
         winlose: winloseTotal,
-        bonus: 0,
-        commission: 0,
-        cashback: 0,
-        adjustment: 0,
-        referral: 0
+        bonus: { count: 0, amount: 0 },
+        commission: { count: 0, amount: 0 },
+        cashback: { count: 0, amount: 0 },
+        adjustment: { count: 0, amount: 0 },
+        referral: { count: 0, amount: 0 }
       });
       
     } catch (error) {
@@ -200,15 +200,14 @@ export default function AssetsPage() {
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-      {/* BACK BUTTON */}
       <div className="mb-4">
         <Link href="/dashboard" className="text-[#FFD700] hover:underline text-sm">
           ← BACK TO DASHBOARD
         </Link>
       </div>
 
-      {/* FILTER BAR */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
+      {/* FILTER */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         <select 
           value={selectedAsset} 
           onChange={(e) => setSelectedAsset(e.target.value)}
@@ -256,46 +255,30 @@ export default function AssetsPage() {
         <span className="text-[#A7D8FF] text-xs ml-auto">Period: {displayDateRange}</span>
       </div>
 
-      {/* TABLE - PERSIS SEPERTI GAMBAR */}
+      {/* TABLE - 3 KOLOM: Metric, Count, Amount */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b border-[#FFD700]/30 bg-[#1A2F4A]">
-              <th className="px-3 py-2 text-left text-[#FFD700]">TRX</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">AMT</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">New Register</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">New Member Deposit</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Persentage</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Total Deposit</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Total Withdrawal</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Active Member</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">TurnOver</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Winlose</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Bonus</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Commission</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Cashback</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Adjustment</th>
-              <th className="px-3 py-2 text-right text-[#FFD700]">Referral</th>
-            </tr>
+              <th className="px-4 py-2 text-left text-[#FFD700]">Metric</th>
+              <th className="px-4 py-2 text-right text-[#FFD700]">Count</th>
+              <th className="px-4 py-2 text-right text-[#FFD700]">Amount</th>
+             </tr>
           </thead>
           <tbody>
-            <tr className="border-b border-[#FFD700]/10">
-              <td className="px-3 py-2 text-left">{formatNumber(summary.trx)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.amt)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.new_register)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.new_member_deposit)}</td>
-              <td className="px-3 py-2 text-right">{summary.percentage.toFixed(2)}%</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.total_deposit)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.total_withdrawal)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.active_member)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.turnover)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.winlose)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.bonus)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.commission)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.cashback)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.adjustment)}</td>
-              <td className="px-3 py-2 text-right">{formatNumber(summary.referral)}</td>
-            </tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">New Register</td><td className="px-4 py-2 text-right">{formatNumber(data.new_register.count)}</td><td className="px-4 py-2 text-right"></td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">New Member Deposit</td><td className="px-4 py-2 text-right">{formatNumber(data.new_member_deposit.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.new_member_deposit.amount)}</td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Persentage</td><td className="px-4 py-2 text-right">{data.percentage.toFixed(2)}%</td><td className="px-4 py-2 text-right"></td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Total Deposit</td><td className="px-4 py-2 text-right">{formatNumber(data.total_deposit.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.total_deposit.amount)}</td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Total Withdrawal</td><td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.amount)}</td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Active Member</td><td className="px-4 py-2 text-right">{formatNumber(data.active_member)}</td><td className="px-4 py-2 text-right"></td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">TurnOver</td><td className="px-4 py-2 text-right"></td><td className="px-4 py-2 text-right">{formatNumber(data.turnover)}</td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Winlose</td><td className="px-4 py-2 text-right"></td><td className="px-4 py-2 text-right">{formatNumber(data.winlose)}</td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Bonus</td><td className="px-4 py-2 text-right">{formatNumber(data.bonus.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.bonus.amount)}</td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Commission</td><td className="px-4 py-2 text-right">{formatNumber(data.commission.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.commission.amount)}</td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Cashback</td><td className="px-4 py-2 text-right">{formatNumber(data.cashback.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.cashback.amount)}</td></tr>
+            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Adjustment</td><td className="px-4 py-2 text-right">{formatNumber(data.adjustment.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.adjustment.amount)}</td></tr>
+            <tr><td className="px-4 py-2">Referral</td><td className="px-4 py-2 text-right">{formatNumber(data.referral.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.referral.amount)}</td></tr>
           </tbody>
         </table>
       </div>
