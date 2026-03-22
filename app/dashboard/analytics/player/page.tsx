@@ -764,26 +764,52 @@ export default function PlayerOverviewPage() {
       {!loading && hasData && (
         <>
           {/* SUMMARY CARDS */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-              <div className="text-sm text-[#A7D8FF]">Active Players</div>
-              <div className="text-2xl font-bold text-[#FFD700]">{formatNumber(uniquePlayerCount)}</div>
-            </div>
-            <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-              <div className="text-sm text-[#A7D8FF]">Total Net Turnover</div>
-              <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalNetTurnover)}</div>
-            </div>
-            <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-              <div className="text-sm text-[#A7D8FF]">Net Win/Lose</div>
-              <div className={`text-2xl font-bold ${netWinLose <= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {formatCurrency(netWinLose)}
-              </div>
-            </div>
-            <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
-              <div className="text-sm text-[#A7D8FF]">Total Bet/times</div>
-              <div className="text-2xl font-bold text-purple-400">{formatNumber(totalGames)}</div>
-            </div>
-          </div>
+<div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="text-sm text-[#A7D8FF]">Active Players</div>
+    <div className="text-2xl font-bold text-[#FFD700]">{formatNumber(uniquePlayerCount)}</div>
+  </div>
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="text-sm text-[#A7D8FF]">Total Net Turnover</div>
+    <div className="text-2xl font-bold text-blue-400">{formatCurrency(totalNetTurnover)}</div>
+  </div>
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="text-sm text-[#A7D8FF]">Net Win/Lose</div>
+    <div className={`text-2xl font-bold ${netWinLose <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+      {formatCurrency(netWinLose)}
+    </div>
+  </div>
+  <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30">
+    <div className="text-sm text-[#A7D8FF]">Total Bet/times</div>
+    <div className="text-2xl font-bold text-purple-400">{formatNumber(totalGames)}</div>
+  </div>
+</div>
+
+{/* MEMBER SPECIFICATION BUTTON - KELAP-KELIP */}
+<Link href="/dashboard/member-specification">
+  <div className="mb-6 relative group cursor-pointer">
+    <div className="absolute inset-0 bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#FFD700] rounded-xl blur-lg animate-pulse opacity-75 group-hover:opacity-100 transition-opacity duration-300"></div>
+    <div className="relative bg-gradient-to-r from-[#1A2F4A] to-[#2A3F5A] border border-[#FFD700] rounded-xl p-4 flex items-center justify-between hover:shadow-[0_0_30px_rgba(255,215,0,0.5)] transition-all duration-300">
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-full bg-[#FFD700]/20 flex items-center justify-center animate-bounce">
+          <svg className="w-6 h-6 text-[#FFD700]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-[#FFD700]">👥 MEMBER SPECIFICATION</h3>
+          <p className="text-xs text-[#A7D8FF]">Detail spesifikasi member, analisis mendalam tiap player</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[#FFD700] text-sm font-medium animate-pulse">Klik untuk lihat detail →</span>
+        <svg className="w-5 h-5 text-[#FFD700] animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </div>
+  </div>
+</Link>
 
           {/* MAIN CONTENT GRID */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
