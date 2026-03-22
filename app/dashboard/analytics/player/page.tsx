@@ -786,7 +786,7 @@ export default function PlayerOverviewPage() {
 </div>
 
 {/* MEMBER SPECIFICATION BUTTON - KELAP-KELIP */}
-<Link href="/dashboard/player/member-specification">
+<Link href="/dashboard/analytics/player/member-specification">
   <div className="mb-6 relative group cursor-pointer">
     <div className="absolute inset-0 bg-gradient-to-r from-[#FFD700] via-[#FFA500] to-[#FFD700] rounded-xl blur-lg animate-pulse opacity-75 group-hover:opacity-100 transition-opacity duration-300"></div>
     <div className="relative bg-gradient-to-r from-[#1A2F4A] to-[#2A3F5A] border border-[#FFD700] rounded-xl p-4 flex items-center justify-between hover:shadow-[0_0_30px_rgba(255,215,0,0.5)] transition-all duration-300">
