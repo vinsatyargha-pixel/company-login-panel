@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import {
@@ -53,6 +53,9 @@ export default function MemberSpecificationPage() {
     { id: 2, searchValue: '', data: null, loading: false, error: null },
     { id: 3, searchValue: '', data: null, loading: false, error: null }
   ])
+  
+  // Track mounted state untuk chart
+  const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
   // PAGINATION HELPER
@@ -139,6 +142,9 @@ export default function MemberSpecificationPage() {
     setMemberBoxes(prev => prev.map(box => 
       box.id === boxId ? { ...box, loading: true, error: null, data: null } : box
     ))
+    
+    // Reset chart ready state untuk box ini
+    setChartReady(prev => ({ ...prev, [boxId]: false }))
 
     try {
       const cleanMemberId = memberId.trim()
@@ -240,6 +246,11 @@ export default function MemberSpecificationPage() {
       setMemberBoxes(prev => prev.map(box => 
         box.id === boxId ? { ...box, loading: false, data: memberData, error: null } : box
       ))
+      
+      // Trigger chart ready setelah data loaded dengan delay
+      setTimeout(() => {
+        setChartReady(prev => ({ ...prev, [boxId]: true }))
+      }, 100)
 
     } catch (error) {
       console.error('Error fetching member data:', error)
@@ -396,19 +407,25 @@ export default function MemberSpecificationPage() {
                     <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                   </div>
 
-                  {/* Spider Chart */}
+                  {/* Spider Chart - FIXED CONTAINER */}
                   <div className="mb-6">
                     <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
-                    <div className="w-full h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" outerRadius="70%" data={getSpiderData(box.data)}>
-                          <PolarGrid stroke="#FFD70030" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#A7D8FF', fontSize: 10 }} />
-                          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#FFD700', fontSize: 8 }} />
-                          <Radar name="Member" dataKey="value" stroke="#FFD700" fill="#FFD700" fillOpacity={0.3} />
-                          <Tooltip content={<CustomTooltip />} />
-                        </RadarChart>
-                      </ResponsiveContainer>
+                    <div style={{ minHeight: '300px', height: '300px', width: '100%', position: 'relative' }}>
+                      {chartReady[box.id] && getSpiderData(box.data).length > 0 ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={getSpiderData(box.data)}>
+                            <PolarGrid stroke="#FFD70030" />
+                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#A7D8FF', fontSize: 10 }} />
+                            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fill: '#FFD700', fontSize: 8 }} />
+                            <Radar name="Member" dataKey="value" stroke="#FFD700" fill="#FFD700" fillOpacity={0.3} />
+                            <Tooltip content={<CustomTooltip />} />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
