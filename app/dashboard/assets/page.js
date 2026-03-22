@@ -10,31 +10,6 @@ const formatNumber = (num) => {
   return num.toLocaleString('id-ID');
 };
 
-// PAGINATION HELPER
-const fetchAllWithPagination = async (queryBuilder) => {
-  let allData = [];
-  let page = 0;
-  const pageSize = 1000;
-  let hasMore = true;
-
-  while (hasMore) {
-    const { data, error } = await queryBuilder
-      .range(page * pageSize, (page + 1) * pageSize - 1);
-
-    if (error) throw error;
-
-    if (data && data.length > 0) {
-      allData = [...allData, ...data];
-      page++;
-      hasMore = data.length === pageSize;
-    } else {
-      hasMore = false;
-    }
-  }
-
-  return allData;
-};
-
 export default function AssetsPage() {
   const router = useRouter();
   const [assets, setAssets] = useState([]);
@@ -115,47 +90,39 @@ export default function AssetsPage() {
     const startDate = dateRange.start;
     const endDate = dateRange.end;
 
-    // Fetch deposits with pagination
-    let depositQuery = supabase
+    // Fetch deposits
+    const { data: deposits } = await supabase
       .from('deposit_transactions')
-      .select('nett_amount, user_name, brand')
+      .select('*')
       .eq('brand', assetCode)
       .gte('approved_date', `${startDate} 00:00:00`)
       .lte('approved_date', `${endDate} 23:59:59`)
       .eq('status', 'Approved');
 
-    const deposits = await fetchAllWithPagination(depositQuery);
-
-    // Fetch withdrawals with pagination
-    let withdrawalQuery = supabase
+    // Fetch withdrawals
+    const { data: withdrawals } = await supabase
       .from('withdrawal_transactions')
-      .select('nett_amount, user_name, brand')
+      .select('*')
       .eq('brand', assetCode)
       .gte('approved_date', `${startDate} 00:00:00`)
       .lte('approved_date', `${endDate} 23:59:59`)
       .eq('status', 'Approved');
 
-    const withdrawals = await fetchAllWithPagination(withdrawalQuery);
-
-    // Fetch new members with pagination
-    let membersQuery = supabase
+    // Fetch new members
+    const { data: newMembers } = await supabase
       .from('members')
-      .select('user_name, brand, created_at')
+      .select('*')
       .eq('brand', assetCode)
       .gte('created_at', `${startDate} 00:00:00`)
       .lte('created_at', `${endDate} 23:59:59`);
 
-    const newMembers = await fetchAllWithPagination(membersQuery);
-
-    // Fetch winlose with pagination
-    let winloseQuery = supabase
+    // Fetch winlose
+    const { data: winlose } = await supabase
       .from('winlose_transactions')
-      .select('net_turnover, member_total, brand')
+      .select('*')
       .eq('brand', assetCode)
       .gte('period_start', startDate)
       .lte('period_start', endDate);
-
-    const winlose = await fetchAllWithPagination(winloseQuery);
 
     const totalDepositAmount = deposits?.reduce((sum, d) => sum + (d.nett_amount || 0), 0) || 0;
     const totalDepositCount = deposits?.length || 0;
