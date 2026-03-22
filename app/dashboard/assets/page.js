@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const formatNumber = (num) => {
   if (num === 0 || num === null || num === undefined) return '0';
@@ -10,23 +11,9 @@ const formatNumber = (num) => {
 };
 
 export default function AssetsPage() {
+  const router = useRouter();
   const [assets, setAssets] = useState([]);
-  const [selectedAsset, setSelectedAsset] = useState('XLY');
-  const [data, setData] = useState({
-    new_register: { count: 0, amount: 0 },
-    new_member_deposit: { count: 0, amount: 0 },
-    percentage: 0,
-    total_deposit: { count: 0, amount: 0 },
-    total_withdrawal: { count: 0, amount: 0 },
-    active_member: 0,
-    turnover: 0,
-    winlose: 0,
-    bonus: { count: 0, amount: 0 },
-    commission: { count: 0, amount: 0 },
-    cashback: { count: 0, amount: 0 },
-    adjustment: { count: 0, amount: 0 },
-    referral: { count: 0, amount: 0 }
-  });
+  const [assetsData, setAssetsData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState('yesterday');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -37,11 +24,13 @@ export default function AssetsPage() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [selectedAsset, dateFilter, customStartDate, customEndDate]);
+    if (assets.length > 0) {
+      fetchAllAssetsData();
+    }
+  }, [assets, dateFilter, customStartDate, customEndDate]);
 
   const fetchAssets = async () => {
-    const { data } = await supabase.from('assets').select('asset_code, asset_name').eq('status', 'active');
+    const { data } = await supabase.from('assets').select('*').eq('status', 'active');
     setAssets(data || []);
   };
 
@@ -96,85 +85,95 @@ export default function AssetsPage() {
     };
   };
 
-  const fetchData = async () => {
+  const fetchAssetData = async (assetCode) => {
+    const dateRange = getDateRange();
+    const startDate = dateRange.start;
+    const endDate = dateRange.end;
+
+    // Fetch deposits
+    const { data: deposits } = await supabase
+      .from('deposit_transactions')
+      .select('*')
+      .eq('brand', assetCode)
+      .gte('approved_date', `${startDate} 00:00:00`)
+      .lte('approved_date', `${endDate} 23:59:59`)
+      .eq('status', 'Approved');
+
+    // Fetch withdrawals
+    const { data: withdrawals } = await supabase
+      .from('withdrawal_transactions')
+      .select('*')
+      .eq('brand', assetCode)
+      .gte('approved_date', `${startDate} 00:00:00`)
+      .lte('approved_date', `${endDate} 23:59:59`)
+      .eq('status', 'Approved');
+
+    // Fetch new members
+    const { data: newMembers } = await supabase
+      .from('members')
+      .select('*')
+      .eq('brand', assetCode)
+      .gte('created_at', `${startDate} 00:00:00`)
+      .lte('created_at', `${endDate} 23:59:59`);
+
+    // Fetch winlose
+    const { data: winlose } = await supabase
+      .from('winlose_transactions')
+      .select('*')
+      .eq('brand', assetCode)
+      .gte('period_start', startDate)
+      .lte('period_start', endDate);
+
+    const totalDepositAmount = deposits?.reduce((sum, d) => sum + (d.nett_amount || 0), 0) || 0;
+    const totalDepositCount = deposits?.length || 0;
+    
+    const totalWithdrawalAmount = withdrawals?.reduce((sum, w) => sum + (w.nett_amount || 0), 0) || 0;
+    const totalWithdrawalCount = withdrawals?.length || 0;
+
+    const turnover = winlose?.reduce((sum, w) => sum + (w.net_turnover || 0), 0) || 0;
+    const winloseTotal = winlose?.reduce((sum, w) => sum + (w.member_total || 0), 0) || 0;
+
+    const newRegisterCount = newMembers?.length || 0;
+    
+    const newMemberIds = new Set(newMembers?.map(m => m.user_name) || []);
+    const newMemberDeposit = deposits?.filter(d => newMemberIds.has(d.user_name)) || [];
+    const newMemberDepositCount = newMemberDeposit.length;
+    const newMemberDepositAmount = newMemberDeposit.reduce((sum, d) => sum + (d.nett_amount || 0), 0) || 0;
+    
+    const percentage = newRegisterCount > 0 ? (newMemberDepositCount / newRegisterCount) * 100 : 0;
+
+    const activeMembers = deposits?.filter(d => d.user_name).map(d => d.user_name) || [];
+    const uniqueActiveMembers = [...new Set(activeMembers)];
+
+    return {
+      new_register: { count: newRegisterCount, amount: 0 },
+      new_member_deposit: { count: newMemberDepositCount, amount: newMemberDepositAmount },
+      percentage: percentage,
+      total_deposit: { count: totalDepositCount, amount: totalDepositAmount },
+      total_withdrawal: { count: totalWithdrawalCount, amount: -totalWithdrawalAmount },
+      active_member: uniqueActiveMembers.length,
+      turnover: turnover,
+      winlose: winloseTotal,
+      bonus: { count: 0, amount: 0 },
+      commission: { count: 0, amount: 0 },
+      cashback: { count: 0, amount: 0 },
+      adjustment: { count: 0, amount: 0 },
+      referral: { count: 0, amount: 0 }
+    };
+  };
+
+  const fetchAllAssetsData = async () => {
     try {
       setLoading(true);
-      
-      const dateRange = getDateRange();
-      const startDate = dateRange.start;
-      const endDate = dateRange.end;
-
-      // Fetch deposits
-      const { data: deposits } = await supabase
-        .from('deposit_transactions')
-        .select('*')
-        .eq('brand', selectedAsset)
-        .gte('approved_date', `${startDate} 00:00:00`)
-        .lte('approved_date', `${endDate} 23:59:59`)
-        .eq('status', 'Approved');
-
-      // Fetch withdrawals
-      const { data: withdrawals } = await supabase
-        .from('withdrawal_transactions')
-        .select('*')
-        .eq('brand', selectedAsset)
-        .gte('approved_date', `${startDate} 00:00:00`)
-        .lte('approved_date', `${endDate} 23:59:59`)
-        .eq('status', 'Approved');
-
-      // Fetch new members
-      const { data: newMembers } = await supabase
-        .from('members')
-        .select('*')
-        .eq('brand', selectedAsset)
-        .gte('created_at', `${startDate} 00:00:00`)
-        .lte('created_at', `${endDate} 23:59:59`);
-
-      // Fetch winlose
-      const { data: winlose } = await supabase
-        .from('winlose_transactions')
-        .select('*')
-        .eq('brand', selectedAsset)
-        .gte('period_start', startDate)
-        .lte('period_start', endDate);
-
-      const totalDepositAmount = deposits?.reduce((sum, d) => sum + (d.nett_amount || 0), 0) || 0;
-      const totalDepositCount = deposits?.length || 0;
-      
-      const totalWithdrawalAmount = withdrawals?.reduce((sum, w) => sum + (w.nett_amount || 0), 0) || 0;
-      const totalWithdrawalCount = withdrawals?.length || 0;
-
-      const turnover = winlose?.reduce((sum, w) => sum + (w.net_turnover || 0), 0) || 0;
-      const winloseTotal = winlose?.reduce((sum, w) => sum + (w.member_total || 0), 0) || 0;
-
-      const newRegisterCount = newMembers?.length || 0;
-      
-      const newMemberIds = new Set(newMembers?.map(m => m.user_name) || []);
-      const newMemberDeposit = deposits?.filter(d => newMemberIds.has(d.user_name)) || [];
-      const newMemberDepositCount = newMemberDeposit.length;
-      const newMemberDepositAmount = newMemberDeposit.reduce((sum, d) => sum + (d.nett_amount || 0), 0) || 0;
-      
-      const percentage = newRegisterCount > 0 ? (newMemberDepositCount / newRegisterCount) * 100 : 0;
-
-      const activeMembers = deposits?.filter(d => d.user_name).map(d => d.user_name) || [];
-      const uniqueActiveMembers = [...new Set(activeMembers)];
-
-      setData({
-        new_register: { count: newRegisterCount, amount: 0 },
-        new_member_deposit: { count: newMemberDepositCount, amount: newMemberDepositAmount },
-        percentage: percentage,
-        total_deposit: { count: totalDepositCount, amount: totalDepositAmount },
-        total_withdrawal: { count: totalWithdrawalCount, amount: -totalWithdrawalAmount },
-        active_member: uniqueActiveMembers.length,
-        turnover: turnover,
-        winlose: winloseTotal,
-        bonus: { count: 0, amount: 0 },
-        commission: { count: 0, amount: 0 },
-        cashback: { count: 0, amount: 0 },
-        adjustment: { count: 0, amount: 0 },
-        referral: { count: 0, amount: 0 }
-      });
-      
+      const results = [];
+      for (const asset of assets) {
+        const data = await fetchAssetData(asset.asset_code);
+        results.push({
+          asset: asset,
+          data: data
+        });
+      }
+      setAssetsData(results);
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -200,26 +199,21 @@ export default function AssetsPage() {
 
   return (
     <div className="p-6 min-h-screen bg-[#0B1A33] text-white">
-      <div className="mb-4">
+      {/* HEADER */}
+      <div className="mb-4 flex justify-between items-center">
         <Link href="/dashboard" className="text-[#FFD700] hover:underline text-sm">
           ← BACK TO DASHBOARD
         </Link>
+        <button
+          onClick={() => router.push('/dashboard/assets/add')}
+          className="bg-[#FFD700] text-black px-4 py-2 rounded-lg text-sm font-bold hover:bg-[#FFD700]/90 transition-all"
+        >
+          + TAMBAH ASSET
+        </button>
       </div>
 
-      {/* FILTER */}
+      {/* FILTER DATE RANGE */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
-        <select 
-          value={selectedAsset} 
-          onChange={(e) => setSelectedAsset(e.target.value)}
-          className="bg-[#1A2F4A] border border-[#FFD700]/30 rounded px-3 py-1.5 text-white text-sm"
-        >
-          {assets.map(asset => (
-            <option key={asset.asset_code} value={asset.asset_code}>
-              {asset.asset_name} ({asset.asset_code})
-            </option>
-          ))}
-        </select>
-
         <select 
           value={dateFilter} 
           onChange={(e) => setDateFilter(e.target.value)}
@@ -255,33 +249,68 @@ export default function AssetsPage() {
         <span className="text-[#A7D8FF] text-xs ml-auto">Period: {displayDateRange}</span>
       </div>
 
-      {/* TABLE - 3 KOLOM: Metric, Count, Amount */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-[#FFD700]/30 bg-[#1A2F4A]">
-              <th className="px-4 py-2 text-left text-[#FFD700]">Metric</th>
-              <th className="px-4 py-2 text-right text-[#FFD700]">Count</th>
-              <th className="px-4 py-2 text-right text-[#FFD700]">Amount</th>
-             </tr>
-          </thead>
-          <tbody>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">New Register</td><td className="px-4 py-2 text-right">{formatNumber(data.new_register.count)}</td><td className="px-4 py-2 text-right"></td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">New Member Deposit</td><td className="px-4 py-2 text-right">{formatNumber(data.new_member_deposit.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.new_member_deposit.amount)}</td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Persentage</td><td className="px-4 py-2 text-right">{data.percentage.toFixed(2)}%</td><td className="px-4 py-2 text-right"></td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Total Deposit</td><td className="px-4 py-2 text-right">{formatNumber(data.total_deposit.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.total_deposit.amount)}</td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Total Withdrawal</td><td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.amount)}</td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Active Member</td><td className="px-4 py-2 text-right">{formatNumber(data.active_member)}</td><td className="px-4 py-2 text-right"></td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">TurnOver</td><td className="px-4 py-2 text-right"></td><td className="px-4 py-2 text-right">{formatNumber(data.turnover)}</td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Winlose</td><td className="px-4 py-2 text-right"></td><td className="px-4 py-2 text-right">{formatNumber(data.winlose)}</td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Bonus</td><td className="px-4 py-2 text-right">{formatNumber(data.bonus.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.bonus.amount)}</td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Commission</td><td className="px-4 py-2 text-right">{formatNumber(data.commission.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.commission.amount)}</td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Cashback</td><td className="px-4 py-2 text-right">{formatNumber(data.cashback.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.cashback.amount)}</td></tr>
-            <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Adjustment</td><td className="px-4 py-2 text-right">{formatNumber(data.adjustment.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.adjustment.amount)}</td></tr>
-            <tr><td className="px-4 py-2">Referral</td><td className="px-4 py-2 text-right">{formatNumber(data.referral.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.referral.amount)}</td></tr>
-          </tbody>
-        </table>
+      {/* TABLES PER ASSET */}
+      <div className="space-y-8">
+        {assetsData.map((item, idx) => {
+          const asset = item.asset;
+          const data = item.data;
+          return (
+            <div key={asset.id} className="border border-[#FFD700]/30 rounded-lg overflow-hidden bg-[#1A2F4A]">
+              {/* ASSET HEADER */}
+              <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
+                <h3 className="text-[#FFD700] font-bold">
+                  {asset.asset_name} (WLB {asset.wlb_code || asset.asset_code})
+                </h3>
+              </div>
+
+              {/* TABLE */}
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-[#FFD700]/30 bg-[#0B1A33]/50">
+                      <th className="px-4 py-2 text-left text-[#FFD700]">Metric</th>
+                      <th className="px-4 py-2 text-right text-[#FFD700]">Count</th>
+                      <th className="px-4 py-2 text-right text-[#FFD700]">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">New Register</td><td className="px-4 py-2 text-right">{formatNumber(data.new_register.count)}</td><td className="px-4 py-2 text-right"></td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">New Member Deposit</td><td className="px-4 py-2 text-right">{formatNumber(data.new_member_deposit.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.new_member_deposit.amount)}</td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Persentage</td><td className="px-4 py-2 text-right">{data.percentage.toFixed(2)}%</td><td className="px-4 py-2 text-right"></td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Total Deposit</td><td className="px-4 py-2 text-right">{formatNumber(data.total_deposit.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.total_deposit.amount)}</td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Total Withdrawal</td><td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.amount)}</td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Active Member</td><td className="px-4 py-2 text-right">{formatNumber(data.active_member)}</td><td className="px-4 py-2 text-right"></td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">TurnOver</td><td className="px-4 py-2 text-right"></td><td className="px-4 py-2 text-right">{formatNumber(data.turnover)}</td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Winlose</td><td className="px-4 py-2 text-right"></td><td className="px-4 py-2 text-right">{formatNumber(data.winlose)}</td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Bonus</td><td className="px-4 py-2 text-right">{formatNumber(data.bonus.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.bonus.amount)}</td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Commission</td><td className="px-4 py-2 text-right">{formatNumber(data.commission.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.commission.amount)}</td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Cashback</td><td className="px-4 py-2 text-right">{formatNumber(data.cashback.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.cashback.amount)}</td></tr>
+                    <tr className="border-b border-[#FFD700]/10"><td className="px-4 py-2">Adjustment</td><td className="px-4 py-2 text-right">{formatNumber(data.adjustment.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.adjustment.amount)}</td></tr>
+                    <tr><td className="px-4 py-2">Referral</td><td className="px-4 py-2 text-right">{formatNumber(data.referral.count)}</td><td className="px-4 py-2 text-right">{formatNumber(data.referral.amount)}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
       </div>
+
+      {/* EMPTY STATE */}
+      {assetsData.length === 0 && (
+        <div className="border border-[#FFD700]/30 rounded-lg p-12 text-center bg-[#1A2F4A]">
+          <div className="w-16 h-16 border-2 border-[#FFD700]/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-2xl">🏦</span>
+          </div>
+          <h3 className="text-xl font-bold text-[#FFD700] mb-2">BELUM ADA ASSET</h3>
+          <p className="text-[#A7D8FF] mb-6">Tambahkan asset pertama Anda</p>
+          <button
+            onClick={() => router.push('/dashboard/assets/add')}
+            className="bg-[#FFD700] text-black px-6 py-3 rounded-lg font-bold hover:bg-[#FFD700]/90 transition-all"
+          >
+            + TAMBAH ASSET PERTAMA
+          </button>
+        </div>
+      )}
     </div>
   );
 }
