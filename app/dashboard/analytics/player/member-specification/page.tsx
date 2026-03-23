@@ -70,7 +70,6 @@ export default function MemberSpecificationPage() {
     1_000_000_000_000 // 1T
   ]
   
-  // Fungsi untuk mendapatkan domain optimal berdasarkan nilai maksimum member
   const getOptimalDomain = (maxValue: number): number => {
     for (let i = 0; i < SPIDER_DOMAINS.length; i++) {
       if (maxValue <= SPIDER_DOMAINS[i]) {
@@ -149,7 +148,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // GET ACTUAL MEMBER ID FROM DATABASE
+  // GET ACTUAL MEMBER ID
   // ===========================================
   const getActualMemberId = async (searchId: string): Promise<string | null> => {
     try {
@@ -218,8 +217,7 @@ export default function MemberSpecificationPage() {
         return
       }
 
-      // Fetch deposit
-      let depositQuery = supabase
+      const depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
         .eq('user_name', actualId)
@@ -228,8 +226,7 @@ export default function MemberSpecificationPage() {
 
       const depositData = await fetchAllWithPagination(depositQuery)
 
-      // Fetch withdrawal
-      let withdrawalQuery = supabase
+      const withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
         .eq('user_name', actualId)
@@ -238,15 +235,13 @@ export default function MemberSpecificationPage() {
 
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
 
-      // Fetch winlose
-      let winloseQuery = supabase
+      const winloseQuery = supabase
         .from('winlose_transactions')
         .select('*')
         .eq('account_id', actualId)
 
       const winloseData = await fetchAllWithPagination(winloseQuery)
 
-      // Hitung metrics
       const totalDeposit = depositData.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0)
       const totalDepositCount = depositData.length
       const avgDeposit = totalDepositCount > 0 ? totalDeposit / totalDepositCount : 0
@@ -472,7 +467,7 @@ export default function MemberSpecificationPage() {
                     {/* Spider Chart */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
-                      <div style={{ minHeight: '300px', height: '300px', width: '100%', position: 'relative' }}>
+                      <div style={{ width: '100%', height: 350 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
                             <RadarChart cx="50%" cy="50%" outerRadius="70%" data={spiderData}>
