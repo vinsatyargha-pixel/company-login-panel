@@ -354,12 +354,10 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // HEXAGON GRID UTILITY (PERSIS KAYAK eFHUB)
+  // HEXAGON GRID UTILITY
   // ===========================================
-  // 6 sumbu: Total Deposit, Total Turnover, Slot Turnover, Live Casino, Sportbook, Total Withdrawal
-  const SIDES = ['Total Deposit', 'Total Turnover', 'Slot Turnover', 'Live Casino', 'Sportbook', 'Total Withdrawal']
+  const SIDES = ['Deposit', 'Turnover', 'Slot', 'Live Casino', 'Sportbook', 'Withdraw']
   
-  // Generate titik-titik untuk hexagon dengan radius tertentu
   const getHexagonPoints = (radius: number, centerX: number = 80, centerY: number = 80) => {
     const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
     return angles.map(angle => ({
@@ -368,14 +366,12 @@ export default function MemberSpecificationPage() {
     }))
   }
 
-  // Normalisasi nilai ke radius (0 - 1)
   const normalizeValue = (value: number, maxDomain: number) => {
     if (value <= 0) return 0
     if (value >= maxDomain) return 1
     return value / maxDomain
   }
 
-  // Generate polygon points untuk data member
   const getDataPolygonPoints = (values: number[], maxDomain: number, maxRadius: number, centerX: number = 80, centerY: number = 80) => {
     const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
     return angles.map((angle, i) => {
@@ -402,7 +398,6 @@ export default function MemberSpecificationPage() {
         {memberBoxes.map((box) => {
           const data = box.data
           
-          // Nilai untuk 6 sumbu (dalam Rupiah)
           const values = data ? [
             data.total_deposit,
             data.total_turnover,
@@ -412,8 +407,7 @@ export default function MemberSpecificationPage() {
             data.total_withdrawal
           ] : [0, 0, 0, 0, 0, 0]
           
-          // Radius untuk 4 lapisan (dalam pixel, center 80, max radius 56)
-          const layerRadii = [14, 28, 42, 56] // 25%, 50%, 75%, 100%
+          const layerRadii = [14, 28, 42, 56]
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -471,12 +465,12 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* CUSTOM SVG CHART - PERSIS KAYAK eFHUB */}
+                    {/* CUSTOM SVG CHART */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div className="flex justify-center">
-                        <svg viewBox="0 0 160 160" width="100%" height="auto" style={{ maxWidth: '400px', margin: '0 auto' }}>
-                          {/* 4 LAPISAN SEGI ENAM (DUDUKAN) */}
+                        <svg viewBox="0 0 160 160" width="300" height="300" style={{ margin: '0 auto' }}>
+                          {/* 4 LAPISAN SEGI ENAM */}
                           {layerRadii.map((radius, idx) => {
                             const points = getHexagonPoints(radius)
                             const pointStr = points.map(p => `${p.x},${p.y}`).join(' ')
@@ -487,12 +481,12 @@ export default function MemberSpecificationPage() {
                                 fill="none"
                                 stroke="#FFD700"
                                 strokeWidth="1"
-                                strokeOpacity="0.4"
+                                strokeOpacity="0.5"
                               />
                             )
                           })}
                           
-                          {/* GARIS RADIAL DARI TENGAH KE 6 SISI */}
+                          {/* GARIS RADIAL */}
                           {getHexagonPoints(56).map((point, idx) => (
                             <line
                               key={`radial-${idx}`}
@@ -506,19 +500,19 @@ export default function MemberSpecificationPage() {
                             />
                           ))}
                           
-                          {/* POLYGON DATA MEMBER (GARIS + AREA) */}
+                          {/* POLYGON DATA MEMBER */}
                           {data && (
                             <polygon
                               points={getDataPolygonPoints(values, MAX_DOMAIN, 56, 80, 80)}
                               fill="#00E5FF"
-                              fillOpacity="0.25"
+                              fillOpacity="0.35"
                               stroke="#00E5FF"
-                              strokeWidth="2"
+                              strokeWidth="2.5"
                               strokeLinejoin="round"
                             />
                           )}
                           
-                          {/* TITIK-TITIK DATA DI SETIAP SISI */}
+                          {/* TITIK DATA */}
                           {data && values.map((val, idx) => {
                             const radius = normalizeValue(val, MAX_DOMAIN) * 56
                             const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
@@ -530,10 +524,10 @@ export default function MemberSpecificationPage() {
                                 key={`dot-${idx}`}
                                 cx={x}
                                 cy={y}
-                                r="3"
+                                r="4"
                                 fill="#00E5FF"
                                 stroke="white"
-                                strokeWidth="1.5"
+                                strokeWidth="2"
                               />
                             )
                           })}
@@ -542,17 +536,9 @@ export default function MemberSpecificationPage() {
                           {SIDES.map((side, idx) => {
                             const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
                             const angle = angles[idx]
-                            const radius = 62
+                            const radius = 64
                             const x = 80 + radius * Math.cos(angle)
                             const y = 80 + radius * Math.sin(angle)
-                            // Singkat label
-                            let shortLabel = side
-                            if (side === 'Total Deposit') shortLabel = 'Deposit'
-                            if (side === 'Total Turnover') shortLabel = 'Turnover'
-                            if (side === 'Slot Turnover') shortLabel = 'Slot'
-                            if (side === 'Live Casino') shortLabel = 'Live'
-                            if (side === 'Sportbook') shortLabel = 'Sport'
-                            if (side === 'Total Withdrawal') shortLabel = 'Withdraw'
                             return (
                               <text
                                 key={`label-${idx}`}
@@ -564,16 +550,16 @@ export default function MemberSpecificationPage() {
                                 fontWeight="bold"
                                 fill="#A7D8FF"
                               >
-                                {shortLabel}
+                                {side}
                               </text>
                             )
                           })}
                           
-                          {/* LABEL LAPISAN (1jt, 10jt, 100jt, 1M) */}
+                          {/* LABEL LAPISAN */}
                           <text x="80" y="20" textAnchor="middle" fontSize="8" fill="#FFD700" fontWeight="bold">1M</text>
-                          <text x="80" y="38" textAnchor="middle" fontSize="8" fill="#FFD700">100jt</text>
-                          <text x="80" y="54" textAnchor="middle" fontSize="8" fill="#FFD700">10jt</text>
-                          <text x="80" y="70" textAnchor="middle" fontSize="8" fill="#FFD700">1jt</text>
+                          <text x="80" y="36" textAnchor="middle" fontSize="8" fill="#FFD700">100jt</text>
+                          <text x="80" y="52" textAnchor="middle" fontSize="8" fill="#FFD700">10jt</text>
+                          <text x="80" y="68" textAnchor="middle" fontSize="8" fill="#FFD700">1jt</text>
                         </svg>
                       </div>
                       <div className="text-center text-xs text-[#FFD700] mt-3 font-bold bg-[#0B1A33]/50 py-1 rounded-full mx-auto w-fit px-3">
