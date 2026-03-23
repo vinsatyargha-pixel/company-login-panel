@@ -57,7 +57,7 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // DOMAIN DAN LAPISAN TETAP: 0, 1jt, 10jt, 100jt, 1M
+  // 4 LAPISAN SEGI ENAM: 1jt, 10jt, 100jt, 1M
   // ===========================================
   const MAX_DOMAIN = 1_000_000_000 // 1M
   const FIXED_TICKS = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
@@ -360,7 +360,6 @@ export default function MemberSpecificationPage() {
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    // Nilai langsung tanpa normalisasi, karena domain sudah 1M
     return [
       { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit },
       { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover },
@@ -466,20 +465,21 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - DENGAN FIXED TICKS */}
+                    {/* RADAR CHART - GRID SEGI ENAM + POLYGON MEMBER */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height={450}>
                             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={spiderData}>
-                              {/* GRID SEGI ENAM */}
+                              {/* GRID SEGI ENAM SEBAGAI DUDUKAN */}
                               <PolarGrid
                                 gridType="polygon"
                                 stroke="#FFD700"
-                                strokeWidth={2}
-                                strokeOpacity={0.8}
+                                strokeWidth={1.5}
+                                strokeOpacity={0.6}
                               />
+                              {/* LABEL SISI */}
                               <PolarAngleAxis 
                                 dataKey="subject" 
                                 tick={{ 
@@ -488,6 +488,7 @@ export default function MemberSpecificationPage() {
                                   fontWeight: 'bold'
                                 }}
                               />
+                              {/* RADIUS AXIS - PAKSA 4 LAPISAN */}
                               <PolarRadiusAxis
                                 angle={90}
                                 domain={[0, MAX_DOMAIN]}
@@ -500,13 +501,14 @@ export default function MemberSpecificationPage() {
                                 tickFormatter={formatRadiusTick}
                                 axisLine={false}
                               />
+                              {/* POLYGON MEMBER (GARIS YANG NYAMBUNGIN TITIK) */}
                               <Radar
                                 name={box.data.member_id}
                                 dataKey="value"
                                 stroke="#00E5FF"
                                 strokeWidth={3}
                                 fill="#00E5FF"
-                                fillOpacity={0.35}
+                                fillOpacity={0.25}
                                 dot={{
                                   fill: "#00E5FF",
                                   stroke: "#FFFFFF",
