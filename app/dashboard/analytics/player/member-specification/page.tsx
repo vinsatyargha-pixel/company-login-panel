@@ -54,15 +54,25 @@ export default function MemberSpecificationPage() {
 
   // ===========================================
   // SKALA LINEAR ANTAR LAYER
-  // Layer 1: 0 - 1jt (radius 0-14)
-  // Layer 2: 1jt - 10jt (radius 14-28)
-  // Layer 3: 10jt - 100jt (radius 28-42)
-  // Layer 4: 100jt - 1M (radius 42-56)
   // ===========================================
   const LAYER_VALUES = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
   const LAYER_RADII = [0, 14, 28, 42, 56]
   
-  const SIDES = ['Deposit', 'Turnover', 'Slot', 'Live', 'Sport', 'Withdraw']
+  // URUTAN SUMBU SESUAI ARAH JAM
+  // Jam 12:00 = Deposit
+  // Jam 01:30 = Total Turnover
+  // Jam 04:30 = Slot Turnover
+  // Jam 06:00 = Withdrawal
+  // Jam 07:30 = Live Casino
+  // Jam 10:30 = Sportbook
+  const SIDES = [
+    { name: 'Deposit', angle: 90 },           // Jam 12:00
+    { name: 'Turnover', angle: 45 },          // Jam 01:30
+    { name: 'Slot', angle: -45 },             // Jam 04:30
+    { name: 'Withdraw', angle: -90 },         // Jam 06:00
+    { name: 'Live', angle: -135 },            // Jam 07:30
+    { name: 'Sport', angle: 135 }             // Jam 10:30
+  ]
 
   // ===========================================
   // PAGINATION HELPER
@@ -361,22 +371,21 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // HEXAGON GRID UTILITY - SKALA LINEAR
+  // HEXAGON GRID UTILITY
   // ===========================================
   const getHexagonPoints = (radius: number, centerX: number = 80, centerY: number = 80) => {
-    const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
+    const angles = SIDES.map(s => s.angle * Math.PI / 180)
     return angles.map(angle => ({
       x: centerX + radius * Math.cos(angle),
       y: centerY + radius * Math.sin(angle)
     }))
   }
 
-  // Fungsi untuk menghitung radius berdasarkan nilai (interpolasi LINEAR antar layer)
+  // Fungsi untuk menghitung radius berdasarkan nilai (interpolasi LINEAR)
   const getRadiusFromValue = (value: number): number => {
     if (value <= 0) return 0
     if (value >= LAYER_VALUES[LAYER_VALUES.length - 1]) return LAYER_RADII[LAYER_RADII.length - 1]
     
-    // Cari di antara layer mana nilai ini berada
     for (let i = 0; i < LAYER_VALUES.length - 1; i++) {
       const lowerVal = LAYER_VALUES[i]
       const upperVal = LAYER_VALUES[i + 1]
@@ -384,8 +393,6 @@ export default function MemberSpecificationPage() {
       if (value >= lowerVal && value <= upperVal) {
         const lowerRad = LAYER_RADII[i]
         const upperRad = LAYER_RADII[i + 1]
-        
-        // Interpolasi LINEAR
         const ratio = (value - lowerVal) / (upperVal - lowerVal)
         return lowerRad + ratio * (upperRad - lowerRad)
       }
@@ -395,7 +402,7 @@ export default function MemberSpecificationPage() {
   }
 
   const getDataPolygonPoints = (values: number[], centerX: number = 80, centerY: number = 80) => {
-    const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
+    const angles = SIDES.map(s => s.angle * Math.PI / 180)
     return angles.map((angle, i) => {
       const radius = getRadiusFromValue(values[i])
       const x = centerX + radius * Math.cos(angle)
@@ -420,13 +427,14 @@ export default function MemberSpecificationPage() {
         {memberBoxes.map((box) => {
           const data = box.data
           
+          // Urutan nilai sesuai SIDES
           const values = data ? [
-            data.total_deposit,
-            data.total_turnover,
-            data.slot_turnover,
-            data.live_casino_turnover,
-            data.sportbook_turnover,
-            data.total_withdrawal
+            data.total_deposit,        // Deposit - jam 12
+            data.total_turnover,       // Total Turnover - jam 01:30
+            data.slot_turnover,        // Slot - jam 04:30
+            data.total_withdrawal,     // Withdrawal - jam 06:00
+            data.live_casino_turnover, // Live Casino - jam 07:30
+            data.sportbook_turnover    // Sportbook - jam 10:30
           ] : [0, 0, 0, 0, 0, 0]
           
           return (
@@ -534,8 +542,7 @@ export default function MemberSpecificationPage() {
                           
                           {/* LABEL 6 SISI */}
                           {SIDES.map((side, idx) => {
-                            const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
-                            const angle = angles[idx]
+                            const angle = side.angle * Math.PI / 180
                             const radius = 64
                             const x = 80 + radius * Math.cos(angle)
                             const y = 80 + radius * Math.sin(angle)
@@ -550,7 +557,7 @@ export default function MemberSpecificationPage() {
                                 fontWeight="bold"
                                 fill="#A7D8FF"
                               >
-                                {side}
+                                {side.name}
                               </text>
                             )
                           })}
