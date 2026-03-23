@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import {
-  RadarChart, Radar, PolarAngleAxis, PolarRadiusAxis,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, Tooltip
 } from 'recharts'
 
@@ -60,18 +60,6 @@ export default function MemberSpecificationPage() {
   // SKALA TETAP: 0, 1jt, 10jt, 100jt, 1M
   // ===========================================
   const FIXED_DOMAIN = 1_000_000_000 // 1M
-  const HEX_LAYERS = [0.25, 0.5, 0.75, 1.0] // 4 layer (25%, 50%, 75%, 100%)
-  
-  // Fungsi untuk generate titik-titik hexagon
-  const getHexagonPoints = (cx: number, cy: number, radius: number) => {
-    const angleStep = (Math.PI * 2) / 6
-    return Array.from({ length: 6 }, (_, i) => {
-      const angle = i * angleStep - Math.PI / 2
-      const x = cx + radius * Math.cos(angle)
-      const y = cy + radius * Math.sin(angle)
-      return { x, y }
-    })
-  }
 
   // ===========================================
   // PAGINATION HELPER
@@ -371,16 +359,13 @@ export default function MemberSpecificationPage() {
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    // Normalisasi nilai ke domain 0-1M
-    const normalize = (val: number) => Math.min(val, FIXED_DOMAIN)
-    
     return [
-      { subject: 'Total Deposit', value: normalize(data.total_deposit), originalValue: data.total_deposit },
-      { subject: 'Total Turnover', value: normalize(data.total_turnover), originalValue: data.total_turnover },
-      { subject: 'Slot Turnover', value: normalize(data.slot_turnover), originalValue: data.slot_turnover },
-      { subject: 'Live Casino', value: normalize(data.live_casino_turnover), originalValue: data.live_casino_turnover },
-      { subject: 'Sportbook', value: normalize(data.sportbook_turnover), originalValue: data.sportbook_turnover },
-      { subject: 'Total Withdrawal', value: normalize(data.total_withdrawal), originalValue: data.total_withdrawal }
+      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit },
+      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover },
+      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover },
+      { subject: 'Live Casino', value: data.live_casino_turnover, originalValue: data.live_casino_turnover },
+      { subject: 'Sportbook', value: data.sportbook_turnover, originalValue: data.sportbook_turnover },
+      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal }
     ]
   }
 
@@ -479,87 +464,20 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - DENGAN CUSTOM HEXAGON GRID */}
+                    {/* RADAR CHART - PAKAI POLARGRID DENGAN GRIDTYPE POLYGON */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height={450}>
                             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={spiderData}>
-                              {/* CUSTOM HEXAGON GRID - PAKAI SVG */}
-                              <svg
-                                width="100%"
-                                height="100%"
-                                style={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  pointerEvents: 'none'
-                                }}
-                              >
-                                {(() => {
-                                  const svgRect = document?.querySelector(`#radar-${box.id}`)?.getBoundingClientRect()
-                                  if (!svgRect) return null
-                                  const cx = svgRect.width / 2
-                                  const cy = svgRect.height / 2
-                                  const radius = Math.min(svgRect.width, svgRect.height) * 0.375
-                                  
-                                  // Generate hexagon layers
-                                  const hexagonPoints = (r: number) => {
-                                    const angleStep = (Math.PI * 2) / 6
-                                    return Array.from({ length: 6 }, (_, i) => {
-                                      const angle = i * angleStep - Math.PI / 2
-                                      const x = cx + r * Math.cos(angle)
-                                      const y = cy + r * Math.sin(angle)
-                                      return `${x},${y}`
-                                    }).join(' ')
-                                  }
-                                  
-                                  // Generate axis lines
-                                  const axisLines = () => {
-                                    const angleStep = (Math.PI * 2) / 6
-                                    return Array.from({ length: 6 }, (_, i) => {
-                                      const angle = i * angleStep - Math.PI / 2
-                                      const x = cx + radius * Math.cos(angle)
-                                      const y = cy + radius * Math.sin(angle)
-                                      return (
-                                        <line
-                                          key={`axis-${i}`}
-                                          x1={cx}
-                                          y1={cy}
-                                          x2={x}
-                                          y2={y}
-                                          stroke="#FFD700"
-                                          strokeOpacity={0.3}
-                                          strokeWidth={1}
-                                        />
-                                      )
-                                    })
-                                  }
-                                  
-                                  return (
-                                    <>
-                                      {/* Hexagon layers */}
-                                      {HEX_LAYERS.map((layer, i) => {
-                                        const r = radius * layer
-                                        return (
-                                          <polygon
-                                            key={`layer-${i}`}
-                                            points={hexagonPoints(r)}
-                                            fill="none"
-                                            stroke="#FFD700"
-                                            strokeOpacity={0.4}
-                                            strokeWidth={1.5}
-                                          />
-                                        )
-                                      })}
-                                      {/* Axis lines */}
-                                      {axisLines()}
-                                    </>
-                                  )
-                                })()}
-                              </svg>
-                              
+                              {/* GRID SEGI ENAM - INI YANG PALING SIMPLE DAN JALAN */}
+                              <PolarGrid
+                                gridType="polygon"
+                                stroke="#FFD700"
+                                strokeWidth={2}
+                                strokeOpacity={0.8}
+                              />
                               <PolarAngleAxis 
                                 dataKey="subject" 
                                 tick={{ 
@@ -567,7 +485,6 @@ export default function MemberSpecificationPage() {
                                   fontSize: 10, 
                                   fontWeight: 'bold'
                                 }}
-                                axisLine={false}
                               />
                               <PolarRadiusAxis
                                 angle={90}
@@ -579,7 +496,6 @@ export default function MemberSpecificationPage() {
                                 }}
                                 tickFormatter={formatRadiusTick}
                                 axisLine={false}
-                                orientation="middle"
                               />
                               <Radar
                                 name={box.data.member_id}
@@ -587,14 +503,14 @@ export default function MemberSpecificationPage() {
                                 stroke="#00E5FF"
                                 strokeWidth={3}
                                 fill="#00E5FF"
-                                fillOpacity={0.3}
+                                fillOpacity={0.35}
                                 dot={{
                                   fill: "#00E5FF",
                                   stroke: "#FFFFFF",
                                   strokeWidth: 2,
-                                  r: 6
+                                  r: 5
                                 }}
-                                activeDot={{ r: 10, fill: "#00E5FF", stroke: "#FFFFFF", strokeWidth: 2 }}
+                                activeDot={{ r: 8, fill: "#00E5FF", stroke: "#FFFFFF", strokeWidth: 2 }}
                               />
                               <Tooltip content={<CustomTooltip />} />
                             </RadarChart>
