@@ -54,15 +54,20 @@ export default function MemberSpecificationPage() {
 
   // ===========================================
   // SKALA LINEAR ANTAR LAYER
-  // Layer 1: 0 - 1jt (radius 0-14)
-  // Layer 2: 1jt - 10jt (radius 14-28)
-  // Layer 3: 10jt - 100jt (radius 28-42)
-  // Layer 4: 100jt - 1M (radius 42-56)
   // ===========================================
   const LAYER_VALUES = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
   const LAYER_RADII = [0, 14, 28, 42, 56]
   
-  const SIDES = ['Deposit', 'Turnover', 'Slot', 'Live', 'Sport', 'Withdraw']
+  // SEGI ENAM: 6 sisi setiap 60°
+  // 12:00 (90°), 02:00 (30°), 04:00 (-30°), 06:00 (-90°), 08:00 (-150°), 10:00 (150°)
+  const SIDES = [
+    { name: 'Deposit', angle: 90 },     // 12:00
+    { name: 'Turnover', angle: 30 },    // 02:00
+    { name: 'Slot', angle: -30 },       // 04:00
+    { name: 'Withdraw', angle: -90 },   // 06:00
+    { name: 'Live', angle: -150 },      // 08:00
+    { name: 'Sport', angle: 150 }       // 10:00
+  ]
 
   // ===========================================
   // PAGINATION HELPER
@@ -361,22 +366,20 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // HEXAGON GRID UTILITY - SKALA LINEAR
+  // HEXAGON GRID UTILITY
   // ===========================================
   const getHexagonPoints = (radius: number, centerX: number = 80, centerY: number = 80) => {
-    const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
+    const angles = SIDES.map(s => s.angle * Math.PI / 180)
     return angles.map(angle => ({
       x: centerX + radius * Math.cos(angle),
       y: centerY + radius * Math.sin(angle)
     }))
   }
 
-  // Fungsi untuk menghitung radius berdasarkan nilai (interpolasi LINEAR antar layer)
   const getRadiusFromValue = (value: number): number => {
     if (value <= 0) return 0
     if (value >= LAYER_VALUES[LAYER_VALUES.length - 1]) return LAYER_RADII[LAYER_RADII.length - 1]
     
-    // Cari di antara layer mana nilai ini berada
     for (let i = 0; i < LAYER_VALUES.length - 1; i++) {
       const lowerVal = LAYER_VALUES[i]
       const upperVal = LAYER_VALUES[i + 1]
@@ -384,8 +387,6 @@ export default function MemberSpecificationPage() {
       if (value >= lowerVal && value <= upperVal) {
         const lowerRad = LAYER_RADII[i]
         const upperRad = LAYER_RADII[i + 1]
-        
-        // Interpolasi LINEAR
         const ratio = (value - lowerVal) / (upperVal - lowerVal)
         return lowerRad + ratio * (upperRad - lowerRad)
       }
@@ -395,7 +396,7 @@ export default function MemberSpecificationPage() {
   }
 
   const getDataPolygonPoints = (values: number[], centerX: number = 80, centerY: number = 80) => {
-    const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
+    const angles = SIDES.map(s => s.angle * Math.PI / 180)
     return angles.map((angle, i) => {
       const radius = getRadiusFromValue(values[i])
       const x = centerX + radius * Math.cos(angle)
@@ -421,12 +422,12 @@ export default function MemberSpecificationPage() {
           const data = box.data
           
           const values = data ? [
-            data.total_deposit,
-            data.total_turnover,
-            data.slot_turnover,
-            data.live_casino_turnover,
-            data.sportbook_turnover,
-            data.total_withdrawal
+            data.total_deposit,        // Deposit - 12:00
+            data.total_turnover,       // Total Turnover - 02:00
+            data.slot_turnover,        // Slot - 04:00
+            data.total_withdrawal,     // Withdraw - 06:00
+            data.live_casino_turnover, // Live - 08:00
+            data.sportbook_turnover    // Sport - 10:00
           ] : [0, 0, 0, 0, 0, 0]
           
           return (
@@ -485,7 +486,6 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* CUSTOM SVG CHART */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div className="flex justify-center">
@@ -534,8 +534,7 @@ export default function MemberSpecificationPage() {
                           
                           {/* LABEL 6 SISI */}
                           {SIDES.map((side, idx) => {
-                            const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
-                            const angle = angles[idx]
+                            const angle = side.angle * Math.PI / 180
                             const radius = 64
                             const x = 80 + radius * Math.cos(angle)
                             const y = 80 + radius * Math.sin(angle)
@@ -550,7 +549,7 @@ export default function MemberSpecificationPage() {
                                 fontWeight="bold"
                                 fill="#A7D8FF"
                               >
-                                {side}
+                                {side.name}
                               </text>
                             )
                           })}
