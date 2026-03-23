@@ -53,12 +53,14 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // SKALA LOGARITMIK - 4 LAPISAN
+  // SKALA LINEAR ANTAR LAYER
+  // Layer 1: 0 - 1jt (radius 0-14)
+  // Layer 2: 1jt - 10jt (radius 14-28)
+  // Layer 3: 10jt - 100jt (radius 28-42)
+  // Layer 4: 100jt - 1M (radius 42-56)
   // ===========================================
-  const MAX_DOMAIN = 1_000_000_000 // 1M
-  const LAYER_VALUES = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
-  const LAYER_RADII = [14, 28, 42, 56] // 25%, 50%, 75%, 100%
-  const MAX_RADIUS = 56
+  const LAYER_VALUES = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
+  const LAYER_RADII = [0, 14, 28, 42, 56]
   
   const SIDES = ['Deposit', 'Turnover', 'Slot', 'Live', 'Sport', 'Withdraw']
 
@@ -359,7 +361,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // HEXAGON GRID UTILITY
+  // HEXAGON GRID UTILITY - SKALA LINEAR
   // ===========================================
   const getHexagonPoints = (radius: number, centerX: number = 80, centerY: number = 80) => {
     const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
@@ -369,38 +371,27 @@ export default function MemberSpecificationPage() {
     }))
   }
 
-  // Fungsi untuk menghitung radius berdasarkan nilai (interpolasi logaritmik presisi)
+  // Fungsi untuk menghitung radius berdasarkan nilai (interpolasi LINEAR antar layer)
   const getRadiusFromValue = (value: number): number => {
     if (value <= 0) return 0
-    if (value >= MAX_DOMAIN) return MAX_RADIUS
+    if (value >= LAYER_VALUES[LAYER_VALUES.length - 1]) return LAYER_RADII[LAYER_RADII.length - 1]
     
-    // Cari posisi di antara layer
-    for (let i = 0; i < LAYER_VALUES.length; i++) {
-      if (value <= LAYER_VALUES[i]) {
-        if (i === 0) {
-          // Di bawah 1jt - interpolasi dari 0 ke radius 1jt
-          // Skala linear karena di bawah 1jt
-          const ratio = value / LAYER_VALUES[0]
-          return ratio * LAYER_RADII[0]
-        } else {
-          // Di antara layer i-1 dan i
-          const prevVal = LAYER_VALUES[i - 1]
-          const currVal = LAYER_VALUES[i]
-          const prevRad = LAYER_RADII[i - 1]
-          const currRad = LAYER_RADII[i]
-          
-          // Interpolasi dalam skala log
-          const logPrev = Math.log10(prevVal)
-          const logCurr = Math.log10(currVal)
-          const logVal = Math.log10(value)
-          
-          const ratio = (logVal - logPrev) / (logCurr - logPrev)
-          return prevRad + ratio * (currRad - prevRad)
-        }
+    // Cari di antara layer mana nilai ini berada
+    for (let i = 0; i < LAYER_VALUES.length - 1; i++) {
+      const lowerVal = LAYER_VALUES[i]
+      const upperVal = LAYER_VALUES[i + 1]
+      
+      if (value >= lowerVal && value <= upperVal) {
+        const lowerRad = LAYER_RADII[i]
+        const upperRad = LAYER_RADII[i + 1]
+        
+        // Interpolasi LINEAR
+        const ratio = (value - lowerVal) / (upperVal - lowerVal)
+        return lowerRad + ratio * (upperRad - lowerRad)
       }
     }
     
-    return MAX_RADIUS
+    return LAYER_RADII[LAYER_RADII.length - 1]
   }
 
   const getDataPolygonPoints = (values: number[], centerX: number = 80, centerY: number = 80) => {
@@ -494,13 +485,13 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* CUSTOM SVG CHART - TANPA LABEL DI DALAM HEXAGON */}
+                    {/* CUSTOM SVG CHART */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div className="flex justify-center">
                         <svg viewBox="0 0 160 160" width="300" height="300" style={{ margin: '0 auto' }}>
                           {/* 4 LAPISAN SEGI ENAM */}
-                          {LAYER_RADII.map((radius, idx) => {
+                          {[14, 28, 42, 56].map((radius, idx) => {
                             const points = getHexagonPoints(radius)
                             const pointStr = points.map(p => `${p.x},${p.y}`).join(' ')
                             return (
