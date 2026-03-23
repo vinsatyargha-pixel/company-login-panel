@@ -59,8 +59,8 @@ export default function MemberSpecificationPage() {
   // ===========================================
   // 4 LAPISAN SEGI ENAM: 1jt, 10jt, 100jt, 1M
   // ===========================================
-  const MAX_DOMAIN = 1_000_000_000 // 1M
-  const FIXED_TICKS = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
+  const LAYER_VALUES = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
+  const MAX_DOMAIN = 1_000_000_000
 
   // ===========================================
   // PAGINATION HELPER
@@ -126,7 +126,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // GET ACTUAL MEMBER ID
+  // GET ACTUAL MEMBER ID (CASE INSENSITIVE + BUANG XLY)
   // ===========================================
   const getActualMemberId = async (searchId: string): Promise<string | null> => {
     try {
@@ -162,7 +162,11 @@ export default function MemberSpecificationPage() {
         .limit(1)
       
       if (winloseData && winloseData.length > 0) {
-        return winloseData[0].account_id
+        let accountId = winloseData[0].account_id
+        if (accountId.toUpperCase().startsWith('XLY')) {
+          accountId = accountId.substring(3)
+        }
+        return accountId
       }
       
       return null
@@ -355,7 +359,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART DATA
+  // SPIDER CHART DATA - 6 SISI
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
@@ -465,57 +469,62 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - GRID SEGI ENAM + POLYGON MEMBER */}
+                    {/* RADAR CHART - SEPERTI eFHUB */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height={450}>
                             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={spiderData}>
-                              {/* GRID SEGI ENAM SEBAGAI DUDUKAN */}
+                              {/* GRID SEGI ENAM - DUDUKAN */}
                               <PolarGrid
                                 gridType="polygon"
                                 stroke="#FFD700"
                                 strokeWidth={1.5}
                                 strokeOpacity={0.6}
                               />
-                              {/* LABEL SISI */}
-                              <PolarAngleAxis 
-                                dataKey="subject" 
-                                tick={{ 
-                                  fill: '#A7D8FF', 
-                                  fontSize: 10, 
-                                  fontWeight: 'bold'
+                              {/* 6 SUMBU */}
+                              <PolarAngleAxis
+                                dataKey="subject"
+                                tick={{
+                                  fill: '#A7D8FF',
+                                  fontSize: 10,
+                                  fontWeight: 'bold',
                                 }}
                               />
-                              {/* RADIUS AXIS - PAKSA 4 LAPISAN */}
+                              {/* RADIUS AXIS - 4 LAPISAN TETAP */}
                               <PolarRadiusAxis
                                 angle={90}
                                 domain={[0, MAX_DOMAIN]}
-                                ticks={FIXED_TICKS as any}
-                                tick={{ 
-                                  fill: '#FFD700', 
-                                  fontSize: 10, 
-                                  fontWeight: 'bold'
+                                ticks={LAYER_VALUES as any}
+                                tick={{
+                                  fill: '#FFD700',
+                                  fontSize: 10,
+                                  fontWeight: 'bold',
                                 }}
                                 tickFormatter={formatRadiusTick}
                                 axisLine={false}
                               />
-                              {/* POLYGON MEMBER (GARIS YANG NYAMBUNGIN TITIK) */}
+                              {/* POLYGON MEMBER - GARIS + TITIK */}
                               <Radar
                                 name={box.data.member_id}
                                 dataKey="value"
                                 stroke="#00E5FF"
                                 strokeWidth={3}
                                 fill="#00E5FF"
-                                fillOpacity={0.25}
+                                fillOpacity={0.3}
                                 dot={{
                                   fill: "#00E5FF",
                                   stroke: "#FFFFFF",
                                   strokeWidth: 2,
-                                  r: 5
+                                  r: 5,
                                 }}
-                                activeDot={{ r: 8, fill: "#00E5FF", stroke: "#FFFFFF", strokeWidth: 2 }}
+                                activeDot={{
+                                  r: 8,
+                                  fill: "#00E5FF",
+                                  stroke: "#FFFFFF",
+                                  strokeWidth: 2,
+                                }}
                               />
                               <Tooltip content={<CustomTooltip />} />
                             </RadarChart>
