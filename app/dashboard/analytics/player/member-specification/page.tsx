@@ -53,9 +53,12 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // SKALA: 1jt, 10jt, 100jt, 1M
+  // SKALA TETAP: 1jt, 10jt, 100jt, 1M
   // ===========================================
-  const MAX_DOMAIN = 1_000_000_000
+  const MAX_DOMAIN = 1_000_000_000 // 1M
+  const LAYERS = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
+  const LAYER_RADII = [14, 28, 42, 56] // pixel radius untuk 4 lapisan
+  const SIDES = ['Deposit', 'Turnover', 'Slot', 'Live', 'Sport', 'Withdraw']
 
   // ===========================================
   // PAGINATION HELPER
@@ -356,8 +359,6 @@ export default function MemberSpecificationPage() {
   // ===========================================
   // HEXAGON GRID UTILITY
   // ===========================================
-  const SIDES = ['Deposit', 'Turnover', 'Slot', 'Live Casino', 'Sportbook', 'Withdraw']
-  
   const getHexagonPoints = (radius: number, centerX: number = 80, centerY: number = 80) => {
     const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
     return angles.map(angle => ({
@@ -366,16 +367,23 @@ export default function MemberSpecificationPage() {
     }))
   }
 
-  const normalizeValue = (value: number, maxDomain: number) => {
+  // Normalisasi LOGARITMIK - HANYA SATU DEKLARASI
+  const normalizeLog = (value: number): number => {
     if (value <= 0) return 0
-    if (value >= maxDomain) return 1
-    return value / maxDomain
+    if (value >= MAX_DOMAIN) return 1
+    
+    const logValue = Math.log10(value)
+    const logMin = Math.log10(LAYERS[0]) // 1jt = 6
+    const logMax = Math.log10(MAX_DOMAIN) // 1M = 9
+    
+    let normalized = (logValue - logMin) / (logMax - logMin)
+    return Math.min(Math.max(normalized, 0), 1)
   }
 
-  const getDataPolygonPoints = (values: number[], maxDomain: number, maxRadius: number, centerX: number = 80, centerY: number = 80) => {
+  const getDataPolygonPoints = (values: number[], maxRadius: number, centerX: number = 80, centerY: number = 80) => {
     const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
     return angles.map((angle, i) => {
-      const radius = normalizeValue(values[i], maxDomain) * maxRadius
+      const radius = normalizeLog(values[i]) * maxRadius
       const x = centerX + radius * Math.cos(angle)
       const y = centerY + radius * Math.sin(angle)
       return `${x},${y}`
@@ -406,8 +414,6 @@ export default function MemberSpecificationPage() {
             data.sportbook_turnover,
             data.total_withdrawal
           ] : [0, 0, 0, 0, 0, 0]
-          
-          const layerRadii = [14, 28, 42, 56]
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -471,7 +477,7 @@ export default function MemberSpecificationPage() {
                       <div className="flex justify-center">
                         <svg viewBox="0 0 160 160" width="300" height="300" style={{ margin: '0 auto' }}>
                           {/* 4 LAPISAN SEGI ENAM */}
-                          {layerRadii.map((radius, idx) => {
+                          {LAYER_RADII.map((radius, idx) => {
                             const points = getHexagonPoints(radius)
                             const pointStr = points.map(p => `${p.x},${p.y}`).join(' ')
                             return (
@@ -480,8 +486,8 @@ export default function MemberSpecificationPage() {
                                 points={pointStr}
                                 fill="none"
                                 stroke="#FFD700"
-                                strokeWidth="1"
-                                strokeOpacity="0.5"
+                                strokeWidth="1.5"
+                                strokeOpacity="0.6"
                               />
                             )
                           })}
@@ -496,14 +502,14 @@ export default function MemberSpecificationPage() {
                               y2={point.y}
                               stroke="#FFD700"
                               strokeWidth="1"
-                              strokeOpacity="0.3"
+                              strokeOpacity="0.4"
                             />
                           ))}
                           
                           {/* POLYGON DATA MEMBER */}
                           {data && (
                             <polygon
-                              points={getDataPolygonPoints(values, MAX_DOMAIN, 56, 80, 80)}
+                              points={getDataPolygonPoints(values, 56, 80, 80)}
                               fill="#00E5FF"
                               fillOpacity="0.35"
                               stroke="#00E5FF"
@@ -514,7 +520,7 @@ export default function MemberSpecificationPage() {
                           
                           {/* TITIK DATA */}
                           {data && values.map((val, idx) => {
-                            const radius = normalizeValue(val, MAX_DOMAIN) * 56
+                            const radius = normalizeLog(val) * 56
                             const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
                             const angle = angles[idx]
                             const x = 80 + radius * Math.cos(angle)
