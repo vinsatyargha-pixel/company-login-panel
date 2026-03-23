@@ -394,19 +394,6 @@ export default function MemberSpecificationPage() {
     return value.toString()
   }
 
-  // Generate ticks dari FIXED_DOMAINS yang masih dalam batas maxDomain
-  const generateFixedTicks = (maxDomain: number): number[] => {
-    const ticks: number[] = [0]
-    for (let i = 1; i < FIXED_DOMAINS.length; i++) {
-      if (FIXED_DOMAINS[i] <= maxDomain) {
-        ticks.push(FIXED_DOMAINS[i])
-      } else {
-        break
-      }
-    }
-    return ticks
-  }
-
   // ===========================================
   // RENDER
   // ===========================================
@@ -423,7 +410,6 @@ export default function MemberSpecificationPage() {
         {memberBoxes.map((box) => {
           const spiderData = box.data ? getSpiderData(box.data) : []
           const currentDomain = spiderData[0]?.maxDomain || 1000000
-          const fixedTicks = generateFixedTicks(currentDomain)
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -493,7 +479,6 @@ export default function MemberSpecificationPage() {
                               <PolarRadiusAxis 
                                 angle={90} 
                                 domain={[0, currentDomain]} 
-                                ticks={fixedTicks}
                                 tick={{ fill: '#FFD700', fontSize: 9 }}
                                 tickFormatter={formatRadiusTick}
                               />
@@ -514,7 +499,7 @@ export default function MemberSpecificationPage() {
                         )}
                       </div>
                       <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
-                        Lingkaran: {fixedTicks.map(t => formatRadiusTick(t)).join(' | ')}
+                        Lingkaran: 0 | 1jt | 10jt | 100jt | 1M | 10M | 100M | 1T
                       </div>
                     </div>
 
