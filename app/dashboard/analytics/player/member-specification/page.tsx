@@ -58,7 +58,7 @@ export default function MemberSpecificationPage() {
 
   // ===========================================
   // SKALA TETAP: 0, 1jt, 10jt, 100jt, 1M
-  // GA BERUBAH MESKIPUN NILAI MEMBER KECIL
+  // SEGI ENAM 6 SISI + 4 LAPISAN
   // ===========================================
   const FIXED_DOMAIN = 1_000_000_000 // 1M (paling luar)
   const FIXED_CIRCLES = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
@@ -136,7 +136,6 @@ export default function MemberSpecificationPage() {
         cleanSearch = cleanSearch.substring(3)
       }
       
-      // Cari di deposit
       const { data: depositData } = await supabase
         .from('deposit_transactions')
         .select('user_name')
@@ -147,7 +146,6 @@ export default function MemberSpecificationPage() {
         return depositData[0].user_name
       }
       
-      // Cari di withdrawal
       const { data: withdrawalData } = await supabase
         .from('withdrawal_transactions')
         .select('user_name')
@@ -158,7 +156,6 @@ export default function MemberSpecificationPage() {
         return withdrawalData[0].user_name
       }
       
-      // Cari di winlose (return dengan prefix XLY)
       const { data: winloseData } = await supabase
         .from('winlose_transactions')
         .select('account_id')
@@ -166,7 +163,6 @@ export default function MemberSpecificationPage() {
         .limit(1)
       
       if (winloseData && winloseData.length > 0) {
-        // Return apa adanya (termasuk prefix XLY)
         return winloseData[0].account_id
       }
       
@@ -207,13 +203,12 @@ export default function MemberSpecificationPage() {
 
       console.log(`✅ ID member ditemukan: ${actualId}`)
 
-      // Buat ID untuk deposit/withdrawal (tanpa prefix)
       let cleanId = actualId
       if (cleanId.toUpperCase().startsWith('XLY')) {
         cleanId = cleanId.substring(3)
       }
 
-      // FETCH DEPOSIT (pake cleanId)
+      // FETCH DEPOSIT
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
@@ -223,7 +218,7 @@ export default function MemberSpecificationPage() {
 
       const depositData = await fetchAllWithPagination(depositQuery)
 
-      // FETCH WITHDRAWAL (pake cleanId)
+      // FETCH WITHDRAWAL
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
@@ -233,24 +228,14 @@ export default function MemberSpecificationPage() {
 
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
 
-      // FETCH WINLOSE (pake actualId yang mungkin ada prefix XLY)
+      // FETCH WINLOSE
       let winloseData: any[] = []
       
-      // Coba dengan exact match
       let query = supabase
         .from('winlose_transactions')
         .select('product_type, net_turnover')
-        .ilike('account_id', actualId)
+        .ilike('account_id', `%${cleanId}%`)
       winloseData = await fetchAllWithPagination(query)
-      
-      // Kalau ga ketemu, coba dengan wildcard
-      if (winloseData.length === 0) {
-        query = supabase
-          .from('winlose_transactions')
-          .select('product_type, net_turnover')
-          .ilike('account_id', `%${cleanId}%`)
-        winloseData = await fetchAllWithPagination(query)
-      }
       
       console.log(`📊 Data winlose: ${winloseData.length} rows`)
 
@@ -373,7 +358,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - SKALA TETAP 1M
+  // SPIDER CHART - SEGI ENAM 6 SISI + 4 LAPISAN
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
@@ -483,17 +468,18 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - SKALA TETAP 1M */}
+                    {/* RADAR CHART - SEGI ENAM 6 SISI + 4 LAPISAN */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={spiderData}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={spiderData}>
+                              {/* gridType="polygon" bikin SEGI ENAM, bukan lingkaran */}
                               <PolarGrid 
                                 stroke="#FFD700" 
-                                strokeOpacity={0.4}
-                                gridType="polygon" 
+                                strokeOpacity={0.5}
+                                gridType="polygon"
                               />
                               <PolarAngleAxis 
                                 dataKey="subject" 
