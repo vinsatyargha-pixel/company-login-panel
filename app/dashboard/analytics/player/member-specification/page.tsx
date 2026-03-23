@@ -56,18 +56,27 @@ export default function MemberSpecificationPage() {
   // SKALA LINEAR ANTAR LAYER
   // ===========================================
   const LAYER_VALUES = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
-  const LAYER_RADII = [0, 14, 28, 42, 56]
+  const LAYER_RADII = [0, 18, 36, 54, 72] // radius untuk viewBox 180x180
   
-  // SEGI ENAM: 6 sisi setiap 60°
-  // 12:00 (90°), 02:00 (30°), 04:00 (-30°), 06:00 (-90°), 08:00 (-150°), 10:00 (150°)
+  // SEGI ENAM - POSISI BENER (dalam derajat SVG)
+  // 12:00 (atas) = -90° (270°)
+  // 02:00 = -30° (330°)
+  // 04:00 = 30°
+  // 06:00 (bawah) = 90°
+  // 08:00 = 150°
+  // 10:00 = 210° (-150°)
   const SIDES = [
-    { name: 'Deposit', angle: 90 },     // 12:00
-    { name: 'Turnover', angle: 30 },    // 02:00
-    { name: 'Slot', angle: -30 },       // 04:00
-    { name: 'Withdraw', angle: -90 },   // 06:00
-    { name: 'Live', angle: -150 },      // 08:00
-    { name: 'Sport', angle: 150 }       // 10:00
+    { name: 'Deposit', angle: -90 },     // 12:00 (atas)
+    { name: 'Turnover', angle: -30 },    // 02:00
+    { name: 'Slot', angle: 30 },         // 04:00
+    { name: 'Withdraw', angle: 90 },     // 06:00 (bawah)
+    { name: 'Live', angle: 150 },        // 08:00
+    { name: 'Sport', angle: 210 }        // 10:00
   ]
+  
+  const CENTER_X = 90
+  const CENTER_Y = 90
+  const MAX_RADIUS = 72
 
   // ===========================================
   // PAGINATION HELPER
@@ -368,17 +377,17 @@ export default function MemberSpecificationPage() {
   // ===========================================
   // HEXAGON GRID UTILITY
   // ===========================================
-  const getHexagonPoints = (radius: number, centerX: number = 80, centerY: number = 80) => {
+  const getHexagonPoints = (radius: number) => {
     const angles = SIDES.map(s => s.angle * Math.PI / 180)
     return angles.map(angle => ({
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle)
+      x: CENTER_X + radius * Math.cos(angle),
+      y: CENTER_Y + radius * Math.sin(angle)
     }))
   }
 
   const getRadiusFromValue = (value: number): number => {
     if (value <= 0) return 0
-    if (value >= LAYER_VALUES[LAYER_VALUES.length - 1]) return LAYER_RADII[LAYER_RADII.length - 1]
+    if (value >= LAYER_VALUES[LAYER_VALUES.length - 1]) return MAX_RADIUS
     
     for (let i = 0; i < LAYER_VALUES.length - 1; i++) {
       const lowerVal = LAYER_VALUES[i]
@@ -392,15 +401,15 @@ export default function MemberSpecificationPage() {
       }
     }
     
-    return LAYER_RADII[LAYER_RADII.length - 1]
+    return MAX_RADIUS
   }
 
-  const getDataPolygonPoints = (values: number[], centerX: number = 80, centerY: number = 80) => {
+  const getDataPolygonPoints = (values: number[]) => {
     const angles = SIDES.map(s => s.angle * Math.PI / 180)
     return angles.map((angle, i) => {
       const radius = getRadiusFromValue(values[i])
-      const x = centerX + radius * Math.cos(angle)
-      const y = centerY + radius * Math.sin(angle)
+      const x = CENTER_X + radius * Math.cos(angle)
+      const y = CENTER_Y + radius * Math.sin(angle)
       return `${x},${y}`
     }).join(' ')
   }
@@ -422,12 +431,12 @@ export default function MemberSpecificationPage() {
           const data = box.data
           
           const values = data ? [
-            data.total_deposit,        // Deposit - 12:00
-            data.total_turnover,       // Total Turnover - 02:00
-            data.slot_turnover,        // Slot - 04:00
-            data.total_withdrawal,     // Withdraw - 06:00
-            data.live_casino_turnover, // Live - 08:00
-            data.sportbook_turnover    // Sport - 10:00
+            data.total_deposit,
+            data.total_turnover,
+            data.slot_turnover,
+            data.total_withdrawal,
+            data.live_casino_turnover,
+            data.sportbook_turnover
           ] : [0, 0, 0, 0, 0, 0]
           
           return (
@@ -489,9 +498,9 @@ export default function MemberSpecificationPage() {
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div className="flex justify-center">
-                        <svg viewBox="0 0 160 160" width="300" height="300" style={{ margin: '0 auto' }}>
+                        <svg viewBox="0 0 180 180" width="300" height="300" style={{ margin: '0 auto' }}>
                           {/* 4 LAPISAN SEGI ENAM */}
-                          {[14, 28, 42, 56].map((radius, idx) => {
+                          {[18, 36, 54, 72].map((radius, idx) => {
                             const points = getHexagonPoints(radius)
                             const pointStr = points.map(p => `${p.x},${p.y}`).join(' ')
                             return (
@@ -507,11 +516,11 @@ export default function MemberSpecificationPage() {
                           })}
                           
                           {/* GARIS RADIAL */}
-                          {getHexagonPoints(56).map((point, idx) => (
+                          {getHexagonPoints(72).map((point, idx) => (
                             <line
                               key={`radial-${idx}`}
-                              x1="80"
-                              y1="80"
+                              x1={CENTER_X}
+                              y1={CENTER_Y}
                               x2={point.x}
                               y2={point.y}
                               stroke="#FFD700"
@@ -523,7 +532,7 @@ export default function MemberSpecificationPage() {
                           {/* POLYGON DATA MEMBER */}
                           {data && (
                             <polygon
-                              points={getDataPolygonPoints(values, 80, 80)}
+                              points={getDataPolygonPoints(values)}
                               fill="#00E5FF"
                               fillOpacity="0.25"
                               stroke="#00E5FF"
@@ -535,9 +544,9 @@ export default function MemberSpecificationPage() {
                           {/* LABEL 6 SISI */}
                           {SIDES.map((side, idx) => {
                             const angle = side.angle * Math.PI / 180
-                            const radius = 64
-                            const x = 80 + radius * Math.cos(angle)
-                            const y = 80 + radius * Math.sin(angle)
+                            const radius = 82
+                            const x = CENTER_X + radius * Math.cos(angle)
+                            const y = CENTER_Y + radius * Math.sin(angle)
                             return (
                               <text
                                 key={`label-${idx}`}
