@@ -57,7 +57,7 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // LINGKARAN TETAP (FIXED GRID)
+  // LINGKARAN TETAP (FIXED GRID) - HARUS MUNCUL SEMUA
   // ===========================================
   const FIXED_DOMAINS = [
     0,
@@ -70,11 +70,14 @@ export default function MemberSpecificationPage() {
     1_000_000_000_000 // 1T - lingkaran ketujuh
   ]
   
-  // Domain maksimal yang ditampilkan (sampe lingkaran paling luar)
+  // Domain maksimal yang ditampilkan - HARUS SAMPAI LINGKARAN TERAKHIR YANG MUNCUL
   const getMaxFixedDomain = (maxValue: number): number => {
-    for (let i = FIXED_DOMAINS.length - 1; i >= 0; i--) {
-      if (maxValue >= FIXED_DOMAINS[i]) {
-        return FIXED_DOMAINS[i + 1] || FIXED_DOMAINS[i] * 10
+    // Selalu tampilkan minimal sampai 1M biar keliatan lingkarannya
+    for (let i = 0; i < FIXED_DOMAINS.length; i++) {
+      if (maxValue <= FIXED_DOMAINS[i]) {
+        // Tampilkan 2 tingkat di atas nilai maksimum biar keliatan scale-nya
+        const nextIndex = Math.min(i + 2, FIXED_DOMAINS.length - 1)
+        return FIXED_DOMAINS[nextIndex] || FIXED_DOMAINS[FIXED_DOMAINS.length - 1]
       }
     }
     return FIXED_DOMAINS[FIXED_DOMAINS.length - 1]
@@ -344,12 +347,11 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - FIXED GRID
+  // SPIDER CHART - FIXED GRID SEMUA LINGKARAN MUNCUL
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    // Cari nilai maksimum untuk menentukan domain maksimal
     const values = [
       data.total_deposit,
       data.total_turnover,
@@ -361,7 +363,6 @@ export default function MemberSpecificationPage() {
     const maxValue = Math.max(...values)
     const maxDomain = getMaxFixedDomain(maxValue)
     
-    // Kembalikan data dengan nilai REAL
     return [
       { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit, maxDomain: maxDomain },
       { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover, maxDomain: maxDomain },
@@ -394,6 +395,17 @@ export default function MemberSpecificationPage() {
     return value.toString()
   }
 
+  // Generate ticks dari FIXED_DOMAINS yang masih dalam batas maxDomain
+  const generateFixedTicks = (maxDomain: number): number[] => {
+    const ticks: number[] = []
+    for (let i = 0; i < FIXED_DOMAINS.length; i++) {
+      if (FIXED_DOMAINS[i] <= maxDomain) {
+        ticks.push(FIXED_DOMAINS[i])
+      }
+    }
+    return ticks
+  }
+
   // ===========================================
   // RENDER
   // ===========================================
@@ -410,6 +422,7 @@ export default function MemberSpecificationPage() {
         {memberBoxes.map((box) => {
           const spiderData = box.data ? getSpiderData(box.data) : []
           const currentDomain = spiderData[0]?.maxDomain || 1000000
+          const fixedTicks = generateFixedTicks(currentDomain)
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -467,7 +480,7 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* Spider Chart dengan FIXED GRID */}
+                    {/* Spider Chart dengan FIXED GRID - SEMUA LINGKARAN MUNCUL */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
                       <div style={{ width: '100%', height: 350 }}>
@@ -479,6 +492,7 @@ export default function MemberSpecificationPage() {
                               <PolarRadiusAxis 
                                 angle={90} 
                                 domain={[0, currentDomain]} 
+                                ticks={fixedTicks as any}
                                 tick={{ fill: '#FFD700', fontSize: 9 }}
                                 tickFormatter={formatRadiusTick}
                               />
@@ -499,7 +513,7 @@ export default function MemberSpecificationPage() {
                         )}
                       </div>
                       <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
-                        Lingkaran: 0 | 1jt | 10jt | 100jt | 1M | 10M | 100M | 1T
+                        Lingkaran: {fixedTicks.map(t => formatRadiusTick(t)).join(' | ')}
                       </div>
                     </div>
 
