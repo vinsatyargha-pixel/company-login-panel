@@ -57,19 +57,11 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // LINGKARAN TETAP: 1jt, 10jt, 100jt, 1M
+  // SKALA TETAP: 0, 1jt, 10jt, 100jt, 1M
+  // GA BERUBAH MESKIPUN NILAI MEMBER KECIL
   // ===========================================
+  const FIXED_DOMAIN = 1_000_000_000 // 1M (paling luar)
   const FIXED_CIRCLES = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
-  
-  // Fungsi untuk menentukan domain maksimal berdasarkan nilai tertinggi member
-  const getMaxDomain = (maxValue: number): number => {
-    for (let i = 0; i < FIXED_CIRCLES.length; i++) {
-      if (maxValue <= FIXED_CIRCLES[i]) {
-        return FIXED_CIRCLES[i]
-      }
-    }
-    return 1_000_000_000
-  }
 
   // ===========================================
   // PAGINATION HELPER
@@ -135,7 +127,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // GET ACTUAL MEMBER ID
+  // GET ACTUAL MEMBER ID (CASE INSENSITIVE)
   // ===========================================
   const getActualMemberId = async (searchId: string): Promise<string | null> => {
     try {
@@ -144,6 +136,7 @@ export default function MemberSpecificationPage() {
         cleanSearch = cleanSearch.substring(3)
       }
       
+      // Cari di deposit
       const { data: depositData } = await supabase
         .from('deposit_transactions')
         .select('user_name')
@@ -154,6 +147,7 @@ export default function MemberSpecificationPage() {
         return depositData[0].user_name
       }
       
+      // Cari di withdrawal
       const { data: withdrawalData } = await supabase
         .from('withdrawal_transactions')
         .select('user_name')
@@ -164,6 +158,7 @@ export default function MemberSpecificationPage() {
         return withdrawalData[0].user_name
       }
       
+      // Cari di winlose (return dengan prefix XLY)
       const { data: winloseData } = await supabase
         .from('winlose_transactions')
         .select('account_id')
@@ -171,11 +166,8 @@ export default function MemberSpecificationPage() {
         .limit(1)
       
       if (winloseData && winloseData.length > 0) {
-        let accountId = winloseData[0].account_id
-        if (accountId.toUpperCase().startsWith('XLY')) {
-          accountId = accountId.substring(3)
-        }
-        return accountId
+        // Return apa adanya (termasuk prefix XLY)
+        return winloseData[0].account_id
       }
       
       return null
@@ -215,33 +207,51 @@ export default function MemberSpecificationPage() {
 
       console.log(`✅ ID member ditemukan: ${actualId}`)
 
-      // FETCH DEPOSIT
+      // Buat ID untuk deposit/withdrawal (tanpa prefix)
+      let cleanId = actualId
+      if (cleanId.toUpperCase().startsWith('XLY')) {
+        cleanId = cleanId.substring(3)
+      }
+
+      // FETCH DEPOSIT (pake cleanId)
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
-        .ilike('user_name', actualId)
+        .ilike('user_name', cleanId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
 
       const depositData = await fetchAllWithPagination(depositQuery)
 
-      // FETCH WITHDRAWAL
+      // FETCH WITHDRAWAL (pake cleanId)
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
-        .ilike('user_name', actualId)
+        .ilike('user_name', cleanId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
 
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
 
-      // FETCH WINLOSE
-      const winloseQuery = supabase
+      // FETCH WINLOSE (pake actualId yang mungkin ada prefix XLY)
+      let winloseData: any[] = []
+      
+      // Coba dengan exact match
+      let query = supabase
         .from('winlose_transactions')
         .select('product_type, net_turnover')
-        .ilike('account_id', `%${actualId}%`)
-
-      const winloseData = await fetchAllWithPagination(winloseQuery)
+        .ilike('account_id', actualId)
+      winloseData = await fetchAllWithPagination(query)
+      
+      // Kalau ga ketemu, coba dengan wildcard
+      if (winloseData.length === 0) {
+        query = supabase
+          .from('winlose_transactions')
+          .select('product_type, net_turnover')
+          .ilike('account_id', `%${cleanId}%`)
+        winloseData = await fetchAllWithPagination(query)
+      }
+      
       console.log(`📊 Data winlose: ${winloseData.length} rows`)
 
       // HITUNG METRICS
@@ -278,7 +288,7 @@ export default function MemberSpecificationPage() {
       const withdrawalFrequency = calculateFrequency(withdrawalData.map(tx => tx.approved_date))
       
       const memberData: MemberDetailData = {
-        member_id: actualId,
+        member_id: cleanId,
         asset_code: 'XLY',
         total_deposit: totalDeposit,
         total_deposit_count: totalDepositCount,
@@ -363,29 +373,18 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - 6 SISI + DOMAIN DINAMIS
+  // SPIDER CHART - SKALA TETAP 1M
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    const values = [
-      data.total_deposit,
-      data.total_turnover,
-      data.slot_turnover,
-      data.live_casino_turnover,
-      data.sportbook_turnover,
-      data.total_withdrawal
-    ]
-    const maxValue = Math.max(...values)
-    const maxDomain = getMaxDomain(maxValue)
-    
     return [
-      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit, maxDomain },
-      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover, maxDomain },
-      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover, maxDomain },
-      { subject: 'Live Casino', value: data.live_casino_turnover, originalValue: data.live_casino_turnover, maxDomain },
-      { subject: 'Sportbook', value: data.sportbook_turnover, originalValue: data.sportbook_turnover, maxDomain },
-      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal, maxDomain }
+      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit },
+      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover },
+      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover },
+      { subject: 'Live Casino', value: data.live_casino_turnover, originalValue: data.live_casino_turnover },
+      { subject: 'Sportbook', value: data.sportbook_turnover, originalValue: data.sportbook_turnover },
+      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal }
     ]
   }
 
@@ -396,7 +395,7 @@ export default function MemberSpecificationPage() {
         <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
           <p className="text-[#FFD700] font-bold text-xs">{data.subject}</p>
           <p className="text-white text-xs">{formatCurrency(data.originalValue || 0)}</p>
-          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - {formatCurrency(data.maxDomain)}</p>
+          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - 1M (1jt | 10jt | 100jt | 1M)</p>
         </div>
       )
     }
@@ -427,7 +426,6 @@ export default function MemberSpecificationPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {memberBoxes.map((box) => {
           const spiderData = box.data ? getSpiderData(box.data) : []
-          const currentDomain = spiderData[0]?.maxDomain || 10_000_000
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -485,7 +483,7 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - 6 SISI + DOMAIN DINAMIS */}
+                    {/* RADAR CHART - SKALA TETAP 1M */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
@@ -503,7 +501,7 @@ export default function MemberSpecificationPage() {
                               />
                               <PolarRadiusAxis 
                                 angle={90} 
-                                domain={[0, currentDomain]} 
+                                domain={[0, FIXED_DOMAIN]} 
                                 tick={{ fill: '#FFD700', fontSize: 10, fontWeight: 'bold' }}
                                 tickFormatter={formatRadiusTick}
                                 axisLine={false}
@@ -514,7 +512,14 @@ export default function MemberSpecificationPage() {
                                 stroke="#FFD700" 
                                 strokeWidth={3}
                                 fill="#FFD700" 
-                                fillOpacity={0.35} 
+                                fillOpacity={0.35}
+                                dot={{ 
+                                  fill: "#FFD700", 
+                                  stroke: "#FFD700", 
+                                  strokeWidth: 2,
+                                  r: 5 
+                                }}
+                                activeDot={{ r: 8, fill: "#FFD700", stroke: "#fff" }}
                               />
                               <Tooltip content={<CustomTooltip />} />
                             </RadarChart>
