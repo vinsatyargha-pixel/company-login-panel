@@ -464,57 +464,58 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - SEGI ENAM DENGAN LAYER TEBAL */}
+                    {/* RADAR CHART - FIXED HEIGHT UNTUK HINDARI ERROR -1 */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={spiderData}>
-                              {/* GRID SEGI ENAM - TEBAL & JELAS */}
+                          <ResponsiveContainer width="100%" height={450}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={spiderData}>
+                              {/* GRID SEGI ENAM - PAKSA JADI POLIGON TEBAS */}
                               <PolarGrid
                                 gridType="polygon"
+                                radialLines={true}
                                 stroke="#FFD700"
                                 strokeWidth={2}
                                 strokeOpacity={0.9}
                               />
-                              {/* LABEL SISI (6 sisi) - TANPA textShadow */}
+                              {/* LABEL SISI */}
                               <PolarAngleAxis 
                                 dataKey="subject" 
                                 tick={{ 
                                   fill: '#A7D8FF', 
-                                  fontSize: 11, 
+                                  fontSize: 10, 
                                   fontWeight: 'bold'
                                 }}
+                                axisLine={{ stroke: '#FFD700', strokeWidth: 1 }}
                               />
-                              {/* RADIUS AXIS - LAYER TEBAL */}
+                              {/* RADIUS AXIS - TANPA ticks, biar recharts ngatur otomatis */}
                               <PolarRadiusAxis
                                 angle={90}
                                 domain={[0, FIXED_DOMAIN]}
                                 tick={{ 
                                   fill: '#FFD700', 
-                                  fontSize: 11, 
+                                  fontSize: 10, 
                                   fontWeight: 'bold'
                                 }}
                                 tickFormatter={formatRadiusTick}
                                 axisLine={false}
-                                tickCount={5}
                               />
-                              {/* RADAR - GLOW EFFECT PREMIUM */}
+                              {/* RADAR - DENGAN DOT BIAR KELIATAN */}
                               <Radar
                                 name={box.data.member_id}
                                 dataKey="value"
                                 stroke="#00E5FF"
                                 strokeWidth={3}
                                 fill="#00E5FF"
-                                fillOpacity={0.35}
+                                fillOpacity={0.3}
                                 dot={{
                                   fill: "#00E5FF",
                                   stroke: "#FFFFFF",
                                   strokeWidth: 2,
-                                  r: 5
+                                  r: 6
                                 }}
-                                activeDot={{ r: 8, fill: "#00E5FF", stroke: "#FFFFFF", strokeWidth: 2 }}
+                                activeDot={{ r: 10, fill: "#00E5FF", stroke: "#FFFFFF", strokeWidth: 2 }}
                               />
                               <Tooltip content={<CustomTooltip />} />
                             </RadarChart>
