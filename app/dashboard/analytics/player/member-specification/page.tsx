@@ -367,7 +367,7 @@ export default function MemberSpecificationPage() {
     }))
   }
 
-  // Normalisasi LOGARITMIK - HANYA SATU DEKLARASI
+  // Normalisasi LOGARITMIK
   const normalizeLog = (value: number): number => {
     if (value <= 0) return 0
     if (value >= MAX_DOMAIN) return 1
@@ -471,7 +471,7 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* CUSTOM SVG CHART */}
+                    {/* CUSTOM SVG CHART - TANPA TITIK */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div className="flex justify-center">
@@ -506,7 +506,7 @@ export default function MemberSpecificationPage() {
                             />
                           ))}
                           
-                          {/* POLYGON DATA MEMBER */}
+                          {/* POLYGON DATA MEMBER - TANPA TITIK */}
                           {data && (
                             <polygon
                               points={getDataPolygonPoints(values, 56, 80, 80)}
@@ -517,26 +517,6 @@ export default function MemberSpecificationPage() {
                               strokeLinejoin="round"
                             />
                           )}
-                          
-                          {/* TITIK DATA */}
-                          {data && values.map((val, idx) => {
-                            const radius = normalizeLog(val) * 56
-                            const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
-                            const angle = angles[idx]
-                            const x = 80 + radius * Math.cos(angle)
-                            const y = 80 + radius * Math.sin(angle)
-                            return (
-                              <circle
-                                key={`dot-${idx}`}
-                                cx={x}
-                                cy={y}
-                                r="4"
-                                fill="#00E5FF"
-                                stroke="white"
-                                strokeWidth="2"
-                              />
-                            )
-                          })}
                           
                           {/* LABEL 6 SISI */}
                           {SIDES.map((side, idx) => {
