@@ -66,12 +66,12 @@ export default function MemberSpecificationPage() {
   // 08:00 = 150°
   // 10:00 = 210° (-150°)
   const SIDES = [
-    { name: 'Deposit', angle: -90 },     // 12:00 (atas)
-    { name: 'Turnover', angle: -30 },    // 02:00
-    { name: 'Slot', angle: 30 },         // 04:00
-    { name: 'Withdraw', angle: 90 },     // 06:00 (bawah)
-    { name: 'Live', angle: 150 },        // 08:00
-    { name: 'Sport', angle: 210 }        // 10:00
+    { name: 'DEPOSIT', angle: -90 },     // 12:00 (atas)
+    { name: 'TOTAL T.O', angle: -30 },    // 02:00
+    { name: 'T.O Slot', angle: 30 },         // 04:00
+    { name: 'WITHDRAWAL', angle: 90 },     // 06:00 (bawah)
+    { name: 'CASINO', angle: 150 },        // 08:00
+    { name: 'SPORTSBOOK', angle: 210 }        // 10:00
   ]
   
   const CENTER_X = 90
@@ -496,7 +496,7 @@ export default function MemberSpecificationPage() {
                     </div>
 
                     <div className="mb-6">
-                      <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
+                      <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Polygon Metrics</h4>
                       <div className="flex justify-center">
                         <svg viewBox="0 0 180 180" width="300" height="300" style={{ margin: '0 auto' }}>
                           {/* 4 LAPISAN SEGI ENAM */}
