@@ -57,41 +57,17 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // LINGKARAN TETAP DARI YANG TERKECIL KE TERBESAR
-  // Lingkaran 1 (paling dalam) = 1jt
-  // Lingkaran 2 = 10jt
-  // Lingkaran 3 = 100jt
-  // Lingkaran 4 = 1M
-  // Lingkaran 5 = 10M
+  // 4 LAPISAN SEGI ENAM: 1jt, 10jt, 100jt, 1M
   // ===========================================
-  const FIXED_CIRCLES = [
-    1_000_000,      // lingkaran 1 (paling dalam) - 1jt
-    10_000_000,     // lingkaran 2 - 10jt
-    100_000_000,    // lingkaran 3 - 100jt
-    1_000_000_000,  // lingkaran 4 - 1M
-    10_000_000_000, // lingkaran 5 - 10M
-    100_000_000_000,// lingkaran 6 - 100M
-    1_000_000_000_000 // lingkaran 7 - 1T
+  const HEX_LAYERS = [
+    1_000_000,      // lapisan 1 (paling dalam) - 1jt
+    10_000_000,     // lapisan 2 - 10jt
+    100_000_000,    // lapisan 3 - 100jt
+    1_000_000_000   // lapisan 4 (paling luar) - 1M
   ]
   
-  // Domain maksimal: selalu sampai lingkaran ke-4 (1M) minimal
-  // Biar keliatan 1jt, 10jt, 100jt, 1M semua
-  const getMaxDomain = (maxValue: number): number => {
-    // Minimal tampilkan sampai 1M (lingkaran ke-4)
-    const MIN_DOMAIN = 1_000_000_000 // 1M
-    
-    if (maxValue <= MIN_DOMAIN) {
-      return MIN_DOMAIN
-    }
-    
-    // Kalau lebih dari 1M, cari lingkaran berikutnya
-    for (let i = 0; i < FIXED_CIRCLES.length; i++) {
-      if (maxValue <= FIXED_CIRCLES[i]) {
-        return FIXED_CIRCLES[i]
-      }
-    }
-    return FIXED_CIRCLES[FIXED_CIRCLES.length - 1]
-  }
+  // Domain maksimal = lapisan paling luar (1M)
+  const MAX_DOMAIN = 1_000_000_000 // 1M
 
   // ===========================================
   // PAGINATION HELPER
@@ -357,29 +333,18 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - FIXED CIRCLES
+  // SPIDER CHART - 4 LAPISAN SEGI ENAM
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    const values = [
-      data.total_deposit,
-      data.total_turnover,
-      data.slot_turnover,
-      data.live_casino_turnover,
-      data.sportbook_turnover,
-      data.total_withdrawal
-    ]
-    const maxValue = Math.max(...values)
-    const maxDomain = getMaxDomain(maxValue)
-    
     return [
-      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit, maxDomain: maxDomain },
-      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover, maxDomain: maxDomain },
-      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover, maxDomain: maxDomain },
-      { subject: 'Live Casino Turnover', value: data.live_casino_turnover, originalValue: data.live_casino_turnover, maxDomain: maxDomain },
-      { subject: 'Sportbook Turnover', value: data.sportbook_turnover, originalValue: data.sportbook_turnover, maxDomain: maxDomain },
-      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal, maxDomain: maxDomain }
+      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit, maxDomain: MAX_DOMAIN },
+      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover, maxDomain: MAX_DOMAIN },
+      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover, maxDomain: MAX_DOMAIN },
+      { subject: 'Live Casino Turnover', value: data.live_casino_turnover, originalValue: data.live_casino_turnover, maxDomain: MAX_DOMAIN },
+      { subject: 'Sportbook Turnover', value: data.sportbook_turnover, originalValue: data.sportbook_turnover, maxDomain: MAX_DOMAIN },
+      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal, maxDomain: MAX_DOMAIN }
     ]
   }
 
@@ -390,7 +355,7 @@ export default function MemberSpecificationPage() {
         <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
           <p className="text-[#FFD700] font-bold text-xs">{data.subject}</p>
           <p className="text-white text-xs">{formatCurrency(data.originalValue || 0)}</p>
-          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - {formatCurrency(data.maxDomain)}</p>
+          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - {formatCurrency(MAX_DOMAIN)}</p>
         </div>
       )
     }
@@ -403,17 +368,6 @@ export default function MemberSpecificationPage() {
     if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}jt`
     if (value >= 1_000) return `${(value / 1_000).toFixed(0)}rb`
     return value.toString()
-  }
-
-  // Generate ticks dari FIXED_CIRCLES yang masih dalam batas maxDomain
-  const generateFixedTicks = (maxDomain: number): number[] => {
-    const ticks: number[] = [0]
-    for (let i = 0; i < FIXED_CIRCLES.length; i++) {
-      if (FIXED_CIRCLES[i] <= maxDomain) {
-        ticks.push(FIXED_CIRCLES[i])
-      }
-    }
-    return ticks
   }
 
   // ===========================================
@@ -431,8 +385,6 @@ export default function MemberSpecificationPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {memberBoxes.map((box) => {
           const spiderData = box.data ? getSpiderData(box.data) : []
-          const currentDomain = spiderData[0]?.maxDomain || 1000000000 // default 1M
-          const fixedTicks = generateFixedTicks(currentDomain)
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -490,7 +442,7 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* Spider Chart dengan LINGKARAN TETAP: 1jt, 10jt, 100jt, 1M, ... */}
+                    {/* Spider Chart - 4 LAPISAN SEGI ENAM */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
                       <div style={{ width: '100%', height: 350 }}>
@@ -501,8 +453,8 @@ export default function MemberSpecificationPage() {
                               <PolarAngleAxis dataKey="subject" tick={{ fill: '#A7D8FF', fontSize: 10 }} />
                               <PolarRadiusAxis 
                                 angle={90} 
-                                domain={[0, currentDomain]} 
-                                ticks={fixedTicks as any}
+                                domain={[0, MAX_DOMAIN]} 
+                                ticks={[0, ...HEX_LAYERS] as any}
                                 tick={{ fill: '#FFD700', fontSize: 9 }}
                                 tickFormatter={formatRadiusTick}
                               />
@@ -523,7 +475,7 @@ export default function MemberSpecificationPage() {
                         )}
                       </div>
                       <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
-                        Lingkaran: 1jt | 10jt | 100jt | 1M | 10M | 100M | 1T
+                        Segi Enam: 1jt (dalam) | 10jt | 100jt | 1M (luar)
                       </div>
                     </div>
 
