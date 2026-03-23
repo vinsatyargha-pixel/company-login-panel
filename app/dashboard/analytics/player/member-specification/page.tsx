@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import {
@@ -57,20 +57,10 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // HEXAGRAM TETAP - 4 LAPISAN
-  // Lapisan 1 (paling dalam) = 1jt
-  // Lapisan 2 = 10jt
-  // Lapisan 3 = 100jt
-  // Lapisan 4 (paling luar) = 1M
+  // 4 LAPISAN SEGI ENAM: 1jt, 10jt, 100jt, 1M
   // ===========================================
-  const FIXED_LAYERS = [
-    1_000_000,      // lapisan 1 - 1jt
-    10_000_000,     // lapisan 2 - 10jt
-    100_000_000,    // lapisan 3 - 100jt
-    1_000_000_000   // lapisan 4 - 1M
-  ]
-  
-  const MAX_DOMAIN = 1_000_000_000 // 1M (paling luar)
+  const LAYERS = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
+  const MAX_DOMAIN = 1_000_000_000
 
   // ===========================================
   // PAGINATION HELPER
@@ -336,19 +326,17 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - HEXAGRAM TETAP 4 LAPISAN
-  // Setiap sisi mewakili 1 metric
+  // SPIDER CHART DATA
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    // Nilai REAL langsung dimasukkan, chart akan otomatis menyesuaikan posisi
     return [
       { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit },
       { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover },
       { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover },
-      { subject: 'Live Casino Turnover', value: data.live_casino_turnover, originalValue: data.live_casino_turnover },
-      { subject: 'Sportbook Turnover', value: data.sportbook_turnover, originalValue: data.sportbook_turnover },
+      { subject: 'Live Casino', value: data.live_casino_turnover, originalValue: data.live_casino_turnover },
+      { subject: 'Sportbook', value: data.sportbook_turnover, originalValue: data.sportbook_turnover },
       { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal }
     ]
   }
@@ -360,21 +348,19 @@ export default function MemberSpecificationPage() {
         <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
           <p className="text-[#FFD700] font-bold text-xs">{data.subject}</p>
           <p className="text-white text-xs">{formatCurrency(data.originalValue || 0)}</p>
-          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - 1M (1jt | 10jt | 100jt | 1M)</p>
         </div>
       )
     }
     return null
   }
 
-  const formatRadiusTick = (value: number) => {
+  const formatTick = (value: number) => {
     if (value === 0) return '0'
-    if (value >= 1_000_000_000) return '1M'
-    if (value >= 100_000_000) return '100jt'
-    if (value >= 10_000_000) return '10jt'
-    if (value >= 1_000_000) return '1jt'
-    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}rb`
-    return value.toString()
+    if (value === 1_000_000) return '1jt'
+    if (value === 10_000_000) return '10jt'
+    if (value === 100_000_000) return '100jt'
+    if (value === 1_000_000_000) return '1M'
+    return ''
   }
 
   // ===========================================
@@ -391,7 +377,7 @@ export default function MemberSpecificationPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {memberBoxes.map((box) => {
-          const spiderData = box.data ? getSpiderData(box.data) : []
+          const spiderData = getSpiderData(box.data)
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -449,31 +435,32 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* HEXAGRAM CHART - TETAP 4 LAPISAN */}
+                    {/* RADAR CHART - 4 LAPISAN SEGI ENAM */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
-                      <div style={{ width: '100%', height: 350 }}>
+                      <div style={{ width: '100%', height: 400 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={spiderData}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={spiderData}>
                               <PolarGrid stroke="#FFD70030" />
                               <PolarAngleAxis 
                                 dataKey="subject" 
-                                tick={{ fill: '#A7D8FF', fontSize: 10 }}
+                                tick={{ fill: '#A7D8FF', fontSize: 10, fontWeight: 'bold' }}
                               />
                               <PolarRadiusAxis 
                                 angle={90} 
                                 domain={[0, MAX_DOMAIN]} 
-                                ticks={[0, ...FIXED_LAYERS] as any}
-                                tick={{ fill: '#FFD700', fontSize: 9 }}
-                                tickFormatter={formatRadiusTick}
+                                tick={{ fill: '#FFD700', fontSize: 11, fontWeight: 'bold' }}
+                                tickFormatter={formatTick}
+                                axisLine={{ stroke: '#FFD700' }}
                               />
                               <Radar 
-                                name="Member" 
+                                name={box.data.member_id} 
                                 dataKey="value" 
                                 stroke="#FFD700" 
+                                strokeWidth={2}
                                 fill="#FFD700" 
-                                fillOpacity={0.3} 
+                                fillOpacity={0.4} 
                               />
                               <Tooltip content={<CustomTooltip />} />
                             </RadarChart>
@@ -484,12 +471,12 @@ export default function MemberSpecificationPage() {
                           </div>
                         )}
                       </div>
-                      <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
-                        ⬤ Lapisan: 1jt (dalam) | 10jt | 100jt | 1M (luar)
+                      <div className="text-center text-xs text-[#A7D8FF] mt-2">
+                        ━━━ 4 Lapisan Segi Enam: 1jt (dalam) ┃ 10jt ┃ 100jt ┃ 1M (luar) ━━━
                       </div>
                     </div>
 
-                    {/* DATA DETAIL */}
+                    {/* DETAIL DATA */}
                     <div className="space-y-3">
                       <div className="bg-[#0B1A33]/30 rounded-lg p-3">
                         <h5 className="text-green-400 font-bold text-sm mb-2">💰 DEPOSIT</h5>
