@@ -57,8 +57,7 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // DOMAIN TETAP UNTUK SPIDER CHART
-  // Kelipatan x10: 1jt, 10jt, 100jt, 1M, 10M, 100M, 1T...
+  // DOMAIN TETAP UNTUK RADIUS AXIS (dalam Rupiah)
   // ===========================================
   const SPIDER_DOMAINS = [
     0,
@@ -71,7 +70,7 @@ export default function MemberSpecificationPage() {
     1_000_000_000_000 // 1T
   ]
   
-  // Domain maksimal yang ditampilkan (sesuai nilai tertinggi member, tapi pake kelipatan)
+  // Ambil domain maksimal berdasarkan nilai tertinggi member
   const getMaxDomain = (maxValue: number): number => {
     for (let i = SPIDER_DOMAINS.length - 1; i >= 0; i--) {
       if (maxValue >= SPIDER_DOMAINS[i]) {
@@ -192,7 +191,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // FETCH MEMBER DATA (ALL TIME - TANPA FILTER TANGGAL)
+  // FETCH MEMBER DATA (ALL TIME)
   // ===========================================
   const fetchMemberData = async (boxId: number, memberId: string) => {
     if (!memberId || memberId.trim() === '') return
@@ -206,7 +205,7 @@ export default function MemberSpecificationPage() {
     try {
       const searchTerm = memberId.trim()
       
-      console.log(`🔍 Searching for member: ${searchTerm}`)
+      console.log(`🔍 Mencari member: ${searchTerm}`)
       
       const actualId = await getActualMemberId(searchTerm)
       
@@ -222,9 +221,9 @@ export default function MemberSpecificationPage() {
         return
       }
       
-      console.log(`✅ Found actual member ID: ${actualId}`)
+      console.log(`✅ ID member ditemukan: ${actualId}`)
 
-      // Fetch ALL deposit transactions (tanpa filter tanggal)
+      // Fetch semua deposit
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
@@ -233,9 +232,9 @@ export default function MemberSpecificationPage() {
         .order('approved_date', { ascending: true })
 
       const depositData = await fetchAllWithPagination(depositQuery)
-      console.log(`📊 Deposit data count (all time): ${depositData.length}`)
+      console.log(`📊 Data deposit: ${depositData.length} rows`)
 
-      // Fetch ALL withdrawal transactions
+      // Fetch semua withdrawal
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
@@ -244,18 +243,18 @@ export default function MemberSpecificationPage() {
         .order('approved_date', { ascending: true })
 
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
-      console.log(`📊 Withdrawal data count (all time): ${withdrawalData.length}`)
+      console.log(`📊 Data withdrawal: ${withdrawalData.length} rows`)
 
-      // Fetch ALL winlose data
+      // Fetch semua winlose
       let winloseQuery = supabase
         .from('winlose_transactions')
         .select('*')
         .eq('account_id', actualId)
 
       const winloseData = await fetchAllWithPagination(winloseQuery)
-      console.log(`📊 Winlose data count (all time): ${winloseData.length}`)
+      console.log(`📊 Data winlose: ${winloseData.length} rows`)
 
-      // Calculate metrics
+      // Hitung metrics
       const totalDeposit = depositData.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0)
       const totalDepositCount = depositData.length
       const avgDeposit = totalDepositCount > 0 ? totalDeposit / totalDepositCount : 0
@@ -301,7 +300,7 @@ export default function MemberSpecificationPage() {
         last_updated: new Date().toISOString()
       }
 
-      console.log(`✅ Member data loaded:`, memberData)
+      console.log(`✅ Data member loaded:`, memberData)
 
       setMemberBoxes(prev => prev.map(box => 
         box.id === boxId ? { ...box, loading: false, data: memberData, error: null } : box
@@ -359,12 +358,12 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - DOMAIN TETAP (0, 1jt, 10jt, 100jt, 1M, 10M, ...)
+  // SPIDER CHART - MENGGUNAKAN NILAI REAL BUKAN PERSENTASE
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    // Cari nilai maksimum dari semua metric untuk menentukan domain maksimal
+    // Cari nilai maksimum untuk menentukan domain yang ditampilkan
     const values = [
       data.total_deposit,
       data.total_turnover,
@@ -374,25 +373,51 @@ export default function MemberSpecificationPage() {
       data.total_withdrawal
     ]
     const maxValue = Math.max(...values)
-    
-    // Domain maksimal yang ditampilkan (kelipatan x10)
     const maxDomain = getMaxDomain(maxValue)
     
-    // Fungsi untuk menghitung persentase berdasarkan domain tetap
-    const getPercentage = (value: number): number => {
-      return Math.min((value / maxDomain) * 100, 100)
-    }
-    
+    // Kembalikan data dengan nilai REAL (bukan persentase)
+    // Tapi kita tetap perlu domain maksimum untuk referensi
     return [
-      { subject: 'Total Deposit', value: getPercentage(data.total_deposit), originalValue: data.total_deposit, maxDomain: maxDomain },
-      { subject: 'Total Turnover', value: getPercentage(data.total_turnover), originalValue: data.total_turnover, maxDomain: maxDomain },
-      { subject: 'Slot Turnover', value: getPercentage(data.slot_turnover), originalValue: data.slot_turnover, maxDomain: maxDomain },
-      { subject: 'Live Casino Turnover', value: getPercentage(data.live_casino_turnover), originalValue: data.live_casino_turnover, maxDomain: maxDomain },
-      { subject: 'Sportbook Turnover', value: getPercentage(data.sportbook_turnover), originalValue: data.sportbook_turnover, maxDomain: maxDomain },
-      { subject: 'Total Withdrawal', value: getPercentage(data.total_withdrawal), originalValue: data.total_withdrawal, maxDomain: maxDomain }
+      { 
+        subject: 'Total Deposit', 
+        value: data.total_deposit,  // Nilai real dalam Rupiah
+        originalValue: data.total_deposit, 
+        maxDomain: maxDomain 
+      },
+      { 
+        subject: 'Total Turnover', 
+        value: data.total_turnover, 
+        originalValue: data.total_turnover, 
+        maxDomain: maxDomain 
+      },
+      { 
+        subject: 'Slot Turnover', 
+        value: data.slot_turnover, 
+        originalValue: data.slot_turnover, 
+        maxDomain: maxDomain 
+      },
+      { 
+        subject: 'Live Casino Turnover', 
+        value: data.live_casino_turnover, 
+        originalValue: data.live_casino_turnover, 
+        maxDomain: maxDomain 
+      },
+      { 
+        subject: 'Sportbook Turnover', 
+        value: data.sportbook_turnover, 
+        originalValue: data.sportbook_turnover, 
+        maxDomain: maxDomain 
+      },
+      { 
+        subject: 'Total Withdrawal', 
+        value: data.total_withdrawal, 
+        originalValue: data.total_withdrawal, 
+        maxDomain: maxDomain 
+      }
     ]
   }
 
+  // Custom tooltip untuk menampilkan nilai real
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
@@ -409,6 +434,15 @@ export default function MemberSpecificationPage() {
       )
     }
     return null
+  }
+
+  // Format tick pada radius axis
+  const formatRadiusTick = (value: number) => {
+    if (value === 0) return '0'
+    if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(0)}M`
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}jt`
+    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}rb`
+    return value.toString()
   }
 
   // ===========================================
@@ -480,7 +514,7 @@ export default function MemberSpecificationPage() {
                     <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                   </div>
 
-                  {/* Spider Chart */}
+                  {/* Spider Chart dengan nilai REAL */}
                   <div className="mb-6">
                     <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
                     <div style={{ minHeight: '300px', height: '300px', width: '100%', position: 'relative' }}>
@@ -491,19 +525,17 @@ export default function MemberSpecificationPage() {
                             <PolarAngleAxis dataKey="subject" tick={{ fill: '#A7D8FF', fontSize: 10 }} />
                             <PolarRadiusAxis 
                               angle={90} 
-                              domain={[0, 100]} 
-                              tick={{ fill: '#FFD700', fontSize: 8 }}
-                              tickFormatter={(value) => {
-                                if (value === 0) return '0'
-                                if (value === 20) return '20%'
-                                if (value === 40) return '40%'
-                                if (value === 60) return '60%'
-                                if (value === 80) return '80%'
-                                if (value === 100) return '100%'
-                                return `${value}%`
-                              }}
+                              domain={[0, getSpiderData(box.data)[0]?.maxDomain || 1000000]} 
+                              tick={{ fill: '#FFD700', fontSize: 9 }}
+                              tickFormatter={formatRadiusTick}
                             />
-                            <Radar name="Member" dataKey="value" stroke="#FFD700" fill="#FFD700" fillOpacity={0.3} />
+                            <Radar 
+                              name="Member" 
+                              dataKey="value" 
+                              stroke="#FFD700" 
+                              fill="#FFD700" 
+                              fillOpacity={0.3} 
+                            />
                             <Tooltip content={<CustomTooltip />} />
                           </RadarChart>
                         </ResponsiveContainer>
@@ -514,7 +546,7 @@ export default function MemberSpecificationPage() {
                       )}
                     </div>
                     <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
-                      Lingkaran: 1jt | 10jt | 100jt | 1M | 10M | 100M | 1T
+                      Skala: 0 | 1jt | 10jt | 100jt | 1M | 10M | 100M | 1T
                     </div>
                   </div>
 
