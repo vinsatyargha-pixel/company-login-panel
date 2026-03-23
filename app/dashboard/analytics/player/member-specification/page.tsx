@@ -57,10 +57,9 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // 4 LAPISAN SEGI ENAM: 1jt, 10jt, 100jt, 1M
+  // 4 LAPISAN SEGI ENAM TETAP: 1jt, 10jt, 100jt, 1M
   // ===========================================
-  const LAYERS = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
-  const MAX_DOMAIN = 1_000_000_000
+  const MAX_DOMAIN = 1_000_000_000 // 1M (paling luar)
 
   // ===========================================
   // PAGINATION HELPER
@@ -111,30 +110,12 @@ export default function MemberSpecificationPage() {
     return daysDiff / (dates.length - 1)
   }
 
-  const calculateGameTurnover = (winloseData: any[]): { slot: number; live_casino: number; sportbook: number } => {
-    const turnovers = { slot: 0, live_casino: 0, sportbook: 0 }
-    
-    winloseData.forEach(tx => {
-      const productType = tx.product_type?.toLowerCase() || ''
-      const netTurnover = tx.net_turnover || 0
-      
-      if (productType.includes('slot')) {
-        turnovers.slot += netTurnover
-      } else if (productType.includes('live') || productType.includes('casino')) {
-        turnovers.live_casino += netTurnover
-      } else if (productType.includes('sport')) {
-        turnovers.sportbook += netTurnover
-      }
-    })
-    
-    return turnovers
-  }
-
   // ===========================================
-  // GET ACTUAL MEMBER ID
+  // GET ACTUAL MEMBER ID (CASE INSENSITIVE)
   // ===========================================
   const getActualMemberId = async (searchId: string): Promise<string | null> => {
     try {
+      // Cari di deposit_transactions
       const { data: depositData } = await supabase
         .from('deposit_transactions')
         .select('user_name')
@@ -145,6 +126,7 @@ export default function MemberSpecificationPage() {
         return depositData[0].user_name
       }
       
+      // Cari di withdrawal_transactions
       const { data: withdrawalData } = await supabase
         .from('withdrawal_transactions')
         .select('user_name')
@@ -155,14 +137,26 @@ export default function MemberSpecificationPage() {
         return withdrawalData[0].user_name
       }
       
+      // Cari di winlose_transactions (buang prefix XLY)
+      // Kita cari dengan berbagai kemungkinan
+      let cleanId = searchId
+      if (cleanId.toUpperCase().startsWith('XLY')) {
+        cleanId = cleanId.substring(3)
+      }
+      
       const { data: winloseData } = await supabase
         .from('winlose_transactions')
         .select('account_id')
-        .ilike('account_id', searchId)
+        .ilike('account_id', `%${cleanId}%`)
         .limit(1)
       
       if (winloseData && winloseData.length > 0) {
-        return winloseData[0].account_id
+        // Return tanpa prefix XLY
+        let accountId = winloseData[0].account_id
+        if (accountId.toUpperCase().startsWith('XLY')) {
+          accountId = accountId.substring(3)
+        }
+        return accountId
       }
       
       return null
@@ -200,31 +194,70 @@ export default function MemberSpecificationPage() {
         return
       }
 
-      const depositQuery = supabase
+      console.log(`✅ ID member ditemukan: ${actualId}`)
+
+      // ===========================================
+      // FETCH DEPOSIT (case insensitive)
+      // ===========================================
+      let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
-        .eq('user_name', actualId)
+        .ilike('user_name', actualId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
 
       const depositData = await fetchAllWithPagination(depositQuery)
+      console.log(`📊 Data deposit: ${depositData.length} rows`)
 
-      const withdrawalQuery = supabase
+      // ===========================================
+      // FETCH WITHDRAWAL (case insensitive)
+      // ===========================================
+      let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
-        .eq('user_name', actualId)
+        .ilike('user_name', actualId)
         .eq('status', 'Approved')
         .order('approved_date', { ascending: true })
 
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
+      console.log(`📊 Data withdrawal: ${withdrawalData.length} rows`)
 
-      const winloseQuery = supabase
+      // ===========================================
+      // FETCH WINLOSE (cari dengan berbagai kemungkinan)
+      // ===========================================
+      // Kemungkinan 1: ID asli tanpa prefix
+      let winloseQuery = supabase
         .from('winlose_transactions')
-        .select('*')
-        .eq('account_id', actualId)
+        .select('net_turnover')
+        .ilike('account_id', actualId)
+      
+      let winloseData = await fetchAllWithPagination(winloseQuery)
+      
+      // Kemungkinan 2: dengan prefix XLY
+      if (winloseData.length === 0) {
+        const winloseQuery2 = supabase
+          .from('winlose_transactions')
+          .select('net_turnover')
+          .ilike('account_id', `XLY${actualId}`)
+        
+        winloseData = await fetchAllWithPagination(winloseQuery2)
+      }
+      
+      // Kemungkinan 3: dengan prefix XLY dan huruf besar/kecil
+      if (winloseData.length === 0) {
+        const winloseQuery3 = supabase
+          .from('winlose_transactions')
+          .select('net_turnover')
+          .ilike('account_id', `%${actualId}%`)
+        
+        winloseData = await fetchAllWithPagination(winloseQuery3)
+      }
+      
+      console.log(`📊 Data winlose: ${winloseData.length} rows`)
 
-      const winloseData = await fetchAllWithPagination(winloseQuery)
-
+      // ===========================================
+      // HITUNG METRICS
+      // ===========================================
       const totalDeposit = depositData.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0)
       const totalDepositCount = depositData.length
       const avgDeposit = totalDepositCount > 0 ? totalDeposit / totalDepositCount : 0
@@ -233,9 +266,8 @@ export default function MemberSpecificationPage() {
       const totalWithdrawalCount = withdrawalData.length
       const avgWithdrawal = totalWithdrawalCount > 0 ? totalWithdrawal / totalWithdrawalCount : 0
 
+      // TOTAL TURNOVER dari net_turnover
       const totalTurnover = winloseData.reduce((sum, tx) => sum + (tx.net_turnover || 0), 0)
-      
-      const gameTurnovers = calculateGameTurnover(winloseData)
       
       const avgDepositInterval = calculateAverageInterval(depositData.map(tx => tx.approved_date))
       const avgWithdrawalInterval = calculateAverageInterval(withdrawalData.map(tx => tx.approved_date))
@@ -264,11 +296,13 @@ export default function MemberSpecificationPage() {
         avg_withdrawal_interval_hours: avgWithdrawalInterval,
         deposit_frequency_days: depositFrequency,
         withdrawal_frequency_days: withdrawalFrequency,
-        slot_turnover: gameTurnovers.slot,
-        live_casino_turnover: gameTurnovers.live_casino,
-        sportbook_turnover: gameTurnovers.sportbook,
+        slot_turnover: 0,
+        live_casino_turnover: 0,
+        sportbook_turnover: 0,
         last_updated: new Date().toISOString()
       }
+
+      console.log(`✅ Data member loaded:`, memberData)
 
       setMemberBoxes(prev => prev.map(box => 
         box.id === boxId ? { ...box, loading: false, data: memberData, error: null } : box
@@ -326,7 +360,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART DATA - 6 SISI
+  // SPIDER CHART - 4 LAPISAN SEGI ENAM
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
@@ -334,9 +368,6 @@ export default function MemberSpecificationPage() {
     return [
       { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit },
       { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover },
-      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover },
-      { subject: 'Live Casino', value: data.live_casino_turnover, originalValue: data.live_casino_turnover },
-      { subject: 'Sportbook', value: data.sportbook_turnover, originalValue: data.sportbook_turnover },
       { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal }
     ]
   }
@@ -348,13 +379,14 @@ export default function MemberSpecificationPage() {
         <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
           <p className="text-[#FFD700] font-bold text-xs">{data.subject}</p>
           <p className="text-white text-xs">{formatCurrency(data.originalValue || 0)}</p>
+          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - 1M (1jt | 10jt | 100jt | 1M)</p>
         </div>
       )
     }
     return null
   }
 
-  const formatTick = (value: number) => {
+  const formatRadiusTick = (value: number) => {
     if (value === 0) return '0'
     if (value === 1_000_000) return '1jt'
     if (value === 10_000_000) return '10jt'
@@ -377,7 +409,7 @@ export default function MemberSpecificationPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {memberBoxes.map((box) => {
-          const spiderData = getSpiderData(box.data)
+          const spiderData = box.data ? getSpiderData(box.data) : []
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -435,14 +467,14 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - 4 LAPISAN SEGI ENAM + 6 SISI */}
+                    {/* RADAR CHART - 4 LAPISAN SEGI ENAM */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 400, minHeight: 400 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
                             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={spiderData}>
-                              {/* PolarGrid dengan 4 lingkaran konsentris = 4 lapisan segi enam */}
+                              {/* PolarGrid otomatis bikin 4 lapisan segi enam */}
                               <PolarGrid 
                                 stroke="#FFD700" 
                                 strokeOpacity={0.4}
@@ -450,13 +482,13 @@ export default function MemberSpecificationPage() {
                               />
                               <PolarAngleAxis 
                                 dataKey="subject" 
-                                tick={{ fill: '#A7D8FF', fontSize: 10, fontWeight: 'bold' }}
+                                tick={{ fill: '#A7D8FF', fontSize: 11, fontWeight: 'bold' }}
                               />
                               <PolarRadiusAxis 
                                 angle={90} 
                                 domain={[0, MAX_DOMAIN]} 
                                 tick={{ fill: '#FFD700', fontSize: 11, fontWeight: 'bold' }}
-                                tickFormatter={formatTick}
+                                tickFormatter={formatRadiusTick}
                                 axisLine={false}
                               />
                               <Radar 
@@ -509,12 +541,9 @@ export default function MemberSpecificationPage() {
                       </div>
 
                       <div className="bg-[#0B1A33]/30 rounded-lg p-3">
-                        <h5 className="text-purple-400 font-bold text-sm mb-2">🎮 GAME TURNOVER</h5>
+                        <h5 className="text-purple-400 font-bold text-sm mb-2">🎮 TURNOVER</h5>
                         <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div><span className="text-[#A7D8FF]">Slot:</span> <span className="text-white">{formatCurrency(box.data.slot_turnover)}</span></div>
-                          <div><span className="text-[#A7D8FF]">Live Casino:</span> <span className="text-white">{formatCurrency(box.data.live_casino_turnover)}</span></div>
-                          <div><span className="text-[#A7D8FF]">Sportbook:</span> <span className="text-white">{formatCurrency(box.data.sportbook_turnover)}</span></div>
-                          <div><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400">{formatCurrency(box.data.total_turnover)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400 text-sm font-bold">{formatCurrency(box.data.total_turnover)}</span></div>
                         </div>
                       </div>
 
