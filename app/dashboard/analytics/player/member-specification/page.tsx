@@ -57,26 +57,27 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // DOMAIN TETAP UNTUK RADIUS AXIS
+  // LINGKARAN TETAP (FIXED GRID)
   // ===========================================
-  const SPIDER_DOMAINS = [
+  const FIXED_DOMAINS = [
     0,
-    1_000_000,      // 1jt
-    10_000_000,     // 10jt
-    100_000_000,    // 100jt
-    1_000_000_000,  // 1M
-    10_000_000_000, // 10M
-    100_000_000_000,// 100M
-    1_000_000_000_000 // 1T
+    1_000_000,      // 1jt - lingkaran pertama
+    10_000_000,     // 10jt - lingkaran kedua
+    100_000_000,    // 100jt - lingkaran ketiga
+    1_000_000_000,  // 1M - lingkaran keempat
+    10_000_000_000, // 10M - lingkaran kelima
+    100_000_000_000,// 100M - lingkaran keenam
+    1_000_000_000_000 // 1T - lingkaran ketujuh
   ]
   
-  const getOptimalDomain = (maxValue: number): number => {
-    for (let i = 0; i < SPIDER_DOMAINS.length; i++) {
-      if (maxValue <= SPIDER_DOMAINS[i]) {
-        return SPIDER_DOMAINS[i]
+  // Domain maksimal yang ditampilkan (sampe lingkaran paling luar)
+  const getMaxFixedDomain = (maxValue: number): number => {
+    for (let i = FIXED_DOMAINS.length - 1; i >= 0; i--) {
+      if (maxValue >= FIXED_DOMAINS[i]) {
+        return FIXED_DOMAINS[i + 1] || FIXED_DOMAINS[i] * 10
       }
     }
-    return SPIDER_DOMAINS[SPIDER_DOMAINS.length - 1] * 10
+    return FIXED_DOMAINS[FIXED_DOMAINS.length - 1]
   }
 
   // ===========================================
@@ -343,11 +344,12 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART
+  // SPIDER CHART - FIXED GRID
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
+    // Cari nilai maksimum untuk menentukan domain maksimal
     const values = [
       data.total_deposit,
       data.total_turnover,
@@ -357,15 +359,16 @@ export default function MemberSpecificationPage() {
       data.total_withdrawal
     ]
     const maxValue = Math.max(...values)
-    const optimalDomain = getOptimalDomain(maxValue)
+    const maxDomain = getMaxFixedDomain(maxValue)
     
+    // Kembalikan data dengan nilai REAL
     return [
-      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit, maxDomain: optimalDomain },
-      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover, maxDomain: optimalDomain },
-      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover, maxDomain: optimalDomain },
-      { subject: 'Live Casino Turnover', value: data.live_casino_turnover, originalValue: data.live_casino_turnover, maxDomain: optimalDomain },
-      { subject: 'Sportbook Turnover', value: data.sportbook_turnover, originalValue: data.sportbook_turnover, maxDomain: optimalDomain },
-      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal, maxDomain: optimalDomain }
+      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit, maxDomain: maxDomain },
+      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover, maxDomain: maxDomain },
+      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover, maxDomain: maxDomain },
+      { subject: 'Live Casino Turnover', value: data.live_casino_turnover, originalValue: data.live_casino_turnover, maxDomain: maxDomain },
+      { subject: 'Sportbook Turnover', value: data.sportbook_turnover, originalValue: data.sportbook_turnover, maxDomain: maxDomain },
+      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal, maxDomain: maxDomain }
     ]
   }
 
@@ -391,6 +394,19 @@ export default function MemberSpecificationPage() {
     return value.toString()
   }
 
+  // Generate ticks dari FIXED_DOMAINS yang masih dalam batas maxDomain
+  const generateFixedTicks = (maxDomain: number): number[] => {
+    const ticks: number[] = [0]
+    for (let i = 1; i < FIXED_DOMAINS.length; i++) {
+      if (FIXED_DOMAINS[i] <= maxDomain) {
+        ticks.push(FIXED_DOMAINS[i])
+      } else {
+        break
+      }
+    }
+    return ticks
+  }
+
   // ===========================================
   // RENDER
   // ===========================================
@@ -407,6 +423,7 @@ export default function MemberSpecificationPage() {
         {memberBoxes.map((box) => {
           const spiderData = box.data ? getSpiderData(box.data) : []
           const currentDomain = spiderData[0]?.maxDomain || 1000000
+          const fixedTicks = generateFixedTicks(currentDomain)
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -464,7 +481,7 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* Spider Chart */}
+                    {/* Spider Chart dengan FIXED GRID */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
                       <div style={{ width: '100%', height: 350 }}>
@@ -476,6 +493,7 @@ export default function MemberSpecificationPage() {
                               <PolarRadiusAxis 
                                 angle={90} 
                                 domain={[0, currentDomain]} 
+                                ticks={fixedTicks}
                                 tick={{ fill: '#FFD700', fontSize: 9 }}
                                 tickFormatter={formatRadiusTick}
                               />
@@ -496,7 +514,7 @@ export default function MemberSpecificationPage() {
                         )}
                       </div>
                       <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
-                        Skala: 0 - {formatCurrency(currentDomain)}
+                        Lingkaran: {fixedTicks.map(t => formatRadiusTick(t)).join(' | ')}
                       </div>
                     </div>
 
