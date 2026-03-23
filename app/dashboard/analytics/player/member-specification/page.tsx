@@ -57,30 +57,40 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // LINGKARAN TETAP (FIXED GRID) - HARUS MUNCUL SEMUA
+  // LINGKARAN TETAP DARI YANG TERKECIL KE TERBESAR
+  // Lingkaran 1 (paling dalam) = 1jt
+  // Lingkaran 2 = 10jt
+  // Lingkaran 3 = 100jt
+  // Lingkaran 4 = 1M
+  // Lingkaran 5 = 10M
   // ===========================================
-  const FIXED_DOMAINS = [
-    0,
-    1_000_000,      // 1jt - lingkaran pertama
-    10_000_000,     // 10jt - lingkaran kedua
-    100_000_000,    // 100jt - lingkaran ketiga
-    1_000_000_000,  // 1M - lingkaran keempat
-    10_000_000_000, // 10M - lingkaran kelima
-    100_000_000_000,// 100M - lingkaran keenam
-    1_000_000_000_000 // 1T - lingkaran ketujuh
+  const FIXED_CIRCLES = [
+    1_000_000,      // lingkaran 1 (paling dalam) - 1jt
+    10_000_000,     // lingkaran 2 - 10jt
+    100_000_000,    // lingkaran 3 - 100jt
+    1_000_000_000,  // lingkaran 4 - 1M
+    10_000_000_000, // lingkaran 5 - 10M
+    100_000_000_000,// lingkaran 6 - 100M
+    1_000_000_000_000 // lingkaran 7 - 1T
   ]
   
-  // Domain maksimal yang ditampilkan - HARUS SAMPAI LINGKARAN TERAKHIR YANG MUNCUL
-  const getMaxFixedDomain = (maxValue: number): number => {
-    // Selalu tampilkan minimal sampai 1M biar keliatan lingkarannya
-    for (let i = 0; i < FIXED_DOMAINS.length; i++) {
-      if (maxValue <= FIXED_DOMAINS[i]) {
-        // Tampilkan 2 tingkat di atas nilai maksimum biar keliatan scale-nya
-        const nextIndex = Math.min(i + 2, FIXED_DOMAINS.length - 1)
-        return FIXED_DOMAINS[nextIndex] || FIXED_DOMAINS[FIXED_DOMAINS.length - 1]
+  // Domain maksimal: selalu sampai lingkaran ke-4 (1M) minimal
+  // Biar keliatan 1jt, 10jt, 100jt, 1M semua
+  const getMaxDomain = (maxValue: number): number => {
+    // Minimal tampilkan sampai 1M (lingkaran ke-4)
+    const MIN_DOMAIN = 1_000_000_000 // 1M
+    
+    if (maxValue <= MIN_DOMAIN) {
+      return MIN_DOMAIN
+    }
+    
+    // Kalau lebih dari 1M, cari lingkaran berikutnya
+    for (let i = 0; i < FIXED_CIRCLES.length; i++) {
+      if (maxValue <= FIXED_CIRCLES[i]) {
+        return FIXED_CIRCLES[i]
       }
     }
-    return FIXED_DOMAINS[FIXED_DOMAINS.length - 1]
+    return FIXED_CIRCLES[FIXED_CIRCLES.length - 1]
   }
 
   // ===========================================
@@ -347,7 +357,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - FIXED GRID SEMUA LINGKARAN MUNCUL
+  // SPIDER CHART - FIXED CIRCLES
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
@@ -361,7 +371,7 @@ export default function MemberSpecificationPage() {
       data.total_withdrawal
     ]
     const maxValue = Math.max(...values)
-    const maxDomain = getMaxFixedDomain(maxValue)
+    const maxDomain = getMaxDomain(maxValue)
     
     return [
       { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit, maxDomain: maxDomain },
@@ -395,12 +405,12 @@ export default function MemberSpecificationPage() {
     return value.toString()
   }
 
-  // Generate ticks dari FIXED_DOMAINS yang masih dalam batas maxDomain
+  // Generate ticks dari FIXED_CIRCLES yang masih dalam batas maxDomain
   const generateFixedTicks = (maxDomain: number): number[] => {
-    const ticks: number[] = []
-    for (let i = 0; i < FIXED_DOMAINS.length; i++) {
-      if (FIXED_DOMAINS[i] <= maxDomain) {
-        ticks.push(FIXED_DOMAINS[i])
+    const ticks: number[] = [0]
+    for (let i = 0; i < FIXED_CIRCLES.length; i++) {
+      if (FIXED_CIRCLES[i] <= maxDomain) {
+        ticks.push(FIXED_CIRCLES[i])
       }
     }
     return ticks
@@ -421,7 +431,7 @@ export default function MemberSpecificationPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {memberBoxes.map((box) => {
           const spiderData = box.data ? getSpiderData(box.data) : []
-          const currentDomain = spiderData[0]?.maxDomain || 1000000
+          const currentDomain = spiderData[0]?.maxDomain || 1000000000 // default 1M
           const fixedTicks = generateFixedTicks(currentDomain)
           
           return (
@@ -480,7 +490,7 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* Spider Chart dengan FIXED GRID - SEMUA LINGKARAN MUNCUL */}
+                    {/* Spider Chart dengan LINGKARAN TETAP: 1jt, 10jt, 100jt, 1M, ... */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
                       <div style={{ width: '100%', height: 350 }}>
@@ -513,7 +523,7 @@ export default function MemberSpecificationPage() {
                         )}
                       </div>
                       <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
-                        Lingkaran: {fixedTicks.map(t => formatRadiusTick(t)).join(' | ')}
+                        Lingkaran: 1jt | 10jt | 100jt | 1M | 10M | 100M | 1T
                       </div>
                     </div>
 
