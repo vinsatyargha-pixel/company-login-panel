@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import {
@@ -326,7 +326,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART DATA
+  // SPIDER CHART DATA - 6 SISI
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
@@ -435,14 +435,19 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - 4 LAPISAN SEGI ENAM */}
+                    {/* RADAR CHART - 4 LAPISAN SEGI ENAM + 6 SISI */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
-                      <div style={{ width: '100%', height: 400 }}>
+                      <div style={{ width: '100%', height: 400, minHeight: 400 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
                             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={spiderData}>
-                              <PolarGrid stroke="#FFD70030" />
+                              {/* PolarGrid dengan 4 lingkaran konsentris = 4 lapisan segi enam */}
+                              <PolarGrid 
+                                stroke="#FFD700" 
+                                strokeOpacity={0.4}
+                                gridType="polygon" 
+                              />
                               <PolarAngleAxis 
                                 dataKey="subject" 
                                 tick={{ fill: '#A7D8FF', fontSize: 10, fontWeight: 'bold' }}
@@ -452,15 +457,15 @@ export default function MemberSpecificationPage() {
                                 domain={[0, MAX_DOMAIN]} 
                                 tick={{ fill: '#FFD700', fontSize: 11, fontWeight: 'bold' }}
                                 tickFormatter={formatTick}
-                                axisLine={{ stroke: '#FFD700' }}
+                                axisLine={false}
                               />
                               <Radar 
                                 name={box.data.member_id} 
                                 dataKey="value" 
                                 stroke="#FFD700" 
-                                strokeWidth={2}
+                                strokeWidth={3}
                                 fill="#FFD700" 
-                                fillOpacity={0.4} 
+                                fillOpacity={0.35} 
                               />
                               <Tooltip content={<CustomTooltip />} />
                             </RadarChart>
@@ -471,8 +476,9 @@ export default function MemberSpecificationPage() {
                           </div>
                         )}
                       </div>
-                      <div className="text-center text-xs text-[#A7D8FF] mt-2">
-                        ━━━ 4 Lapisan Segi Enam: 1jt (dalam) ┃ 10jt ┃ 100jt ┃ 1M (luar) ━━━
+                      {/* Caption 4 LAPISAN SEGI ENAM */}
+                      <div className="text-center text-xs text-[#FFD700] mt-3 font-bold">
+                        ⬤ 4 Lapisan Segi Enam: 1jt (dalam) ┃ 10jt ┃ 100jt ┃ 1M (luar)
                       </div>
                     </div>
 
