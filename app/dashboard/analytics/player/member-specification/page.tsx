@@ -60,13 +60,20 @@ export default function MemberSpecificationPage() {
   
   // SEGI ENAM - POSISI BENER (dalam derajat SVG)
   // SVG: 0° = kanan, 90° = bawah, -90° = atas, 180° = kiri
+  // Posisi:
+  // 12:00 (atas) = -90° = DEPOSIT
+  // 02:00 = -30° = SUM T.O
+  // 04:00 = 30° = SLOT
+  // 06:00 (bawah) = 90° = SPORTS (ditukar)
+  // 08:00 = 150° = CASINO
+  // 10:00 = 210° = WITHDRAW (ditukar)
   const SIDES = [
     { name: 'DEPOSIT', angle: -90 },      // 12:00 (atas)
-    { name: 'SUM. T.O', angle: -30 },     // 02:00
+    { name: 'SUM T.O', angle: -30 },      // 02:00
     { name: 'SLOT', angle: 30 },          // 04:00
-    { name: 'WITHDRAW', angle: 90 },      // 06:00 (bawah)
+    { name: 'SPORTS', angle: 90 },        // 06:00 (bawah)
     { name: 'CASINO', angle: 150 },       // 08:00
-    { name: 'SPORTS', angle: 210 }        // 10:00
+    { name: 'WITHDRAW', angle: 210 }      // 10:00
   ]
   
   const CENTER_X = 100
@@ -425,13 +432,14 @@ export default function MemberSpecificationPage() {
         {memberBoxes.map((box) => {
           const data = box.data
           
+          // Urutan values sesuai SIDES
           const values = data ? [
-            data.total_deposit,
-            data.total_turnover,
-            data.slot_turnover,
-            data.total_withdrawal,
-            data.live_casino_turnover,
-            data.sportbook_turnover
+            data.total_deposit,        // DEPOSIT - 12:00
+            data.total_turnover,       // SUM T.O - 02:00
+            data.slot_turnover,        // SLOT - 04:00
+            data.sportbook_turnover,   // SPORTS - 06:00 (bawah)
+            data.live_casino_turnover, // CASINO - 08:00
+            data.total_withdrawal      // WITHDRAW - 10:00
           ] : [0, 0, 0, 0, 0, 0]
           
           return (
@@ -491,7 +499,7 @@ export default function MemberSpecificationPage() {
                     </div>
 
                     <div className="mb-6">
-                      <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
+                      <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">POLYGON METRICS</h4>
                       <div className="flex justify-center">
                         <svg viewBox="0 0 200 200" width="300" height="300" style={{ margin: '0 auto' }}>
                           {/* 4 LAPISAN SEGI ENAM */}
@@ -536,7 +544,7 @@ export default function MemberSpecificationPage() {
                             />
                           )}
                           
-                          {/* LABEL 6 SISI - DIPERSINGKAT DAN RADIUS DIPERBESAR */}
+                          {/* LABEL 6 SISI */}
                           {SIDES.map((side, idx) => {
                             const angle = side.angle * Math.PI / 180
                             const radius = 92
