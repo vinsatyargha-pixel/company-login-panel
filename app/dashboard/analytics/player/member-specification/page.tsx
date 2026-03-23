@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  RadarChart, Radar, PolarAngleAxis, PolarRadiusAxis,
   ResponsiveContainer, Tooltip
 } from 'recharts'
 
@@ -60,6 +60,8 @@ export default function MemberSpecificationPage() {
   // SKALA TETAP: 0, 1jt, 10jt, 100jt, 1M
   // ===========================================
   const FIXED_DOMAIN = 1_000_000_000 // 1M
+  const LAYERS = [0.25, 0.5, 0.75, 1.0] // 4 layer (25%, 50%, 75%, 100%)
+  const LAYER_LABELS = ['1jt', '10jt', '100jt', '1M']
 
   // ===========================================
   // PAGINATION HELPER
@@ -385,9 +387,9 @@ export default function MemberSpecificationPage() {
 
   const formatRadiusTick = (value: number) => {
     if (value === 0) return '0'
-    if (value === 1_000_000) return '1jt'
-    if (value === 10_000_000) return '10jt'
-    if (value === 100_000_000) return '100jt'
+    if (value === 250_000_000) return '250jt'
+    if (value === 500_000_000) return '500jt'
+    if (value === 750_000_000) return '750jt'
     if (value === 1_000_000_000) return '1M'
     return ''
   }
@@ -464,22 +466,14 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - FIXED HEIGHT UNTUK HINDARI ERROR -1 */}
+                    {/* RADAR CHART - TANPA POLAR GRID, PAKAI MANUAL SVG */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height={450}>
                             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={spiderData}>
-                              {/* GRID SEGI ENAM - PAKSA JADI POLIGON TEBAS */}
-                              <PolarGrid
-                                gridType="polygon"
-                                radialLines={true}
-                                stroke="#FFD700"
-                                strokeWidth={2}
-                                strokeOpacity={0.9}
-                              />
-                              {/* LABEL SISI */}
+                              {/* HAPUS PolarGrid, ganti dengan manual SVG later */}
                               <PolarAngleAxis 
                                 dataKey="subject" 
                                 tick={{ 
@@ -487,9 +481,8 @@ export default function MemberSpecificationPage() {
                                   fontSize: 10, 
                                   fontWeight: 'bold'
                                 }}
-                                axisLine={{ stroke: '#FFD700', strokeWidth: 1 }}
+                                axisLine={{ stroke: '#FFD700', strokeWidth: 1.5 }}
                               />
-                              {/* RADIUS AXIS - TANPA ticks, biar recharts ngatur otomatis */}
                               <PolarRadiusAxis
                                 angle={90}
                                 domain={[0, FIXED_DOMAIN]}
@@ -501,7 +494,6 @@ export default function MemberSpecificationPage() {
                                 tickFormatter={formatRadiusTick}
                                 axisLine={false}
                               />
-                              {/* RADAR - DENGAN DOT BIAR KELIATAN */}
                               <Radar
                                 name={box.data.member_id}
                                 dataKey="value"
