@@ -53,11 +53,13 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // SKALA TETAP: 1jt, 10jt, 100jt, 1M
+  // SKALA LOGARITMIK
+  // 1jt = 25% radius, 10jt = 50%, 100jt = 75%, 1M = 100%
   // ===========================================
   const MAX_DOMAIN = 1_000_000_000 // 1M
-  const LAYERS = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
-  const LAYER_RADII = [14, 28, 42, 56] // pixel radius untuk 4 lapisan
+  const LAYER_VALUES = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
+  const LAYER_RADII = [14, 28, 42, 56] // 25%, 50%, 75%, 100%
+  
   const SIDES = ['Deposit', 'Turnover', 'Slot', 'Live', 'Sport', 'Withdraw']
 
   // ===========================================
@@ -367,23 +369,43 @@ export default function MemberSpecificationPage() {
     }))
   }
 
-  // Normalisasi LOGARITMIK
-  const normalizeLog = (value: number): number => {
+  // Normalisasi LOGARITMIK dengan interpolasi antar layer
+  const getNormalizedRadius = (value: number): number => {
     if (value <= 0) return 0
-    if (value >= MAX_DOMAIN) return 1
+    if (value >= MAX_DOMAIN) return LAYER_RADII[LAYER_RADII.length - 1]
     
-    const logValue = Math.log10(value)
-    const logMin = Math.log10(LAYERS[0]) // 1jt = 6
-    const logMax = Math.log10(MAX_DOMAIN) // 1M = 9
+    // Cari di layer mana nilai ini berada
+    for (let i = 0; i < LAYER_VALUES.length; i++) {
+      if (value <= LAYER_VALUES[i]) {
+        if (i === 0) {
+          // Di bawah 1jt, interpolasi linear dari 0 ke radius layer 1
+          const ratio = value / LAYER_VALUES[0]
+          return ratio * LAYER_RADII[0]
+        } else {
+          // Di antara layer i-1 dan i
+          const prevValue = LAYER_VALUES[i - 1]
+          const currValue = LAYER_VALUES[i]
+          const prevRadius = LAYER_RADII[i - 1]
+          const currRadius = LAYER_RADII[i]
+          
+          // Interpolasi linear dalam skala log
+          const logPrev = Math.log10(prevValue)
+          const logCurr = Math.log10(currValue)
+          const logVal = Math.log10(value)
+          
+          const ratio = (logVal - logPrev) / (logCurr - logPrev)
+          return prevRadius + ratio * (currRadius - prevRadius)
+        }
+      }
+    }
     
-    let normalized = (logValue - logMin) / (logMax - logMin)
-    return Math.min(Math.max(normalized, 0), 1)
+    return LAYER_RADII[LAYER_RADII.length - 1]
   }
 
-  const getDataPolygonPoints = (values: number[], maxRadius: number, centerX: number = 80, centerY: number = 80) => {
+  const getDataPolygonPoints = (values: number[], centerX: number = 80, centerY: number = 80) => {
     const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
     return angles.map((angle, i) => {
-      const radius = normalizeLog(values[i]) * maxRadius
+      const radius = getNormalizedRadius(values[i])
       const x = centerX + radius * Math.cos(angle)
       const y = centerY + radius * Math.sin(angle)
       return `${x},${y}`
@@ -471,7 +493,7 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* CUSTOM SVG CHART - TANPA TITIK */}
+                    {/* CUSTOM SVG CHART */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div className="flex justify-center">
@@ -506,10 +528,10 @@ export default function MemberSpecificationPage() {
                             />
                           ))}
                           
-                          {/* POLYGON DATA MEMBER - TANPA TITIK */}
+                          {/* POLYGON DATA MEMBER */}
                           {data && (
                             <polygon
-                              points={getDataPolygonPoints(values, 56, 80, 80)}
+                              points={getDataPolygonPoints(values, 80, 80)}
                               fill="#00E5FF"
                               fillOpacity="0.35"
                               stroke="#00E5FF"
