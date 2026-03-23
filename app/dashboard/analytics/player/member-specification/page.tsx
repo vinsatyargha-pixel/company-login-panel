@@ -3,10 +3,6 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
-import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  ResponsiveContainer, Tooltip
-} from 'recharts'
 
 // ===========================================
 // TYPES
@@ -57,9 +53,8 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // 4 LAPISAN SEGI ENAM: 1jt, 10jt, 100jt, 1M
+  // SKALA: 1jt, 10jt, 100jt, 1M
   // ===========================================
-  const LAYER_VALUES = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
   const MAX_DOMAIN = 1_000_000_000
 
   // ===========================================
@@ -126,7 +121,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // GET ACTUAL MEMBER ID (CASE INSENSITIVE + BUANG XLY)
+  // GET ACTUAL MEMBER ID
   // ===========================================
   const getActualMemberId = async (searchId: string): Promise<string | null> => {
     try {
@@ -359,42 +354,36 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART DATA - 6 SISI
+  // HEXAGON GRID UTILITY (PERSIS KAYAK eFHUB)
   // ===========================================
-  const getSpiderData = (data: MemberDetailData | null) => {
-    if (!data) return []
-    
-    return [
-      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit },
-      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover },
-      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover },
-      { subject: 'Live Casino', value: data.live_casino_turnover, originalValue: data.live_casino_turnover },
-      { subject: 'Sportbook', value: data.sportbook_turnover, originalValue: data.sportbook_turnover },
-      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal }
-    ]
+  // 6 sumbu: Total Deposit, Total Turnover, Slot Turnover, Live Casino, Sportbook, Total Withdrawal
+  const SIDES = ['Total Deposit', 'Total Turnover', 'Slot Turnover', 'Live Casino', 'Sportbook', 'Total Withdrawal']
+  
+  // Generate titik-titik untuk hexagon dengan radius tertentu
+  const getHexagonPoints = (radius: number, centerX: number = 80, centerY: number = 80) => {
+    const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
+    return angles.map(angle => ({
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle)
+    }))
   }
 
-  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload
-      return (
-        <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
-          <p className="text-[#FFD700] font-bold text-xs">{data.subject}</p>
-          <p className="text-white text-xs">{formatCurrency(data.originalValue || 0)}</p>
-          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - 1M (1jt | 10jt | 100jt | 1M)</p>
-        </div>
-      )
-    }
-    return null
+  // Normalisasi nilai ke radius (0 - 1)
+  const normalizeValue = (value: number, maxDomain: number) => {
+    if (value <= 0) return 0
+    if (value >= maxDomain) return 1
+    return value / maxDomain
   }
 
-  const formatRadiusTick = (value: number) => {
-    if (value === 0) return '0'
-    if (value === 1_000_000) return '1jt'
-    if (value === 10_000_000) return '10jt'
-    if (value === 100_000_000) return '100jt'
-    if (value === 1_000_000_000) return '1M'
-    return ''
+  // Generate polygon points untuk data member
+  const getDataPolygonPoints = (values: number[], maxDomain: number, maxRadius: number, centerX: number = 80, centerY: number = 80) => {
+    const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
+    return angles.map((angle, i) => {
+      const radius = normalizeValue(values[i], maxDomain) * maxRadius
+      const x = centerX + radius * Math.cos(angle)
+      const y = centerY + radius * Math.sin(angle)
+      return `${x},${y}`
+    }).join(' ')
   }
 
   // ===========================================
@@ -411,7 +400,20 @@ export default function MemberSpecificationPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {memberBoxes.map((box) => {
-          const spiderData = box.data ? getSpiderData(box.data) : []
+          const data = box.data
+          
+          // Nilai untuk 6 sumbu (dalam Rupiah)
+          const values = data ? [
+            data.total_deposit,
+            data.total_turnover,
+            data.slot_turnover,
+            data.live_casino_turnover,
+            data.sportbook_turnover,
+            data.total_withdrawal
+          ] : [0, 0, 0, 0, 0, 0]
+          
+          // Radius untuk 4 lapisan (dalam pixel, center 80, max radius 56)
+          const layerRadii = [14, 28, 42, 56] // 25%, 50%, 75%, 100%
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -469,71 +471,110 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - SEPERTI eFHUB */}
+                    {/* CUSTOM SVG CHART - PERSIS KAYAK eFHUB */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
-                      <div style={{ width: '100%', height: 450, minHeight: 450 }}>
-                        {chartReady[box.id] && spiderData.length > 0 ? (
-                          <ResponsiveContainer width="100%" height={450}>
-                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={spiderData}>
-                              {/* GRID SEGI ENAM - DUDUKAN */}
-                              <PolarGrid
-                                gridType="polygon"
+                      <div className="flex justify-center">
+                        <svg viewBox="0 0 160 160" width="100%" height="auto" style={{ maxWidth: '400px', margin: '0 auto' }}>
+                          {/* 4 LAPISAN SEGI ENAM (DUDUKAN) */}
+                          {layerRadii.map((radius, idx) => {
+                            const points = getHexagonPoints(radius)
+                            const pointStr = points.map(p => `${p.x},${p.y}`).join(' ')
+                            return (
+                              <polygon
+                                key={`layer-${idx}`}
+                                points={pointStr}
+                                fill="none"
                                 stroke="#FFD700"
-                                strokeWidth={1.5}
-                                strokeOpacity={0.6}
+                                strokeWidth="1"
+                                strokeOpacity="0.4"
                               />
-                              {/* 6 SUMBU */}
-                              <PolarAngleAxis
-                                dataKey="subject"
-                                tick={{
-                                  fill: '#A7D8FF',
-                                  fontSize: 10,
-                                  fontWeight: 'bold',
-                                }}
-                              />
-                              {/* RADIUS AXIS - 4 LAPISAN TETAP */}
-                              <PolarRadiusAxis
-                                angle={90}
-                                domain={[0, MAX_DOMAIN]}
-                                ticks={LAYER_VALUES as any}
-                                tick={{
-                                  fill: '#FFD700',
-                                  fontSize: 10,
-                                  fontWeight: 'bold',
-                                }}
-                                tickFormatter={formatRadiusTick}
-                                axisLine={false}
-                              />
-                              {/* POLYGON MEMBER - GARIS + TITIK */}
-                              <Radar
-                                name={box.data.member_id}
-                                dataKey="value"
-                                stroke="#00E5FF"
-                                strokeWidth={3}
+                            )
+                          })}
+                          
+                          {/* GARIS RADIAL DARI TENGAH KE 6 SISI */}
+                          {getHexagonPoints(56).map((point, idx) => (
+                            <line
+                              key={`radial-${idx}`}
+                              x1="80"
+                              y1="80"
+                              x2={point.x}
+                              y2={point.y}
+                              stroke="#FFD700"
+                              strokeWidth="1"
+                              strokeOpacity="0.3"
+                            />
+                          ))}
+                          
+                          {/* POLYGON DATA MEMBER (GARIS + AREA) */}
+                          {data && (
+                            <polygon
+                              points={getDataPolygonPoints(values, MAX_DOMAIN, 56, 80, 80)}
+                              fill="#00E5FF"
+                              fillOpacity="0.25"
+                              stroke="#00E5FF"
+                              strokeWidth="2"
+                              strokeLinejoin="round"
+                            />
+                          )}
+                          
+                          {/* TITIK-TITIK DATA DI SETIAP SISI */}
+                          {data && values.map((val, idx) => {
+                            const radius = normalizeValue(val, MAX_DOMAIN) * 56
+                            const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
+                            const angle = angles[idx]
+                            const x = 80 + radius * Math.cos(angle)
+                            const y = 80 + radius * Math.sin(angle)
+                            return (
+                              <circle
+                                key={`dot-${idx}`}
+                                cx={x}
+                                cy={y}
+                                r="3"
                                 fill="#00E5FF"
-                                fillOpacity={0.3}
-                                dot={{
-                                  fill: "#00E5FF",
-                                  stroke: "#FFFFFF",
-                                  strokeWidth: 2,
-                                  r: 5,
-                                }}
-                                activeDot={{
-                                  r: 8,
-                                  fill: "#00E5FF",
-                                  stroke: "#FFFFFF",
-                                  strokeWidth: 2,
-                                }}
+                                stroke="white"
+                                strokeWidth="1.5"
                               />
-                              <Tooltip content={<CustomTooltip />} />
-                            </RadarChart>
-                          </ResponsiveContainer>
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
-                          </div>
-                        )}
+                            )
+                          })}
+                          
+                          {/* LABEL 6 SISI */}
+                          {SIDES.map((side, idx) => {
+                            const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
+                            const angle = angles[idx]
+                            const radius = 62
+                            const x = 80 + radius * Math.cos(angle)
+                            const y = 80 + radius * Math.sin(angle)
+                            // Singkat label
+                            let shortLabel = side
+                            if (side === 'Total Deposit') shortLabel = 'Deposit'
+                            if (side === 'Total Turnover') shortLabel = 'Turnover'
+                            if (side === 'Slot Turnover') shortLabel = 'Slot'
+                            if (side === 'Live Casino') shortLabel = 'Live'
+                            if (side === 'Sportbook') shortLabel = 'Sport'
+                            if (side === 'Total Withdrawal') shortLabel = 'Withdraw'
+                            return (
+                              <text
+                                key={`label-${idx}`}
+                                x={x}
+                                y={y}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                                fontSize="9"
+                                fontWeight="bold"
+                                fill="#A7D8FF"
+                              >
+                                {shortLabel}
+                              </text>
+                            )
+                          })}
+                          
+                          {/* LABEL LAPISAN (1jt, 10jt, 100jt, 1M) */}
+                          <text x="80" y="20" textAnchor="middle" fontSize="8" fill="#FFD700" fontWeight="bold">1M</text>
+                          <text x="80" y="38" textAnchor="middle" fontSize="8" fill="#FFD700">100jt</text>
+                          <text x="80" y="54" textAnchor="middle" fontSize="8" fill="#FFD700">10jt</text>
+                          <text x="80" y="70" textAnchor="middle" fontSize="8" fill="#FFD700">1jt</text>
+                        </svg>
                       </div>
                       <div className="text-center text-xs text-[#FFD700] mt-3 font-bold bg-[#0B1A33]/50 py-1 rounded-full mx-auto w-fit px-3">
                         ⬤ 4 Lapisan Segi Enam: 1jt (dalam) | 10jt | 100jt | 1M (luar)
