@@ -53,7 +53,7 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // SKALA LOGARITMIK
+  // SKALA LOGARITMIK - 4 LAPISAN
   // ===========================================
   const MAX_DOMAIN = 1_000_000_000 // 1M
   const LAYER_VALUES = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
@@ -369,17 +369,18 @@ export default function MemberSpecificationPage() {
     }))
   }
 
-  // Fungsi untuk menghitung radius berdasarkan nilai (skala logaritmik dengan interpolasi)
+  // Fungsi untuk menghitung radius berdasarkan nilai (interpolasi logaritmik presisi)
   const getRadiusFromValue = (value: number): number => {
     if (value <= 0) return 0
     if (value >= MAX_DOMAIN) return MAX_RADIUS
     
-    // Cari di antara layer mana nilai ini berada
+    // Cari posisi di antara layer
     for (let i = 0; i < LAYER_VALUES.length; i++) {
       if (value <= LAYER_VALUES[i]) {
         if (i === 0) {
-          // Di bawah 1jt
-          const ratio = Math.log10(value) / Math.log10(LAYER_VALUES[0])
+          // Di bawah 1jt - interpolasi dari 0 ke radius 1jt
+          // Skala linear karena di bawah 1jt
+          const ratio = value / LAYER_VALUES[0]
           return ratio * LAYER_RADII[0]
         } else {
           // Di antara layer i-1 dan i
@@ -388,6 +389,7 @@ export default function MemberSpecificationPage() {
           const prevRad = LAYER_RADII[i - 1]
           const currRad = LAYER_RADII[i]
           
+          // Interpolasi dalam skala log
           const logPrev = Math.log10(prevVal)
           const logCurr = Math.log10(currVal)
           const logVal = Math.log10(value)
@@ -492,7 +494,7 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* CUSTOM SVG CHART */}
+                    {/* CUSTOM SVG CHART - TANPA LABEL DI DALAM HEXAGON */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div className="flex justify-center">
@@ -527,7 +529,7 @@ export default function MemberSpecificationPage() {
                             />
                           ))}
                           
-                          {/* POLYGON DATA MEMBER - TIPIS */}
+                          {/* POLYGON DATA MEMBER */}
                           {data && (
                             <polygon
                               points={getDataPolygonPoints(values, 80, 80)}
@@ -561,12 +563,6 @@ export default function MemberSpecificationPage() {
                               </text>
                             )
                           })}
-                          
-                          {/* LABEL LAPISAN */}
-                          <text x="80" y="20" textAnchor="middle" fontSize="8" fill="#FFD700" fontWeight="bold">1M</text>
-                          <text x="80" y="36" textAnchor="middle" fontSize="8" fill="#FFD700">100jt</text>
-                          <text x="80" y="52" textAnchor="middle" fontSize="8" fill="#FFD700">10jt</text>
-                          <text x="80" y="68" textAnchor="middle" fontSize="8" fill="#FFD700">1jt</text>
                         </svg>
                       </div>
                       <div className="text-center text-xs text-[#FFD700] mt-3 font-bold bg-[#0B1A33]/50 py-1 rounded-full mx-auto w-fit px-3">
