@@ -54,11 +54,11 @@ export default function MemberSpecificationPage() {
 
   // ===========================================
   // SKALA LOGARITMIK
-  // 1jt = 25% radius, 10jt = 50%, 100jt = 75%, 1M = 100%
   // ===========================================
   const MAX_DOMAIN = 1_000_000_000 // 1M
   const LAYER_VALUES = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
   const LAYER_RADII = [14, 28, 42, 56] // 25%, 50%, 75%, 100%
+  const MAX_RADIUS = 56
   
   const SIDES = ['Deposit', 'Turnover', 'Slot', 'Live', 'Sport', 'Withdraw']
 
@@ -369,43 +369,42 @@ export default function MemberSpecificationPage() {
     }))
   }
 
-  // Normalisasi LOGARITMIK dengan interpolasi antar layer
-  const getNormalizedRadius = (value: number): number => {
+  // Fungsi untuk menghitung radius berdasarkan nilai (skala logaritmik dengan interpolasi)
+  const getRadiusFromValue = (value: number): number => {
     if (value <= 0) return 0
-    if (value >= MAX_DOMAIN) return LAYER_RADII[LAYER_RADII.length - 1]
+    if (value >= MAX_DOMAIN) return MAX_RADIUS
     
-    // Cari di layer mana nilai ini berada
+    // Cari di antara layer mana nilai ini berada
     for (let i = 0; i < LAYER_VALUES.length; i++) {
       if (value <= LAYER_VALUES[i]) {
         if (i === 0) {
-          // Di bawah 1jt, interpolasi linear dari 0 ke radius layer 1
-          const ratio = value / LAYER_VALUES[0]
+          // Di bawah 1jt
+          const ratio = Math.log10(value) / Math.log10(LAYER_VALUES[0])
           return ratio * LAYER_RADII[0]
         } else {
           // Di antara layer i-1 dan i
-          const prevValue = LAYER_VALUES[i - 1]
-          const currValue = LAYER_VALUES[i]
-          const prevRadius = LAYER_RADII[i - 1]
-          const currRadius = LAYER_RADII[i]
+          const prevVal = LAYER_VALUES[i - 1]
+          const currVal = LAYER_VALUES[i]
+          const prevRad = LAYER_RADII[i - 1]
+          const currRad = LAYER_RADII[i]
           
-          // Interpolasi linear dalam skala log
-          const logPrev = Math.log10(prevValue)
-          const logCurr = Math.log10(currValue)
+          const logPrev = Math.log10(prevVal)
+          const logCurr = Math.log10(currVal)
           const logVal = Math.log10(value)
           
           const ratio = (logVal - logPrev) / (logCurr - logPrev)
-          return prevRadius + ratio * (currRadius - prevRadius)
+          return prevRad + ratio * (currRad - prevRad)
         }
       }
     }
     
-    return LAYER_RADII[LAYER_RADII.length - 1]
+    return MAX_RADIUS
   }
 
   const getDataPolygonPoints = (values: number[], centerX: number = 80, centerY: number = 80) => {
     const angles = [90, 30, -30, -90, -150, 150].map(deg => deg * Math.PI / 180)
     return angles.map((angle, i) => {
-      const radius = getNormalizedRadius(values[i])
+      const radius = getRadiusFromValue(values[i])
       const x = centerX + radius * Math.cos(angle)
       const y = centerY + radius * Math.sin(angle)
       return `${x},${y}`
@@ -508,8 +507,8 @@ export default function MemberSpecificationPage() {
                                 points={pointStr}
                                 fill="none"
                                 stroke="#FFD700"
-                                strokeWidth="1.5"
-                                strokeOpacity="0.6"
+                                strokeWidth="1.2"
+                                strokeOpacity="0.5"
                               />
                             )
                           })}
@@ -523,19 +522,19 @@ export default function MemberSpecificationPage() {
                               x2={point.x}
                               y2={point.y}
                               stroke="#FFD700"
-                              strokeWidth="1"
-                              strokeOpacity="0.4"
+                              strokeWidth="0.8"
+                              strokeOpacity="0.35"
                             />
                           ))}
                           
-                          {/* POLYGON DATA MEMBER */}
+                          {/* POLYGON DATA MEMBER - TIPIS */}
                           {data && (
                             <polygon
                               points={getDataPolygonPoints(values, 80, 80)}
                               fill="#00E5FF"
-                              fillOpacity="0.35"
+                              fillOpacity="0.25"
                               stroke="#00E5FF"
-                              strokeWidth="2.5"
+                              strokeWidth="1.5"
                               strokeLinejoin="round"
                             />
                           )}
