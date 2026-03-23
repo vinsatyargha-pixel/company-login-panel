@@ -57,7 +57,7 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // DOMAIN TETAP UNTUK RADIUS AXIS (dalam Rupiah)
+  // DOMAIN TETAP UNTUK RADIUS AXIS
   // ===========================================
   const SPIDER_DOMAINS = [
     0,
@@ -70,14 +70,14 @@ export default function MemberSpecificationPage() {
     1_000_000_000_000 // 1T
   ]
   
-  // Ambil domain maksimal berdasarkan nilai tertinggi member
-  const getMaxDomain = (maxValue: number): number => {
-    for (let i = SPIDER_DOMAINS.length - 1; i >= 0; i--) {
-      if (maxValue >= SPIDER_DOMAINS[i]) {
-        return SPIDER_DOMAINS[i + 1] || SPIDER_DOMAINS[i] * 10
+  // Fungsi untuk mendapatkan domain optimal berdasarkan nilai maksimum member
+  const getOptimalDomain = (maxValue: number): number => {
+    for (let i = 0; i < SPIDER_DOMAINS.length; i++) {
+      if (maxValue <= SPIDER_DOMAINS[i]) {
+        return SPIDER_DOMAINS[i]
       }
     }
-    return SPIDER_DOMAINS[1] // default 1jt
+    return SPIDER_DOMAINS[SPIDER_DOMAINS.length - 1] * 10
   }
 
   // ===========================================
@@ -191,7 +191,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // FETCH MEMBER DATA (ALL TIME)
+  // FETCH MEMBER DATA
   // ===========================================
   const fetchMemberData = async (boxId: number, memberId: string) => {
     if (!memberId || memberId.trim() === '') return
@@ -204,9 +204,6 @@ export default function MemberSpecificationPage() {
 
     try {
       const searchTerm = memberId.trim()
-      
-      console.log(`🔍 Mencari member: ${searchTerm}`)
-      
       const actualId = await getActualMemberId(searchTerm)
       
       if (!actualId) {
@@ -220,10 +217,8 @@ export default function MemberSpecificationPage() {
         ))
         return
       }
-      
-      console.log(`✅ ID member ditemukan: ${actualId}`)
 
-      // Fetch semua deposit
+      // Fetch deposit
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
@@ -232,9 +227,8 @@ export default function MemberSpecificationPage() {
         .order('approved_date', { ascending: true })
 
       const depositData = await fetchAllWithPagination(depositQuery)
-      console.log(`📊 Data deposit: ${depositData.length} rows`)
 
-      // Fetch semua withdrawal
+      // Fetch withdrawal
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
@@ -243,16 +237,14 @@ export default function MemberSpecificationPage() {
         .order('approved_date', { ascending: true })
 
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
-      console.log(`📊 Data withdrawal: ${withdrawalData.length} rows`)
 
-      // Fetch semua winlose
+      // Fetch winlose
       let winloseQuery = supabase
         .from('winlose_transactions')
         .select('*')
         .eq('account_id', actualId)
 
       const winloseData = await fetchAllWithPagination(winloseQuery)
-      console.log(`📊 Data winlose: ${winloseData.length} rows`)
 
       // Hitung metrics
       const totalDeposit = depositData.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0)
@@ -299,8 +291,6 @@ export default function MemberSpecificationPage() {
         sportbook_turnover: gameTurnovers.sportbook,
         last_updated: new Date().toISOString()
       }
-
-      console.log(`✅ Data member loaded:`, memberData)
 
       setMemberBoxes(prev => prev.map(box => 
         box.id === boxId ? { ...box, loading: false, data: memberData, error: null } : box
@@ -358,12 +348,11 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - MENGGUNAKAN NILAI REAL BUKAN PERSENTASE
+  // SPIDER CHART
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    // Cari nilai maksimum untuk menentukan domain yang ditampilkan
     const values = [
       data.total_deposit,
       data.total_turnover,
@@ -373,70 +362,32 @@ export default function MemberSpecificationPage() {
       data.total_withdrawal
     ]
     const maxValue = Math.max(...values)
-    const maxDomain = getMaxDomain(maxValue)
+    const optimalDomain = getOptimalDomain(maxValue)
     
-    // Kembalikan data dengan nilai REAL (bukan persentase)
-    // Tapi kita tetap perlu domain maksimum untuk referensi
     return [
-      { 
-        subject: 'Total Deposit', 
-        value: data.total_deposit,  // Nilai real dalam Rupiah
-        originalValue: data.total_deposit, 
-        maxDomain: maxDomain 
-      },
-      { 
-        subject: 'Total Turnover', 
-        value: data.total_turnover, 
-        originalValue: data.total_turnover, 
-        maxDomain: maxDomain 
-      },
-      { 
-        subject: 'Slot Turnover', 
-        value: data.slot_turnover, 
-        originalValue: data.slot_turnover, 
-        maxDomain: maxDomain 
-      },
-      { 
-        subject: 'Live Casino Turnover', 
-        value: data.live_casino_turnover, 
-        originalValue: data.live_casino_turnover, 
-        maxDomain: maxDomain 
-      },
-      { 
-        subject: 'Sportbook Turnover', 
-        value: data.sportbook_turnover, 
-        originalValue: data.sportbook_turnover, 
-        maxDomain: maxDomain 
-      },
-      { 
-        subject: 'Total Withdrawal', 
-        value: data.total_withdrawal, 
-        originalValue: data.total_withdrawal, 
-        maxDomain: maxDomain 
-      }
+      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit, maxDomain: optimalDomain },
+      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover, maxDomain: optimalDomain },
+      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover, maxDomain: optimalDomain },
+      { subject: 'Live Casino Turnover', value: data.live_casino_turnover, originalValue: data.live_casino_turnover, maxDomain: optimalDomain },
+      { subject: 'Sportbook Turnover', value: data.sportbook_turnover, originalValue: data.sportbook_turnover, maxDomain: optimalDomain },
+      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal, maxDomain: optimalDomain }
     ]
   }
 
-  // Custom tooltip untuk menampilkan nilai real
   const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: any[] }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload
-      const subject = data.subject
-      const originalValue = data.originalValue
-      const maxDomain = data.maxDomain
-      
       return (
         <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
-          <p className="text-[#FFD700] font-bold text-xs">{subject}</p>
-          <p className="text-white text-xs">{formatCurrency(originalValue || 0)}</p>
-          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - {formatCurrency(maxDomain)}</p>
+          <p className="text-[#FFD700] font-bold text-xs">{data.subject}</p>
+          <p className="text-white text-xs">{formatCurrency(data.originalValue || 0)}</p>
+          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - {formatCurrency(data.maxDomain)}</p>
         </div>
       )
     }
     return null
   }
 
-  // Format tick pada radius axis
   const formatRadiusTick = (value: number) => {
     if (value === 0) return '0'
     if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(0)}M`
@@ -458,158 +409,163 @@ export default function MemberSpecificationPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {memberBoxes.map((box) => (
-          <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
-            <div className="bg-[#0B1A33] p-4 border-b border-[#FFD700]/30">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full bg-[#FFD700]/20 flex items-center justify-center">
-                  <span className="text-[#FFD700] font-bold">{box.id}</span>
-                </div>
-                <h3 className="text-[#FFD700] font-bold">Search Member</h3>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={box.searchValue}
-                  onChange={(e) => {
-                    const newValue = e.target.value
-                    setMemberBoxes(prev => prev.map(b => 
-                      b.id === box.id ? { ...b, searchValue: newValue } : b
-                    ))
-                  }}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch(box.id, box.searchValue)}
-                  placeholder="Masukkan ID Member (case insensitive)..."
-                  className="flex-1 bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#FFD700]"
-                />
-                <button
-                  onClick={() => handleSearch(box.id, box.searchValue)}
-                  disabled={box.loading}
-                  className="bg-[#FFD700] text-[#0B1A33] px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/90 disabled:opacity-50 transition-all"
-                >
-                  {box.loading ? '...' : 'Cari'}
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-              {box.loading && (
-                <div className="flex justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
-                </div>
-              )}
-
-              {box.error && !box.loading && (
-                <div className="text-center py-12">
-                  <div className="text-4xl mb-2">😞</div>
-                  <p className="text-red-400">{box.error}</p>
-                  <p className="text-xs text-[#A7D8FF] mt-2">Coba dengan ID member yang lain (contoh: surya28, Bradley2020)</p>
-                </div>
-              )}
-
-              {box.data && !box.loading && (
-                <>
-                  <div className="bg-[#0B1A33]/50 rounded-lg p-3 mb-4 text-center">
-                    <div className="text-xs text-[#A7D8FF]">Member ID</div>
-                    <div className="text-[#FFD700] font-bold text-lg">{box.data.member_id}</div>
-                    <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
+        {memberBoxes.map((box) => {
+          const spiderData = box.data ? getSpiderData(box.data) : []
+          const currentDomain = spiderData[0]?.maxDomain || 1000000
+          
+          return (
+            <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
+              <div className="bg-[#0B1A33] p-4 border-b border-[#FFD700]/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-[#FFD700]/20 flex items-center justify-center">
+                    <span className="text-[#FFD700] font-bold">{box.id}</span>
                   </div>
+                  <h3 className="text-[#FFD700] font-bold">Search Member</h3>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={box.searchValue}
+                    onChange={(e) => {
+                      const newValue = e.target.value
+                      setMemberBoxes(prev => prev.map(b => 
+                        b.id === box.id ? { ...b, searchValue: newValue } : b
+                      ))
+                    }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch(box.id, box.searchValue)}
+                    placeholder="Masukkan ID Member (case insensitive)..."
+                    className="flex-1 bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#FFD700]"
+                  />
+                  <button
+                    onClick={() => handleSearch(box.id, box.searchValue)}
+                    disabled={box.loading}
+                    className="bg-[#FFD700] text-[#0B1A33] px-4 py-2 rounded-lg font-medium hover:bg-[#FFD700]/90 disabled:opacity-50 transition-all"
+                  >
+                    {box.loading ? '...' : 'Cari'}
+                  </button>
+                </div>
+              </div>
 
-                  {/* Spider Chart dengan nilai REAL */}
-                  <div className="mb-6">
-                    <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
-                    <div style={{ minHeight: '300px', height: '300px', width: '100%', position: 'relative' }}>
-                      {chartReady[box.id] && getSpiderData(box.data).length > 0 ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart cx="50%" cy="50%" outerRadius="70%" data={getSpiderData(box.data)}>
-                            <PolarGrid stroke="#FFD70030" />
-                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#A7D8FF', fontSize: 10 }} />
-                            <PolarRadiusAxis 
-                              angle={90} 
-                              domain={[0, getSpiderData(box.data)[0]?.maxDomain || 1000000]} 
-                              tick={{ fill: '#FFD700', fontSize: 9 }}
-                              tickFormatter={formatRadiusTick}
-                            />
-                            <Radar 
-                              name="Member" 
-                              dataKey="value" 
-                              stroke="#FFD700" 
-                              fill="#FFD700" 
-                              fillOpacity={0.3} 
-                            />
-                            <Tooltip content={<CustomTooltip />} />
-                          </RadarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+              <div className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                {box.loading && (
+                  <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+                  </div>
+                )}
+
+                {box.error && !box.loading && (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-2">😞</div>
+                    <p className="text-red-400">{box.error}</p>
+                    <p className="text-xs text-[#A7D8FF] mt-2">Coba dengan ID member yang lain</p>
+                  </div>
+                )}
+
+                {box.data && !box.loading && (
+                  <>
+                    <div className="bg-[#0B1A33]/50 rounded-lg p-3 mb-4 text-center">
+                      <div className="text-xs text-[#A7D8FF]">Member ID</div>
+                      <div className="text-[#FFD700] font-bold text-lg">{box.data.member_id}</div>
+                      <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
+                    </div>
+
+                    {/* Spider Chart */}
+                    <div className="mb-6">
+                      <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar (Turnover)</h4>
+                      <div style={{ minHeight: '300px', height: '300px', width: '100%', position: 'relative' }}>
+                        {chartReady[box.id] && spiderData.length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart cx="50%" cy="50%" outerRadius="70%" data={spiderData}>
+                              <PolarGrid stroke="#FFD70030" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fill: '#A7D8FF', fontSize: 10 }} />
+                              <PolarRadiusAxis 
+                                angle={90} 
+                                domain={[0, currentDomain]} 
+                                tick={{ fill: '#FFD700', fontSize: 9 }}
+                                tickFormatter={formatRadiusTick}
+                              />
+                              <Radar 
+                                name="Member" 
+                                dataKey="value" 
+                                stroke="#FFD700" 
+                                fill="#FFD700" 
+                                fillOpacity={0.3} 
+                              />
+                              <Tooltip content={<CustomTooltip />} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD700]"></div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
+                        Skala: 0 - {formatCurrency(currentDomain)}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="bg-[#0B1A33]/30 rounded-lg p-3">
+                        <h5 className="text-green-400 font-bold text-sm mb-2">💰 DEPOSIT</h5>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div><span className="text-[#A7D8FF]">Total Deposit:</span> <span className="text-white">{formatCurrency(box.data.total_deposit)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Total Forms:</span> <span className="text-white">{formatNumber(box.data.total_deposit_count)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Average Deposit:</span> <span className="text-white">{formatCurrency(box.data.avg_deposit)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Highest Deposit:</span> <span className="text-green-400">{formatCurrency(box.data.highest_deposit)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Lowest Deposit:</span> <span className="text-red-400">{formatCurrency(box.data.lowest_deposit)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Avg Interval:</span> <span className="text-white">{formatHours(box.data.avg_deposit_interval_hours)}</span></div>
                         </div>
-                      )}
+                      </div>
+
+                      <div className="bg-[#0B1A33]/30 rounded-lg p-3">
+                        <h5 className="text-red-400 font-bold text-sm mb-2">💸 WITHDRAWAL</h5>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div><span className="text-[#A7D8FF]">Total Withdrawal:</span> <span className="text-white">{formatCurrency(box.data.total_withdrawal)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Total Forms:</span> <span className="text-white">{formatNumber(box.data.total_withdrawal_count)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Average Withdrawal:</span> <span className="text-white">{formatCurrency(box.data.avg_withdrawal)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Highest Withdrawal:</span> <span className="text-red-400">{formatCurrency(box.data.highest_withdrawal)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Lowest Withdrawal:</span> <span className="text-green-400">{formatCurrency(box.data.lowest_withdrawal)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Avg Interval:</span> <span className="text-white">{formatHours(box.data.avg_withdrawal_interval_hours)}</span></div>
+                        </div>
+                      </div>
+
+                      <div className="bg-[#0B1A33]/30 rounded-lg p-3">
+                        <h5 className="text-purple-400 font-bold text-sm mb-2">🎮 GAME TURNOVER</h5>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div><span className="text-[#A7D8FF]">Slot:</span> <span className="text-white">{formatCurrency(box.data.slot_turnover)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Live Casino:</span> <span className="text-white">{formatCurrency(box.data.live_casino_turnover)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Sportbook:</span> <span className="text-white">{formatCurrency(box.data.sportbook_turnover)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400">{formatCurrency(box.data.total_turnover)}</span></div>
+                        </div>
+                      </div>
+
+                      <div className="bg-[#0B1A33]/30 rounded-lg p-3">
+                        <h5 className="text-[#FFD700] font-bold text-sm mb-2">📅 ACTIVITY FREQUENCY</h5>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div><span className="text-[#A7D8FF]">Deposit Routine:</span> <span className="text-white">{formatDays(box.data.deposit_frequency_days)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Withdrawal Routine:</span> <span className="text-white">{formatDays(box.data.withdrawal_frequency_days)}</span></div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center text-[10px] text-[#A7D8FF] mt-2">
-                      Skala: 0 | 1jt | 10jt | 100jt | 1M | 10M | 100M | 1T
+
+                    <div className="mt-3 text-[10px] text-[#A7D8FF] text-right border-t border-[#FFD700]/20 pt-2">
+                      Last updated: {new Date(box.data.last_updated).toLocaleString('id-ID')}
                     </div>
+                  </>
+                )}
+
+                {!box.data && !box.loading && !box.error && (
+                  <div className="text-center py-12">
+                    <div className="text-4xl mb-2">🔍</div>
+                    <p className="text-[#A7D8FF] text-sm">Masukkan ID member untuk melihat detail</p>
+                    <p className="text-xs text-[#A7D8FF] mt-1">Contoh: surya28, Bradley2020, Memelah1233</p>
                   </div>
-
-                  <div className="space-y-3">
-                    <div className="bg-[#0B1A33]/30 rounded-lg p-3">
-                      <h5 className="text-green-400 font-bold text-sm mb-2">💰 DEPOSIT</h5>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div><span className="text-[#A7D8FF]">Total Deposit:</span> <span className="text-white">{formatCurrency(box.data.total_deposit)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Total Forms:</span> <span className="text-white">{formatNumber(box.data.total_deposit_count)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Average Deposit:</span> <span className="text-white">{formatCurrency(box.data.avg_deposit)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Highest Deposit:</span> <span className="text-green-400">{formatCurrency(box.data.highest_deposit)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Lowest Deposit:</span> <span className="text-red-400">{formatCurrency(box.data.lowest_deposit)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Avg Interval:</span> <span className="text-white">{formatHours(box.data.avg_deposit_interval_hours)}</span></div>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#0B1A33]/30 rounded-lg p-3">
-                      <h5 className="text-red-400 font-bold text-sm mb-2">💸 WITHDRAWAL</h5>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div><span className="text-[#A7D8FF]">Total Withdrawal:</span> <span className="text-white">{formatCurrency(box.data.total_withdrawal)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Total Forms:</span> <span className="text-white">{formatNumber(box.data.total_withdrawal_count)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Average Withdrawal:</span> <span className="text-white">{formatCurrency(box.data.avg_withdrawal)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Highest Withdrawal:</span> <span className="text-red-400">{formatCurrency(box.data.highest_withdrawal)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Lowest Withdrawal:</span> <span className="text-green-400">{formatCurrency(box.data.lowest_withdrawal)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Avg Interval:</span> <span className="text-white">{formatHours(box.data.avg_withdrawal_interval_hours)}</span></div>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#0B1A33]/30 rounded-lg p-3">
-                      <h5 className="text-purple-400 font-bold text-sm mb-2">🎮 GAME TURNOVER</h5>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div><span className="text-[#A7D8FF]">Slot:</span> <span className="text-white">{formatCurrency(box.data.slot_turnover)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Live Casino:</span> <span className="text-white">{formatCurrency(box.data.live_casino_turnover)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Sportbook:</span> <span className="text-white">{formatCurrency(box.data.sportbook_turnover)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400">{formatCurrency(box.data.total_turnover)}</span></div>
-                      </div>
-                    </div>
-
-                    <div className="bg-[#0B1A33]/30 rounded-lg p-3">
-                      <h5 className="text-[#FFD700] font-bold text-sm mb-2">📅 ACTIVITY FREQUENCY</h5>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div><span className="text-[#A7D8FF]">Deposit Routine:</span> <span className="text-white">{formatDays(box.data.deposit_frequency_days)}</span></div>
-                        <div><span className="text-[#A7D8FF]">Withdrawal Routine:</span> <span className="text-white">{formatDays(box.data.withdrawal_frequency_days)}</span></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 text-[10px] text-[#A7D8FF] text-right border-t border-[#FFD700]/20 pt-2">
-                    Last updated: {new Date(box.data.last_updated).toLocaleString('id-ID')}
-                  </div>
-                </>
-              )}
-
-              {!box.data && !box.loading && !box.error && (
-                <div className="text-center py-12">
-                  <div className="text-4xl mb-2">🔍</div>
-                  <p className="text-[#A7D8FF] text-sm">Masukkan ID member untuk melihat detail</p>
-                  <p className="text-xs text-[#A7D8FF] mt-1">Contoh: surya28, Bradley2020, Memelah1233</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
