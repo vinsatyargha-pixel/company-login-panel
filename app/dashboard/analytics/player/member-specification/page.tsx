@@ -62,15 +62,12 @@ export default function MemberSpecificationPage() {
   const FIXED_CIRCLES = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
   
   // Fungsi untuk menentukan domain maksimal berdasarkan nilai tertinggi member
-  // Domain maksimal adalah lingkaran terluar yang nilainya >= nilai tertinggi member
   const getMaxDomain = (maxValue: number): number => {
-    // Cari lingkaran pertama yang >= maxValue
     for (let i = 0; i < FIXED_CIRCLES.length; i++) {
       if (maxValue <= FIXED_CIRCLES[i]) {
         return FIXED_CIRCLES[i]
       }
     }
-    // Kalau lebih dari 1M, kembalikan 1M (paling luar)
     return 1_000_000_000
   }
 
@@ -123,7 +120,6 @@ export default function MemberSpecificationPage() {
     return daysDiff / (dates.length - 1)
   }
 
-  // Fungsi untuk kategorikan product type
   const categorizeProductType = (productType: string): string => {
     const type = productType?.toLowerCase() || ''
     if (type.includes('slot') || type.includes('pp') || type.includes('pg') || type.includes('hacksaw') || type.includes('btgaming') || type.includes('megawin') || type.includes('kingmidas') || type.includes('playtech') || type.includes('onlyplay') || type.includes('marblex')) {
@@ -139,7 +135,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // GET ACTUAL MEMBER ID (CASE INSENSITIVE + BUANG PREFIX XLY)
+  // GET ACTUAL MEMBER ID
   // ===========================================
   const getActualMemberId = async (searchId: string): Promise<string | null> => {
     try {
@@ -259,7 +255,6 @@ export default function MemberSpecificationPage() {
 
       const totalTurnover = winloseData.reduce((sum, tx) => sum + (tx.net_turnover || 0), 0)
       
-      // HITUNG TURNOVER PER KATEGORI
       let slotTurnover = 0
       let liveCasinoTurnover = 0
       let sportbookTurnover = 0
@@ -373,7 +368,6 @@ export default function MemberSpecificationPage() {
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
-    // Cari nilai tertinggi untuk menentukan domain
     const values = [
       data.total_deposit,
       data.total_turnover,
@@ -418,17 +412,6 @@ export default function MemberSpecificationPage() {
     return ''
   }
 
-  // Generate ticks yang sesuai dengan domain
-  const generateTicks = (maxDomain: number): number[] => {
-    const ticks: number[] = [0]
-    for (let i = 0; i < FIXED_CIRCLES.length; i++) {
-      if (FIXED_CIRCLES[i] <= maxDomain) {
-        ticks.push(FIXED_CIRCLES[i])
-      }
-    }
-    return ticks
-  }
-
   // ===========================================
   // RENDER
   // ===========================================
@@ -445,7 +428,6 @@ export default function MemberSpecificationPage() {
         {memberBoxes.map((box) => {
           const spiderData = box.data ? getSpiderData(box.data) : []
           const currentDomain = spiderData[0]?.maxDomain || 10_000_000
-          const ticks = generateTicks(currentDomain)
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -522,7 +504,6 @@ export default function MemberSpecificationPage() {
                               <PolarRadiusAxis 
                                 angle={90} 
                                 domain={[0, currentDomain]} 
-                                ticks={ticks}
                                 tick={{ fill: '#FFD700', fontSize: 10, fontWeight: 'bold' }}
                                 tickFormatter={formatRadiusTick}
                                 axisLine={false}
@@ -545,7 +526,7 @@ export default function MemberSpecificationPage() {
                         )}
                       </div>
                       <div className="text-center text-xs text-[#FFD700] mt-3 font-bold">
-                        ⬤ Lingkaran: {ticks.map(t => t === 0 ? '0' : formatRadiusTick(t)).join(' | ')}
+                        ⬤ 4 Lapisan Segi Enam: 1jt (dalam) | 10jt | 100jt | 1M (luar)
                       </div>
                     </div>
 
