@@ -66,17 +66,17 @@ export default function MemberSpecificationPage() {
   // 08:00 = 150°
   // 10:00 = 210° (-150°)
   const SIDES = [
-    { name: 'DEPOSIT', angle: -90 },     // 12:00 (atas)
+    { name: 'TOTAL DEPOSIT', angle: -90 },     // 12:00 (atas)
     { name: 'TOTAL T.O', angle: -30 },    // 02:00
     { name: 'T.O Slot', angle: 30 },         // 04:00
-    { name: 'WITHDRAWAL', angle: 90 },     // 06:00 (bawah)
-    { name: 'CASINO', angle: 150 },        // 08:00
-    { name: 'SPORTSBOOK', angle: 210 }        // 10:00
+    { name: 'TOTAL WITHDRAWAL', angle: 90 },     // 06:00 (bawah)
+    { name: 'T.O CASINO', angle: 150 },        // 08:00
+    { name: 'T.O SPORTS', angle: 210 }        // 10:00
   ]
   
-  const CENTER_X = 90
-  const CENTER_Y = 90
-  const MAX_RADIUS = 72
+  const CENTER_X = 100
+  const CENTER_Y = 100
+  const MAX_RADIUS = 80
 
   // ===========================================
   // PAGINATION HELPER
