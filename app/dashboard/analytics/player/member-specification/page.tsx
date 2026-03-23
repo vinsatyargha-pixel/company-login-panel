@@ -57,9 +57,10 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // SKALA TETAP: 0, 1jt, 10jt, 100jt, 1M
+  // DOMAIN DAN LAPISAN TETAP: 0, 1jt, 10jt, 100jt, 1M
   // ===========================================
-  const FIXED_DOMAIN = 1_000_000_000 // 1M
+  const MAX_DOMAIN = 1_000_000_000 // 1M
+  const FIXED_TICKS = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
 
   // ===========================================
   // PAGINATION HELPER
@@ -359,6 +360,7 @@ export default function MemberSpecificationPage() {
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
+    // Nilai langsung tanpa normalisasi, karena domain sudah 1M
     return [
       { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit },
       { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover },
@@ -385,9 +387,9 @@ export default function MemberSpecificationPage() {
 
   const formatRadiusTick = (value: number) => {
     if (value === 0) return '0'
-    if (value === 250_000_000) return '250jt'
-    if (value === 500_000_000) return '500jt'
-    if (value === 750_000_000) return '750jt'
+    if (value === 1_000_000) return '1jt'
+    if (value === 10_000_000) return '10jt'
+    if (value === 100_000_000) return '100jt'
     if (value === 1_000_000_000) return '1M'
     return ''
   }
@@ -464,14 +466,14 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - PAKAI POLARGRID DENGAN GRIDTYPE POLYGON */}
+                    {/* RADAR CHART - DENGAN FIXED TICKS */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height={450}>
                             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={spiderData}>
-                              {/* GRID SEGI ENAM - INI YANG PALING SIMPLE DAN JALAN */}
+                              {/* GRID SEGI ENAM */}
                               <PolarGrid
                                 gridType="polygon"
                                 stroke="#FFD700"
@@ -488,7 +490,8 @@ export default function MemberSpecificationPage() {
                               />
                               <PolarRadiusAxis
                                 angle={90}
-                                domain={[0, FIXED_DOMAIN]}
+                                domain={[0, MAX_DOMAIN]}
+                                ticks={FIXED_TICKS as any}
                                 tick={{ 
                                   fill: '#FFD700', 
                                   fontSize: 10, 
