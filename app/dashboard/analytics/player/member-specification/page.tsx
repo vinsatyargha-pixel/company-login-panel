@@ -58,10 +58,8 @@ export default function MemberSpecificationPage() {
 
   // ===========================================
   // SKALA TETAP: 0, 1jt, 10jt, 100jt, 1M
-  // SEGI ENAM 6 SISI + 4 LAPISAN
   // ===========================================
-  const FIXED_DOMAIN = 1_000_000_000 // 1M (paling luar)
-  const FIXED_CIRCLES = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
+  const FIXED_DOMAIN = 1_000_000_000 // 1M
 
   // ===========================================
   // PAGINATION HELPER
@@ -127,7 +125,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // GET ACTUAL MEMBER ID (CASE INSENSITIVE)
+  // GET ACTUAL MEMBER ID
   // ===========================================
   const getActualMemberId = async (searchId: string): Promise<string | null> => {
     try {
@@ -229,14 +227,12 @@ export default function MemberSpecificationPage() {
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
 
       // FETCH WINLOSE
-      let winloseData: any[] = []
-      
-      let query = supabase
+      let winloseQuery = supabase
         .from('winlose_transactions')
         .select('product_type, net_turnover')
         .ilike('account_id', `%${cleanId}%`)
-      winloseData = await fetchAllWithPagination(query)
-      
+
+      const winloseData = await fetchAllWithPagination(winloseQuery)
       console.log(`📊 Data winlose: ${winloseData.length} rows`)
 
       // HITUNG METRICS
@@ -358,7 +354,7 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - SEGI ENAM 6 SISI + 4 LAPISAN
+  // SPIDER CHART DATA
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
@@ -468,44 +464,57 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - SEGI ENAM 6 SISI + 4 LAPISAN */}
+                    {/* RADAR CHART - SEGI ENAM DENGAN LAYER TEBAL */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
                             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={spiderData}>
-                              {/* gridType="polygon" bikin SEGI ENAM, bukan lingkaran */}
-                              <PolarGrid 
-                                stroke="#FFD700" 
-                                strokeOpacity={0.5}
+                              {/* GRID SEGI ENAM - TEBAL & JELAS */}
+                              <PolarGrid
                                 gridType="polygon"
+                                stroke="#FFD700"
+                                strokeWidth={2}
+                                strokeOpacity={0.9}
                               />
+                              {/* LABEL SISI (6 sisi) - TANPA textShadow */}
                               <PolarAngleAxis 
                                 dataKey="subject" 
-                                tick={{ fill: '#A7D8FF', fontSize: 10, fontWeight: 'bold' }}
+                                tick={{ 
+                                  fill: '#A7D8FF', 
+                                  fontSize: 11, 
+                                  fontWeight: 'bold'
+                                }}
                               />
-                              <PolarRadiusAxis 
-                                angle={90} 
-                                domain={[0, FIXED_DOMAIN]} 
-                                tick={{ fill: '#FFD700', fontSize: 10, fontWeight: 'bold' }}
+                              {/* RADIUS AXIS - LAYER TEBAL */}
+                              <PolarRadiusAxis
+                                angle={90}
+                                domain={[0, FIXED_DOMAIN]}
+                                tick={{ 
+                                  fill: '#FFD700', 
+                                  fontSize: 11, 
+                                  fontWeight: 'bold'
+                                }}
                                 tickFormatter={formatRadiusTick}
                                 axisLine={false}
+                                tickCount={5}
                               />
-                              <Radar 
-                                name={box.data.member_id} 
-                                dataKey="value" 
-                                stroke="#FFD700" 
+                              {/* RADAR - GLOW EFFECT PREMIUM */}
+                              <Radar
+                                name={box.data.member_id}
+                                dataKey="value"
+                                stroke="#00E5FF"
                                 strokeWidth={3}
-                                fill="#FFD700" 
+                                fill="#00E5FF"
                                 fillOpacity={0.35}
-                                dot={{ 
-                                  fill: "#FFD700", 
-                                  stroke: "#FFD700", 
+                                dot={{
+                                  fill: "#00E5FF",
+                                  stroke: "#FFFFFF",
                                   strokeWidth: 2,
-                                  r: 5 
+                                  r: 5
                                 }}
-                                activeDot={{ r: 8, fill: "#FFD700", stroke: "#fff" }}
+                                activeDot={{ r: 8, fill: "#00E5FF", stroke: "#FFFFFF", strokeWidth: 2 }}
                               />
                               <Tooltip content={<CustomTooltip />} />
                             </RadarChart>
@@ -516,14 +525,14 @@ export default function MemberSpecificationPage() {
                           </div>
                         )}
                       </div>
-                      <div className="text-center text-xs text-[#FFD700] mt-3 font-bold">
+                      <div className="text-center text-xs text-[#FFD700] mt-3 font-bold bg-[#0B1A33]/50 py-1 rounded-full mx-auto w-fit px-3">
                         ⬤ 4 Lapisan Segi Enam: 1jt (dalam) | 10jt | 100jt | 1M (luar)
                       </div>
                     </div>
 
                     {/* DETAIL DATA */}
                     <div className="space-y-3">
-                      <div className="bg-[#0B1A33]/30 rounded-lg p-3">
+                      <div className="bg-[#0B1A33]/30 rounded-lg p-3 border-l-4 border-green-400">
                         <h5 className="text-green-400 font-bold text-sm mb-2">💰 DEPOSIT</h5>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div><span className="text-[#A7D8FF]">Total Deposit:</span> <span className="text-white">{formatCurrency(box.data.total_deposit)}</span></div>
@@ -535,7 +544,7 @@ export default function MemberSpecificationPage() {
                         </div>
                       </div>
 
-                      <div className="bg-[#0B1A33]/30 rounded-lg p-3">
+                      <div className="bg-[#0B1A33]/30 rounded-lg p-3 border-l-4 border-red-400">
                         <h5 className="text-red-400 font-bold text-sm mb-2">💸 WITHDRAWAL</h5>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div><span className="text-[#A7D8FF]">Total Withdrawal:</span> <span className="text-white">{formatCurrency(box.data.total_withdrawal)}</span></div>
@@ -547,7 +556,7 @@ export default function MemberSpecificationPage() {
                         </div>
                       </div>
 
-                      <div className="bg-[#0B1A33]/30 rounded-lg p-3">
+                      <div className="bg-[#0B1A33]/30 rounded-lg p-3 border-l-4 border-purple-400">
                         <h5 className="text-purple-400 font-bold text-sm mb-2">🎮 GAME TURNOVER</h5>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div><span className="text-[#A7D8FF]">Slot:</span> <span className="text-white">{formatCurrency(box.data.slot_turnover)}</span></div>
@@ -557,7 +566,7 @@ export default function MemberSpecificationPage() {
                         </div>
                       </div>
 
-                      <div className="bg-[#0B1A33]/30 rounded-lg p-3">
+                      <div className="bg-[#0B1A33]/30 rounded-lg p-3 border-l-4 border-[#FFD700]">
                         <h5 className="text-[#FFD700] font-bold text-sm mb-2">📅 ACTIVITY FREQUENCY</h5>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div><span className="text-[#A7D8FF]">Deposit Routine:</span> <span className="text-white">{formatDays(box.data.deposit_frequency_days)}</span></div>
