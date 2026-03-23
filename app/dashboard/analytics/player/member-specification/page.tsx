@@ -57,9 +57,22 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
-  // 4 LAPISAN SEGI ENAM: 1jt, 10jt, 100jt, 1M
+  // LINGKARAN TETAP: 1jt, 10jt, 100jt, 1M
   // ===========================================
-  const MAX_DOMAIN = 1_000_000_000 // 1M (paling luar)
+  const FIXED_CIRCLES = [1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
+  
+  // Fungsi untuk menentukan domain maksimal berdasarkan nilai tertinggi member
+  // Domain maksimal adalah lingkaran terluar yang nilainya >= nilai tertinggi member
+  const getMaxDomain = (maxValue: number): number => {
+    // Cari lingkaran pertama yang >= maxValue
+    for (let i = 0; i < FIXED_CIRCLES.length; i++) {
+      if (maxValue <= FIXED_CIRCLES[i]) {
+        return FIXED_CIRCLES[i]
+      }
+    }
+    // Kalau lebih dari 1M, kembalikan 1M (paling luar)
+    return 1_000_000_000
+  }
 
   // ===========================================
   // PAGINATION HELPER
@@ -130,13 +143,11 @@ export default function MemberSpecificationPage() {
   // ===========================================
   const getActualMemberId = async (searchId: string): Promise<string | null> => {
     try {
-      // Bersihkan input: buang prefix XLY jika ada
       let cleanSearch = searchId.trim()
       if (cleanSearch.toUpperCase().startsWith('XLY')) {
         cleanSearch = cleanSearch.substring(3)
       }
       
-      // Cari di deposit_transactions
       const { data: depositData } = await supabase
         .from('deposit_transactions')
         .select('user_name')
@@ -147,7 +158,6 @@ export default function MemberSpecificationPage() {
         return depositData[0].user_name
       }
       
-      // Cari di withdrawal_transactions
       const { data: withdrawalData } = await supabase
         .from('withdrawal_transactions')
         .select('user_name')
@@ -158,7 +168,6 @@ export default function MemberSpecificationPage() {
         return withdrawalData[0].user_name
       }
       
-      // Cari di winlose_transactions
       const { data: winloseData } = await supabase
         .from('winlose_transactions')
         .select('account_id')
@@ -210,9 +219,7 @@ export default function MemberSpecificationPage() {
 
       console.log(`✅ ID member ditemukan: ${actualId}`)
 
-      // ===========================================
       // FETCH DEPOSIT
-      // ===========================================
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('nett_amount, approved_date')
@@ -222,9 +229,7 @@ export default function MemberSpecificationPage() {
 
       const depositData = await fetchAllWithPagination(depositQuery)
 
-      // ===========================================
       // FETCH WITHDRAWAL
-      // ===========================================
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
         .select('nett_amount, approved_date')
@@ -234,9 +239,7 @@ export default function MemberSpecificationPage() {
 
       const withdrawalData = await fetchAllWithPagination(withdrawalQuery)
 
-      // ===========================================
-      // FETCH WINLOSE (cari dengan wildcard)
-      // ===========================================
+      // FETCH WINLOSE
       const winloseQuery = supabase
         .from('winlose_transactions')
         .select('product_type, net_turnover')
@@ -245,9 +248,7 @@ export default function MemberSpecificationPage() {
       const winloseData = await fetchAllWithPagination(winloseQuery)
       console.log(`📊 Data winlose: ${winloseData.length} rows`)
 
-      // ===========================================
       // HITUNG METRICS
-      // ===========================================
       const totalDeposit = depositData.reduce((sum, tx) => sum + (tx.nett_amount || 0), 0)
       const totalDepositCount = depositData.length
       const avgDeposit = totalDepositCount > 0 ? totalDeposit / totalDepositCount : 0
@@ -256,10 +257,9 @@ export default function MemberSpecificationPage() {
       const totalWithdrawalCount = withdrawalData.length
       const avgWithdrawal = totalWithdrawalCount > 0 ? totalWithdrawal / totalWithdrawalCount : 0
 
-      // TOTAL TURNOVER dari net_turnover
       const totalTurnover = winloseData.reduce((sum, tx) => sum + (tx.net_turnover || 0), 0)
       
-      // HITUNG TURNOVER PER KATEGORI GAME
+      // HITUNG TURNOVER PER KATEGORI
       let slotTurnover = 0
       let liveCasinoTurnover = 0
       let sportbookTurnover = 0
@@ -368,18 +368,30 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
-  // SPIDER CHART - 6 SISI + 4 LAPISAN
+  // SPIDER CHART - 6 SISI + DOMAIN DINAMIS
   // ===========================================
   const getSpiderData = (data: MemberDetailData | null) => {
     if (!data) return []
     
+    // Cari nilai tertinggi untuk menentukan domain
+    const values = [
+      data.total_deposit,
+      data.total_turnover,
+      data.slot_turnover,
+      data.live_casino_turnover,
+      data.sportbook_turnover,
+      data.total_withdrawal
+    ]
+    const maxValue = Math.max(...values)
+    const maxDomain = getMaxDomain(maxValue)
+    
     return [
-      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit },
-      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover },
-      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover },
-      { subject: 'Live Casino', value: data.live_casino_turnover, originalValue: data.live_casino_turnover },
-      { subject: 'Sportbook', value: data.sportbook_turnover, originalValue: data.sportbook_turnover },
-      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal }
+      { subject: 'Total Deposit', value: data.total_deposit, originalValue: data.total_deposit, maxDomain },
+      { subject: 'Total Turnover', value: data.total_turnover, originalValue: data.total_turnover, maxDomain },
+      { subject: 'Slot Turnover', value: data.slot_turnover, originalValue: data.slot_turnover, maxDomain },
+      { subject: 'Live Casino', value: data.live_casino_turnover, originalValue: data.live_casino_turnover, maxDomain },
+      { subject: 'Sportbook', value: data.sportbook_turnover, originalValue: data.sportbook_turnover, maxDomain },
+      { subject: 'Total Withdrawal', value: data.total_withdrawal, originalValue: data.total_withdrawal, maxDomain }
     ]
   }
 
@@ -390,7 +402,7 @@ export default function MemberSpecificationPage() {
         <div className="bg-[#0B1A33] border border-[#FFD700] rounded-lg p-2 shadow-xl">
           <p className="text-[#FFD700] font-bold text-xs">{data.subject}</p>
           <p className="text-white text-xs">{formatCurrency(data.originalValue || 0)}</p>
-          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - 1M (1jt | 10jt | 100jt | 1M)</p>
+          <p className="text-[#A7D8FF] text-[10px] mt-1">Skala: 0 - {formatCurrency(data.maxDomain)}</p>
         </div>
       )
     }
@@ -404,6 +416,17 @@ export default function MemberSpecificationPage() {
     if (value === 100_000_000) return '100jt'
     if (value === 1_000_000_000) return '1M'
     return ''
+  }
+
+  // Generate ticks yang sesuai dengan domain
+  const generateTicks = (maxDomain: number): number[] => {
+    const ticks: number[] = [0]
+    for (let i = 0; i < FIXED_CIRCLES.length; i++) {
+      if (FIXED_CIRCLES[i] <= maxDomain) {
+        ticks.push(FIXED_CIRCLES[i])
+      }
+    }
+    return ticks
   }
 
   // ===========================================
@@ -421,6 +444,8 @@ export default function MemberSpecificationPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {memberBoxes.map((box) => {
           const spiderData = box.data ? getSpiderData(box.data) : []
+          const currentDomain = spiderData[0]?.maxDomain || 10_000_000
+          const ticks = generateTicks(currentDomain)
           
           return (
             <div key={box.id} className="bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 overflow-hidden flex flex-col">
@@ -478,14 +503,13 @@ export default function MemberSpecificationPage() {
                       <div className="text-xs text-[#A7D8FF]">Asset: {box.data.asset_code}</div>
                     </div>
 
-                    {/* RADAR CHART - 6 SISI + 4 LAPISAN SEGI ENAM */}
+                    {/* RADAR CHART - 6 SISI + DOMAIN DINAMIS */}
                     <div className="mb-6">
                       <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div style={{ width: '100%', height: 450, minHeight: 450 }}>
                         {chartReady[box.id] && spiderData.length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
                             <RadarChart cx="50%" cy="50%" outerRadius="75%" data={spiderData}>
-                              {/* PolarGrid otomatis bikin 4 lapisan segi enam */}
                               <PolarGrid 
                                 stroke="#FFD700" 
                                 strokeOpacity={0.4}
@@ -497,7 +521,8 @@ export default function MemberSpecificationPage() {
                               />
                               <PolarRadiusAxis 
                                 angle={90} 
-                                domain={[0, MAX_DOMAIN]} 
+                                domain={[0, currentDomain]} 
+                                ticks={ticks}
                                 tick={{ fill: '#FFD700', fontSize: 10, fontWeight: 'bold' }}
                                 tickFormatter={formatRadiusTick}
                                 axisLine={false}
@@ -519,9 +544,8 @@ export default function MemberSpecificationPage() {
                           </div>
                         )}
                       </div>
-                      {/* Caption 4 LAPISAN SEGI ENAM */}
                       <div className="text-center text-xs text-[#FFD700] mt-3 font-bold">
-                        ⬤ 4 Lapisan Segi Enam: 1jt (dalam) ┃ 10jt ┃ 100jt ┃ 1M (luar)
+                        ⬤ Lingkaran: {ticks.map(t => t === 0 ? '0' : formatRadiusTick(t)).join(' | ')}
                       </div>
                     </div>
 
