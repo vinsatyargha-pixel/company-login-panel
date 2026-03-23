@@ -56,27 +56,22 @@ export default function MemberSpecificationPage() {
   // SKALA LINEAR ANTAR LAYER
   // ===========================================
   const LAYER_VALUES = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
-  const LAYER_RADII = [0, 18, 36, 54, 72] // radius untuk viewBox 180x180
+  const LAYER_RADII = [0, 18, 36, 54, 72]
   
   // SEGI ENAM - POSISI BENER (dalam derajat SVG)
-  // 12:00 (atas) = -90° (270°)
-  // 02:00 = -30° (330°)
-  // 04:00 = 30°
-  // 06:00 (bawah) = 90°
-  // 08:00 = 150°
-  // 10:00 = 210° (-150°)
+  // SVG: 0° = kanan, 90° = bawah, -90° = atas, 180° = kiri
   const SIDES = [
-    { name: 'TOTAL DEPOSIT', angle: -90 },     // 12:00 (atas)
-    { name: 'TOTAL T.O', angle: -30 },    // 02:00
-    { name: 'T.O Slot', angle: 30 },         // 04:00
-    { name: 'TOTAL WITHDRAWAL', angle: 90 },     // 06:00 (bawah)
-    { name: 'T.O CASINO', angle: 150 },        // 08:00
-    { name: 'T.O SPORTS', angle: 210 }        // 10:00
+    { name: 'DEPOSIT', angle: -90 },      // 12:00 (atas)
+    { name: 'TOTAL TO', angle: -30 },     // 02:00
+    { name: 'SLOT', angle: 30 },          // 04:00
+    { name: 'WITHDRAW', angle: 90 },      // 06:00 (bawah)
+    { name: 'CASINO', angle: 150 },       // 08:00
+    { name: 'SPORTS', angle: 210 }        // 10:00
   ]
   
   const CENTER_X = 100
   const CENTER_Y = 100
-  const MAX_RADIUS = 80
+  const MAX_RADIUS = 72
 
   // ===========================================
   // PAGINATION HELPER
@@ -496,9 +491,9 @@ export default function MemberSpecificationPage() {
                     </div>
 
                     <div className="mb-6">
-                      <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Polygon Metrics</h4>
+                      <h4 className="text-sm font-bold text-[#FFD700] mb-3 text-center">Performance Radar</h4>
                       <div className="flex justify-center">
-                        <svg viewBox="0 0 180 180" width="300" height="300" style={{ margin: '0 auto' }}>
+                        <svg viewBox="0 0 200 200" width="300" height="300" style={{ margin: '0 auto' }}>
                           {/* 4 LAPISAN SEGI ENAM */}
                           {[18, 36, 54, 72].map((radius, idx) => {
                             const points = getHexagonPoints(radius)
@@ -541,10 +536,10 @@ export default function MemberSpecificationPage() {
                             />
                           )}
                           
-                          {/* LABEL 6 SISI */}
+                          {/* LABEL 6 SISI - DIPERSINGKAT DAN RADIUS DIPERBESAR */}
                           {SIDES.map((side, idx) => {
                             const angle = side.angle * Math.PI / 180
-                            const radius = 82
+                            const radius = 92
                             const x = CENTER_X + radius * Math.cos(angle)
                             const y = CENTER_Y + radius * Math.sin(angle)
                             return (
