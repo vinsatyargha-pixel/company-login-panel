@@ -62,7 +62,7 @@ export default function MemberSpecificationPage() {
   // SVG: 0° = kanan, 90° = bawah, -90° = atas, 180° = kiri
   const SIDES = [
     { name: 'DEPOSIT', angle: -90 },      // 12:00 (atas)
-    { name: 'TOTAL TO', angle: -30 },     // 02:00
+    { name: 'SUM. T.O', angle: -30 },     // 02:00
     { name: 'SLOT', angle: 30 },          // 04:00
     { name: 'WITHDRAW', angle: 90 },      // 06:00 (bawah)
     { name: 'CASINO', angle: 150 },       // 08:00
