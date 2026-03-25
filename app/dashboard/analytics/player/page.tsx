@@ -253,6 +253,7 @@ export default function PlayerOverviewPage() {
         .gte('period_start', start)
         .lte('period_end', end)
 
+      // Filter asset untuk winlose
       if (selectedAsset !== 'all') {
         winloseQuery = winloseQuery.eq('asset_code', selectedAsset)
       }
@@ -942,12 +943,12 @@ export default function PlayerOverviewPage() {
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
                     <thead className="bg-[#0B1A33]/50 sticky top-0">
-                       <tr>
+                      <tr>
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Win</th>
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Provider</th>
-                       </tr>
+                      </tr>
                     </thead>
                     <tbody>
                       {bigWins.map((win, idx) => (
@@ -973,12 +974,12 @@ export default function PlayerOverviewPage() {
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full">
                     <thead className="bg-[#0B1A33]/50 sticky top-0">
-                       <tr>
+                      <tr>
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
                         <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net Turnover</th>
-                       </tr>
+                      </tr>
                     </thead>
                     <tbody>
                       {highestNetTurnover.map((member, idx) => (
@@ -1030,11 +1031,11 @@ export default function PlayerOverviewPage() {
                           </div>
                           <table className="w-full">
                             <thead className="bg-[#0B1A33]/30">
-                               <tr>
+                              <tr>
                                 <th className="px-3 py-1.5 text-left text-xs text-[#A7D8FF]">Provider</th>
                                 <th className="px-3 py-1.5 text-right text-xs text-[#A7D8FF]">Net Turnover</th>
                                 <th className="px-3 py-1.5 text-right text-xs text-[#A7D8FF]">Member Total</th>
-                               </tr>
+                              </tr>
                             </thead>
                             <tbody>
                               {providers.map((product) => (
@@ -1065,7 +1066,7 @@ export default function PlayerOverviewPage() {
             <div className="overflow-x-auto max-h-96 overflow-y-auto">
               <table className="w-full">
                 <thead className="bg-[#0B1A33]/50 sticky top-0">
-                   <tr>
+                  <tr>
                     <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
                     <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                     <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
@@ -1073,7 +1074,7 @@ export default function PlayerOverviewPage() {
                     <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Withdraw</th>
                     <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net</th>
                     <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
-                   </tr>
+                  </tr>
                 </thead>
                 <tbody>
                   {netDepositWithdraw.map((item, idx) => (
@@ -1103,13 +1104,13 @@ export default function PlayerOverviewPage() {
               <div className="overflow-x-auto max-h-96 overflow-y-auto">
                 <table className="w-full">
                   <thead className="bg-[#0B1A33]/50 sticky top-0">
-                     <tr>
+                    <tr>
                       <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
                       <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Deposit</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
-                     </tr>
+                    </tr>
                   </thead>
                   <tbody>
                     {topDeposit.map((item, idx) => (
@@ -1133,13 +1134,13 @@ export default function PlayerOverviewPage() {
               <div className="overflow-x-auto max-h-96 overflow-y-auto">
                 <table className="w-full">
                   <thead className="bg-[#0B1A33]/50 sticky top-0">
-                     <tr>
+                    <tr>
                       <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">#</th>
                       <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Player</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Total Withdraw</th>
                       <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Trans</th>
-                     </tr>
+                    </tr>
                   </thead>
                   <tbody>
                     {topWithdrawal.map((item, idx) => (
