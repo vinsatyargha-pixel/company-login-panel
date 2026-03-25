@@ -109,6 +109,38 @@ export default function PlayerOverviewPage() {
   const assets = ['XLY']
 
   // ===========================================
+  // MAPPING PROVIDER KE KATEGORI
+  // ===========================================
+  const getProviderCategory = (productType: string): string => {
+    const type = productType?.toLowerCase() || ''
+    
+    // CASINO
+    if (type.includes('dream gaming') || 
+        type.includes('opuslivecasino') || 
+        type.includes('pp live casino')) {
+      return 'CASINO'
+    }
+    
+    // ORIGINAL
+    if (type.includes('ace gaming')) {
+      return 'ORIGINAL'
+    }
+    
+    // RACE
+    if (type.includes('marblex')) {
+      return 'RACE'
+    }
+    
+    // SPORTS
+    if (type.includes('saba platform')) {
+      return 'SPORTS'
+    }
+    
+    // SLOTS (default)
+    return 'SLOTS'
+  }
+
+  // ===========================================
   // FETCH ALL DATA WITH PAGINATION
   // ===========================================
   const fetchAllDataWithPagination = async (queryBuilder: any) => {
@@ -177,7 +209,7 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // GET DATE RANGE - DENGAN LOG YANG JELAS
+  // GET DATE RANGE
   // ===========================================
   const getDateRange = () => {
     console.log('🔍 getDateRange called, rangeType:', rangeType)
@@ -201,7 +233,6 @@ export default function PlayerOverviewPage() {
       return { start, end }
     }
     
-    // monthly default
     const monthIndex = months.indexOf(selectedMonth) + 1
     const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
     const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
@@ -220,9 +251,7 @@ export default function PlayerOverviewPage() {
       
       console.log('📅 FETCHING DATA PERIODE:', { start, end, rangeType })
 
-      // ===========================================
       // 1. FETCH WINLOSE TRANSACTIONS
-      // ===========================================
       const { data: winloseData, error: winloseError } = await supabase
         .from('winlose_transactions')
         .select('*')
@@ -231,9 +260,7 @@ export default function PlayerOverviewPage() {
 
       if (winloseError) throw winloseError
 
-      // ===========================================
       // 2. FETCH DEPOSIT & WITHDRAWAL
-      // ===========================================
       let depositQuery = supabase
         .from('deposit_transactions')
         .select('user_name, nett_amount, brand, approved_date')
@@ -254,9 +281,7 @@ export default function PlayerOverviewPage() {
       console.log('📊 DEPOSIT DATA TOTAL:', depositData.length, 'rows')
       console.log('📊 WITHDRAW DATA TOTAL:', withdrawData.length, 'rows')
 
-      // ===========================================
       // PROCESS WINLOSE DATA
-      // ===========================================
       if (!winloseData || winloseData.length === 0) {
         setHasData(false)
         resetData()
@@ -403,9 +428,7 @@ export default function PlayerOverviewPage() {
           .sort((a, b) => b.member_total - a.member_total)
       )
 
-      // ===========================================
       // PROCESS RATIO WITHDRAW/DEPOSIT
-      // ===========================================
       const ratioMap = new Map<string, PlayerRatio>()
 
       depositData?.forEach((row: any) => {
@@ -468,9 +491,7 @@ export default function PlayerOverviewPage() {
           .slice(0, 100)
       )
 
-      // ===========================================
       // PROCESS NET DEPOSIT VS WITHDRAW
-      // ===========================================
       const netMap = new Map<string, NetDepositWithdraw>()
       const depositMapData = new Map<string, TopDeposit>()
       const withdrawMapData = new Map<string, TopWithdrawal>()
@@ -598,7 +619,7 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // EFFECTS - PASTIKAN FETCH SAAT FILTER BERUBAH
+  // EFFECTS
   // ===========================================
   useEffect(() => {
     if (rangeType === 'monthly' && selectedMonth && selectedYear) {
@@ -623,7 +644,6 @@ export default function PlayerOverviewPage() {
   // ===========================================
   const handleCustomRangeClick = () => {
     setRangeType('custom')
-    // Set default tanggal jika belum ada
     if (!customStartDate) {
       const defaultDate = new Date('2026-01-08')
       setCustomStartDate(defaultDate)
@@ -960,31 +980,65 @@ export default function PlayerOverviewPage() {
                 </div>
               </div>
 
+              {/* PROVIDER PERFORMANCE - DENGAN SUB HEAD */}
               <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
                 <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
                   <h2 className="text-[#FFD700] font-bold">🎰 PROVIDER PERFORMANCE</h2>
                 </div>
-                <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="bg-[#0B1A33]/50 sticky top-0">
-                      <tr>
-                        <th className="px-2 py-2 text-left text-xs text-[#A7D8FF]">Provider</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Net Turnover</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Member Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {productStats.map((product) => (
-                        <tr key={product.product_type} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                          <td className="px-2 py-1 text-sm font-medium">{product.product_type}</td>
-                          <td className="px-2 py-1 text-sm text-right">{formatCurrency(product.total_net_turnover)}</td>
-                          <td className={`px-2 py-1 text-sm text-right ${product.member_total <= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {formatCurrency(product.member_total)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                  {(() => {
+                    // Group provider berdasarkan kategori
+                    const grouped = productStats.reduce((acc, provider) => {
+                      const category = getProviderCategory(provider.product_type)
+                      if (!acc[category]) acc[category] = []
+                      acc[category].push(provider)
+                      return acc
+                    }, {} as Record<string, ProductStats[]>)
+
+                    const categoryOrder = ['SLOTS', 'CASINO', 'ORIGINAL', 'RACE', 'SPORTS']
+                    const categoryIcons: Record<string, string> = {
+                      'SLOTS': '🎰',
+                      'CASINO': '🎲',
+                      'ORIGINAL': '🎮',
+                      'RACE': '🏁',
+                      'SPORTS': '⚽'
+                    }
+
+                    return categoryOrder.map(category => {
+                      const providers = grouped[category]
+                      if (!providers || providers.length === 0) return null
+
+                      return (
+                        <div key={category} className="mb-4">
+                          <div className="bg-[#0B1A33]/70 px-3 py-2 sticky top-0 border-b border-[#FFD700]/30">
+                            <h3 className="text-[#FFD700] font-bold text-sm">
+                              {categoryIcons[category]} {category}
+                            </h3>
+                          </div>
+                          <table className="w-full">
+                            <thead className="bg-[#0B1A33]/30">
+                              <tr>
+                                <th className="px-3 py-1.5 text-left text-xs text-[#A7D8FF]">Provider</th>
+                                <th className="px-3 py-1.5 text-right text-xs text-[#A7D8FF]">Net Turnover</th>
+                                <th className="px-3 py-1.5 text-right text-xs text-[#A7D8FF]">Member Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {providers.map((product) => (
+                                <tr key={product.product_type} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
+                                  <td className="px-3 py-1.5 text-sm font-medium">{product.product_type}</td>
+                                  <td className="px-3 py-1.5 text-sm text-right">{formatCurrency(product.total_net_turnover)}</td>
+                                  <td className={`px-3 py-1.5 text-sm text-right ${product.member_total <= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {formatCurrency(product.member_total)}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>
               </div>
             </div>
