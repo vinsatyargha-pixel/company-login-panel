@@ -10,7 +10,9 @@ const formatNumber = (num: number) => {
   return num.toLocaleString('id-ID');
 };
 
+// ===========================================
 // PAGINATION HELPER
+// ===========================================
 const fetchAllWithPagination = async (queryBuilder: any) => {
   let allData: any[] = [];
   let page = 0;
@@ -110,12 +112,15 @@ export default function AssetsPage() {
     };
   };
 
+  // ===========================================
+  // FETCH ASSET DATA DENGAN PAGINATION
+  // ===========================================
   const fetchAssetData = async (assetCode: string) => {
     const dateRange = getDateRange();
     const startDate = dateRange.start;
     const endDate = dateRange.end;
 
-    // 1. FETCH DEPOSIT (pake brand)
+    // 1. DEPOSIT
     let depositQuery = supabase
       .from('deposit_transactions')
       .select('user_name, nett_amount')
@@ -126,7 +131,7 @@ export default function AssetsPage() {
 
     const deposits = await fetchAllWithPagination(depositQuery);
 
-    // 2. FETCH WITHDRAWAL (pake brand)
+    // 2. WITHDRAWAL
     let withdrawalQuery = supabase
       .from('withdrawal_transactions')
       .select('user_name, nett_amount')
@@ -137,7 +142,7 @@ export default function AssetsPage() {
 
     const withdrawals = await fetchAllWithPagination(withdrawalQuery);
 
-    // 3. FETCH WINLOSE (pake website)
+    // 3. WINLOSE
     let winloseQuery = supabase
       .from('winlose_transactions')
       .select('net_turnover, member_total')
@@ -147,14 +152,14 @@ export default function AssetsPage() {
 
     const winlose = await fetchAllWithPagination(winloseQuery);
 
-    // 4. FETCH ADJUSTMENT (pake brand)
+    // 4. ADJUSTMENT - PAKAI adjustment_amount
     let adjustmentQuery = supabase
       .from('adjustment_transactions')
-      .select('amount')
+      .select('adjustment_amount')
       .eq('brand', assetCode)
       .eq('status', 'Approved')
-      .gte('approved_date', `${startDate} 00:00:00`)
-      .lte('approved_date', `${endDate} 23:59:59`);
+      .gte('adjustment_date', `${startDate} 00:00:00`)
+      .lte('adjustment_date', `${endDate} 23:59:59`);
 
     const adjustments = await fetchAllWithPagination(adjustmentQuery);
 
@@ -168,10 +173,10 @@ export default function AssetsPage() {
     const turnover = winlose?.reduce((sum: number, w: any) => sum + (w.net_turnover || 0), 0) || 0;
     const winloseTotal = winlose?.reduce((sum: number, w: any) => sum + (w.member_total || 0), 0) || 0;
 
-    const adjustmentAmount = adjustments?.reduce((sum: number, a: any) => sum + (a.amount || 0), 0) || 0;
+    // PAKAI adjustment_amount
+    const adjustmentAmount = adjustments?.reduce((sum: number, a: any) => sum + (a.adjustment_amount || 0), 0) || 0;
     const adjustmentCount = adjustments?.length || 0;
 
-    // Active members dari deposit (unique user)
     const activeMembers = deposits?.filter((d: any) => d.user_name).map((d: any) => d.user_name) || [];
     const uniqueActiveMembers = [...new Set(activeMembers)];
 
