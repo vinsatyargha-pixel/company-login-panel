@@ -115,7 +115,7 @@ export default function AssetsPage() {
     const startDate = dateRange.start;
     const endDate = dateRange.end;
 
-    // Fetch deposits
+    // 1. FETCH DEPOSIT (pake brand)
     let depositQuery = supabase
       .from('deposit_transactions')
       .select('user_name, nett_amount')
@@ -126,7 +126,7 @@ export default function AssetsPage() {
 
     const deposits = await fetchAllWithPagination(depositQuery);
 
-    // Fetch withdrawals
+    // 2. FETCH WITHDRAWAL (pake brand)
     let withdrawalQuery = supabase
       .from('withdrawal_transactions')
       .select('user_name, nett_amount')
@@ -137,17 +137,17 @@ export default function AssetsPage() {
 
     const withdrawals = await fetchAllWithPagination(withdrawalQuery);
 
-    // Fetch winlose
+    // 3. FETCH WINLOSE (pake website)
     let winloseQuery = supabase
       .from('winlose_transactions')
       .select('net_turnover, member_total')
-      .eq('brand', assetCode)
+      .eq('website', assetCode)
       .gte('period_start', startDate)
       .lte('period_start', endDate);
 
     const winlose = await fetchAllWithPagination(winloseQuery);
 
-    // Fetch adjustment
+    // 4. FETCH ADJUSTMENT (pake brand)
     let adjustmentQuery = supabase
       .from('adjustment_transactions')
       .select('amount')
