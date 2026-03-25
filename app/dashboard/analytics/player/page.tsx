@@ -139,20 +139,12 @@ export default function PlayerOverviewPage() {
   // HELPER FUNCTIONS
   // ===========================================
   
-  // Buang prefix XLY dari account_id
   const cleanAccountId = (fullId: string): string => {
     if (!fullId) return ''
     if (fullId.toUpperCase().startsWith('XLY')) {
       return fullId.substring(3)
     }
     return fullId
-  }
-
-  const formatMemberId = (userName: string, brand: string = 'XLY'): string => {
-    if (!userName) return ''
-    const cleanName = userName.trim()
-    const assetCode = brand && brand.trim() !== '' ? brand.trim().toUpperCase() : 'XLY'
-    return assetCode + cleanName
   }
 
   const parseAccountId = (fullId: string): { asset_code: string; member_id: string } => {
@@ -185,9 +177,11 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // GET DATE RANGE (KONSISTEN UNTUK SEMUA QUERY)
+  // GET DATE RANGE - DENGAN LOG YANG JELAS
   // ===========================================
   const getDateRange = () => {
+    console.log('🔍 getDateRange called, rangeType:', rangeType)
+    
     if (rangeType === 'yesterday') {
       const jakartaNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))
       const yesterday = new Date(jakartaNow)
@@ -196,44 +190,29 @@ export default function PlayerOverviewPage() {
       const month = String(yesterday.getMonth() + 1).padStart(2, '0')
       const day = String(yesterday.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
+      console.log('🔍 YESTERDAY RANGE:', { start: dateStr, end: dateStr })
       return { start: dateStr, end: dateStr }
     }
     
     if (rangeType === 'custom' && customStartDate && customEndDate) {
-      return {
-        start: customStartDate.toISOString().split('T')[0],
-        end: customEndDate.toISOString().split('T')[0]
-      }
+      const start = customStartDate.toISOString().split('T')[0]
+      const end = customEndDate.toISOString().split('T')[0]
+      console.log('🔍 CUSTOM RANGE:', { start, end })
+      return { start, end }
     }
     
+    // monthly default
     const monthIndex = months.indexOf(selectedMonth) + 1
     const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
     const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
     const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+    console.log('🔍 MONTHLY RANGE:', { startDate, endDate })
     return { start: startDate, end: endDate }
   }
 
   // ===========================================
-  // FETCH DATA - SEMUA QUERY PAKAI FILTER YANG SAMA
+  // FETCH DATA
   // ===========================================
-  useEffect(() => {
-    if (rangeType === 'monthly' && selectedMonth && selectedYear) {
-      fetchAllData()
-    }
-  }, [selectedMonth, selectedYear, selectedAsset, rangeType])
-
-  useEffect(() => {
-    if (rangeType === 'yesterday') {
-      fetchAllData()
-    }
-  }, [selectedAsset, rangeType])
-
-  useEffect(() => {
-    if (rangeType === 'custom' && customStartDate && customEndDate) {
-      fetchAllData()
-    }
-  }, [customStartDate, customEndDate, selectedAsset, rangeType])
-
   const fetchAllData = async () => {
     try {
       setLoading(true)
@@ -253,7 +232,7 @@ export default function PlayerOverviewPage() {
       if (winloseError) throw winloseError
 
       // ===========================================
-      // 2. FETCH DEPOSIT & WITHDRAWAL DENGAN FILTER TANGGAL YANG SAMA
+      // 2. FETCH DEPOSIT & WITHDRAWAL
       // ===========================================
       let depositQuery = supabase
         .from('deposit_transactions')
@@ -318,7 +297,7 @@ export default function PlayerOverviewPage() {
       validRows.forEach((row: any) => {
         const fullId = row.account_id
         const cleanId = cleanAccountId(fullId)
-        const { asset_code, member_id } = parseAccountId(fullId)
+        const { asset_code } = parseAccountId(fullId)
         const memberTotal = row.member_total || 0
         const netTurnover = row.net_turnover || 0
         
@@ -490,19 +469,17 @@ export default function PlayerOverviewPage() {
       )
 
       // ===========================================
-      // PROCESS NET DEPOSIT VS WITHDRAW, TOP DEPOSIT, TOP WITHDRAWAL
+      // PROCESS NET DEPOSIT VS WITHDRAW
       // ===========================================
       const netMap = new Map<string, NetDepositWithdraw>()
       const depositMapData = new Map<string, TopDeposit>()
       const withdrawMapData = new Map<string, TopWithdrawal>()
 
-      // PROCESS DEPOSIT
       depositData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         const key = row.user_name?.toLowerCase().trim() || ''
         const amount = row.nett_amount || 0
 
-        // NET MAP
         if (!netMap.has(key)) {
           netMap.set(key, {
             account_id: key,
@@ -519,7 +496,6 @@ export default function PlayerOverviewPage() {
         netData.net_amount = netData.total_deposit - netData.total_withdraw
         netData.transaction_count++
 
-        // DEPOSIT MAP
         if (!depositMapData.has(key)) {
           depositMapData.set(key, {
             account_id: key,
@@ -536,13 +512,11 @@ export default function PlayerOverviewPage() {
         depData.avg_deposit = depData.total_deposit / depData.transaction_count
       })
 
-      // PROCESS WITHDRAW
       withdrawData?.forEach((row: any) => {
         if (!filterByAsset(row)) return
         const key = row.user_name?.toLowerCase().trim() || ''
         const amount = row.nett_amount || 0
 
-        // NET MAP
         if (!netMap.has(key)) {
           netMap.set(key, {
             account_id: key,
@@ -559,7 +533,6 @@ export default function PlayerOverviewPage() {
         netData.net_amount = netData.total_deposit - netData.total_withdraw
         netData.transaction_count++
 
-        // WITHDRAW MAP
         if (!withdrawMapData.has(key)) {
           withdrawMapData.set(key, {
             account_id: key,
@@ -576,7 +549,6 @@ export default function PlayerOverviewPage() {
         wdData.avg_withdraw = wdData.total_withdraw / wdData.transaction_count
       })
 
-      // SET STATE
       setNetDepositWithdraw(
         Array.from(netMap.values())
           .sort((a, b) => b.net_amount - a.net_amount)
@@ -626,6 +598,40 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
+  // EFFECTS - PASTIKAN FETCH SAAT FILTER BERUBAH
+  // ===========================================
+  useEffect(() => {
+    if (rangeType === 'monthly' && selectedMonth && selectedYear) {
+      fetchAllData()
+    }
+  }, [selectedMonth, selectedYear, selectedAsset, rangeType])
+
+  useEffect(() => {
+    if (rangeType === 'yesterday') {
+      fetchAllData()
+    }
+  }, [selectedAsset, rangeType])
+
+  useEffect(() => {
+    if (rangeType === 'custom' && customStartDate && customEndDate) {
+      fetchAllData()
+    }
+  }, [customStartDate, customEndDate, selectedAsset, rangeType])
+
+  // ===========================================
+  // HANDLER UNTUK CUSTOM RANGE
+  // ===========================================
+  const handleCustomRangeClick = () => {
+    setRangeType('custom')
+    // Set default tanggal jika belum ada
+    if (!customStartDate) {
+      const defaultDate = new Date('2026-01-08')
+      setCustomStartDate(defaultDate)
+      setCustomEndDate(defaultDate)
+    }
+  }
+
+  // ===========================================
   // FORMATTERS
   // ===========================================
   const formatNumber = (num: number) => {
@@ -639,10 +645,6 @@ export default function PlayerOverviewPage() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(num)
-  }
-
-  const formatPercent = (num: number) => {
-    return num.toFixed(2) + '%'
   }
 
   // ===========================================
@@ -689,7 +691,7 @@ export default function PlayerOverviewPage() {
               Yesterday
             </button>
             <button 
-              onClick={() => setRangeType('custom')} 
+              onClick={handleCustomRangeClick} 
               className={`px-4 py-2 rounded-lg ${rangeType === 'custom' ? 'bg-[#FFD700] text-[#0B1A33]' : 'bg-[#0B1A33] text-white'}`}
             >
               Custom Range
@@ -727,7 +729,12 @@ export default function PlayerOverviewPage() {
                 <label className="text-xs text-[#A7D8FF] block mb-1">DARI TANGGAL</label>
                 <DatePicker
                   selected={customStartDate}
-                  onChange={(date: Date | null) => setCustomStartDate(date || undefined)}
+                  onChange={(date: Date | null) => {
+                    if (date) {
+                      setCustomStartDate(date)
+                      if (!customEndDate) setCustomEndDate(date)
+                    }
+                  }}
                   selectsStart
                   startDate={customStartDate}
                   endDate={customEndDate}
@@ -740,7 +747,9 @@ export default function PlayerOverviewPage() {
                 <label className="text-xs text-[#A7D8FF] block mb-1">SAMPAI TANGGAL</label>
                 <DatePicker
                   selected={customEndDate}
-                  onChange={(date: Date | null) => setCustomEndDate(date || undefined)}
+                  onChange={(date: Date | null) => {
+                    if (date) setCustomEndDate(date)
+                  }}
                   selectsEnd
                   startDate={customStartDate}
                   endDate={customEndDate}
@@ -767,6 +776,9 @@ export default function PlayerOverviewPage() {
           <h2 className="text-xl text-[#FFD700] font-bold mb-2">Belum Ada Data Player</h2>
           <p className="text-[#A7D8FF]">
             Pilih periode yang ada datanya atau upload data dulu
+          </p>
+          <p className="text-xs text-[#A7D8FF] mt-2">
+            Contoh: Januari 2026 (bulanan) atau 08/01/2026 (custom range)
           </p>
         </div>
       )}
