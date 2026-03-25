@@ -102,7 +102,7 @@ export default function MemberSpecificationPage() {
     try {
       setLoadingTopMembers(true)
       
-      // Ambil data winlose untuk periode terbaru (misal: bulan ini)
+      // Ambil data winlose untuk periode terbaru (bulan ini)
       const now = new Date()
       const year = now.getFullYear()
       const month = now.getMonth() + 1
@@ -387,7 +387,7 @@ export default function MemberSpecificationPage() {
         }
       })
       
-      // ETC = RACE + ORIGINAL + provider lain yang belum masuk kategori
+      // ETC = RACE + ORIGINAL
       const etcTurnover = raceTurnover + originalTurnover
       
       const avgDepositInterval = calculateAverageInterval(depositData.map(tx => tx.approved_date))
@@ -572,9 +572,7 @@ export default function MemberSpecificationPage() {
                   <div className="w-8 h-8 rounded-full bg-[#FFD700]/20 flex items-center justify-center">
                     <span className="text-[#FFD700] font-bold">{box.id}</span>
                   </div>
-                  <h3 className="text-[#FFD700] font-bold">
-                    {topMembers[boxIndex] ? `🏆 TOP ${boxIndex + 1} NET TURNOVER` : 'Search Member'}
-                  </h3>
+                  <h3 className="text-[#FFD700] font-bold">Search Member</h3>
                 </div>
                 <div className="flex gap-2">
                   <input
@@ -598,11 +596,6 @@ export default function MemberSpecificationPage() {
                     {box.loading ? '...' : 'Cari'}
                   </button>
                 </div>
-                {topMembers[boxIndex] && !box.data && !box.loading && (
-                  <div className="mt-2 text-xs text-[#FFD700] bg-[#0B1A33]/50 rounded p-1 text-center">
-                    🏆 Top {boxIndex + 1} with {formatCurrency(topMembers[boxIndex].total_net_turnover)} Net Turnover
-                  </div>
-                )}
               </div>
 
               <div className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
@@ -760,12 +753,17 @@ export default function MemberSpecificationPage() {
                   <div className="text-center py-12">
                     <div className="text-4xl mb-2">🔍</div>
                     <p className="text-[#A7D8FF] text-sm">Masukkan ID member untuk melihat detail</p>
-                    <p className="text-xs text-[#FFD700] mt-2">✨ Top 3 Net Turnover bulan ini:</p>
-                    {topMembers.map((member, idx) => (
-                      <div key={idx} className="text-xs text-[#A7D8FF] mt-1">
-                        {idx + 1}. {member.member_id} ({formatCurrency(member.total_net_turnover)})
-                      </div>
-                    ))}
+                    <p className="text-xs text-[#A7D8FF] mt-1">Contoh: surya28, Bradley2020, Memelah1233</p>
+                    {topMembers.length > 0 && (
+                      <>
+                        <p className="text-xs text-[#FFD700] mt-3">✨ Top 3 Net Turnover bulan ini:</p>
+                        {topMembers.map((member, idx) => (
+                          <div key={idx} className="text-xs text-[#A7D8FF] mt-1">
+                            {idx + 1}. {member.member_id} ({formatCurrency(member.total_net_turnover)})
+                          </div>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
