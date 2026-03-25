@@ -35,7 +35,7 @@ export default function DataRawPage() {
       setLoading(true);
       
       const tables = [
-        { name: 'cs', table: 'cs_uploads' },
+        { name: 'cs', table: 'chat_uploads' },           // ← GANTI jadi chat_uploads
         { name: 'dp', table: 'deposit_uploads' },
         { name: 'wd', table: 'withdrawal_uploads' },
         { name: 'adj', table: 'adjustment_uploads' },
