@@ -773,7 +773,6 @@ export default function MemberSpecificationPage() {
                   <div className="text-center py-12">
                     <div className="text-4xl mb-2">🔍</div>
                     <p className="text-[#A7D8FF] text-sm">Masukkan ID member untuk melihat detail</p>
-                    <p className="text-xs text-[#A7D8FF] mt-1">Contoh: surya28, Bradley2020, Memelah1233</p>
                     {topMembers.length > 0 && (
                       <>
                         <p className="text-xs text-[#FFD700] mt-3">✨ Top 3 Net Turnover bulan ini:</p>
