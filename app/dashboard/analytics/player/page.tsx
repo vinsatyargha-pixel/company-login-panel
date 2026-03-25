@@ -313,21 +313,18 @@ export default function PlayerOverviewPage() {
       setNetWinLose(totalMemberTotal)
       setTotalGames(totalGames)
 
-      // Hitung unique players dari winlose
-      const uniquePlayers = new Set(validRows.map((d: any) => cleanAccountId(d.account_id)))
-      
-      // Tambahin juga dari deposit dan withdrawal
-      const uniqueDepositPlayers = new Set(depositData.map((d: any) => d.user_name?.toLowerCase().trim() || ''))
-      const uniqueWithdrawPlayers = new Set(withdrawData.map((d: any) => d.user_name?.toLowerCase().trim() || ''))
-      
-      const allUniquePlayers = new Set([
-        ...uniquePlayers,
-        ...uniqueDepositPlayers,
-        ...uniqueWithdrawPlayers
-      ])
-      
-      setUniquePlayerCount(allUniquePlayers.size)
-      console.log('👥 UNIQUE PLAYERS:', allUniquePlayers.size)
+      // ===========================================
+      // HITUNG UNIQUE PLAYERS (HANYA DARI WINLOSE)
+      // ===========================================
+      const uniquePlayers = new Set<string>()
+      validRows.forEach((row: any) => {
+        const cleanId = cleanAccountId(row.account_id)
+        if (cleanId) {
+          uniquePlayers.add(cleanId)
+        }
+      })
+      setUniquePlayerCount(uniquePlayers.size)
+      console.log('👥 UNIQUE PLAYERS (dari winlose):', uniquePlayers.size)
 
       // MEMBER STATS
       const memberMap = new Map<string, MemberStats>()
