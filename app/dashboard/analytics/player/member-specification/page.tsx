@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 
@@ -46,6 +46,12 @@ interface MemberBox {
   error: string | null
 }
 
+interface TopMember {
+  account_id: string
+  member_id: string
+  total_net_turnover: number
+}
+
 export default function MemberSpecificationPage() {
   const [memberBoxes, setMemberBoxes] = useState<MemberBox[]>([
     { id: 1, searchValue: '', data: null, loading: false, error: null },
@@ -54,6 +60,8 @@ export default function MemberSpecificationPage() {
   ])
   
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
+  const [topMembers, setTopMembers] = useState<TopMember[]>([])
+  const [loadingTopMembers, setLoadingTopMembers] = useState(true)
 
   // ===========================================
   // MAPPING PROVIDER KE KATEGORI (SAMA DENGAN PLAYER OVERVIEW)
@@ -88,27 +96,92 @@ export default function MemberSpecificationPage() {
   }
 
   // ===========================================
+  // FETCH TOP 3 MEMBERS BERDASARKAN NET TURNOVER
+  // ===========================================
+  const fetchTopMembers = async () => {
+    try {
+      setLoadingTopMembers(true)
+      
+      // Ambil data winlose untuk periode terbaru (misal: bulan ini)
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = now.getMonth() + 1
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+      const lastDay = new Date(year, month, 0).getDate()
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`
+      
+      // Query winlose untuk bulan ini
+      let winloseQuery = supabase
+        .from('winlose_transactions')
+        .select('account_id, net_turnover')
+        .gte('period_start', startDate)
+        .lte('period_end', endDate)
+      
+      const winloseData = await fetchAllWithPagination(winloseQuery)
+      
+      // Agregasi per member
+      const memberMap = new Map<string, number>()
+      
+      winloseData.forEach((row: any) => {
+        let accountId = row.account_id
+        // Bersihkan prefix XLY
+        if (accountId && accountId.toUpperCase().startsWith('XLY')) {
+          accountId = accountId.substring(3)
+        }
+        if (accountId) {
+          const current = memberMap.get(accountId) || 0
+          memberMap.set(accountId, current + (row.net_turnover || 0))
+        }
+      })
+      
+      // Convert ke array dan sort
+      const sortedMembers = Array.from(memberMap.entries())
+        .map(([account_id, total_net_turnover]) => ({
+          account_id,
+          member_id: account_id,
+          total_net_turnover
+        }))
+        .sort((a, b) => b.total_net_turnover - a.total_net_turnover)
+        .slice(0, 3)
+      
+      setTopMembers(sortedMembers)
+      console.log('🏆 TOP 3 MEMBERS:', sortedMembers)
+      
+      // Auto-fill member boxes dengan top 3 members
+      setMemberBoxes(prev => prev.map((box, idx) => {
+        if (sortedMembers[idx]) {
+          return {
+            ...box,
+            searchValue: sortedMembers[idx].member_id,
+            data: null,
+            loading: false,
+            error: null
+          }
+        }
+        return box
+      }))
+      
+    } catch (error) {
+      console.error('Error fetching top members:', error)
+    } finally {
+      setLoadingTopMembers(false)
+    }
+  }
+
+  // ===========================================
   // SKALA LINEAR ANTAR LAYER
   // ===========================================
   const LAYER_VALUES = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
   const LAYER_RADII = [0, 18, 36, 54, 72]
   
   // SEGI ENAM - POSISI BARU
-  // Urutan sesuai arah jam:
-  // 12:00 = DEPOSIT
-  // 02:00 = SLOT
-  // 04:00 = CASINO
-  // 06:00 = SPORTS
-  // 08:00 = ETC (RACE + ORIGINAL + others)
-  // 10:00 = WITHDRAW (digeser dari 210° ke 300° atau -60° biar di jam 10)
-  // Wait, jam 10 itu 300° (atau -60°)
   const SIDES = [
     { name: 'DEPOSIT', angle: -90 },      // 12:00 (atas)
     { name: 'SLOT', angle: -30 },         // 02:00
     { name: 'CASINO', angle: 30 },        // 04:00
     { name: 'SPORTS', angle: 90 },        // 06:00 (bawah)
     { name: 'ETC', angle: 150 },          // 08:00
-    { name: 'WITHDRAW', angle: 210 }      // 10:00 (kiri bawah)
+    { name: 'WITHDRAW', angle: 210 }      // 10:00
   ]
   
   const CENTER_X = 100
@@ -383,6 +456,22 @@ export default function MemberSpecificationPage() {
     fetchMemberData(boxId, value)
   }
 
+  // Auto-fetch top members dan data mereka saat halaman dimuat
+  useEffect(() => {
+    const init = async () => {
+      await fetchTopMembers()
+      // Setelah top members didapat, fetch data mereka
+      setTimeout(() => {
+        memberBoxes.forEach((box, idx) => {
+          if (box.searchValue) {
+            fetchMemberData(box.id, box.searchValue)
+          }
+        })
+      }, 500)
+    }
+    init()
+  }, [])
+
   // ===========================================
   // FORMATTERS
   // ===========================================
@@ -463,7 +552,7 @@ export default function MemberSpecificationPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {memberBoxes.map((box) => {
+        {memberBoxes.map((box, boxIndex) => {
           const data = box.data
           
           // Urutan values sesuai SIDES baru
@@ -483,7 +572,9 @@ export default function MemberSpecificationPage() {
                   <div className="w-8 h-8 rounded-full bg-[#FFD700]/20 flex items-center justify-center">
                     <span className="text-[#FFD700] font-bold">{box.id}</span>
                   </div>
-                  <h3 className="text-[#FFD700] font-bold">Search Member</h3>
+                  <h3 className="text-[#FFD700] font-bold">
+                    {topMembers[boxIndex] ? `🏆 TOP ${boxIndex + 1} NET TURNOVER` : 'Search Member'}
+                  </h3>
                 </div>
                 <div className="flex gap-2">
                   <input
@@ -507,6 +598,11 @@ export default function MemberSpecificationPage() {
                     {box.loading ? '...' : 'Cari'}
                   </button>
                 </div>
+                {topMembers[boxIndex] && !box.data && !box.loading && (
+                  <div className="mt-2 text-xs text-[#FFD700] bg-[#0B1A33]/50 rounded p-1 text-center">
+                    🏆 Top {boxIndex + 1} with {formatCurrency(topMembers[boxIndex].total_net_turnover)} Net Turnover
+                  </div>
+                )}
               </div>
 
               <div className="p-4 flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
@@ -664,7 +760,12 @@ export default function MemberSpecificationPage() {
                   <div className="text-center py-12">
                     <div className="text-4xl mb-2">🔍</div>
                     <p className="text-[#A7D8FF] text-sm">Masukkan ID member untuk melihat detail</p>
-                    <p className="text-xs text-[#A7D8FF] mt-1">Contoh: surya28, Bradley2020, Memelah1233</p>
+                    <p className="text-xs text-[#FFD700] mt-2">✨ Top 3 Net Turnover bulan ini:</p>
+                    {topMembers.map((member, idx) => (
+                      <div key={idx} className="text-xs text-[#A7D8FF] mt-1">
+                        {idx + 1}. {member.member_id} ({formatCurrency(member.total_net_turnover)})
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
