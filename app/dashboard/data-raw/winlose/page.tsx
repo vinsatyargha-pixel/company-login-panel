@@ -201,19 +201,21 @@ export default function WinloseDataRawPage() {
   }
 
   // ===========================================
-  // PARSE DATE DARI FORMAT "01-Jan-2026"
+  // PARSE DATE DARI BERBAGAI FORMAT
   // ===========================================
   
-  const parsePeriodDate = (dateStr: string): string => {
+  const parseDate = (dateStr: string): string => {
     if (!dateStr) return ''
     
     try {
+      // Format: "08-Jan-2026" atau "08-Jan-2026 00:00:00"
       const monthMap: { [key: string]: string } = {
         'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
         'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
         'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
       }
       
+      // Cek format dd-mmm-yyyy
       const match = dateStr.match(/(\d{2})-(\w{3})-(\d{4})/)
       if (match) {
         const day = match[1]
@@ -222,6 +224,13 @@ export default function WinloseDataRawPage() {
         const month = monthMap[monthStr] || '01'
         return `${year}-${month}-${day}`
       }
+      
+      // Cek format yyyy-mm-dd
+      const matchIso = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/)
+      if (matchIso) {
+        return `${matchIso[1]}-${matchIso[2]}-${matchIso[3]}`
+      }
+      
       return ''
     } catch {
       return ''
@@ -229,37 +238,93 @@ export default function WinloseDataRawPage() {
   }
 
   // ===========================================
-  // EXTRACT METADATA DARI 2 BARIS PERTAMA
+  // DETEKSI FORMAT FILE
   // ===========================================
 
-  const extractMetadata = (rows: any[]) => {
-    let periodStart = ''
-    let periodEnd = ''
-    let activePlayers = 0
+  const detectFormat = (rows: any[][]): 'consolidate' | 'summary' => {
+    // Cek baris pertama (header)
+    const firstRow = rows[0]
+    if (!firstRow) return 'summary'
     
-    // Baris 1: Consolidate Player | (kosong) | From: 01-Jan-2026 To: 25-Mar-2026
-    if (rows[0] && rows[0][2]) {
-      const fromToMatch = rows[0][2].match(/From:\s*(\d{2}-\w{3}-\d{4}).*?To:\s*(\d{2}-\w{3}-\d{4})/i)
-      if (fromToMatch) {
-        periodStart = parsePeriodDate(fromToMatch[1])
-        periodEnd = parsePeriodDate(fromToMatch[2])
+    // Consolidate Report: baris pertama berisi "Consolidate Player" dan "From: ... To: ..."
+    const firstRowStr = firstRow.join(' ').toLowerCase()
+    if (firstRowStr.includes('consolidate') && firstRowStr.includes('from:')) {
+      return 'consolidate'
+    }
+    
+    // Summary By Product: baris pertama berisi "Winloss Summary By Product"
+    if (firstRowStr.includes('winloss summary') || firstRowStr.includes('win/loss summary')) {
+      return 'summary'
+    }
+    
+    // Cek baris kedua (header kolom)
+    const secondRow = rows[1]
+    if (secondRow) {
+      const secondRowStr = secondRow.join(' ').toLowerCase()
+      if (secondRowStr.includes('product name') && secondRowStr.includes('account id')) {
+        return 'summary'
       }
     }
     
-    // Baris 2: Active Unique Player | (kosong) | 1926
-    if (rows[1] && rows[1][2]) {
-      const activeMatch = rows[1][2].toString().match(/(\d+)/)
-      if (activeMatch) {
-        activePlayers = parseInt(activeMatch[1]) || 0
-      }
-    }
-    
-    console.log('📅 METADATA:', { periodStart, periodEnd, activePlayers })
-    return { periodStart, periodEnd, activePlayers }
+    return 'summary' // default
   }
 
   // ===========================================
-  // UPLOAD PROCESS
+  // EKSTRAK PERIODE DARI BERBAGAI FORMAT
+  // ===========================================
+
+  const extractPeriod = (rows: any[][]): { periodStart: string, periodEnd: string } => {
+    let periodStart = ''
+    let periodEnd = ''
+    
+    // Coba cari di baris pertama
+    const firstRow = rows[0]
+    if (firstRow) {
+      const firstRowStr = firstRow.join(' ')
+      
+      // Format: "From: 08-Jan-2026 00:00:00 To: 08-Jan-2026 23:59:59"
+      const fromToMatch = firstRowStr.match(/From:\s*([\d\w-:\s]+?)\s*To:\s*([\d\w-:\s]+)/i)
+      if (fromToMatch) {
+        periodStart = parseDate(fromToMatch[1])
+        periodEnd = parseDate(fromToMatch[2])
+      }
+      
+      // Format: "From : 08-Jan-2026 00:00:00 To: 08-Jan-2026 23:59:59" (ada spasi)
+      if (!periodStart) {
+        const fromToMatch2 = firstRowStr.match(/From\s*:\s*([\d\w-:\s]+?)\s*To\s*:\s*([\d\w-:\s]+)/i)
+        if (fromToMatch2) {
+          periodStart = parseDate(fromToMatch2[1])
+          periodEnd = parseDate(fromToMatch2[2])
+        }
+      }
+    }
+    
+    return { periodStart, periodEnd }
+  }
+
+  // ===========================================
+  // EKSTRAK ACTIVE UNIQUE PLAYERS
+  // ===========================================
+
+  const extractActivePlayers = (rows: any[][]): number => {
+    // Cari baris yang mengandung "Active Unique Player"
+    for (let i = 0; i < Math.min(rows.length, 10); i++) {
+      const row = rows[i]
+      if (!row) continue
+      
+      const rowStr = row.join(' ').toLowerCase()
+      if (rowStr.includes('active unique player') || rowStr.includes('active players')) {
+        const match = rowStr.match(/(\d+)/)
+        if (match) {
+          return parseInt(match[1]) || 0
+        }
+      }
+    }
+    return 0
+  }
+
+  // ===========================================
+  // PROCESS FILE (UNIVERSAL)
   // ===========================================
 
   const processFile = async () => {
@@ -281,19 +346,32 @@ export default function WinloseDataRawPage() {
       }) as any[][]
       
       console.log('📋 Total baris:', rows.length)
+      console.log('📋 5 baris pertama:', rows.slice(0, 5))
       
-      // AMBIL METADATA DARI 2 BARIS PERTAMA
-      const { periodStart, periodEnd, activePlayers } = extractMetadata(rows)
+      // DETEKSI FORMAT FILE
+      const format = detectFormat(rows)
+      console.log('📋 Format file:', format)
+      
+      // EKSTRAK PERIODE
+      const { periodStart, periodEnd } = extractPeriod(rows)
+      console.log('📅 PERIODE:', { periodStart, periodEnd })
       
       if (!periodStart || !periodEnd) {
-        throw new Error('Gagal membaca periode dari file (From: ... To: ...)')
+        throw new Error('Gagal membaca periode dari file. Pastikan file memiliki format "From: ... To: ..." di baris pertama.')
       }
       
-      // CARI BARIS HEADER (Account ID)
+      // EKSTRAK ACTIVE PLAYERS (opsional)
+      const activePlayers = extractActivePlayers(rows)
+      console.log('👥 Active Players:', activePlayers)
+      
+      // CARI BARIS HEADER (dimana ada "Account Id" atau "Account ID")
       let headerRowIndex = -1
-      for (let i = 2; i < rows.length; i++) {
+      for (let i = 0; i < Math.min(rows.length, 20); i++) {
         const row = rows[i]
-        if (row && row[0] && row[0].toString().includes('Account ID')) {
+        if (!row) continue
+        
+        const rowStr = row.join(' ').toLowerCase()
+        if (rowStr.includes('account id') || rowStr.includes('account_id') || rowStr.includes('accountid')) {
           headerRowIndex = i
           break
         }
@@ -309,45 +387,47 @@ export default function WinloseDataRawPage() {
       console.log('📊 HEADER:', headers)
       console.log('📊 Data rows:', dataRows.length)
       
-      // Cari index kolom - SESUAI DENGAN EXCEL
-      const findIndex = (keyword: string) => {
-        return headers.findIndex((h: string) => 
-          h && h.toString().toLowerCase().includes(keyword.toLowerCase())
-        )
+      // MAP HEADER KE INDEX
+      const findIndex = (keywords: string[]) => {
+        return headers.findIndex((h: string) => {
+          if (!h) return false
+          const headerStr = h.toString().toLowerCase()
+          return keywords.some(keyword => headerStr.includes(keyword.toLowerCase()))
+        })
       }
       
-      // KOLOM SESUAI EXCEL:
-      // A: Account ID, B: Product Type, C: Bet Count, D: Turnover, 
-      // E: Net Turnover, F: Member Win, G: Member Comm, H: Member Total,
-      // I: Games Fee, J: Jackpot Win, K: Pvp Player Payout, L: Pvp Table Fee
-      const idx = {
-        account: 0,  // Kolom A
-        product: 1,  // Kolom B
-        betCount: 2, // Kolom C
-        turnover: 3, // Kolom D
-        netTurnover: 4, // Kolom E
-        memberWin: 5,   // Kolom F
-        memberComm: 6,  // Kolom G
-        memberTotal: 7, // Kolom H
-        gamesFee: 8,    // Kolom I
-        jackpotWin: 9,  // Kolom J
-        pvpPayout: 10,  // Kolom K
-        pvpFee: 11      // Kolom L
+      // Mapping berdasarkan format
+      let idx = {
+        account: findIndex(['account id', 'account_id', 'accountid']),
+        product: findIndex(['product name', 'product_type', 'product type']),
+        betCount: findIndex(['bet count', 'betcount', 'bet_count']),
+        turnover: findIndex(['turnover']),
+        netTurnover: findIndex(['net turnover', 'netturnover', 'net_turnover']),
+        memberWin: findIndex(['member win', 'memberwin', 'member_win']),
+        memberComm: findIndex(['member comm', 'membercomm', 'member_comm']),
+        memberTotal: findIndex(['member total', 'membertotal', 'member_total']),
+        gamesFee: findIndex(['games fee', 'gamesfee', 'games_fee']),
+        jackpotWin: findIndex(['jackpot win', 'jackpotwin', 'jackpot_win']),
+        pvpPayout: findIndex(['pvp player payout', 'pvpplayerpayout', 'pvp_player_payout']),
+        pvpFee: findIndex(['pvp table fee', 'pvptablefee', 'pvp_table_fee'])
       }
+      
+      console.log('📊 INDEX MAPPING:', idx)
       
       setUploadProgress('Memvalidasi data...')
       
       const validTransactions: WinloseTransaction[] = []
       const fileName = parseString(selectedFile.name)
-      const website = 'XLY' // Atau ambil dari asset
+      const website = 'XLY'
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
         if (!row || row.length === 0) continue
         
-        // Skip baris Sub Total atau kosong
+        // Skip baris Grand Total atau kosong
         const accountVal = row[idx.account]?.toString() || ''
-        if (accountVal.includes('Sub Total') || accountVal === '') continue
+        if (accountVal.includes('Grand Total') || accountVal === '' || accountVal === 'Grand Total') continue
+        if (accountVal.includes('Sub Total')) continue
         
         validTransactions.push({
           account_id: parseString(row[idx.account]),
@@ -538,7 +618,7 @@ export default function WinloseDataRawPage() {
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
             <h2 className="text-xl font-bold text-[#FFD700] mb-4">Upload File Win/Lose</h2>
             <p className="text-sm text-[#A7D8FF] mb-4">
-              Upload file Consolidate Report (format .xlsx, .xls, .csv)
+              Upload file Consolidate Report atau Winloss Summary By Product (.xlsx, .xls, .csv)
             </p>
             
             <div 
