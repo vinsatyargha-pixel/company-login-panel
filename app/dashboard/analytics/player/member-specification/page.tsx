@@ -32,6 +32,9 @@ interface MemberDetailData {
   slot_turnover: number
   live_casino_turnover: number
   sportbook_turnover: number
+  race_turnover: number
+  original_turnover: number
+  etc_turnover: number
   last_updated: string
 }
 
@@ -53,27 +56,59 @@ export default function MemberSpecificationPage() {
   const [chartReady, setChartReady] = useState<{ [key: number]: boolean }>({})
 
   // ===========================================
+  // MAPPING PROVIDER KE KATEGORI (SAMA DENGAN PLAYER OVERVIEW)
+  // ===========================================
+  const getProviderCategory = (productType: string): string => {
+    const type = productType?.toLowerCase() || ''
+    
+    // CASINO
+    if (type.includes('dream gaming') || 
+        type.includes('opuslivecasino') || 
+        type.includes('pp live casino')) {
+      return 'CASINO'
+    }
+    
+    // ORIGINAL
+    if (type.includes('ace gaming')) {
+      return 'ORIGINAL'
+    }
+    
+    // RACE
+    if (type.includes('marblex')) {
+      return 'RACE'
+    }
+    
+    // SPORTS
+    if (type.includes('saba platform')) {
+      return 'SPORTS'
+    }
+    
+    // SLOTS (default)
+    return 'SLOTS'
+  }
+
+  // ===========================================
   // SKALA LINEAR ANTAR LAYER
   // ===========================================
   const LAYER_VALUES = [0, 1_000_000, 10_000_000, 100_000_000, 1_000_000_000]
   const LAYER_RADII = [0, 18, 36, 54, 72]
   
-  // SEGI ENAM - POSISI BENER (dalam derajat SVG)
-  // SVG: 0° = kanan, 90° = bawah, -90° = atas, 180° = kiri
-  // Posisi:
-  // 12:00 (atas) = -90° = DEPOSIT
-  // 02:00 = -30° = SUM T.O
-  // 04:00 = 30° = SLOT
-  // 06:00 (bawah) = 90° = SPORTS (ditukar)
-  // 08:00 = 150° = CASINO
-  // 10:00 = 210° = WITHDRAW (ditukar)
+  // SEGI ENAM - POSISI BARU
+  // Urutan sesuai arah jam:
+  // 12:00 = DEPOSIT
+  // 02:00 = SLOT
+  // 04:00 = CASINO
+  // 06:00 = SPORTS
+  // 08:00 = ETC (RACE + ORIGINAL + others)
+  // 10:00 = WITHDRAW (digeser dari 210° ke 300° atau -60° biar di jam 10)
+  // Wait, jam 10 itu 300° (atau -60°)
   const SIDES = [
     { name: 'DEPOSIT', angle: -90 },      // 12:00 (atas)
-    { name: 'SUM T.O', angle: -30 },      // 02:00
-    { name: 'SLOT', angle: 30 },          // 04:00
+    { name: 'SLOT', angle: -30 },         // 02:00
+    { name: 'CASINO', angle: 30 },        // 04:00
     { name: 'SPORTS', angle: 90 },        // 06:00 (bawah)
-    { name: 'CASINO', angle: 150 },       // 08:00
-    { name: 'WITHDRAW', angle: 210 }      // 10:00
+    { name: 'ETC', angle: 150 },          // 08:00
+    { name: 'WITHDRAW', angle: 210 }      // 10:00 (kiri bawah)
   ]
   
   const CENTER_X = 100
@@ -127,20 +162,6 @@ export default function MemberSpecificationPage() {
     const lastDate = timestamps[timestamps.length - 1]
     const daysDiff = (lastDate - firstDate) / (1000 * 60 * 60 * 24)
     return daysDiff / (dates.length - 1)
-  }
-
-  const categorizeProductType = (productType: string): string => {
-    const type = productType?.toLowerCase() || ''
-    if (type.includes('slot') || type.includes('pp') || type.includes('pg') || type.includes('hacksaw') || type.includes('btgaming') || type.includes('megawin') || type.includes('kingmidas') || type.includes('playtech') || type.includes('onlyplay') || type.includes('marblex')) {
-      return 'slot'
-    }
-    if (type.includes('live') || type.includes('casino') || type.includes('vplus') || type.includes('ace gaming')) {
-      return 'live_casino'
-    }
-    if (type.includes('sport') || type.includes('ibc')) {
-      return 'sportbook'
-    }
-    return 'other'
   }
 
   // ===========================================
@@ -269,22 +290,32 @@ export default function MemberSpecificationPage() {
 
       const totalTurnover = winloseData.reduce((sum, tx) => sum + (tx.net_turnover || 0), 0)
       
+      // HITUNG PER KATEGORI MENGGUNAKAN getProviderCategory
       let slotTurnover = 0
       let liveCasinoTurnover = 0
       let sportbookTurnover = 0
+      let raceTurnover = 0
+      let originalTurnover = 0
       
       winloseData.forEach(tx => {
-        const category = categorizeProductType(tx.product_type)
+        const category = getProviderCategory(tx.product_type)
         const turnover = tx.net_turnover || 0
         
-        if (category === 'slot') {
+        if (category === 'SLOTS') {
           slotTurnover += turnover
-        } else if (category === 'live_casino') {
+        } else if (category === 'CASINO') {
           liveCasinoTurnover += turnover
-        } else if (category === 'sportbook') {
+        } else if (category === 'SPORTS') {
           sportbookTurnover += turnover
+        } else if (category === 'RACE') {
+          raceTurnover += turnover
+        } else if (category === 'ORIGINAL') {
+          originalTurnover += turnover
         }
       })
+      
+      // ETC = RACE + ORIGINAL + provider lain yang belum masuk kategori
+      const etcTurnover = raceTurnover + originalTurnover
       
       const avgDepositInterval = calculateAverageInterval(depositData.map(tx => tx.approved_date))
       const avgWithdrawalInterval = calculateAverageInterval(withdrawalData.map(tx => tx.approved_date))
@@ -316,6 +347,9 @@ export default function MemberSpecificationPage() {
         slot_turnover: slotTurnover,
         live_casino_turnover: liveCasinoTurnover,
         sportbook_turnover: sportbookTurnover,
+        race_turnover: raceTurnover,
+        original_turnover: originalTurnover,
+        etc_turnover: etcTurnover,
         last_updated: new Date().toISOString()
       }
 
@@ -432,14 +466,14 @@ export default function MemberSpecificationPage() {
         {memberBoxes.map((box) => {
           const data = box.data
           
-          // Urutan values sesuai SIDES
+          // Urutan values sesuai SIDES baru
           const values = data ? [
-            data.total_deposit,        // DEPOSIT - 12:00
-            data.total_turnover,       // SUM T.O - 02:00
-            data.slot_turnover,        // SLOT - 04:00
-            data.sportbook_turnover,   // SPORTS - 06:00 (bawah)
-            data.live_casino_turnover, // CASINO - 08:00
-            data.total_withdrawal      // WITHDRAW - 10:00
+            data.total_deposit,           // DEPOSIT - 12:00
+            data.slot_turnover,           // SLOT - 02:00
+            data.live_casino_turnover,    // CASINO - 04:00
+            data.sportbook_turnover,      // SPORTS - 06:00 (bawah)
+            data.etc_turnover,            // ETC - 08:00 (RACE + ORIGINAL)
+            data.total_withdrawal         // WITHDRAW - 10:00
           ] : [0, 0, 0, 0, 0, 0]
           
           return (
@@ -604,7 +638,10 @@ export default function MemberSpecificationPage() {
                           <div><span className="text-[#A7D8FF]">Slot:</span> <span className="text-white">{formatCurrency(box.data.slot_turnover)}</span></div>
                           <div><span className="text-[#A7D8FF]">Live Casino:</span> <span className="text-white">{formatCurrency(box.data.live_casino_turnover)}</span></div>
                           <div><span className="text-[#A7D8FF]">Sportbook:</span> <span className="text-white">{formatCurrency(box.data.sportbook_turnover)}</span></div>
-                          <div><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400 font-bold">{formatCurrency(box.data.total_turnover)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Race:</span> <span className="text-white">{formatCurrency(box.data.race_turnover)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Original:</span> <span className="text-white">{formatCurrency(box.data.original_turnover)}</span></div>
+                          <div><span className="text-[#A7D8FF]">ETC:</span> <span className="text-yellow-400">{formatCurrency(box.data.etc_turnover)}</span></div>
+                          <div className="col-span-2 mt-1 pt-1 border-t border-[#FFD700]/20"><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400 font-bold">{formatCurrency(box.data.total_turnover)}</span></div>
                         </div>
                       </div>
 
