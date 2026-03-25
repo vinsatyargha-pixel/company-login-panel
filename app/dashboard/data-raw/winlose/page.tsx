@@ -24,7 +24,8 @@ type WinloseUpload = {
   period_start: string
   period_end: string
   active_unique_players: number
-  uploaded_at: string
+  upload_date: string
+  created_at: string
 }
 
 type WinloseTransaction = {
@@ -57,7 +58,7 @@ export default function WinloseDataRawPage() {
   const [assets, setAssets] = useState<Asset[]>([])
   const [loading, setLoading] = useState(true)
   
-  // Filter states - DEFAULT JANUARI 2026
+  // Filter states
   const [selectedMonth, setSelectedMonth] = useState('Januari')
   const [selectedYear, setSelectedYear] = useState('2026')
   const [selectedAsset, setSelectedAsset] = useState('all')
@@ -108,43 +109,39 @@ export default function WinloseDataRawPage() {
   }
 
   const fetchUploads = async () => {
-  try {
-    setLoading(true)
-    
-    const monthIndex = months.indexOf(selectedMonth) + 1
-    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-    
-    // HITUNG TANGGAL TERAKHIR BULAN INI
-    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+    try {
+      setLoading(true)
+      
+      const monthIndex = months.indexOf(selectedMonth) + 1
+      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+      
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-    console.log('🔍 FILTER PERIODE:', { selectedMonth, selectedYear, startDate, endDate })
+      let query = supabase
+        .from('winlose_uploads')
+        .select('*')
+        .gte('period_start', startDate)
+        .lte('period_end', endDate)
+        .order('period_start', { ascending: true })
 
-    let query = supabase
-      .from('winlose_uploads')
-      .select('*')
-      .gte('period_start', startDate)
-      .lte('period_end', endDate)
-      .order('period_start', { ascending: true })
-
-    if (selectedAsset !== 'all') {
-      const asset = assets.find(a => a.id === selectedAsset)
-      if (asset) {
-        query = query.eq('website', asset.asset_code)
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset)
+        if (asset) {
+          query = query.eq('website', asset.asset_code)
+        }
       }
-    }
 
-    const { data, error } = await query
-    if (error) throw error
-    
-    console.log('📊 DATA FOUND:', data?.length || 0)
-    setUploads(data || [])
-  } catch (error) {
-    console.error('Error fetching uploads:', error)
-  } finally {
-    setLoading(false)
+      const { data, error } = await query
+      if (error) throw error
+      
+      setUploads(data || [])
+    } catch (error) {
+      console.error('Error fetching uploads:', error)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   // ===========================================
   // DRAG & DROP HANDLERS
@@ -211,7 +208,7 @@ export default function WinloseDataRawPage() {
     if (!dateStr) return ''
     
     try {
-      const months: { [key: string]: string } = {
+      const monthMap: { [key: string]: string } = {
         'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
         'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
         'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
@@ -222,7 +219,7 @@ export default function WinloseDataRawPage() {
         const day = match[1]
         const monthStr = match[2].toLowerCase()
         const year = match[3]
-        const month = months[monthStr] || '01'
+        const month = monthMap[monthStr] || '01'
         return `${year}-${month}-${day}`
       }
       return ''
@@ -240,7 +237,7 @@ export default function WinloseDataRawPage() {
     let periodEnd = ''
     let activePlayers = 0
     
-    // Baris 1: Consolidate Player | (kosong) | From: 01-Jan-2026 To: 31-Jan-2026
+    // Baris 1: Consolidate Player | (kosong) | From: 01-Jan-2026 To: 25-Mar-2026
     if (rows[0] && rows[0][2]) {
       const fromToMatch = rows[0][2].match(/From:\s*(\d{2}-\w{3}-\d{4}).*?To:\s*(\d{2}-\w{3}-\d{4})/i)
       if (fromToMatch) {
@@ -249,7 +246,7 @@ export default function WinloseDataRawPage() {
       }
     }
     
-    // Baris 2: Active Unique Player | (kosong) | 87
+    // Baris 2: Active Unique Player | (kosong) | 1926
     if (rows[1] && rows[1][2]) {
       const activeMatch = rows[1][2].toString().match(/(\d+)/)
       if (activeMatch) {
@@ -294,7 +291,7 @@ export default function WinloseDataRawPage() {
       
       // CARI BARIS HEADER (Account ID)
       let headerRowIndex = -1
-      for (let i = 2; i < rows.length; i++) { // Mulai dari baris 3
+      for (let i = 2; i < rows.length; i++) {
         const row = rows[i]
         if (row && row[0] && row[0].toString().includes('Account ID')) {
           headerRowIndex = i
@@ -312,40 +309,45 @@ export default function WinloseDataRawPage() {
       console.log('📊 HEADER:', headers)
       console.log('📊 Data rows:', dataRows.length)
       
-      // Cari index kolom
+      // Cari index kolom - SESUAI DENGAN EXCEL
       const findIndex = (keyword: string) => {
         return headers.findIndex((h: string) => 
           h && h.toString().toLowerCase().includes(keyword.toLowerCase())
         )
       }
       
+      // KOLOM SESUAI EXCEL:
+      // A: Account ID, B: Product Type, C: Bet Count, D: Turnover, 
+      // E: Net Turnover, F: Member Win, G: Member Comm, H: Member Total,
+      // I: Games Fee, J: Jackpot Win, K: Pvp Player Payout, L: Pvp Table Fee
       const idx = {
-        account: 0, // Account ID di kolom 0
-        product: findIndex('product type'),
-        betCount: findIndex('bet count'),
-        turnover: findIndex('turnover'),
-        netTurnover: findIndex('net turnover'),
-        memberWin: findIndex('member win'),
-        memberComm: findIndex('member comm'),
-        memberTotal: findIndex('member total'),
-        gamesFee: findIndex('games fee'),
-        jackpotWin: findIndex('jackpot win'),
-        pvpPayout: findIndex('pvp player payout'),
-        pvpFee: findIndex('pvp table fee')
+        account: 0,  // Kolom A
+        product: 1,  // Kolom B
+        betCount: 2, // Kolom C
+        turnover: 3, // Kolom D
+        netTurnover: 4, // Kolom E
+        memberWin: 5,   // Kolom F
+        memberComm: 6,  // Kolom G
+        memberTotal: 7, // Kolom H
+        gamesFee: 8,    // Kolom I
+        jackpotWin: 9,  // Kolom J
+        pvpPayout: 10,  // Kolom K
+        pvpFee: 11      // Kolom L
       }
       
       setUploadProgress('Memvalidasi data...')
       
       const validTransactions: WinloseTransaction[] = []
       const fileName = parseString(selectedFile.name)
+      const website = 'XLY' // Atau ambil dari asset
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
         if (!row || row.length === 0) continue
         
         // Skip baris Sub Total atau kosong
-        if (row[0] && row[0].toString().includes('Sub Total')) continue
-        if (!row[0] || row[0] === '') continue
+        const accountVal = row[idx.account]?.toString() || ''
+        if (accountVal.includes('Sub Total') || accountVal === '') continue
         
         validTransactions.push({
           account_id: parseString(row[idx.account]),
@@ -360,7 +362,7 @@ export default function WinloseDataRawPage() {
           jackpot_win: parseNumber(row[idx.jackpotWin]),
           pvp_player_payout: parseNumber(row[idx.pvpPayout]),
           pvp_table_fee: parseNumber(row[idx.pvpFee]),
-          website: 'XLY',
+          website: website,
           file_name: fileName,
           period_start: periodStart,
           period_end: periodEnd
@@ -387,23 +389,21 @@ export default function WinloseDataRawPage() {
         setUploadProgress(`Menyimpan... ${Math.min(i + batchSize, validTransactions.length)}/${validTransactions.length}`)
       }
 
-      // INSERT KE UPLOADS TRACKING (PAKAI PERIODE, BUKAN UPLOAD_DATE!)
       // INSERT KE UPLOADS TRACKING
-setUploadProgress('Menyimpan tracking upload...')
+      setUploadProgress('Menyimpan tracking upload...')
 
-const { error: uploadError } = await supabase
-  .from('winlose_uploads')
-  .insert({
-    file_name: fileName,
-    total_rows: validTransactions.length,
-    status: 'completed',
-    website: 'XLY',
-    period_start: periodStart,
-    period_end: periodEnd,
-    active_unique_players: activePlayers,
-    upload_date: new Date().toISOString().split('T')[0], // <-- GANTI INI!
-    // HAPUS uploaded_at
-  })
+      const { error: uploadError } = await supabase
+        .from('winlose_uploads')
+        .insert({
+          file_name: fileName,
+          total_rows: validTransactions.length,
+          status: 'completed',
+          website: website,
+          period_start: periodStart,
+          period_end: periodEnd,
+          active_unique_players: activePlayers,
+          upload_date: new Date().toISOString().split('T')[0]
+        })
       
       if (uploadError) console.error('Error insert upload:', uploadError)
 
@@ -436,17 +436,11 @@ const { error: uploadError } = await supabase
     }
   }
 
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '-'
-    const date = new Date(dateStr)
-    return date.getDate().toString()
-  }
-
   // ===========================================
   // RENDER
   // ===========================================
 
-  if (loading) {
+  if (loading && uploads.length === 0) {
     return (
       <div className="p-6 min-h-screen bg-[#0B1A33] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#FFD700]"></div>
@@ -505,8 +499,8 @@ const { error: uploadError } = await supabase
         </div>
       </div>
 
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
-        <table className="w-full">
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
+        <table className="w-full min-w-[800px]">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th className="px-4 py-3 text-left text-[#FFD700]">No</th>
@@ -538,6 +532,7 @@ const { error: uploadError } = await supabase
         </table>
       </div>
 
+      {/* MODAL UPLOAD */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
@@ -548,21 +543,56 @@ const { error: uploadError } = await supabase
             
             <div 
               className={`border-2 border-dashed rounded-lg p-8 mb-4 text-center cursor-pointer ${dragActive ? 'border-[#FFD700] bg-[#FFD700]/10' : 'border-[#FFD700]/30 hover:border-[#FFD700] hover:bg-[#FFD700]/5'}`}
-              onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+              onDragEnter={handleDrag} 
+              onDragLeave={handleDrag} 
+              onDragOver={handleDrag} 
+              onDrop={handleDrop}
               onClick={() => document.getElementById('fileInput')?.click()}
             >
-              <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} />
+              <input 
+                id="fileInput" 
+                type="file" 
+                accept=".xlsx,.xls,.csv" 
+                className="hidden" 
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
+              />
               {selectedFile ? (
-                <div className="text-green-400"><p className="text-lg mb-2">✓ {selectedFile.name}</p><p className="text-sm text-[#A7D8FF]">{(selectedFile.size / 1024).toFixed(2)} KB</p></div>
+                <div className="text-green-400">
+                  <p className="text-lg mb-2">✓ {selectedFile.name}</p>
+                  <p className="text-sm text-[#A7D8FF]">{(selectedFile.size / 1024).toFixed(2)} KB</p>
+                </div>
               ) : (
-                <><div className="text-4xl mb-2">📂</div><p className="text-[#FFD700] font-medium">Geser file ke sini</p><p className="text-sm text-[#A7D8FF] mt-2">atau klik untuk memilih</p><p className="text-xs text-gray-400 mt-4">Format: .xlsx, .xls, .csv</p></>
+                <>
+                  <div className="text-4xl mb-2">📂</div>
+                  <p className="text-[#FFD700] font-medium">Geser file ke sini</p>
+                  <p className="text-sm text-[#A7D8FF] mt-2">atau klik untuk memilih</p>
+                  <p className="text-xs text-gray-400 mt-4">Format: .xlsx, .xls, .csv</p>
+                </>
               )}
             </div>
-            {uploadProgress && <div className="mb-4 text-sm text-[#A7D8FF] text-center">{uploadProgress}</div>}
+            
+            {uploadProgress && (
+              <div className="mb-4 text-sm text-[#A7D8FF] text-center">{uploadProgress}</div>
+            )}
+            
             <div className="flex justify-end gap-2">
-              <button onClick={() => { setShowModal(false); setSelectedFile(null); setUploadProgress(''); }} className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded">Batal</button>
-              <button onClick={processFile} disabled={!selectedFile || uploading} className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded font-bold hover:bg-[#FFD700]/80 disabled:opacity-50 disabled:cursor-not-allowed">
-                {uploading ? <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-[#0B1A33] border-t-transparent rounded-full animate-spin"></div>Uploading...</span> : 'Upload'}
+              <button 
+                onClick={() => { setShowModal(false); setSelectedFile(null); setUploadProgress(''); }} 
+                className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={processFile} 
+                disabled={!selectedFile || uploading} 
+                className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded font-bold hover:bg-[#FFD700]/80 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {uploading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-[#0B1A33] border-t-transparent rounded-full animate-spin"></div>
+                    Uploading...
+                  </span>
+                ) : 'Upload'}
               </button>
             </div>
           </div>
