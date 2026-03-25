@@ -35,6 +35,8 @@ interface MemberDetailData {
   race_turnover: number
   original_turnover: number
   etc_turnover: number
+  last_deposit_date: string | null
+  last_withdrawal_date: string | null
   last_updated: string
 }
 
@@ -395,6 +397,14 @@ export default function MemberSpecificationPage() {
       const depositFrequency = calculateFrequency(depositData.map(tx => tx.approved_date))
       const withdrawalFrequency = calculateFrequency(withdrawalData.map(tx => tx.approved_date))
       
+      // Ambil last deposit dan last withdrawal date
+      const lastDepositDate = depositData.length > 0 
+        ? depositData[depositData.length - 1].approved_date 
+        : null
+      const lastWithdrawalDate = withdrawalData.length > 0 
+        ? withdrawalData[withdrawalData.length - 1].approved_date 
+        : null
+      
       const memberData: MemberDetailData = {
         member_id: cleanId,
         asset_code: 'XLY',
@@ -423,6 +433,8 @@ export default function MemberSpecificationPage() {
         race_turnover: raceTurnover,
         original_turnover: originalTurnover,
         etc_turnover: etcTurnover,
+        last_deposit_date: lastDepositDate,
+        last_withdrawal_date: lastWithdrawalDate,
         last_updated: new Date().toISOString()
       }
 
@@ -497,6 +509,18 @@ export default function MemberSpecificationPage() {
   const formatDays = (days: number): string => {
     if (days === 0) return '-'
     return `${days.toFixed(1)} hari`
+  }
+
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return '-'
+    const date = new Date(dateString)
+    return date.toLocaleString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   // ===========================================
@@ -706,6 +730,8 @@ export default function MemberSpecificationPage() {
                           <div><span className="text-[#A7D8FF]">Highest Deposit:</span> <span className="text-green-400">{formatCurrency(box.data.highest_deposit)}</span></div>
                           <div><span className="text-[#A7D8FF]">Lowest Deposit:</span> <span className="text-red-400">{formatCurrency(box.data.lowest_deposit)}</span></div>
                           <div><span className="text-[#A7D8FF]">Avg Interval:</span> <span className="text-white">{formatHours(box.data.avg_deposit_interval_hours)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Deposit Routine:</span> <span className="text-white">{formatDays(box.data.deposit_frequency_days)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Last Deposit:</span> <span className="text-yellow-400">{formatDate(box.data.last_deposit_date)}</span></div>
                         </div>
                       </div>
 
@@ -718,6 +744,8 @@ export default function MemberSpecificationPage() {
                           <div><span className="text-[#A7D8FF]">Highest Withdrawal:</span> <span className="text-red-400">{formatCurrency(box.data.highest_withdrawal)}</span></div>
                           <div><span className="text-[#A7D8FF]">Lowest Withdrawal:</span> <span className="text-green-400">{formatCurrency(box.data.lowest_withdrawal)}</span></div>
                           <div><span className="text-[#A7D8FF]">Avg Interval:</span> <span className="text-white">{formatHours(box.data.avg_withdrawal_interval_hours)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Withdrawal Routine:</span> <span className="text-white">{formatDays(box.data.withdrawal_frequency_days)}</span></div>
+                          <div><span className="text-[#A7D8FF]">Last Withdrawal:</span> <span className="text-yellow-400">{formatDate(box.data.last_withdrawal_date)}</span></div>
                         </div>
                       </div>
 
@@ -731,14 +759,6 @@ export default function MemberSpecificationPage() {
                           <div><span className="text-[#A7D8FF]">Original:</span> <span className="text-white">{formatCurrency(box.data.original_turnover)}</span></div>
                           <div><span className="text-[#A7D8FF]">ETC:</span> <span className="text-yellow-400">{formatCurrency(box.data.etc_turnover)}</span></div>
                           <div className="col-span-2 mt-1 pt-1 border-t border-[#FFD700]/20"><span className="text-[#A7D8FF]">Total Turnover:</span> <span className="text-blue-400 font-bold">{formatCurrency(box.data.total_turnover)}</span></div>
-                        </div>
-                      </div>
-
-                      <div className="bg-[#0B1A33]/30 rounded-lg p-3 border-l-4 border-[#FFD700]">
-                        <h5 className="text-[#FFD700] font-bold text-sm mb-2">📅 ACTIVITY FREQUENCY</h5>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div><span className="text-[#A7D8FF]">Deposit Routine:</span> <span className="text-white">{formatDays(box.data.deposit_frequency_days)}</span></div>
-                          <div><span className="text-[#A7D8FF]">Withdrawal Routine:</span> <span className="text-white">{formatDays(box.data.withdrawal_frequency_days)}</span></div>
                         </div>
                       </div>
                     </div>
