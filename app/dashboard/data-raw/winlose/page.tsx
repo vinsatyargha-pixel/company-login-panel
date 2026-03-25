@@ -201,41 +201,42 @@ export default function WinloseDataRawPage() {
   }
 
   // ===========================================
-  // PARSE DATE DARI BERBAGAI FORMAT
-  // ===========================================
+// PARSE DATE MANUAL (TANPA KONVERSI ZONA WAKTU)
+// ===========================================
+
+const parseDate = (dateStr: string): string => {
+  if (!dateStr) return ''
   
-  const parseDate = (dateStr: string): string => {
-    if (!dateStr) return ''
-    
-    try {
-      // Format: "08-Jan-2026" atau "08-Jan-2026 00:00:00"
-      const monthMap: { [key: string]: string } = {
-        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
-        'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
-        'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
-      }
-      
-      // Cek format dd-mmm-yyyy
-      const match = dateStr.match(/(\d{2})-(\w{3})-(\d{4})/)
-      if (match) {
-        const day = match[1]
-        const monthStr = match[2].toLowerCase()
-        const year = match[3]
-        const month = monthMap[monthStr] || '01'
-        return `${year}-${month}-${day}`
-      }
-      
-      // Cek format yyyy-mm-dd
-      const matchIso = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/)
-      if (matchIso) {
-        return `${matchIso[1]}-${matchIso[2]}-${matchIso[3]}`
-      }
-      
-      return ''
-    } catch {
-      return ''
+  try {
+    // Format: "08-Jan-2026" atau "08-Jan-2026 00:00:00"
+    const monthMap: { [key: string]: string } = {
+      'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+      'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+      'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
     }
+    
+    // Cek format dd-mmm-yyyy
+    const match = dateStr.match(/(\d{2})-(\w{3})-(\d{4})/)
+    if (match) {
+      const day = match[1].padStart(2, '0')
+      const monthStr = match[2].toLowerCase()
+      const year = match[3]
+      const month = monthMap[monthStr] || '01'
+      // LANGSUNG RETURN TANPA new Date()
+      return `${year}-${month}-${day}`
+    }
+    
+    // Cek format yyyy-mm-dd
+    const matchIso = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/)
+    if (matchIso) {
+      return `${matchIso[1]}-${matchIso[2]}-${matchIso[3]}`
+    }
+    
+    return ''
+  } catch {
+    return ''
   }
+}
 
   // ===========================================
   // DETEKSI FORMAT FILE
@@ -274,33 +275,32 @@ export default function WinloseDataRawPage() {
   // ===========================================
 
   const extractPeriod = (rows: any[][]): { periodStart: string, periodEnd: string } => {
-    let periodStart = ''
-    let periodEnd = ''
+  let periodStart = ''
+  let periodEnd = ''
+  
+  const firstRow = rows[0]
+  if (firstRow) {
+    const firstRowStr = firstRow.join(' ')
     
-    // Coba cari di baris pertama
-    const firstRow = rows[0]
-    if (firstRow) {
-      const firstRowStr = firstRow.join(' ')
-      
-      // Format: "From: 08-Jan-2026 00:00:00 To: 08-Jan-2026 23:59:59"
-      const fromToMatch = firstRowStr.match(/From:\s*([\d\w-:\s]+?)\s*To:\s*([\d\w-:\s]+)/i)
-      if (fromToMatch) {
-        periodStart = parseDate(fromToMatch[1])
-        periodEnd = parseDate(fromToMatch[2])
-      }
-      
-      // Format: "From : 08-Jan-2026 00:00:00 To: 08-Jan-2026 23:59:59" (ada spasi)
-      if (!periodStart) {
-        const fromToMatch2 = firstRowStr.match(/From\s*:\s*([\d\w-:\s]+?)\s*To\s*:\s*([\d\w-:\s]+)/i)
-        if (fromToMatch2) {
-          periodStart = parseDate(fromToMatch2[1])
-          periodEnd = parseDate(fromToMatch2[2])
-        }
-      }
+    // Format: "From: 08-Jan-2026 00:00:00 To: 08-Jan-2026 23:59:59"
+    const fromToMatch = firstRowStr.match(/From:\s*([\d\w-:\s]+?)\s*To:\s*([\d\w-:\s]+)/i)
+    if (fromToMatch) {
+      periodStart = parseDate(fromToMatch[1])
+      periodEnd = parseDate(fromToMatch[2])
     }
     
-    return { periodStart, periodEnd }
+    // Format: "From : 08-Jan-2026 00:00:00 To: 08-Jan-2026 23:59:59" (ada spasi)
+    if (!periodStart) {
+      const fromToMatch2 = firstRowStr.match(/From\s*:\s*([\d\w-:\s]+?)\s*To\s*:\s*([\d\w-:\s]+)/i)
+      if (fromToMatch2) {
+        periodStart = parseDate(fromToMatch2[1])
+        periodEnd = parseDate(fromToMatch2[2])
+      }
+    }
   }
+  
+  return { periodStart, periodEnd }
+}
 
   // ===========================================
   // EKSTRAK ACTIVE UNIQUE PLAYERS
