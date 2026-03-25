@@ -201,64 +201,56 @@ export default function WinloseDataRawPage() {
   }
 
   // ===========================================
-// PARSE DATE MANUAL (TANPA KONVERSI ZONA WAKTU)
-// ===========================================
-
-const parseDate = (dateStr: string): string => {
-  if (!dateStr) return ''
+  // PARSE DATE DARI BERBAGAI FORMAT
+  // ===========================================
   
-  try {
-    // Format: "08-Jan-2026" atau "08-Jan-2026 00:00:00"
-    const monthMap: { [key: string]: string } = {
-      'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
-      'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
-      'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
-    }
+  const parseDate = (dateStr: string): string => {
+    if (!dateStr) return ''
     
-    // Cek format dd-mmm-yyyy
-    const match = dateStr.match(/(\d{2})-(\w{3})-(\d{4})/)
-    if (match) {
-      const day = match[1].padStart(2, '0')
-      const monthStr = match[2].toLowerCase()
-      const year = match[3]
-      const month = monthMap[monthStr] || '01'
-      // LANGSUNG RETURN TANPA new Date()
-      return `${year}-${month}-${day}`
+    try {
+      const monthMap: { [key: string]: string } = {
+        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+        'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+        'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+      }
+      
+      const match = dateStr.match(/(\d{2})-(\w{3})-(\d{4})/)
+      if (match) {
+        const day = match[1].padStart(2, '0')
+        const monthStr = match[2].toLowerCase()
+        const year = match[3]
+        const month = monthMap[monthStr] || '01'
+        return `${year}-${month}-${day}`
+      }
+      
+      const matchIso = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/)
+      if (matchIso) {
+        return `${matchIso[1]}-${matchIso[2]}-${matchIso[3]}`
+      }
+      
+      return ''
+    } catch {
+      return ''
     }
-    
-    // Cek format yyyy-mm-dd
-    const matchIso = dateStr.match(/(\d{4})-(\d{2})-(\d{2})/)
-    if (matchIso) {
-      return `${matchIso[1]}-${matchIso[2]}-${matchIso[3]}`
-    }
-    
-    return ''
-  } catch {
-    return ''
   }
-}
 
   // ===========================================
   // DETEKSI FORMAT FILE
   // ===========================================
 
   const detectFormat = (rows: any[][]): 'consolidate' | 'summary' => {
-    // Cek baris pertama (header)
     const firstRow = rows[0]
     if (!firstRow) return 'summary'
     
-    // Consolidate Report: baris pertama berisi "Consolidate Player" dan "From: ... To: ..."
     const firstRowStr = firstRow.join(' ').toLowerCase()
     if (firstRowStr.includes('consolidate') && firstRowStr.includes('from:')) {
       return 'consolidate'
     }
     
-    // Summary By Product: baris pertama berisi "Winloss Summary By Product"
     if (firstRowStr.includes('winloss summary') || firstRowStr.includes('win/loss summary')) {
       return 'summary'
     }
     
-    // Cek baris kedua (header kolom)
     const secondRow = rows[1]
     if (secondRow) {
       const secondRowStr = secondRow.join(' ').toLowerCase()
@@ -267,7 +259,7 @@ const parseDate = (dateStr: string): string => {
       }
     }
     
-    return 'summary' // default
+    return 'summary'
   }
 
   // ===========================================
@@ -275,39 +267,36 @@ const parseDate = (dateStr: string): string => {
   // ===========================================
 
   const extractPeriod = (rows: any[][]): { periodStart: string, periodEnd: string } => {
-  let periodStart = ''
-  let periodEnd = ''
-  
-  const firstRow = rows[0]
-  if (firstRow) {
-    const firstRowStr = firstRow.join(' ')
+    let periodStart = ''
+    let periodEnd = ''
     
-    // Format: "From: 08-Jan-2026 00:00:00 To: 08-Jan-2026 23:59:59"
-    const fromToMatch = firstRowStr.match(/From:\s*([\d\w-:\s]+?)\s*To:\s*([\d\w-:\s]+)/i)
-    if (fromToMatch) {
-      periodStart = parseDate(fromToMatch[1])
-      periodEnd = parseDate(fromToMatch[2])
-    }
-    
-    // Format: "From : 08-Jan-2026 00:00:00 To: 08-Jan-2026 23:59:59" (ada spasi)
-    if (!periodStart) {
-      const fromToMatch2 = firstRowStr.match(/From\s*:\s*([\d\w-:\s]+?)\s*To\s*:\s*([\d\w-:\s]+)/i)
-      if (fromToMatch2) {
-        periodStart = parseDate(fromToMatch2[1])
-        periodEnd = parseDate(fromToMatch2[2])
+    const firstRow = rows[0]
+    if (firstRow) {
+      const firstRowStr = firstRow.join(' ')
+      
+      const fromToMatch = firstRowStr.match(/From:\s*([\d\w-:\s]+?)\s*To:\s*([\d\w-:\s]+)/i)
+      if (fromToMatch) {
+        periodStart = parseDate(fromToMatch[1])
+        periodEnd = parseDate(fromToMatch[2])
+      }
+      
+      if (!periodStart) {
+        const fromToMatch2 = firstRowStr.match(/From\s*:\s*([\d\w-:\s]+?)\s*To\s*:\s*([\d\w-:\s]+)/i)
+        if (fromToMatch2) {
+          periodStart = parseDate(fromToMatch2[1])
+          periodEnd = parseDate(fromToMatch2[2])
+        }
       }
     }
+    
+    return { periodStart, periodEnd }
   }
-  
-  return { periodStart, periodEnd }
-}
 
   // ===========================================
   // EKSTRAK ACTIVE UNIQUE PLAYERS
   // ===========================================
 
   const extractActivePlayers = (rows: any[][]): number => {
-    // Cari baris yang mengandung "Active Unique Player"
     for (let i = 0; i < Math.min(rows.length, 10); i++) {
       const row = rows[i]
       if (!row) continue
@@ -348,11 +337,9 @@ const parseDate = (dateStr: string): string => {
       console.log('📋 Total baris:', rows.length)
       console.log('📋 5 baris pertama:', rows.slice(0, 5))
       
-      // DETEKSI FORMAT FILE
       const format = detectFormat(rows)
       console.log('📋 Format file:', format)
       
-      // EKSTRAK PERIODE
       const { periodStart, periodEnd } = extractPeriod(rows)
       console.log('📅 PERIODE:', { periodStart, periodEnd })
       
@@ -360,11 +347,9 @@ const parseDate = (dateStr: string): string => {
         throw new Error('Gagal membaca periode dari file. Pastikan file memiliki format "From: ... To: ..." di baris pertama.')
       }
       
-      // EKSTRAK ACTIVE PLAYERS (opsional)
-      const activePlayers = extractActivePlayers(rows)
-      console.log('👥 Active Players:', activePlayers)
+      let activePlayers = extractActivePlayers(rows)
+      console.log('👥 Active Players (dari metadata):', activePlayers)
       
-      // CARI BARIS HEADER (dimana ada "Account Id" atau "Account ID")
       let headerRowIndex = -1
       for (let i = 0; i < Math.min(rows.length, 20); i++) {
         const row = rows[i]
@@ -387,7 +372,6 @@ const parseDate = (dateStr: string): string => {
       console.log('📊 HEADER:', headers)
       console.log('📊 Data rows:', dataRows.length)
       
-      // MAP HEADER KE INDEX
       const findIndex = (keywords: string[]) => {
         return headers.findIndex((h: string) => {
           if (!h) return false
@@ -396,8 +380,7 @@ const parseDate = (dateStr: string): string => {
         })
       }
       
-      // Mapping berdasarkan format
-      let idx = {
+      const idx = {
         account: findIndex(['account id', 'account_id', 'accountid']),
         product: findIndex(['product name', 'product_type', 'product type']),
         betCount: findIndex(['bet count', 'betcount', 'bet_count']),
@@ -424,7 +407,6 @@ const parseDate = (dateStr: string): string => {
         const row = dataRows[i]
         if (!row || row.length === 0) continue
         
-        // Skip baris Grand Total atau kosong
         const accountVal = row[idx.account]?.toString() || ''
         if (accountVal.includes('Grand Total') || accountVal === '' || accountVal === 'Grand Total') continue
         if (accountVal.includes('Sub Total')) continue
@@ -455,6 +437,18 @@ const parseDate = (dateStr: string): string => {
         throw new Error('Tidak ada data valid dalam file')
       }
 
+      // Hitung unique players dari data yang valid
+      const uniqueAccounts = new Set()
+      validTransactions.forEach(tx => {
+        const cleanAccount = tx.account_id.replace(/^XLY/i, '')
+        uniqueAccounts.add(cleanAccount)
+      })
+      const activePlayersFromData = uniqueAccounts.size
+      
+      // Pilih yang lebih besar (metadata kadang lebih akurat, tapi kalo 0 pake dari data)
+      const finalActivePlayers = activePlayers > 0 ? activePlayers : activePlayersFromData
+      console.log('👥 Final Active Players:', finalActivePlayers)
+
       // INSERT BATCH KE TRANSACTIONS
       setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
       
@@ -481,7 +475,7 @@ const parseDate = (dateStr: string): string => {
           website: website,
           period_start: periodStart,
           period_end: periodEnd,
-          active_unique_players: activePlayers,
+          active_unique_players: finalActivePlayers,
           upload_date: new Date().toISOString().split('T')[0]
         })
       
@@ -490,7 +484,7 @@ const parseDate = (dateStr: string): string => {
       alert(`✅ Berhasil! 
 • ${validTransactions.length} data transaksi
 • Periode: ${periodStart} - ${periodEnd}
-• Active Players: ${activePlayers}`)
+• Active Players: ${finalActivePlayers}`)
       
       setShowModal(false)
       setSelectedFile(null)
