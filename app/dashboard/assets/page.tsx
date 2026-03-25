@@ -152,43 +152,24 @@ export default function AssetsPage() {
 
     const newMembers = await fetchAllWithPagination(memberQuery);
 
-    // Fetch winlose dengan pagination untuk turnover & winlose
+    // Fetch winlose dengan pagination
     let winloseQuery = supabase
       .from('winlose_transactions')
-      .select('net_turnover, member_total')
+      .select('*')
       .eq('brand', assetCode)
       .gte('period_start', startDate)
       .lte('period_start', endDate);
 
     const winlose = await fetchAllWithPagination(winloseQuery);
 
-    // Fetch adjustment dengan pagination
-    let adjustmentQuery = supabase
-      .from('adjustment_transactions')
-      .select('amount')
-      .eq('brand', assetCode)
-      .eq('status', 'Approved')
-      .gte('approved_date', `${startDate} 00:00:00`)
-      .lte('approved_date', `${endDate} 23:59:59`);
-
-    const adjustments = await fetchAllWithPagination(adjustmentQuery);
-
-    // HITUNG METRICS
     const totalDepositAmount = deposits?.reduce((sum: number, d: any) => sum + (d.nett_amount || 0), 0) || 0;
     const totalDepositCount = deposits?.length || 0;
     
     const totalWithdrawalAmount = withdrawals?.reduce((sum: number, w: any) => sum + (w.nett_amount || 0), 0) || 0;
     const totalWithdrawalCount = withdrawals?.length || 0;
 
-    // TURNOVER dari winlose (net_turnover)
     const turnover = winlose?.reduce((sum: number, w: any) => sum + (w.net_turnover || 0), 0) || 0;
-    
-    // WINLOSE dari winlose (member_total)
     const winloseTotal = winlose?.reduce((sum: number, w: any) => sum + (w.member_total || 0), 0) || 0;
-
-    // ADJUSTMENT dari adjustment_transactions
-    const adjustmentAmount = adjustments?.reduce((sum: number, a: any) => sum + (a.amount || 0), 0) || 0;
-    const adjustmentCount = adjustments?.length || 0;
 
     const newRegisterCount = newMembers?.length || 0;
     
@@ -214,7 +195,7 @@ export default function AssetsPage() {
       bonus: { count: 0, amount: 0 },
       commission: { count: 0, amount: 0 },
       cashback: { count: 0, amount: 0 },
-      adjustment: { count: adjustmentCount, amount: adjustmentAmount },
+      adjustment: { count: 0, amount: 0 },
       referral: { count: 0, amount: 0 }
     };
   };
