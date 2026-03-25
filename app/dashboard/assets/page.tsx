@@ -10,9 +10,7 @@ const formatNumber = (num: number) => {
   return num.toLocaleString('id-ID');
 };
 
-// ===========================================
 // PAGINATION HELPER
-// ===========================================
 const fetchAllWithPagination = async (queryBuilder: any) => {
   let allData: any[] = [];
   let page = 0;
@@ -112,18 +110,15 @@ export default function AssetsPage() {
     };
   };
 
-  // ===========================================
-  // FETCH ASSET DATA DENGAN PAGINATION
-  // ===========================================
   const fetchAssetData = async (assetCode: string) => {
     const dateRange = getDateRange();
     const startDate = dateRange.start;
     const endDate = dateRange.end;
 
-    // Fetch deposits dengan pagination
+    // Fetch deposits
     let depositQuery = supabase
       .from('deposit_transactions')
-      .select('*')
+      .select('user_name, nett_amount')
       .eq('brand', assetCode)
       .gte('approved_date', `${startDate} 00:00:00`)
       .lte('approved_date', `${endDate} 23:59:59`)
@@ -131,10 +126,10 @@ export default function AssetsPage() {
 
     const deposits = await fetchAllWithPagination(depositQuery);
 
-    // Fetch withdrawals dengan pagination
+    // Fetch withdrawals
     let withdrawalQuery = supabase
       .from('withdrawal_transactions')
-      .select('*')
+      .select('user_name, nett_amount')
       .eq('brand', assetCode)
       .gte('approved_date', `${startDate} 00:00:00`)
       .lte('approved_date', `${endDate} 23:59:59`)
@@ -142,26 +137,28 @@ export default function AssetsPage() {
 
     const withdrawals = await fetchAllWithPagination(withdrawalQuery);
 
-    // Fetch new members dengan pagination
-    let memberQuery = supabase
-      .from('members')
-      .select('*')
-      .eq('brand', assetCode)
-      .gte('created_at', `${startDate} 00:00:00`)
-      .lte('created_at', `${endDate} 23:59:59`);
-
-    const newMembers = await fetchAllWithPagination(memberQuery);
-
-    // Fetch winlose dengan pagination
+    // Fetch winlose
     let winloseQuery = supabase
       .from('winlose_transactions')
-      .select('*')
+      .select('net_turnover, member_total')
       .eq('brand', assetCode)
       .gte('period_start', startDate)
       .lte('period_start', endDate);
 
     const winlose = await fetchAllWithPagination(winloseQuery);
 
+    // Fetch adjustment
+    let adjustmentQuery = supabase
+      .from('adjustment_transactions')
+      .select('amount')
+      .eq('brand', assetCode)
+      .eq('status', 'Approved')
+      .gte('approved_date', `${startDate} 00:00:00`)
+      .lte('approved_date', `${endDate} 23:59:59`);
+
+    const adjustments = await fetchAllWithPagination(adjustmentQuery);
+
+    // HITUNG METRICS
     const totalDepositAmount = deposits?.reduce((sum: number, d: any) => sum + (d.nett_amount || 0), 0) || 0;
     const totalDepositCount = deposits?.length || 0;
     
@@ -171,32 +168,20 @@ export default function AssetsPage() {
     const turnover = winlose?.reduce((sum: number, w: any) => sum + (w.net_turnover || 0), 0) || 0;
     const winloseTotal = winlose?.reduce((sum: number, w: any) => sum + (w.member_total || 0), 0) || 0;
 
-    const newRegisterCount = newMembers?.length || 0;
-    
-    const newMemberIds = new Set(newMembers?.map((m: any) => m.user_name) || []);
-    const newMemberDeposit = deposits?.filter((d: any) => newMemberIds.has(d.user_name)) || [];
-    const newMemberDepositCount = newMemberDeposit.length;
-    const newMemberDepositAmount = newMemberDeposit.reduce((sum: number, d: any) => sum + (d.nett_amount || 0), 0) || 0;
-    
-    const percentage = newRegisterCount > 0 ? (newMemberDepositCount / newRegisterCount) * 100 : 0;
+    const adjustmentAmount = adjustments?.reduce((sum: number, a: any) => sum + (a.amount || 0), 0) || 0;
+    const adjustmentCount = adjustments?.length || 0;
 
+    // Active members dari deposit (unique user)
     const activeMembers = deposits?.filter((d: any) => d.user_name).map((d: any) => d.user_name) || [];
     const uniqueActiveMembers = [...new Set(activeMembers)];
 
     return {
-      new_register: { count: newRegisterCount, amount: 0 },
-      new_member_deposit: { count: newMemberDepositCount, amount: newMemberDepositAmount },
-      percentage: percentage,
       total_deposit: { count: totalDepositCount, amount: totalDepositAmount },
       total_withdrawal: { count: totalWithdrawalCount, amount: -totalWithdrawalAmount },
       active_member: uniqueActiveMembers.length,
       turnover: turnover,
       winlose: winloseTotal,
-      bonus: { count: 0, amount: 0 },
-      commission: { count: 0, amount: 0 },
-      cashback: { count: 0, amount: 0 },
-      adjustment: { count: 0, amount: 0 },
-      referral: { count: 0, amount: 0 }
+      adjustment: { count: adjustmentCount, amount: adjustmentAmount }
     };
   };
 
@@ -289,7 +274,7 @@ export default function AssetsPage() {
 
       {/* TABLES PER ASSET */}
       <div className="space-y-8">
-        {assetsData.map((item, idx) => {
+        {assetsData.map((item) => {
           const asset = item.asset;
           const data = item.data;
           return (
@@ -312,21 +297,6 @@ export default function AssetsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">New Register</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.new_register.count)}</td>
-                      <td className="px-4 py-2 text-right">-</td>
-                    </tr>
-                    <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">New Member Deposit</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.new_member_deposit.count)}</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.new_member_deposit.amount)}</td>
-                    </tr>
-                    <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Percentage</td>
-                      <td className="px-4 py-2 text-right">{data.percentage.toFixed(2)}%</td>
-                      <td className="px-4 py-2 text-right">-</td>
-                    </tr>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">Total Deposit</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.total_deposit.count)}</td>
@@ -355,29 +325,9 @@ export default function AssetsPage() {
                       </td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Bonus</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.bonus.count)}</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.bonus.amount)}</td>
-                    </tr>
-                    <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Commission</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.commission.count)}</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.commission.amount)}</td>
-                    </tr>
-                    <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Cashback</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.cashback.count)}</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.cashback.amount)}</td>
-                    </tr>
-                    <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">Adjustment</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.adjustment.count)}</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.adjustment.amount)}</td>
-                    </tr>
-                    <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Referral</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.referral.count)}</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.referral.amount)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -388,7 +338,7 @@ export default function AssetsPage() {
       </div>
 
       {/* EMPTY STATE */}
-      {assetsData.length === 0 && (
+      {assetsData.length === 0 && assets.length === 0 && (
         <div className="border border-[#FFD700]/30 rounded-lg p-12 text-center bg-[#1A2F4A]">
           <div className="w-16 h-16 border-2 border-[#FFD700]/30 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-2xl">🏦</span>
