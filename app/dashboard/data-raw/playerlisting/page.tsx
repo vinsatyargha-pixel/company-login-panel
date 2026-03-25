@@ -195,114 +195,115 @@ export default function PlayerListingPage() {
   // ===========================================
 
   const processFile = async () => {
-    if (!selectedFile) return;
+  if (!selectedFile) return;
+  
+  setUploading(true);
+  setUploadProgress('Membaca file...');
+  
+  try {
+    const arrayBuffer = await selectedFile.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
     
-    setUploading(true);
-    setUploadProgress('Membaca file...');
+    const rows = XLSX.utils.sheet_to_json(worksheet, { 
+      header: 1,
+      defval: '',
+      blankrows: false
+    }) as any[][];
     
-    try {
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+    // SKIP BARIS PERTAMA (JUDUL)
+    const headerRow = rows[1];  // Baris ke-2 adalah header sebenarnya
+    const dataRows = rows.slice(2); // Baris ke-3 dst adalah data
+    
+    // Cari index kolom berdasarkan header di baris ke-2
+    const findIndex = (keyword: string) => {
+      return headerRow.findIndex((h: string) => 
+        h && h.toString().toLowerCase().includes(keyword.toLowerCase())
+      );
+    };
+    
+    const idx = {
+      no: findIndex('no'),
+      registration: findIndex('registration'),
+      username: findIndex('username'),
+      account_type: findIndex('account type'),
+      loyalty_level: findIndex('loyalty level'),
+      full_name: findIndex('full name'),
+      player_group: findIndex('player group'),
+      contact_info: findIndex('contact info'),
+      status: findIndex('status'),
+      last_login: findIndex('last login'),
+      referrer_type: findIndex('referrer type'),
+      referral_code: findIndex('referral code'),
+      own_referral_code: findIndex('own referral code'),
+      source_information: findIndex('source information'),
+      maximum_transaction_pending: findIndex('maximum transaction pending'),
+      last_deposit: findIndex('last deposit'),
+      current_loyalty_points: findIndex('current loyalty points'),
+      current_balance: findIndex('current balance'),
+      last_transfer_in: findIndex('last transfer in'),
+      current_outstanding_bet: findIndex('current outstanding bet')
+    };
+    
+    if (idx.username === -1) {
+      throw new Error('Kolom Username tidak ditemukan');
+    }
+    
+    setUploadProgress('Memvalidasi data...');
+    
+    const validData: any[] = [];
+    const uploadDates = new Set<string>();
+    
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      if (!row || row.length === 0) continue;
       
-      const rows = XLSX.utils.sheet_to_json(worksheet, { 
-        header: 1,
-        defval: '',
-        blankrows: false
-      }) as any[][];
+      const username = row[idx.username];
+      if (!username) continue;
       
-      const headers = rows[0];
-      const dataRows = rows.slice(1);
+      const registration = row[idx.registration] || '';
+      let uploadDate = null;
       
-      // Cari index kolom berdasarkan header
-      const findIndex = (keyword: string) => {
-        return headers.findIndex((h: string) => 
-          h && h.toString().toLowerCase().includes(keyword.toLowerCase())
-        );
-      };
-      
-      const idx = {
-        no: findIndex('no'),
-        registration: findIndex('registration'),
-        username: findIndex('username'),
-        account_type: findIndex('account type'),
-        loyalty_level: findIndex('loyalty level'),
-        full_name: findIndex('full name'),
-        player_group: findIndex('player group'),
-        contact_info: findIndex('contact info'),
-        status: findIndex('status'),
-        last_login: findIndex('last login'),
-        referrer_type: findIndex('referrer type'),
-        referral_code: findIndex('referral code'),
-        own_referral_code: findIndex('own referral code'),
-        source_information: findIndex('source information'),
-        maximum_transaction_pending: findIndex('maximum transaction pending'),
-        last_deposit: findIndex('last deposit'),
-        current_loyalty_points: findIndex('current loyalty points'),
-        current_balance: findIndex('current balance'),
-        last_transfer_in: findIndex('last transfer in'),
-        current_outstanding_bet: findIndex('current outstanding bet')
-      };
-      
-      if (idx.username === -1) {
-        throw new Error('Kolom Username tidak ditemukan');
+      // Parse registration untuk ambil tanggal
+      const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}-[A-Za-z]+-[0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
+      if (regMatch) {
+        uploadDate = parseExcelDate(regMatch[1]);
+      } else {
+        uploadDate = new Date().toISOString();
       }
       
-      setUploadProgress('Memvalidasi data...');
+      const dateOnly = uploadDate?.split(' ')[0];
+      if (dateOnly) uploadDates.add(dateOnly);
       
-      const validData: any[] = [];
-      const uploadDates = new Set<string>();
-      
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i];
-        if (!row || row.length === 0) continue;
-        
-        const username = row[idx.username];
-        if (!username) continue;
-        
-        const registration = row[idx.registration] || '';
-        let uploadDate = null;
-        
-        // Parse registration untuk ambil tanggal
-        const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}-[A-Za-z]+-[0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
-        if (regMatch) {
-          uploadDate = parseExcelDate(regMatch[1]);
-        } else {
-          uploadDate = new Date().toISOString();
-        }
-        
-        const dateOnly = uploadDate?.split(' ')[0];
-        if (dateOnly) uploadDates.add(dateOnly);
-        
-        validData.push({
-          no: parseInt(row[idx.no]) || i + 1,
-          registration: registration,
-          username: username,
-          account_type: row[idx.account_type] || null,
-          loyalty_level: row[idx.loyalty_level] || null,
-          full_name: row[idx.full_name] || null,
-          player_group: row[idx.player_group] || null,
-          contact_info: row[idx.contact_info] || null,
-          status: row[idx.status] || null,
-          last_login: row[idx.last_login] || null,
-          referrer_type: row[idx.referrer_type] || null,
-          referral_code: row[idx.referral_code] || null,
-          own_referral_code: row[idx.own_referral_code] || null,
-          source_information: row[idx.source_information] || null,
-          maximum_transaction_pending: parseInt(row[idx.maximum_transaction_pending]) || 0,
-          last_deposit: row[idx.last_deposit] || null,
-          current_loyalty_points: row[idx.current_loyalty_points] || null,
-          current_balance: parseCurrency(row[idx.current_balance]),
-          last_transfer_in: row[idx.last_transfer_in] || null,
-          current_outstanding_bet: parseCurrency(row[idx.current_outstanding_bet]),
-          file_name: selectedFile.name,
-          website: selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY',
-          upload_date: uploadDate || new Date().toISOString()
-        });
-      }
+      validData.push({
+        no: parseInt(row[idx.no]) || i + 1,
+        registration: registration,
+        username: username,
+        account_type: row[idx.account_type] || null,
+        loyalty_level: row[idx.loyalty_level] || null,
+        full_name: row[idx.full_name] || null,
+        player_group: row[idx.player_group] || null,
+        contact_info: row[idx.contact_info] || null,
+        status: row[idx.status] || null,
+        last_login: row[idx.last_login] || null,
+        referrer_type: row[idx.referrer_type] || null,
+        referral_code: row[idx.referral_code] || null,
+        own_referral_code: row[idx.own_referral_code] || null,
+        source_information: row[idx.source_information] || null,
+        maximum_transaction_pending: parseInt(row[idx.maximum_transaction_pending]) || 0,
+        last_deposit: row[idx.last_deposit] || null,
+        current_loyalty_points: row[idx.current_loyalty_points] || null,
+        current_balance: parseCurrency(row[idx.current_balance]),
+        last_transfer_in: row[idx.last_transfer_in] || null,
+        current_outstanding_bet: parseCurrency(row[idx.current_outstanding_bet]),
+        file_name: selectedFile.name,
+        website: selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY',
+        upload_date: uploadDate || new Date().toISOString()
+      });
+    }
 
-      if (validData.length === 0) throw new Error('Tidak ada data valid');
+    if (validData.length === 0) throw new Error('Tidak ada data valid');
 
       setUploadProgress(`Menyimpan ${validData.length} data...`);
       
