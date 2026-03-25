@@ -37,6 +37,17 @@ const fetchAllWithPagination = async (queryBuilder: any) => {
   return allData;
 };
 
+// ===========================================
+// CLEAN ACCOUNT ID
+// ===========================================
+const cleanAccountId = (fullId: string): string => {
+  if (!fullId) return '';
+  if (fullId.toUpperCase().startsWith('XLY')) {
+    return fullId.substring(3);
+  }
+  return fullId;
+};
+
 export default function AssetsPage() {
   const router = useRouter();
   const [assets, setAssets] = useState<any[]>([]);
@@ -116,100 +127,97 @@ export default function AssetsPage() {
   // FETCH ASSET DATA DENGAN PAGINATION
   // ===========================================
   const fetchAssetData = async (assetCode: string) => {
-  const dateRange = getDateRange();
-  const startDate = dateRange.start;
-  const endDate = dateRange.end;
+    const dateRange = getDateRange();
+    const startDate = dateRange.start;
+    const endDate = dateRange.end;
 
-  // 1. DEPOSIT
-  let depositQuery = supabase
-    .from('deposit_transactions')
-    .select('user_name, nett_amount')
-    .eq('brand', assetCode)
-    .gte('approved_date', `${startDate} 00:00:00`)
-    .lte('approved_date', `${endDate} 23:59:59`)
-    .eq('status', 'Approved');
+    // 1. DEPOSIT
+    let depositQuery = supabase
+      .from('deposit_transactions')
+      .select('user_name, nett_amount')
+      .eq('brand', assetCode)
+      .gte('approved_date', `${startDate} 00:00:00`)
+      .lte('approved_date', `${endDate} 23:59:59`)
+      .eq('status', 'Approved');
 
-  const deposits = await fetchAllWithPagination(depositQuery);
+    const deposits = await fetchAllWithPagination(depositQuery);
 
-  // 2. WITHDRAWAL
-  let withdrawalQuery = supabase
-    .from('withdrawal_transactions')
-    .select('user_name, nett_amount')
-    .eq('brand', assetCode)
-    .gte('approved_date', `${startDate} 00:00:00`)
-    .lte('approved_date', `${endDate} 23:59:59`)
-    .eq('status', 'Approved');
+    // 2. WITHDRAWAL
+    let withdrawalQuery = supabase
+      .from('withdrawal_transactions')
+      .select('user_name, nett_amount')
+      .eq('brand', assetCode)
+      .gte('approved_date', `${startDate} 00:00:00`)
+      .lte('approved_date', `${endDate} 23:59:59`)
+      .eq('status', 'Approved');
 
-  const withdrawals = await fetchAllWithPagination(withdrawalQuery);
+    const withdrawals = await fetchAllWithPagination(withdrawalQuery);
 
-  // 3. WINLOSE (ambil account_id buat hitung active member)
-  let winloseQuery = supabase
-    .from('winlose_transactions')
-    .select('net_turnover, member_total, account_id')
-    .eq('website', assetCode)
-    .gte('period_start', startDate)
-    .lte('period_start', endDate);
+    // 3. WINLOSE (ambil account_id buat hitung active member)
+    let winloseQuery = supabase
+      .from('winlose_transactions')
+      .select('net_turnover, member_total, account_id')
+      .eq('website', assetCode)
+      .gte('period_start', startDate)
+      .lte('period_start', endDate);
 
-  const winlose = await fetchAllWithPagination(winloseQuery);
+    const winlose = await fetchAllWithPagination(winloseQuery);
 
-  // 4. ADJUSTMENT
-  let adjustmentQuery = supabase
-    .from('adjustment_transactions')
-    .select('adjustment_amount')
-    .eq('brand', assetCode)
-    .eq('status', 'Approved')
-    .gte('adjustment_date', `${startDate} 00:00:00`)
-    .lte('adjustment_date', `${endDate} 23:59:59`);
+    // 4. ADJUSTMENT
+    let adjustmentQuery = supabase
+      .from('adjustment_transactions')
+      .select('adjustment_amount')
+      .eq('brand', assetCode)
+      .eq('status', 'Approved')
+      .gte('adjustment_date', `${startDate} 00:00:00`)
+      .lte('adjustment_date', `${endDate} 23:59:59`);
 
-  const adjustments = await fetchAllWithPagination(adjustmentQuery);
+    const adjustments = await fetchAllWithPagination(adjustmentQuery);
 
-  // HITUNG METRICS
-  const totalDepositAmount = deposits?.reduce((sum: number, d: any) => sum + (d.nett_amount || 0), 0) || 0;
-  const totalDepositCount = deposits?.length || 0;
-  
-  const totalWithdrawalAmount = withdrawals?.reduce((sum: number, w: any) => sum + (w.nett_amount || 0), 0) || 0;
-  const totalWithdrawalCount = withdrawals?.length || 0;
+    // HITUNG METRICS
+    const totalDepositAmount = deposits?.reduce((sum: number, d: any) => sum + (d.nett_amount || 0), 0) || 0;
+    const totalDepositCount = deposits?.length || 0;
+    
+    const totalWithdrawalAmount = withdrawals?.reduce((sum: number, w: any) => sum + (w.nett_amount || 0), 0) || 0;
+    const totalWithdrawalCount = withdrawals?.length || 0;
 
-  const turnover = winlose?.reduce((sum: number, w: any) => sum + (w.net_turnover || 0), 0) || 0;
-  const winloseTotal = winlose?.reduce((sum: number, w: any) => sum + (w.member_total || 0), 0) || 0;
+    const turnover = winlose?.reduce((sum: number, w: any) => sum + (w.net_turnover || 0), 0) || 0;
+    const winloseTotal = winlose?.reduce((sum: number, w: any) => sum + (w.member_total || 0), 0) || 0;
 
-  const adjustmentAmount = adjustments?.reduce((sum: number, a: any) => sum + (a.adjustment_amount || 0), 0) || 0;
-  const adjustmentCount = adjustments?.length || 0;
+    const adjustmentAmount = adjustments?.reduce((sum: number, a: any) => sum + (a.adjustment_amount || 0), 0) || 0;
+    const adjustmentCount = adjustments?.length || 0;
 
-  // ===========================================
-  // ACTIVE MEMBER - HANYA DARI WINLOSE (MEMBER YANG MAIN)
-  // ===========================================
-  const cleanAccountId = (fullId: string): string => {
-    if (!fullId) return '';
-    if (fullId.toUpperCase().startsWith('XLY')) {
-      return fullId.substring(3);
-    }
-    return fullId;
-  };
-
-  const activeMembersSet = new Set<string>();
-  
-  winlose?.forEach((w: any) => {
-    let accountId = w.account_id;
-    if (accountId) {
-      const cleanId = cleanAccountId(accountId);
-      if (cleanId) {
-        activeMembersSet.add(cleanId.toLowerCase());
+    // ===========================================
+    // ACTIVE MEMBER - UNIQUE DARI WINLOSE
+    // ===========================================
+    const activeMembersSet = new Set<string>();
+    
+    winlose?.forEach((w: any) => {
+      let accountId = w.account_id;
+      if (accountId) {
+        const cleanId = cleanAccountId(accountId);
+        if (cleanId) {
+          activeMembersSet.add(cleanId.toLowerCase());
+        }
       }
-    }
-  });
+    });
 
-  const uniqueActiveMembers = activeMembersSet.size;
+    const uniqueActiveMembers = activeMembersSet.size;
 
-  return {
-    total_deposit: { count: totalDepositCount, amount: totalDepositAmount },
-    total_withdrawal: { count: totalWithdrawalCount, amount: -totalWithdrawalAmount },
-    active_member: uniqueActiveMembers,
-    turnover: turnover,
-    winlose: winloseTotal,
-    adjustment: { count: adjustmentCount, amount: adjustmentAmount }
+    console.log(`📊 Asset ${assetCode}:`);
+    console.log(`   - Winlose rows: ${winlose?.length || 0}`);
+    console.log(`   - Unique active members: ${uniqueActiveMembers}`);
+    console.log(`   - Sample IDs:`, Array.from(activeMembersSet).slice(0, 5));
+
+    return {
+      total_deposit: { count: totalDepositCount, amount: totalDepositAmount },
+      total_withdrawal: { count: totalWithdrawalCount, amount: -totalWithdrawalAmount },
+      active_member: uniqueActiveMembers,
+      turnover: turnover,
+      winlose: winloseTotal,
+      adjustment: { count: adjustmentCount, amount: adjustmentAmount }
+    };
   };
-};
 
   const fetchAllAssetsData = async () => {
     try {
