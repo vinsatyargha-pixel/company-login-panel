@@ -237,6 +237,7 @@ export default function PlayerListingPage() {
       
       // Data untuk player_listing (detail player)
       const playerDetails: any[] = [];
+      let validCount = 0;
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
@@ -246,18 +247,17 @@ export default function PlayerListingPage() {
         if (!username) continue;
         
         const registration = row[idx.registration] || '';
-        let playerUploadDate = null;
+        let registrationDate = null;
         
+        // Parse Registration Date dari kolom Registration
         const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}-[A-Za-z]+-[0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
         if (regMatch) {
-          playerUploadDate = parseExcelDate(regMatch[1]);
-        } else {
-          playerUploadDate = new Date().toISOString();
+          registrationDate = parseExcelDate(regMatch[1]);
         }
         
         playerDetails.push({
           upload_id: uploadId,
-          upload_date: playerUploadDate,
+          registration_date: registrationDate,
           no: parseInt(row[idx.no]) || i + 1,
           registration: registration,
           username: username,
@@ -281,11 +281,12 @@ export default function PlayerListingPage() {
           file_name: selectedFile.name,
           website: website
         });
+        validCount++;
       }
 
       if (playerDetails.length === 0) throw new Error('Tidak ada data valid');
 
-      setUploadProgress(`Menyimpan tracking upload...`);
+      setUploadProgress(`Menyimpan ${playerDetails.length} data...`);
       
       // 1. INSERT KE PLAYER_UPLOADS (tracking upload)
       const { error: uploadError } = await supabase
@@ -301,8 +302,6 @@ export default function PlayerListingPage() {
 
       if (uploadError) throw uploadError;
 
-      setUploadProgress(`Menyimpan ${playerDetails.length} data player...`);
-      
       // 2. INSERT KE PLAYER_LISTING (detail player)
       const { error: listingError } = await supabase
         .from('player_listing')
@@ -408,7 +407,7 @@ export default function PlayerListingPage() {
               <th className="px-4 py-3 text-left text-[#FFD700]">File Name</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Player</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
-            </tr>
+             </tr>
           </thead>
           <tbody>
             {uploads.length > 0 ? uploads.map((item) => (
