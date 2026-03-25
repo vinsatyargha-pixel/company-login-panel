@@ -21,6 +21,7 @@ type WinloseUpload = {
   total_rows: number
   status: string
   website: string
+  asset_code: string
   period_start: string
   period_end: string
   active_unique_players: number
@@ -42,6 +43,7 @@ type WinloseTransaction = {
   pvp_player_payout: number
   pvp_table_fee: number
   website: string
+  asset_code: string
   file_name: string
   period_start: string
   period_end: string
@@ -126,10 +128,7 @@ export default function WinloseDataRawPage() {
         .order('period_start', { ascending: true })
 
       if (selectedAsset !== 'all') {
-        const asset = assets.find(a => a.id === selectedAsset)
-        if (asset) {
-          query = query.eq('website', asset.asset_code)
-        }
+        query = query.eq('asset_code', selectedAsset)
       }
 
       const { data, error } = await query
@@ -411,8 +410,11 @@ export default function WinloseDataRawPage() {
         if (accountVal.includes('Grand Total') || accountVal === '' || accountVal === 'Grand Total') continue
         if (accountVal.includes('Sub Total')) continue
         
+        const accountId = parseString(row[idx.account])
+        const assetCode = accountId.substring(0, 3).toUpperCase()
+        
         validTransactions.push({
-          account_id: parseString(row[idx.account]),
+          account_id: accountId,
           product_type: parseString(row[idx.product]),
           bet_count: parseNumber(row[idx.betCount]),
           turnover: parseNumber(row[idx.turnover]),
@@ -425,6 +427,7 @@ export default function WinloseDataRawPage() {
           pvp_player_payout: parseNumber(row[idx.pvpPayout]),
           pvp_table_fee: parseNumber(row[idx.pvpFee]),
           website: website,
+          asset_code: assetCode,
           file_name: fileName,
           period_start: periodStart,
           period_end: periodEnd
@@ -445,7 +448,7 @@ export default function WinloseDataRawPage() {
       })
       const activePlayersFromData = uniqueAccounts.size
       
-      // Pilih yang lebih besar (metadata kadang lebih akurat, tapi kalo 0 pake dari data)
+      // Pilih yang lebih besar
       const finalActivePlayers = activePlayers > 0 ? activePlayers : activePlayersFromData
       console.log('👥 Final Active Players:', finalActivePlayers)
 
@@ -466,6 +469,9 @@ export default function WinloseDataRawPage() {
       // INSERT KE UPLOADS TRACKING
       setUploadProgress('Menyimpan tracking upload...')
 
+      // Ambil asset code dari data pertama (asumsi semua data dalam 1 file punya asset sama)
+      const firstAssetCode = validTransactions[0]?.asset_code || 'XLY'
+
       const { error: uploadError } = await supabase
         .from('winlose_uploads')
         .insert({
@@ -473,6 +479,7 @@ export default function WinloseDataRawPage() {
           total_rows: validTransactions.length,
           status: 'completed',
           website: website,
+          asset_code: firstAssetCode,
           period_start: periodStart,
           period_end: periodEnd,
           active_unique_players: finalActivePlayers,
@@ -484,6 +491,7 @@ export default function WinloseDataRawPage() {
       alert(`✅ Berhasil! 
 • ${validTransactions.length} data transaksi
 • Periode: ${periodStart} - ${periodEnd}
+• Asset: ${firstAssetCode}
 • Active Players: ${finalActivePlayers}`)
       
       setShowModal(false)
@@ -579,6 +587,7 @@ export default function WinloseDataRawPage() {
             <tr>
               <th className="px-4 py-3 text-left text-[#FFD700]">No</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Asset</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Active Players</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
@@ -590,6 +599,7 @@ export default function WinloseDataRawPage() {
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                 <td className="px-4 py-3">{index + 1}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                <td className="px-4 py-3 text-[#FFD700] font-bold">{item.asset_code}</td>
                 <td className="px-4 py-3">
                   {item.period_start} s/d {item.period_end}
                 </td>
@@ -600,7 +610,7 @@ export default function WinloseDataRawPage() {
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
             )}
           </tbody>
         </table>
