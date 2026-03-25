@@ -13,6 +13,7 @@ type Asset = {
 
 type PlayerUpload = {
   id: string;
+  upload_id: string;
   upload_date: string;
   file_name: string;
   total_rows: number;
@@ -94,25 +95,8 @@ export default function PlayerListingPage() {
       }
 
       const { data } = await query;
+      setUploads(data || []);
       
-      // Group by upload_id or file_name to get unique uploads
-      const grouped = new Map();
-      data?.forEach((item: any) => {
-        const key = item.upload_id || item.file_name;
-        if (!grouped.has(key)) {
-          grouped.set(key, {
-            id: item.id,
-            upload_date: item.upload_date,
-            file_name: item.file_name,
-            total_rows: 0,
-            status: 'completed',
-            website: item.website
-          });
-        }
-        grouped.get(key).total_rows++;
-      });
-      
-      setUploads(Array.from(grouped.values()));
     } catch (error) {
       console.error('Error fetching uploads:', error);
     } finally {
@@ -248,7 +232,11 @@ export default function PlayerListingPage() {
       setUploadProgress('Memvalidasi data...');
       
       const uploadId = crypto.randomUUID();
-      const validData: any[] = [];
+      const uploadDate = new Date().toISOString().split('T')[0];
+      const website = selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY';
+      
+      // Data untuk player_listing (detail player)
+      const playerDetails: any[] = [];
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
@@ -258,17 +246,18 @@ export default function PlayerListingPage() {
         if (!username) continue;
         
         const registration = row[idx.registration] || '';
-        let uploadDate = null;
+        let playerUploadDate = null;
         
         const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}-[A-Za-z]+-[0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
         if (regMatch) {
-          uploadDate = parseExcelDate(regMatch[1]);
+          playerUploadDate = parseExcelDate(regMatch[1]);
         } else {
-          uploadDate = new Date().toISOString();
+          playerUploadDate = new Date().toISOString();
         }
         
-        validData.push({
+        playerDetails.push({
           upload_id: uploadId,
+          upload_date: playerUploadDate,
           no: parseInt(row[idx.no]) || i + 1,
           registration: registration,
           username: username,
@@ -290,22 +279,38 @@ export default function PlayerListingPage() {
           last_transfer_in: row[idx.last_transfer_in] || null,
           current_outstanding_bet: parseCurrency(row[idx.current_outstanding_bet]),
           file_name: selectedFile.name,
-          website: selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY',
-          upload_date: uploadDate
+          website: website
         });
       }
 
-      if (validData.length === 0) throw new Error('Tidak ada data valid');
+      if (playerDetails.length === 0) throw new Error('Tidak ada data valid');
 
-      setUploadProgress(`Menyimpan ${validData.length} data...`);
+      setUploadProgress(`Menyimpan tracking upload...`);
       
-      const { error } = await supabase
+      // 1. INSERT KE PLAYER_UPLOADS (tracking upload)
+      const { error: uploadError } = await supabase
         .from('player_uploads')
-        .insert(validData);
+        .insert([{
+          upload_id: uploadId,
+          upload_date: uploadDate,
+          file_name: selectedFile.name,
+          total_rows: playerDetails.length,
+          status: 'completed',
+          website: website
+        }]);
 
-      if (error) throw error;
+      if (uploadError) throw uploadError;
 
-      alert(`✅ Berhasil! ${validData.length} data player diupload`);
+      setUploadProgress(`Menyimpan ${playerDetails.length} data player...`);
+      
+      // 2. INSERT KE PLAYER_LISTING (detail player)
+      const { error: listingError } = await supabase
+        .from('player_listing')
+        .insert(playerDetails);
+
+      if (listingError) throw listingError;
+
+      alert(`✅ Berhasil! ${playerDetails.length} data player diupload`);
       setShowModal(false);
       setSelectedFile(null);
       fetchUploads();
@@ -324,6 +329,16 @@ export default function PlayerListingPage() {
       case 'completed': return 'bg-green-500/20 text-green-400';
       default: return 'bg-gray-500/20 text-gray-400';
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   };
 
   if (loading) {
@@ -396,11 +411,9 @@ export default function PlayerListingPage() {
             </tr>
           </thead>
           <tbody>
-            {uploads.length > 0 ? uploads.map(item => (
+            {uploads.length > 0 ? uploads.map((item) => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                <td className="px-4 py-3">
-                  {new Date(item.upload_date).toLocaleDateString('id-ID')}
-                </td>
+                <td className="px-4 py-3">{formatDate(item.upload_date)}</td>
                 <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                 <td className="px-4 py-3">{item.total_rows} player</td>
