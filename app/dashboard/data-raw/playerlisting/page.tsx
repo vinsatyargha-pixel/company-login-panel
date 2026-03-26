@@ -15,6 +15,7 @@ type PlayerUpload = {
   id: string;
   upload_id: string;
   upload_date: string;
+  registration_month: string;
   file_name: string;
   total_rows: number;
   status: string;
@@ -96,13 +97,13 @@ export default function PlayerListingPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
       const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
 
-      // QUERY BERDASARKAN UPLOAD_DATE (tanggal upload file)
+      // ========== AMBIL DATA DARI PLAYER_LISTING BERDASARKAN REGISTRATION_DATE ==========
       let query = supabase
-        .from('player_uploads')
-        .select('*')
-        .gte('upload_date', startDate)
-        .lte('upload_date', endDate)
-        .order('upload_date', { ascending: true });
+        .from('player_listing')
+        .select('upload_id, upload_date, file_name, website, registration_date')
+        .gte('registration_date', startDate)
+        .lte('registration_date', endDate)
+        .order('registration_date', { ascending: true });
 
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset);
@@ -111,8 +112,29 @@ export default function PlayerListingPage() {
         }
       }
 
-      const { data } = await query;
-      setUploads(data || []);
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      // ========== GROUP BY UPLOAD_ID UNTUK MENAMPILKAN PER FILE ==========
+      const groupedUploads = new Map<string, PlayerUpload>();
+      data?.forEach((item: any) => {
+        if (!groupedUploads.has(item.upload_id)) {
+          groupedUploads.set(item.upload_id, {
+            id: item.upload_id,
+            upload_id: item.upload_id,
+            upload_date: item.upload_date,
+            registration_month: item.registration_date?.substring(0, 7) || '',
+            file_name: item.file_name,
+            website: item.website,
+            total_rows: 0,
+            status: 'completed'
+          });
+        }
+        groupedUploads.get(item.upload_id)!.total_rows++;
+      });
+      
+      setUploads(Array.from(groupedUploads.values()));
       
     } catch (error) {
       console.error('Error fetching uploads:', error);
@@ -289,6 +311,7 @@ export default function PlayerListingPage() {
       const playerDetails: any[] = [];
       let validCount = 0;
       let errorCount = 0;
+      let firstRegistrationDate: string | null = null;
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
@@ -309,7 +332,12 @@ export default function PlayerListingPage() {
           registrationDate = parseExcelDate(regMatch[1]);
         }
         
-        // DEBUG: Logging untuk cek tanggal
+        // Simpan tanggal registrasi pertama untuk registration_month
+        if (registrationDate && !firstRegistrationDate) {
+          firstRegistrationDate = registrationDate;
+        }
+        
+        // DEBUG: Logging untuk cek tanggal (5 data pertama)
         if (i < 5) {
           console.log(`📅 Row ${i+3}: username=${username}, raw="${regMatch?.[1]}", parsed="${registrationDate}"`);
         }
@@ -347,12 +375,16 @@ export default function PlayerListingPage() {
 
       setUploadProgress(`Menyimpan ${playerDetails.length} data...`);
       
+      // ========== TAMBAHKAN REGISTRATION_MONTH KE PLAYER_UPLOADS ==========
+      const registrationMonth = firstRegistrationDate ? firstRegistrationDate.substring(0, 7) : uploadDate.substring(0, 7);
+      
       // 1. INSERT KE PLAYER_UPLOADS (tracking upload)
       const { error: uploadError } = await supabase
         .from('player_uploads')
         .insert([{
           upload_id: uploadId,
           upload_date: uploadDate,
+          registration_month: registrationMonth,
           file_name: selectedFile.name,
           total_rows: playerDetails.length,
           status: 'completed',
@@ -368,7 +400,7 @@ export default function PlayerListingPage() {
 
       if (listingError) throw listingError;
 
-      alert(`✅ Berhasil! ${playerDetails.length} data player diupload (${errorCount} baris error/skip)`);
+      alert(`✅ Berhasil! ${playerDetails.length} data player diupload (${errorCount} baris error/skip)\n📅 Bulan Registrasi: ${registrationMonth}`);
       setShowModal(false);
       setSelectedFile(null);
       fetchUploads();
@@ -462,6 +494,7 @@ export default function PlayerListingPage() {
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal Upload</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Bulan Registrasi</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File Name</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Player</th>
@@ -472,6 +505,7 @@ export default function PlayerListingPage() {
             {uploads.length > 0 ? uploads.map((item) => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                 <td className="px-4 py-3">{formatDate(item.upload_date)}</td>
+                <td className="px-4 py-3 text-[#FFD700]">{item.registration_month}</td>
                 <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                 <td className="px-4 py-3">{item.total_rows} player</td>
@@ -483,7 +517,7 @@ export default function PlayerListingPage() {
               </tr>
             )) : (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
                   Tidak ada data untuk periode ini
                 </td>
               </tr>
