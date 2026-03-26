@@ -11,7 +11,7 @@ const formatNumber = (num: number) => {
 };
 
 // ===========================================
-// PAGINATION HELPER
+// PAGINATION HELPER - AMAN SAMPAI 100K+ DATA
 // ===========================================
 const fetchAllWithPagination = async (queryBuilder: any) => {
   let allData: any[] = [];
@@ -145,90 +145,34 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-// FETCH FIRST DEPOSIT (DEBUG VERSION)
-// ===========================================
-const fetchFirstDepositData = async (assetCode: string, startDate: string, endDate: string) => {
-  console.log(`\n🔍 DEBUG: Fetching first deposit for ${assetCode}`);
-  console.log(`   Filter period: ${startDate} to ${endDate}`);
-  
-  // 1. Ambil SEMUA deposit seumur hidup
-  let allDepositsQuery = supabase
-    .from('deposit_transactions')
-    .select('user_name, nett_amount, approved_date')
-    .eq('brand', assetCode)
-    .eq('status', 'Approved')
-    .order('approved_date', { ascending: true });
+  // FETCH UNIQUE DEPOSITORS (YANG DEPOSIT DI PERIODE)
+  // ===========================================
+  const fetchUniqueDepositors = async (assetCode: string, startDate: string, endDate: string) => {
+    let query = supabase
+      .from('deposit_transactions')
+      .select('user_name, nett_amount')
+      .eq('brand', assetCode)
+      .gte('approved_date', `${startDate} 00:00:00`)
+      .lte('approved_date', `${endDate} 23:59:59`)
+      .eq('status', 'Approved');
 
-  const allDeposits = await fetchAllWithPagination(allDepositsQuery);
-  
-  console.log(`   - All deposits (lifetime): ${allDeposits.length}`);
-  
-  // DEBUG: Tampilkan 10 deposit pertama
-  console.log(`   - Sample first 10 deposits:`);
-  allDeposits.slice(0, 10).forEach((d: any, i: number) => {
-    console.log(`     ${i+1}. ${d.user_name} - ${d.approved_date} - ${d.nett_amount}`);
-  });
-  
-  if (allDeposits.length === 0) {
-    return { count: 0, amount: 0 };
-  }
-  
-  // 2. Group by user_name, ambil deposit pertama (paling awal)
-  const userFirstDepositMap = new Map<string, { amount: number; date: string }>();
-  
-  for (const deposit of allDeposits) {
-    const userName = deposit.user_name;
-    if (!userName) continue;
+    const deposits = await fetchAllWithPagination(query);
     
-    if (!userFirstDepositMap.has(userName)) {
-      userFirstDepositMap.set(userName, {
-        amount: deposit.nett_amount || 0,
-        date: deposit.approved_date
-      });
+    // Group by user_name, hitung total amount per user
+    const userMap = new Map<string, number>();
+    for (const d of deposits) {
+      if (d.user_name) {
+        userMap.set(d.user_name, (userMap.get(d.user_name) || 0) + (d.nett_amount || 0));
+      }
     }
-  }
-  
-  console.log(`   - Unique users with first deposit: ${userFirstDepositMap.size}`);
-  
-  // DEBUG: Cek user yang kita tahu first deposit di 25 Maret
-  const testUsers = ['3idmubarak', 'Achmad05', 'acuy85', 'Adele99', 'adlihasan88'];
-  console.log(`   - DEBUG: Cek test users:`);
-  for (const user of testUsers) {
-    const firstDep = userFirstDepositMap.get(user);
-    if (firstDep) {
-      console.log(`     ${user}: first deposit = ${firstDep.date} (amount: ${firstDep.amount})`);
-    } else {
-      console.log(`     ${user}: NOT FOUND in first deposit map!`);
-    }
-  }
-  
-  // 3. Filter: hanya yang deposit pertama terjadi dalam rentang filter
-  const startDateTime = `${startDate} 00:00:00`;
-  const endDateTime = `${endDate} 23:59:59`;
-  
-  let totalAmount = 0;
-  let count = 0;
-  const firstDepositsInFilter: any[] = [];
-  
-  for (const [userName, firstDep] of userFirstDepositMap) {
-    if (firstDep.date >= startDateTime && firstDep.date <= endDateTime) {
-      count++;
-      totalAmount += firstDep.amount;
-      firstDepositsInFilter.push({ user_name: userName, amount: firstDep.amount, date: firstDep.date });
-    }
-  }
-  
-  console.log(`   - First deposits in filter period: ${count}`);
-  console.log(`   - Sample first deposits in filter:`);
-  firstDepositsInFilter.slice(0, 10).forEach((fd: any, i: number) => {
-    console.log(`     ${i+1}. ${fd.user_name} - ${fd.date} - ${fd.amount}`);
-  });
-  
-  return { count, amount: totalAmount };
-};
+    
+    const totalAmount = Array.from(userMap.values()).reduce((a, b) => a + b, 0);
+    
+    return { count: userMap.size, amount: totalAmount };
+  };
 
   // ===========================================
-  // FETCH TOTAL DEPOSIT
+  // FETCH TOTAL DEPOSIT (SEMUA TRANSAKSI)
   // ===========================================
   const fetchTotalDeposit = async (assetCode: string, startDate: string, endDate: string) => {
     let query = supabase
@@ -329,33 +273,25 @@ const fetchFirstDepositData = async (assetCode: string, startDate: string, endDa
     const startDate = dateRange.start;
     const endDate = dateRange.end;
 
-    console.log(`\n📊 Processing ${assetCode} - ${startDate} to ${endDate}`);
-
     const [
       newRegist,
-      firstDeposit,
+      uniqueDepositors,
       totalDeposit,
       totalWithdrawal,
       winloseData,
       adjustment
     ] = await Promise.all([
       fetchNewRegist(assetCode, startDate, endDate),
-      fetchFirstDepositData(assetCode, startDate, endDate),
+      fetchUniqueDepositors(assetCode, startDate, endDate),
       fetchTotalDeposit(assetCode, startDate, endDate),
       fetchTotalWithdrawal(assetCode, startDate, endDate),
       fetchWinloseData(assetCode, startDate, endDate),
       fetchAdjustment(assetCode, startDate, endDate)
     ]);
 
-    console.log(`📊 Asset ${assetCode} Summary:`);
-    console.log(`   - New Regist: ${newRegist}`);
-    console.log(`   - First Deposit: ${firstDeposit.count} (${firstDeposit.amount})`);
-    console.log(`   - Total Deposit: ${totalDeposit.count} (${totalDeposit.amount})`);
-    console.log(`   - Active Member: ${winloseData.active_member}`);
-
     return {
       new_regist: newRegist,
-      first_deposit: firstDeposit,
+      unique_depositors: uniqueDepositors,
       total_deposit: totalDeposit,
       total_withdrawal: totalWithdrawal,
       active_member: winloseData.active_member,
@@ -483,9 +419,9 @@ const fetchFirstDepositData = async (assetCode: string, startDate: string, endDa
                       <td className="px-4 py-2 text-right">-</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">First Deposit</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.count)}</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.amount)}</td>
+                      <td className="px-4 py-2">Unique Depositor</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.unique_depositors.count)}</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.unique_depositors.amount)}</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">Total Deposit</td>
