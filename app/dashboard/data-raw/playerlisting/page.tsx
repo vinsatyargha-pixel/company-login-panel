@@ -609,7 +609,7 @@ export default function PlayerListingPage() {
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Asset</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Active Players</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">New Regist</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
             </tr>
