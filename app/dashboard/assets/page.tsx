@@ -124,7 +124,7 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH ASSET DATA DENGAN PAGINATION
+  // FETCH ASSET DATA DENGAN PAGINATION + NEW REGIST
   // ===========================================
   const fetchAssetData = async (assetCode: string) => {
     const dateRange = getDateRange();
@@ -174,6 +174,27 @@ export default function AssetsPage() {
 
     const adjustments = await fetchAllWithPagination(adjustmentQuery);
 
+    // ===========================================
+    // 5. NEW REGIST - DARI PLAYER_LISTING
+    // ===========================================
+    let newRegistQuery = supabase
+      .from('player_listing')
+      .select('username, registration_date, website')
+      .eq('website', assetCode)
+      .gte('registration_date', `${startDate} 00:00:00`)
+      .lte('registration_date', `${endDate} 23:59:59`);
+
+    const newRegist = await fetchAllWithPagination(newRegistQuery);
+    
+    // Hitung unique username (biar ga double count)
+    const uniqueNewRegist = new Set<string>();
+    newRegist?.forEach((p: any) => {
+      if (p.username) {
+        uniqueNewRegist.add(p.username.toLowerCase());
+      }
+    });
+    const newRegistCount = uniqueNewRegist.size;
+
     // HITUNG METRICS
     const totalDepositAmount = deposits?.reduce((sum: number, d: any) => sum + (d.nett_amount || 0), 0) || 0;
     const totalDepositCount = deposits?.length || 0;
@@ -187,9 +208,7 @@ export default function AssetsPage() {
     const adjustmentAmount = adjustments?.reduce((sum: number, a: any) => sum + (a.adjustment_amount || 0), 0) || 0;
     const adjustmentCount = adjustments?.length || 0;
 
-    // ===========================================
     // ACTIVE MEMBER - UNIQUE DARI WINLOSE
-    // ===========================================
     const activeMembersSet = new Set<string>();
     
     winlose?.forEach((w: any) => {
@@ -201,18 +220,18 @@ export default function AssetsPage() {
         }
       }
     });
-
     const uniqueActiveMembers = activeMembersSet.size;
 
     console.log(`📊 Asset ${assetCode}:`);
+    console.log(`   - New Regist: ${newRegistCount}`);
     console.log(`   - Winlose rows: ${winlose?.length || 0}`);
     console.log(`   - Unique active members: ${uniqueActiveMembers}`);
-    console.log(`   - Sample IDs:`, Array.from(activeMembersSet).slice(0, 5));
 
     return {
       total_deposit: { count: totalDepositCount, amount: totalDepositAmount },
       total_withdrawal: { count: totalWithdrawalCount, amount: -totalWithdrawalAmount },
       active_member: uniqueActiveMembers,
+      new_regist: newRegistCount,
       turnover: turnover,
       winlose: winloseTotal,
       adjustment: { count: adjustmentCount, amount: adjustmentAmount }
@@ -328,9 +347,14 @@ export default function AssetsPage() {
                       <th className="px-4 py-2 text-left text-[#FFD700]">Metric</th>
                       <th className="px-4 py-2 text-right text-[#FFD700]">Count</th>
                       <th className="px-4 py-2 text-right text-[#FFD700]">Amount</th>
-                    </tr>
+                     </tr>
                   </thead>
                   <tbody>
+                    <tr className="border-b border-[#FFD700]/10">
+                      <td className="px-4 py-2">New Regist</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.new_regist)}</td>
+                      <td className="px-4 py-2 text-right">-</td>
+                    </tr>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">Total Deposit</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.total_deposit.count)}</td>
