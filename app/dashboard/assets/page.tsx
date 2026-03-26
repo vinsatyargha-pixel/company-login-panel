@@ -124,14 +124,68 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH ASSET DATA DENGAN PAGINATION + NEW REGIST
+  // FETCH FIRST DEPOSIT DATA
+  // ===========================================
+  const fetchFirstDepositData = async (assetCode: string, startDate: string, endDate: string) => {
+    // Ambil semua deposit dalam periode
+    let depositQuery = supabase
+      .from('deposit_transactions')
+      .select('user_name, nett_amount, approved_date')
+      .eq('brand', assetCode)
+      .gte('approved_date', `${startDate} 00:00:00`)
+      .lte('approved_date', `${endDate} 23:59:59`)
+      .eq('status', 'Approved');
+
+    const depositsInPeriod = await fetchAllWithPagination(depositQuery);
+
+    if (depositsInPeriod.length === 0) {
+      return { count: 0, amount: 0 };
+    }
+
+    // Group by user_name
+    const userDepositsMap = new Map<string, { firstDate: string; firstAmount: number }>();
+    
+    for (const deposit of depositsInPeriod) {
+      const userName = deposit.user_name;
+      if (!userName) continue;
+      
+      const depositDate = deposit.approved_date;
+      const amount = deposit.nett_amount || 0;
+      
+      if (!userDepositsMap.has(userName)) {
+        userDepositsMap.set(userName, { firstDate: depositDate, firstAmount: amount });
+      } else {
+        const existing = userDepositsMap.get(userName)!;
+        // Cek apakah ini deposit lebih awal
+        if (depositDate < existing.firstDate) {
+          userDepositsMap.set(userName, { firstDate: depositDate, firstAmount: amount });
+        }
+      }
+    }
+    
+    // Hitung total first deposit amount
+    let totalFirstDepositAmount = 0;
+    for (const [_, value] of userDepositsMap) {
+      totalFirstDepositAmount += value.firstAmount;
+    }
+    
+    console.log(`   - First Depositors: ${userDepositsMap.size}, Total Amount: ${totalFirstDepositAmount}`);
+    
+    return {
+      count: userDepositsMap.size,
+      amount: totalFirstDepositAmount
+    };
+  };
+
+  // ===========================================
+  // FETCH ASSET DATA DENGAN PAGINATION
   // ===========================================
   const fetchAssetData = async (assetCode: string) => {
     const dateRange = getDateRange();
     const startDate = dateRange.start;
     const endDate = dateRange.end;
 
-    // 1. DEPOSIT
+    // 1. DEPOSIT (all)
     let depositQuery = supabase
       .from('deposit_transactions')
       .select('user_name, nett_amount')
@@ -153,7 +207,7 @@ export default function AssetsPage() {
 
     const withdrawals = await fetchAllWithPagination(withdrawalQuery);
 
-    // 3. WINLOSE (ambil account_id buat hitung active member)
+    // 3. WINLOSE
     let winloseQuery = supabase
       .from('winlose_transactions')
       .select('net_turnover, member_total, account_id')
@@ -174,9 +228,7 @@ export default function AssetsPage() {
 
     const adjustments = await fetchAllWithPagination(adjustmentQuery);
 
-    // ===========================================
-    // 5. NEW REGIST - DARI PLAYER_LISTING
-    // ===========================================
+    // 5. NEW REGIST
     let newRegistQuery = supabase
       .from('player_listing')
       .select('username, registration_date, website')
@@ -186,14 +238,14 @@ export default function AssetsPage() {
 
     const newRegist = await fetchAllWithPagination(newRegistQuery);
     
-    // Hitung unique username (biar ga double count)
     const uniqueNewRegist = new Set<string>();
     newRegist?.forEach((p: any) => {
-      if (p.username) {
-        uniqueNewRegist.add(p.username.toLowerCase());
-      }
+      if (p.username) uniqueNewRegist.add(p.username.toLowerCase());
     });
     const newRegistCount = uniqueNewRegist.size;
+
+    // 6. FIRST DEPOSIT
+    const firstDeposit = await fetchFirstDepositData(assetCode, startDate, endDate);
 
     // HITUNG METRICS
     const totalDepositAmount = deposits?.reduce((sum: number, d: any) => sum + (d.nett_amount || 0), 0) || 0;
@@ -208,9 +260,8 @@ export default function AssetsPage() {
     const adjustmentAmount = adjustments?.reduce((sum: number, a: any) => sum + (a.adjustment_amount || 0), 0) || 0;
     const adjustmentCount = adjustments?.length || 0;
 
-    // ACTIVE MEMBER - UNIQUE DARI WINLOSE
+    // ACTIVE MEMBER
     const activeMembersSet = new Set<string>();
-    
     winlose?.forEach((w: any) => {
       let accountId = w.account_id;
       if (accountId) {
@@ -224,14 +275,15 @@ export default function AssetsPage() {
 
     console.log(`📊 Asset ${assetCode}:`);
     console.log(`   - New Regist: ${newRegistCount}`);
-    console.log(`   - Winlose rows: ${winlose?.length || 0}`);
-    console.log(`   - Unique active members: ${uniqueActiveMembers}`);
+    console.log(`   - First Depositors: ${firstDeposit.count}`);
+    console.log(`   - Active Members: ${uniqueActiveMembers}`);
 
     return {
       total_deposit: { count: totalDepositCount, amount: totalDepositAmount },
       total_withdrawal: { count: totalWithdrawalCount, amount: -totalWithdrawalAmount },
       active_member: uniqueActiveMembers,
       new_regist: newRegistCount,
+      first_deposit: firstDeposit,
       turnover: turnover,
       winlose: winloseTotal,
       adjustment: { count: adjustmentCount, amount: adjustmentAmount }
@@ -347,13 +399,18 @@ export default function AssetsPage() {
                       <th className="px-4 py-2 text-left text-[#FFD700]">Metric</th>
                       <th className="px-4 py-2 text-right text-[#FFD700]">Count</th>
                       <th className="px-4 py-2 text-right text-[#FFD700]">Amount</th>
-                     </tr>
+                    </tr>
                   </thead>
                   <tbody>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">New Regist</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.new_regist)}</td>
                       <td className="px-4 py-2 text-right">-</td>
+                    </tr>
+                    <tr className="border-b border-[#FFD700]/10">
+                      <td className="px-4 py-2">First Deposit</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.count)}</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.amount)}</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">Total Deposit</td>
