@@ -11,7 +11,7 @@ const formatNumber = (num: number) => {
 };
 
 // ===========================================
-// PAGINATION HELPER - AMAN SAMPAI 100K+ DATA
+// PAGINATION HELPER
 // ===========================================
 const fetchAllWithPagination = async (queryBuilder: any) => {
   let allData: any[] = [];
@@ -124,7 +124,7 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH NEW REGIST (DARI PLAYER_LISTING)
+  // FETCH NEW REGIST
   // ===========================================
   const fetchNewRegist = async (assetCode: string, startDate: string, endDate: string) => {
     let query = supabase
@@ -145,7 +145,51 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH UNIQUE DEPOSITORS (YANG DEPOSIT DI PERIODE)
+  // FETCH FIRST DEPOSIT (LIFETIME - PERTAMA KALI SEUMUR HIDUP)
+  // ===========================================
+  const fetchFirstDepositLifetime = async (assetCode: string, startDate: string, endDate: string) => {
+    // Ambil SEMUA deposit seumur hidup
+    let allDepositsQuery = supabase
+      .from('deposit_transactions')
+      .select('user_name, nett_amount, approved_date')
+      .eq('brand', assetCode)
+      .eq('status', 'Approved')
+      .order('approved_date', { ascending: true });
+
+    const allDeposits = await fetchAllWithPagination(allDepositsQuery);
+    
+    // Group by user, ambil deposit pertama (paling awal)
+    const userFirstMap = new Map<string, { amount: number; date: string }>();
+    for (const dep of allDeposits) {
+      if (!dep.user_name) continue;
+      if (!userFirstMap.has(dep.user_name)) {
+        userFirstMap.set(dep.user_name, {
+          amount: dep.nett_amount || 0,
+          date: dep.approved_date
+        });
+      }
+    }
+    
+    // Filter yang deposit pertama dalam rentang filter
+    const startTime = new Date(`${startDate}T00:00:00`).getTime();
+    const endTime = new Date(`${endDate}T23:59:59`).getTime();
+    
+    let count = 0;
+    let totalAmount = 0;
+    
+    for (const [_, firstDep] of userFirstMap) {
+      const depTime = new Date(firstDep.date).getTime();
+      if (depTime >= startTime && depTime <= endTime) {
+        count++;
+        totalAmount += firstDep.amount;
+      }
+    }
+    
+    return { count, amount: totalAmount };
+  };
+
+  // ===========================================
+  // FETCH UNIQUE DEPOSITORS (SEMUA YANG DEPOSIT DI PERIODE)
   // ===========================================
   const fetchUniqueDepositors = async (assetCode: string, startDate: string, endDate: string) => {
     let query = supabase
@@ -158,7 +202,6 @@ export default function AssetsPage() {
 
     const deposits = await fetchAllWithPagination(query);
     
-    // Group by user_name, hitung total amount per user
     const userMap = new Map<string, number>();
     for (const d of deposits) {
       if (d.user_name) {
@@ -172,7 +215,7 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH TOTAL DEPOSIT (SEMUA TRANSAKSI)
+  // FETCH TOTAL DEPOSIT
   // ===========================================
   const fetchTotalDeposit = async (assetCode: string, startDate: string, endDate: string) => {
     let query = supabase
@@ -275,6 +318,7 @@ export default function AssetsPage() {
 
     const [
       newRegist,
+      firstDepositLifetime,
       uniqueDepositors,
       totalDeposit,
       totalWithdrawal,
@@ -282,6 +326,7 @@ export default function AssetsPage() {
       adjustment
     ] = await Promise.all([
       fetchNewRegist(assetCode, startDate, endDate),
+      fetchFirstDepositLifetime(assetCode, startDate, endDate),
       fetchUniqueDepositors(assetCode, startDate, endDate),
       fetchTotalDeposit(assetCode, startDate, endDate),
       fetchTotalWithdrawal(assetCode, startDate, endDate),
@@ -291,6 +336,7 @@ export default function AssetsPage() {
 
     return {
       new_regist: newRegist,
+      first_deposit: firstDepositLifetime,
       unique_depositors: uniqueDepositors,
       total_deposit: totalDeposit,
       total_withdrawal: totalWithdrawal,
@@ -417,6 +463,11 @@ export default function AssetsPage() {
                       <td className="px-4 py-2">New Regist</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.new_regist)}</td>
                       <td className="px-4 py-2 text-right">-</td>
+                    </tr>
+                    <tr className="border-b border-[#FFD700]/10">
+                      <td className="px-4 py-2">First Deposit (Lifetime)</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.count)}</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.amount)}</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">Unique Depositor</td>
