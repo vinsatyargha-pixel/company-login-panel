@@ -124,11 +124,11 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH FIRST DEPOSIT DATA
+  // FETCH FIRST DEPOSIT (DEPOSIT PERTAMA KALI DI PERIODE FILTER)
   // ===========================================
   const fetchFirstDepositData = async (assetCode: string, startDate: string, endDate: string) => {
-    // Ambil semua deposit dalam periode
-    let depositQuery = supabase
+    // Ambil semua deposit dalam periode filter
+    let depositInPeriodQuery = supabase
       .from('deposit_transactions')
       .select('user_name, nett_amount, approved_date')
       .eq('brand', assetCode)
@@ -136,43 +136,76 @@ export default function AssetsPage() {
       .lte('approved_date', `${endDate} 23:59:59`)
       .eq('status', 'Approved');
 
-    const depositsInPeriod = await fetchAllWithPagination(depositQuery);
+    const depositsInPeriod = await fetchAllWithPagination(depositInPeriodQuery);
 
     if (depositsInPeriod.length === 0) {
       return { count: 0, amount: 0 };
     }
 
-    // Group by user_name
-    const userDepositsMap = new Map<string, { firstDate: string; firstAmount: number }>();
+    // Ambil semua user yang deposit di periode ini
+    const userNames = [...new Set(depositsInPeriod.map((d: any) => d.user_name).filter(Boolean))];
     
-    for (const deposit of depositsInPeriod) {
-      const userName = deposit.user_name;
-      if (!userName) continue;
+    if (userNames.length === 0) {
+      return { count: 0, amount: 0 };
+    }
+
+    // Untuk setiap user, cari deposit pertama mereka sepanjang sejarah (sebelum periode filter)
+    // Kita ambil deposit pertama mereka di tabel deposit_transactions (tanpa batas waktu)
+    // Gunakan query IN dengan pagination karena userNames bisa banyak
+    
+    let allFirstDeposits: any[] = [];
+    const batchSize = 100;
+    
+    for (let i = 0; i < userNames.length; i += batchSize) {
+      const batchNames = userNames.slice(i, i + batchSize);
       
-      const depositDate = deposit.approved_date;
-      const amount = deposit.nett_amount || 0;
+      let firstDepositQuery = supabase
+        .from('deposit_transactions')
+        .select('user_name, nett_amount, approved_date')
+        .eq('brand', assetCode)
+        .in('user_name', batchNames)
+        .eq('status', 'Approved')
+        .order('approved_date', { ascending: true });
       
-      if (!userDepositsMap.has(userName)) {
-        userDepositsMap.set(userName, { firstDate: depositDate, firstAmount: amount });
-      } else {
-        const existing = userDepositsMap.get(userName)!;
-        // Cek apakah ini deposit lebih awal
-        if (depositDate < existing.firstDate) {
-          userDepositsMap.set(userName, { firstDate: depositDate, firstAmount: amount });
+      const firstDeposits = await fetchAllWithPagination(firstDepositQuery);
+      
+      // Group by user_name, ambil yang paling awal
+      const userFirstMap = new Map<string, { amount: number; date: string }>();
+      
+      for (const dep of firstDeposits) {
+        if (!userFirstMap.has(dep.user_name)) {
+          userFirstMap.set(dep.user_name, {
+            amount: dep.nett_amount || 0,
+            date: dep.approved_date
+          });
         }
+      }
+      
+      // Convert ke array
+      for (const [userName, firstDep] of userFirstMap) {
+        allFirstDeposits.push({
+          user_name: userName,
+          nett_amount: firstDep.amount,
+          approved_date: firstDep.date
+        });
       }
     }
     
-    // Hitung total first deposit amount
-    let totalFirstDepositAmount = 0;
-    for (const [_, value] of userDepositsMap) {
-      totalFirstDepositAmount += value.firstAmount;
-    }
+    // Filter: hanya deposit pertama yang terjadi dalam periode filter
+    const startDateTime = `${startDate} 00:00:00`;
+    const endDateTime = `${endDate} 23:59:59`;
     
-    console.log(`   - First Depositors: ${userDepositsMap.size}, Total Amount: ${totalFirstDepositAmount}`);
+    const firstDepositsInPeriod = allFirstDeposits.filter(dep => {
+      return dep.approved_date >= startDateTime && dep.approved_date <= endDateTime;
+    });
+    
+    // Hitung total amount
+    const totalFirstDepositAmount = firstDepositsInPeriod.reduce((sum, dep) => sum + (dep.nett_amount || 0), 0);
+    
+    console.log(`   - First Depositors (in period): ${firstDepositsInPeriod.length}, Total Amount: ${totalFirstDepositAmount}`);
     
     return {
-      count: userDepositsMap.size,
+      count: firstDepositsInPeriod.length,
       amount: totalFirstDepositAmount
     };
   };
@@ -185,7 +218,7 @@ export default function AssetsPage() {
     const startDate = dateRange.start;
     const endDate = dateRange.end;
 
-    // 1. DEPOSIT (all)
+    // 1. DEPOSIT (all in period)
     let depositQuery = supabase
       .from('deposit_transactions')
       .select('user_name, nett_amount')
@@ -228,7 +261,7 @@ export default function AssetsPage() {
 
     const adjustments = await fetchAllWithPagination(adjustmentQuery);
 
-    // 5. NEW REGIST
+    // 5. NEW REGIST (dari player_listing)
     let newRegistQuery = supabase
       .from('player_listing')
       .select('username, registration_date, website')
@@ -244,7 +277,7 @@ export default function AssetsPage() {
     });
     const newRegistCount = uniqueNewRegist.size;
 
-    // 6. FIRST DEPOSIT
+    // 6. FIRST DEPOSIT (deposit pertama kali sepanjang sejarah yang terjadi di periode ini)
     const firstDeposit = await fetchFirstDepositData(assetCode, startDate, endDate);
 
     // HITUNG METRICS
