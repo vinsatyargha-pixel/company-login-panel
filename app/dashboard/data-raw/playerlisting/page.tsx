@@ -15,11 +15,13 @@ type PlayerUpload = {
   id: string;
   upload_id: string;
   upload_date: string;
-  registration_month: string;
   file_name: string;
   total_rows: number;
   status: string;
   website?: string;
+  min_date: string;
+  max_date: string;
+  active_players: number;
 };
 
 export default function PlayerListingPage() {
@@ -41,7 +43,6 @@ export default function PlayerListingPage() {
   ];
   const years = ['2025', '2026', '2027'];
 
-  // ========== MAP BULAN INGGRIS KE ANGKA ==========
   const monthMap: { [key: string]: string } = {
     'jan': '01', 'january': '01',
     'feb': '02', 'february': '02',
@@ -99,10 +100,10 @@ export default function PlayerListingPage() {
 
       console.log(`📅 Filter: ${startDate} → ${endDate}`);
 
-      // ========== STEP 1: AMBIL UPLOAD_ID DARI PLAYER_LISTING ==========
+      // ========== STEP 1: AMBIL UPLOAD_ID DAN REGISTRATION_DATE ==========
       let query = supabase
         .from('player_listing')
-        .select('upload_id')
+        .select('upload_id, registration_date, file_name, website')
         .gte('registration_date', startDate)
         .lte('registration_date', endDate);
 
@@ -128,39 +129,87 @@ export default function PlayerListingPage() {
         return;
       }
 
-      // ========== STEP 2: AMBIL UPLOAD_ID UNIK ==========
-      const uniqueUploadIds = [...new Set(listings.map(l => l.upload_id))];
-      console.log(`📁 Unique upload_ids: ${uniqueUploadIds.length}`);
+      // ========== STEP 2: GROUP BY UPLOAD_ID DAN HITUNG MIN/MAX DATE ==========
+      const uploadMap = new Map<string, {
+        upload_id: string;
+        file_name: string;
+        website: string;
+        total_rows: number;
+        min_date: string;
+        max_date: string;
+        upload_date: string;
+        active_players: number;
+      }>();
 
-      // ========== STEP 3: AMBIL DATA DARI PLAYER_UPLOADS ==========
-      let uploadsQuery = supabase
-        .from('player_uploads')
-        .select('*')
-        .in('upload_id', uniqueUploadIds);
-
-      if (selectedAsset !== 'all') {
-        const asset = assets.find(a => a.id === selectedAsset);
-        if (asset) {
-          uploadsQuery = uploadsQuery.eq('website', asset.asset_code);
+      for (const item of listings) {
+        const uploadId = item.upload_id;
+        const regDate = item.registration_date?.split(' ')[0];
+        
+        if (!uploadMap.has(uploadId)) {
+          const { data: uploadData } = await supabase
+            .from('player_uploads')
+            .select('upload_date')
+            .eq('upload_id', uploadId)
+            .single();
+          
+          uploadMap.set(uploadId, {
+            upload_id: uploadId,
+            file_name: item.file_name,
+            website: item.website || 'XLY',
+            total_rows: 0,
+            min_date: regDate || '',
+            max_date: regDate || '',
+            upload_date: uploadData?.upload_date || '',
+            active_players: 0
+          });
+        }
+        
+        const upload = uploadMap.get(uploadId)!;
+        upload.total_rows++;
+        
+        if (regDate && regDate < upload.min_date) {
+          upload.min_date = regDate;
+        }
+        if (regDate && regDate > upload.max_date) {
+          upload.max_date = regDate;
         }
       }
 
-      const { data: uploadsData, error: uploadsError } = await uploadsQuery;
-      if (uploadsError) throw uploadsError;
+      // ========== STEP 3: HITUNG ACTIVE PLAYERS (UNIQUE USERNAME) ==========
+      const { data: usernamesData } = await supabase
+        .from('player_listing')
+        .select('upload_id, username')
+        .in('upload_id', Array.from(uploadMap.keys()));
 
-      console.log(`📊 Uploads data: ${uploadsData?.length || 0}`);
+      if (usernamesData) {
+        const activeCountMap = new Map<string, Set<string>>();
+        usernamesData.forEach(item => {
+          if (!activeCountMap.has(item.upload_id)) {
+            activeCountMap.set(item.upload_id, new Set());
+          }
+          activeCountMap.get(item.upload_id)!.add(item.username);
+        });
+        
+        activeCountMap.forEach((usernames, uploadId) => {
+          if (uploadMap.has(uploadId)) {
+            uploadMap.get(uploadId)!.active_players = usernames.size;
+          }
+        });
+      }
 
-      // ========== STEP 4: HITUNG TOTAL ROWS PER UPLOAD ==========
-      const countMap = new Map<string, number>();
-      listings.forEach(l => {
-        countMap.set(l.upload_id, (countMap.get(l.upload_id) || 0) + 1);
-      });
-
-      // ========== STEP 5: GABUNGKAN ==========
-      const result = uploadsData?.map(upload => ({
-        ...upload,
-        total_rows: countMap.get(upload.upload_id) || 0
-      })) || [];
+      // ========== STEP 4: KONVERSI KE ARRAY ==========
+      const result = Array.from(uploadMap.values()).map(upload => ({
+        id: upload.upload_id,
+        upload_id: upload.upload_id,
+        upload_date: upload.upload_date,
+        file_name: upload.file_name,
+        website: upload.website,
+        total_rows: upload.total_rows,
+        status: 'completed',
+        min_date: upload.min_date,
+        max_date: upload.max_date,
+        active_players: upload.active_players
+      }));
 
       console.log(`✅ Final result: ${result.length} uploads`);
       setUploads(result);
@@ -201,12 +250,10 @@ export default function PlayerListingPage() {
     }
   }, []);
 
-  // ========== FUNGSI PARSING TANGGAL LENGKAP ==========
   const parseExcelDate = (value: any): string | null => {
     if (!value) return null;
 
     try {
-      // 1. Excel Serial Number (angka)
       if (typeof value === 'number') {
         const excelEpoch = new Date(Date.UTC(1899, 11, 30));
         const date = new Date(excelEpoch.getTime() + value * 86400000);
@@ -221,7 +268,6 @@ export default function PlayerListingPage() {
 
       const str = value.toString().trim();
       
-      // 2. Format "31-Jan-2026 21:45:55" atau "31 Jan 2026 21:45:55"
       const regMon = /^(\d{1,2})[- ]([A-Za-z]+)[- ](\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?$/;
       const matchMon = str.match(regMon);
       if (matchMon) {
@@ -236,7 +282,6 @@ export default function PlayerListingPage() {
         return `${year}-${month}-${day} ${time}`;
       }
       
-      // 3. Format "31/01/2026" atau "31/01/2026 21:45:55"
       if (str.includes('/')) {
         const [datePart, timePart = '00:00:00'] = str.split(' ');
         const parts = datePart.split('/');
@@ -249,7 +294,6 @@ export default function PlayerListingPage() {
         return `${year}-${month}-${day} ${timePart}`;
       }
       
-      // 4. Format "2026-01-31" atau "2026-01-31 21:45:55"
       if (str.includes('-')) {
         const [datePart, timePart = '00:00:00'] = str.split(' ');
         const parts = datePart.split('-');
@@ -290,7 +334,6 @@ export default function PlayerListingPage() {
         blankrows: false
       }) as any[][];
       
-      // SKIP BARIS PERTAMA (JUDUL)
       const headerRow = rows[1];
       const dataRows = rows.slice(2);
       
@@ -393,7 +436,6 @@ export default function PlayerListingPage() {
       
       const registrationMonth = firstRegistrationDate ? firstRegistrationDate.substring(0, 7) : uploadDate.substring(0, 7);
       
-      // 1. INSERT KE PLAYER_UPLOADS
       const { error: uploadError } = await supabase
         .from('player_uploads')
         .insert([{
@@ -408,7 +450,6 @@ export default function PlayerListingPage() {
 
       if (uploadError) throw uploadError;
 
-      // 2. INSERT KE PLAYER_LISTING
       const { error: listingError } = await supabase
         .from('player_listing')
         .insert(playerDetails);
@@ -444,6 +485,17 @@ export default function PlayerListingPage() {
       month: '2-digit',
       year: 'numeric'
     });
+  };
+
+  const formatPeriod = (minDate: string, maxDate: string) => {
+    if (!minDate || !maxDate) return '-';
+    const min = new Date(minDate);
+    const max = new Date(maxDate);
+    const format = (d: Date) => d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (minDate === maxDate) {
+      return format(min);
+    }
+    return `${format(min)} s/d ${format(max)}`;
   };
 
   if (loading) {
@@ -504,26 +556,28 @@ export default function PlayerListingPage() {
         </div>
       </div>
 
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal Upload</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Bulan Registrasi</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">File Name</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Player</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">No</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Asset</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Active Players</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
             </tr>
           </thead>
           <tbody>
-            {uploads.length > 0 ? uploads.map((item) => (
+            {uploads.length > 0 ? uploads.map((item, index) => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                <td className="px-4 py-3">{formatDate(item.upload_date)}</td>
-                <td className="px-4 py-3 text-[#FFD700]">{item.registration_month}</td>
-                <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
+                <td className="px-4 py-3">{index + 1}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                <td className="px-4 py-3">{item.total_rows} player</td>
+                <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
+                <td className="px-4 py-3">{formatPeriod(item.min_date, item.max_date)}</td>
+                <td className="px-4 py-3">{item.active_players}</td>
+                <td className="px-4 py-3">{item.total_rows} data</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-1 rounded text-xs ${getStatusColor(item.status)}`}>
                     {item.status}
@@ -532,7 +586,7 @@ export default function PlayerListingPage() {
               </tr>
             )) : (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                   Tidak ada data untuk periode ini
                 </td>
               </tr>
@@ -541,7 +595,7 @@ export default function PlayerListingPage() {
         </table>
       </div>
 
-      {/* MODAL UPLOAD */}
+      {/* MODAL UPLOAD - SAMA SEPERTI SEBELUMNYA */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
