@@ -451,7 +451,7 @@ export default function AssetsPage() {
                       <td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.amount)}</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Active Member</td>
+                      <td className="px-4 py-2">Active Member New</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.active_member)}</td>
                       <td className="px-4 py-2 text-right">-</td>
                     </tr>
