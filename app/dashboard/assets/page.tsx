@@ -124,7 +124,7 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH NEW REGIST
+  // FETCH NEW REGIST (DARI PLAYER_LISTING)
   // ===========================================
   const fetchNewRegist = async (assetCode: string, startDate: string, endDate: string) => {
     let query = supabase
@@ -141,14 +141,13 @@ export default function AssetsPage() {
       if (p.username) uniqueUsers.add(p.username.toLowerCase());
     });
     
-    return uniqueUsers.size;
+    return uniqueUsers;
   };
 
   // ===========================================
   // FETCH FIRST DEPOSIT (LIFETIME - PERTAMA KALI SEUMUR HIDUP)
   // ===========================================
   const fetchFirstDepositLifetime = async (assetCode: string, startDate: string, endDate: string) => {
-    // Ambil SEMUA deposit seumur hidup
     let allDepositsQuery = supabase
       .from('deposit_transactions')
       .select('user_name, nett_amount, approved_date')
@@ -158,7 +157,6 @@ export default function AssetsPage() {
 
     const allDeposits = await fetchAllWithPagination(allDepositsQuery);
     
-    // Group by user, ambil deposit pertama (paling awal)
     const userFirstMap = new Map<string, { amount: number; date: string }>();
     for (const dep of allDeposits) {
       if (!dep.user_name) continue;
@@ -170,7 +168,6 @@ export default function AssetsPage() {
       }
     }
     
-    // Filter yang deposit pertama dalam rentang filter
     const startTime = new Date(`${startDate}T00:00:00`).getTime();
     const endTime = new Date(`${endDate}T23:59:59`).getTime();
     
@@ -186,6 +183,42 @@ export default function AssetsPage() {
     }
     
     return { count, amount: totalAmount };
+  };
+
+  // ===========================================
+  // FETCH ACTIVE NEW MEMBER (NEW REGIST YANG DEPOSIT)
+  // ===========================================
+  const fetchActiveNewMember = async (assetCode: string, startDate: string, endDate: string) => {
+    // 1. Ambil semua new regist di periode
+    const newRegistSet = await fetchNewRegist(assetCode, startDate, endDate);
+    
+    if (newRegistSet.size === 0) return 0;
+    
+    // 2. Ambil semua deposit di periode
+    let depositQuery = supabase
+      .from('deposit_transactions')
+      .select('user_name')
+      .eq('brand', assetCode)
+      .gte('approved_date', `${startDate} 00:00:00`)
+      .lte('approved_date', `${endDate} 23:59:59`)
+      .eq('status', 'Approved');
+
+    const deposits = await fetchAllWithPagination(depositQuery);
+    
+    // 3. Cari user yang deposit dan termasuk new regist
+    const depositorsSet = new Set<string>();
+    for (const d of deposits) {
+      if (d.user_name) depositorsSet.add(d.user_name.toLowerCase());
+    }
+    
+    let activeCount = 0;
+    for (const newUser of newRegistSet) {
+      if (depositorsSet.has(newUser)) {
+        activeCount++;
+      }
+    }
+    
+    return activeCount;
   };
 
   // ===========================================
@@ -229,12 +262,12 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH ACTIVE MEMBER & WINLOSE
+  // FETCH WINLOSE (UNTUK TURNOVER)
   // ===========================================
   const fetchWinloseData = async (assetCode: string, startDate: string, endDate: string) => {
     let query = supabase
       .from('winlose_transactions')
-      .select('net_turnover, member_total, account_id')
+      .select('net_turnover, member_total')
       .eq('website', assetCode)
       .gte('period_start', startDate)
       .lte('period_start', endDate);
@@ -244,19 +277,7 @@ export default function AssetsPage() {
     const turnover = winlose.reduce((sum: number, w: any) => sum + (w.net_turnover || 0), 0);
     const winloseTotal = winlose.reduce((sum: number, w: any) => sum + (w.member_total || 0), 0);
     
-    const activeMembersSet = new Set<string>();
-    winlose?.forEach((w: any) => {
-      let accountId = w.account_id;
-      if (accountId) {
-        const cleanId = cleanAccountId(accountId);
-        if (cleanId) {
-          activeMembersSet.add(cleanId.toLowerCase());
-        }
-      }
-    });
-    
     return {
-      active_member: activeMembersSet.size,
       turnover: turnover,
       winlose: winloseTotal
     };
@@ -291,8 +312,9 @@ export default function AssetsPage() {
     const endDate = dateRange.end;
 
     const [
-      newRegist,
-      firstDepositLifetime,
+      newRegistSet,
+      firstDeposit,
+      activeNewMember,
       totalDeposit,
       totalWithdrawal,
       winloseData,
@@ -300,6 +322,7 @@ export default function AssetsPage() {
     ] = await Promise.all([
       fetchNewRegist(assetCode, startDate, endDate),
       fetchFirstDepositLifetime(assetCode, startDate, endDate),
+      fetchActiveNewMember(assetCode, startDate, endDate),
       fetchTotalDeposit(assetCode, startDate, endDate),
       fetchTotalWithdrawal(assetCode, startDate, endDate),
       fetchWinloseData(assetCode, startDate, endDate),
@@ -307,11 +330,11 @@ export default function AssetsPage() {
     ]);
 
     return {
-      new_regist: newRegist,
-      first_deposit: firstDepositLifetime,
+      new_regist: newRegistSet.size,
+      active_new_member: activeNewMember,
+      first_deposit: firstDeposit,
       total_deposit: totalDeposit,
       total_withdrawal: totalWithdrawal,
-      active_member: winloseData.active_member,
       turnover: winloseData.turnover,
       winlose: winloseData.winlose,
       adjustment: adjustment
@@ -436,7 +459,12 @@ export default function AssetsPage() {
                       <td className="px-4 py-2 text-right">-</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">New Member Deposit (first)</td>
+                      <td className="px-4 py-2">Active New Member</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.active_new_member)}</td>
+                      <td className="px-4 py-2 text-right">-</td>
+                    </tr>
+                    <tr className="border-b border-[#FFD700]/10">
+                      <td className="px-4 py-2">First Deposit</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.count)}</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.amount)}</td>
                     </tr>
@@ -449,11 +477,6 @@ export default function AssetsPage() {
                       <td className="px-4 py-2">Total Withdrawal</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.count)}</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.amount)}</td>
-                    </tr>
-                    <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Active Member New</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.active_member)}</td>
-                      <td className="px-4 py-2 text-right">-</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">TurnOver</td>
