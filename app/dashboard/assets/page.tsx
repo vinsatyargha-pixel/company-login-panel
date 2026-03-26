@@ -145,23 +145,20 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH FIRST DEPOSIT (DEPOSIT PERTAMA SEJAK 1 JAN 2026)
+  // FETCH FIRST DEPOSIT (DEPOSIT PERTAMA SEUMUR HIDUP)
   // ===========================================
   const fetchFirstDepositData = async (assetCode: string, startDate: string, endDate: string) => {
-    const globalStartDate = '2026-01-01';
-    const currentDate = new Date().toISOString().split('T')[0];
-    
-    // 1. Ambil SEMUA deposit dari 1 Jan 2026 sampai sekarang
+    // 1. Ambil SEMUA deposit seumur hidup (tanpa batas tanggal)
     let allDepositsQuery = supabase
       .from('deposit_transactions')
       .select('user_name, nett_amount, approved_date')
       .eq('brand', assetCode)
-      .gte('approved_date', `${globalStartDate} 00:00:00`)
-      .lte('approved_date', `${currentDate} 23:59:59`)
       .eq('status', 'Approved')
       .order('approved_date', { ascending: true });
 
     const allDeposits = await fetchAllWithPagination(allDepositsQuery);
+    
+    console.log(`   - All deposits (lifetime): ${allDeposits.length}`);
     
     if (allDeposits.length === 0) {
       return { count: 0, amount: 0 };
@@ -182,19 +179,26 @@ export default function AssetsPage() {
       }
     }
     
-    // 3. Filter hanya yang first deposit terjadi dalam rentang filter
+    console.log(`   - Unique users with first deposit: ${userFirstDepositMap.size}`);
+    
+    // 3. Filter: hanya yang deposit pertama terjadi dalam rentang filter
     const startDateTime = `${startDate} 00:00:00`;
     const endDateTime = `${endDate} 23:59:59`;
     
     let totalAmount = 0;
     let count = 0;
+    const firstDepositsInFilter: any[] = [];
     
-    for (const [_, firstDep] of userFirstDepositMap) {
+    for (const [userName, firstDep] of userFirstDepositMap) {
       if (firstDep.date >= startDateTime && firstDep.date <= endDateTime) {
         count++;
         totalAmount += firstDep.amount;
+        firstDepositsInFilter.push({ user_name: userName, amount: firstDep.amount, date: firstDep.date });
       }
     }
+    
+    console.log(`   - First deposits in filter period: ${count}`);
+    console.log(`   - Sample:`, firstDepositsInFilter.slice(0, 3));
     
     return { count, amount: totalAmount };
   };
@@ -301,6 +305,8 @@ export default function AssetsPage() {
     const startDate = dateRange.start;
     const endDate = dateRange.end;
 
+    console.log(`\n📊 Processing ${assetCode} - ${startDate} to ${endDate}`);
+
     const [
       newRegist,
       firstDeposit,
@@ -317,7 +323,7 @@ export default function AssetsPage() {
       fetchAdjustment(assetCode, startDate, endDate)
     ]);
 
-    console.log(`📊 Asset ${assetCode}:`);
+    console.log(`📊 Asset ${assetCode} Summary:`);
     console.log(`   - New Regist: ${newRegist}`);
     console.log(`   - First Deposit: ${firstDeposit.count} (${firstDeposit.amount})`);
     console.log(`   - Total Deposit: ${totalDeposit.count} (${totalDeposit.amount})`);
