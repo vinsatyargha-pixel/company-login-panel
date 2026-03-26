@@ -145,63 +145,87 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH FIRST DEPOSIT (DEPOSIT PERTAMA SEUMUR HIDUP)
-  // ===========================================
-  const fetchFirstDepositData = async (assetCode: string, startDate: string, endDate: string) => {
-    // 1. Ambil SEMUA deposit seumur hidup (tanpa batas tanggal)
-    let allDepositsQuery = supabase
-      .from('deposit_transactions')
-      .select('user_name, nett_amount, approved_date')
-      .eq('brand', assetCode)
-      .eq('status', 'Approved')
-      .order('approved_date', { ascending: true });
+// FETCH FIRST DEPOSIT (DEBUG VERSION)
+// ===========================================
+const fetchFirstDepositData = async (assetCode: string, startDate: string, endDate: string) => {
+  console.log(`\n🔍 DEBUG: Fetching first deposit for ${assetCode}`);
+  console.log(`   Filter period: ${startDate} to ${endDate}`);
+  
+  // 1. Ambil SEMUA deposit seumur hidup
+  let allDepositsQuery = supabase
+    .from('deposit_transactions')
+    .select('user_name, nett_amount, approved_date')
+    .eq('brand', assetCode)
+    .eq('status', 'Approved')
+    .order('approved_date', { ascending: true });
 
-    const allDeposits = await fetchAllWithPagination(allDepositsQuery);
+  const allDeposits = await fetchAllWithPagination(allDepositsQuery);
+  
+  console.log(`   - All deposits (lifetime): ${allDeposits.length}`);
+  
+  // DEBUG: Tampilkan 10 deposit pertama
+  console.log(`   - Sample first 10 deposits:`);
+  allDeposits.slice(0, 10).forEach((d: any, i: number) => {
+    console.log(`     ${i+1}. ${d.user_name} - ${d.approved_date} - ${d.nett_amount}`);
+  });
+  
+  if (allDeposits.length === 0) {
+    return { count: 0, amount: 0 };
+  }
+  
+  // 2. Group by user_name, ambil deposit pertama (paling awal)
+  const userFirstDepositMap = new Map<string, { amount: number; date: string }>();
+  
+  for (const deposit of allDeposits) {
+    const userName = deposit.user_name;
+    if (!userName) continue;
     
-    console.log(`   - All deposits (lifetime): ${allDeposits.length}`);
-    
-    if (allDeposits.length === 0) {
-      return { count: 0, amount: 0 };
+    if (!userFirstDepositMap.has(userName)) {
+      userFirstDepositMap.set(userName, {
+        amount: deposit.nett_amount || 0,
+        date: deposit.approved_date
+      });
     }
-    
-    // 2. Group by user_name, ambil deposit pertama (paling awal)
-    const userFirstDepositMap = new Map<string, { amount: number; date: string }>();
-    
-    for (const deposit of allDeposits) {
-      const userName = deposit.user_name;
-      if (!userName) continue;
-      
-      if (!userFirstDepositMap.has(userName)) {
-        userFirstDepositMap.set(userName, {
-          amount: deposit.nett_amount || 0,
-          date: deposit.approved_date
-        });
-      }
+  }
+  
+  console.log(`   - Unique users with first deposit: ${userFirstDepositMap.size}`);
+  
+  // DEBUG: Cek user yang kita tahu first deposit di 25 Maret
+  const testUsers = ['3idmubarak', 'Achmad05', 'acuy85', 'Adele99', 'adlihasan88'];
+  console.log(`   - DEBUG: Cek test users:`);
+  for (const user of testUsers) {
+    const firstDep = userFirstDepositMap.get(user);
+    if (firstDep) {
+      console.log(`     ${user}: first deposit = ${firstDep.date} (amount: ${firstDep.amount})`);
+    } else {
+      console.log(`     ${user}: NOT FOUND in first deposit map!`);
     }
-    
-    console.log(`   - Unique users with first deposit: ${userFirstDepositMap.size}`);
-    
-    // 3. Filter: hanya yang deposit pertama terjadi dalam rentang filter
-    const startDateTime = `${startDate} 00:00:00`;
-    const endDateTime = `${endDate} 23:59:59`;
-    
-    let totalAmount = 0;
-    let count = 0;
-    const firstDepositsInFilter: any[] = [];
-    
-    for (const [userName, firstDep] of userFirstDepositMap) {
-      if (firstDep.date >= startDateTime && firstDep.date <= endDateTime) {
-        count++;
-        totalAmount += firstDep.amount;
-        firstDepositsInFilter.push({ user_name: userName, amount: firstDep.amount, date: firstDep.date });
-      }
+  }
+  
+  // 3. Filter: hanya yang deposit pertama terjadi dalam rentang filter
+  const startDateTime = `${startDate} 00:00:00`;
+  const endDateTime = `${endDate} 23:59:59`;
+  
+  let totalAmount = 0;
+  let count = 0;
+  const firstDepositsInFilter: any[] = [];
+  
+  for (const [userName, firstDep] of userFirstDepositMap) {
+    if (firstDep.date >= startDateTime && firstDep.date <= endDateTime) {
+      count++;
+      totalAmount += firstDep.amount;
+      firstDepositsInFilter.push({ user_name: userName, amount: firstDep.amount, date: firstDep.date });
     }
-    
-    console.log(`   - First deposits in filter period: ${count}`);
-    console.log(`   - Sample:`, firstDepositsInFilter.slice(0, 3));
-    
-    return { count, amount: totalAmount };
-  };
+  }
+  
+  console.log(`   - First deposits in filter period: ${count}`);
+  console.log(`   - Sample first deposits in filter:`);
+  firstDepositsInFilter.slice(0, 10).forEach((fd: any, i: number) => {
+    console.log(`     ${i+1}. ${fd.user_name} - ${fd.date} - ${fd.amount}`);
+  });
+  
+  return { count, amount: totalAmount };
+};
 
   // ===========================================
   // FETCH TOTAL DEPOSIT
