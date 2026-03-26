@@ -124,176 +124,137 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH FIRST DEPOSIT (DEPOSIT PERTAMA KALI DI PERIODE FILTER)
+  // FETCH NEW REGIST (DARI PLAYER_LISTING)
+  // ===========================================
+  const fetchNewRegist = async (assetCode: string, startDate: string, endDate: string) => {
+    let query = supabase
+      .from('player_listing')
+      .select('username')
+      .eq('website', assetCode)
+      .gte('registration_date', `${startDate} 00:00:00`)
+      .lte('registration_date', `${endDate} 23:59:59`);
+
+    const registrations = await fetchAllWithPagination(query);
+    
+    const uniqueUsers = new Set<string>();
+    registrations?.forEach((p: any) => {
+      if (p.username) uniqueUsers.add(p.username.toLowerCase());
+    });
+    
+    return uniqueUsers.size;
+  };
+
+  // ===========================================
+  // FETCH FIRST DEPOSIT (DEPOSIT PERTAMA SEJAK 1 JAN 2026)
   // ===========================================
   const fetchFirstDepositData = async (assetCode: string, startDate: string, endDate: string) => {
-    // Ambil semua deposit dalam periode filter
-    let depositInPeriodQuery = supabase
+    const globalStartDate = '2026-01-01';
+    const currentDate = new Date().toISOString().split('T')[0];
+    
+    // 1. Ambil SEMUA deposit dari 1 Jan 2026 sampai sekarang
+    let allDepositsQuery = supabase
       .from('deposit_transactions')
       .select('user_name, nett_amount, approved_date')
       .eq('brand', assetCode)
-      .gte('approved_date', `${startDate} 00:00:00`)
-      .lte('approved_date', `${endDate} 23:59:59`)
-      .eq('status', 'Approved');
+      .gte('approved_date', `${globalStartDate} 00:00:00`)
+      .lte('approved_date', `${currentDate} 23:59:59`)
+      .eq('status', 'Approved')
+      .order('approved_date', { ascending: true });
 
-    const depositsInPeriod = await fetchAllWithPagination(depositInPeriodQuery);
-
-    if (depositsInPeriod.length === 0) {
+    const allDeposits = await fetchAllWithPagination(allDepositsQuery);
+    
+    if (allDeposits.length === 0) {
       return { count: 0, amount: 0 };
     }
-
-    // Ambil semua user yang deposit di periode ini
-    const userNames = [...new Set(depositsInPeriod.map((d: any) => d.user_name).filter(Boolean))];
     
-    if (userNames.length === 0) {
-      return { count: 0, amount: 0 };
-    }
-
-    // Untuk setiap user, cari deposit pertama mereka sepanjang sejarah (sebelum periode filter)
-    // Kita ambil deposit pertama mereka di tabel deposit_transactions (tanpa batas waktu)
-    // Gunakan query IN dengan pagination karena userNames bisa banyak
+    // 2. Group by user_name, ambil deposit pertama (paling awal)
+    const userFirstDepositMap = new Map<string, { amount: number; date: string }>();
     
-    let allFirstDeposits: any[] = [];
-    const batchSize = 100;
-    
-    for (let i = 0; i < userNames.length; i += batchSize) {
-      const batchNames = userNames.slice(i, i + batchSize);
+    for (const deposit of allDeposits) {
+      const userName = deposit.user_name;
+      if (!userName) continue;
       
-      let firstDepositQuery = supabase
-        .from('deposit_transactions')
-        .select('user_name, nett_amount, approved_date')
-        .eq('brand', assetCode)
-        .in('user_name', batchNames)
-        .eq('status', 'Approved')
-        .order('approved_date', { ascending: true });
-      
-      const firstDeposits = await fetchAllWithPagination(firstDepositQuery);
-      
-      // Group by user_name, ambil yang paling awal
-      const userFirstMap = new Map<string, { amount: number; date: string }>();
-      
-      for (const dep of firstDeposits) {
-        if (!userFirstMap.has(dep.user_name)) {
-          userFirstMap.set(dep.user_name, {
-            amount: dep.nett_amount || 0,
-            date: dep.approved_date
-          });
-        }
-      }
-      
-      // Convert ke array
-      for (const [userName, firstDep] of userFirstMap) {
-        allFirstDeposits.push({
-          user_name: userName,
-          nett_amount: firstDep.amount,
-          approved_date: firstDep.date
+      if (!userFirstDepositMap.has(userName)) {
+        userFirstDepositMap.set(userName, {
+          amount: deposit.nett_amount || 0,
+          date: deposit.approved_date
         });
       }
     }
     
-    // Filter: hanya deposit pertama yang terjadi dalam periode filter
+    // 3. Filter hanya yang first deposit terjadi dalam rentang filter
     const startDateTime = `${startDate} 00:00:00`;
     const endDateTime = `${endDate} 23:59:59`;
     
-    const firstDepositsInPeriod = allFirstDeposits.filter(dep => {
-      return dep.approved_date >= startDateTime && dep.approved_date <= endDateTime;
-    });
+    let totalAmount = 0;
+    let count = 0;
     
-    // Hitung total amount
-    const totalFirstDepositAmount = firstDepositsInPeriod.reduce((sum, dep) => sum + (dep.nett_amount || 0), 0);
+    for (const [_, firstDep] of userFirstDepositMap) {
+      if (firstDep.date >= startDateTime && firstDep.date <= endDateTime) {
+        count++;
+        totalAmount += firstDep.amount;
+      }
+    }
     
-    console.log(`   - First Depositors (in period): ${firstDepositsInPeriod.length}, Total Amount: ${totalFirstDepositAmount}`);
-    
-    return {
-      count: firstDepositsInPeriod.length,
-      amount: totalFirstDepositAmount
-    };
+    return { count, amount: totalAmount };
   };
 
   // ===========================================
-  // FETCH ASSET DATA DENGAN PAGINATION
+  // FETCH TOTAL DEPOSIT
   // ===========================================
-  const fetchAssetData = async (assetCode: string) => {
-    const dateRange = getDateRange();
-    const startDate = dateRange.start;
-    const endDate = dateRange.end;
-
-    // 1. DEPOSIT (all in period)
-    let depositQuery = supabase
+  const fetchTotalDeposit = async (assetCode: string, startDate: string, endDate: string) => {
+    let query = supabase
       .from('deposit_transactions')
-      .select('user_name, nett_amount')
+      .select('nett_amount')
       .eq('brand', assetCode)
       .gte('approved_date', `${startDate} 00:00:00`)
       .lte('approved_date', `${endDate} 23:59:59`)
       .eq('status', 'Approved');
 
-    const deposits = await fetchAllWithPagination(depositQuery);
+    const deposits = await fetchAllWithPagination(query);
+    
+    const totalAmount = deposits.reduce((sum: number, d: any) => sum + (d.nett_amount || 0), 0);
+    const totalCount = deposits.length;
+    
+    return { count: totalCount, amount: totalAmount };
+  };
 
-    // 2. WITHDRAWAL
-    let withdrawalQuery = supabase
+  // ===========================================
+  // FETCH TOTAL WITHDRAWAL
+  // ===========================================
+  const fetchTotalWithdrawal = async (assetCode: string, startDate: string, endDate: string) => {
+    let query = supabase
       .from('withdrawal_transactions')
-      .select('user_name, nett_amount')
+      .select('nett_amount')
       .eq('brand', assetCode)
       .gte('approved_date', `${startDate} 00:00:00`)
       .lte('approved_date', `${endDate} 23:59:59`)
       .eq('status', 'Approved');
 
-    const withdrawals = await fetchAllWithPagination(withdrawalQuery);
+    const withdrawals = await fetchAllWithPagination(query);
+    
+    const totalAmount = withdrawals.reduce((sum: number, w: any) => sum + (w.nett_amount || 0), 0);
+    const totalCount = withdrawals.length;
+    
+    return { count: totalCount, amount: -totalAmount };
+  };
 
-    // 3. WINLOSE
-    let winloseQuery = supabase
+  // ===========================================
+  // FETCH ACTIVE MEMBER & WINLOSE
+  // ===========================================
+  const fetchWinloseData = async (assetCode: string, startDate: string, endDate: string) => {
+    let query = supabase
       .from('winlose_transactions')
       .select('net_turnover, member_total, account_id')
       .eq('website', assetCode)
       .gte('period_start', startDate)
       .lte('period_start', endDate);
 
-    const winlose = await fetchAllWithPagination(winloseQuery);
-
-    // 4. ADJUSTMENT
-    let adjustmentQuery = supabase
-      .from('adjustment_transactions')
-      .select('adjustment_amount')
-      .eq('brand', assetCode)
-      .eq('status', 'Approved')
-      .gte('adjustment_date', `${startDate} 00:00:00`)
-      .lte('adjustment_date', `${endDate} 23:59:59`);
-
-    const adjustments = await fetchAllWithPagination(adjustmentQuery);
-
-    // 5. NEW REGIST (dari player_listing)
-    let newRegistQuery = supabase
-      .from('player_listing')
-      .select('username, registration_date, website')
-      .eq('website', assetCode)
-      .gte('registration_date', `${startDate} 00:00:00`)
-      .lte('registration_date', `${endDate} 23:59:59`);
-
-    const newRegist = await fetchAllWithPagination(newRegistQuery);
+    const winlose = await fetchAllWithPagination(query);
     
-    const uniqueNewRegist = new Set<string>();
-    newRegist?.forEach((p: any) => {
-      if (p.username) uniqueNewRegist.add(p.username.toLowerCase());
-    });
-    const newRegistCount = uniqueNewRegist.size;
-
-    // 6. FIRST DEPOSIT (deposit pertama kali sepanjang sejarah yang terjadi di periode ini)
-    const firstDeposit = await fetchFirstDepositData(assetCode, startDate, endDate);
-
-    // HITUNG METRICS
-    const totalDepositAmount = deposits?.reduce((sum: number, d: any) => sum + (d.nett_amount || 0), 0) || 0;
-    const totalDepositCount = deposits?.length || 0;
+    const turnover = winlose.reduce((sum: number, w: any) => sum + (w.net_turnover || 0), 0);
+    const winloseTotal = winlose.reduce((sum: number, w: any) => sum + (w.member_total || 0), 0);
     
-    const totalWithdrawalAmount = withdrawals?.reduce((sum: number, w: any) => sum + (w.nett_amount || 0), 0) || 0;
-    const totalWithdrawalCount = withdrawals?.length || 0;
-
-    const turnover = winlose?.reduce((sum: number, w: any) => sum + (w.net_turnover || 0), 0) || 0;
-    const winloseTotal = winlose?.reduce((sum: number, w: any) => sum + (w.member_total || 0), 0) || 0;
-
-    const adjustmentAmount = adjustments?.reduce((sum: number, a: any) => sum + (a.adjustment_amount || 0), 0) || 0;
-    const adjustmentCount = adjustments?.length || 0;
-
-    // ACTIVE MEMBER
     const activeMembersSet = new Set<string>();
     winlose?.forEach((w: any) => {
       let accountId = w.account_id;
@@ -304,22 +265,73 @@ export default function AssetsPage() {
         }
       }
     });
-    const uniqueActiveMembers = activeMembersSet.size;
+    
+    return {
+      active_member: activeMembersSet.size,
+      turnover: turnover,
+      winlose: winloseTotal
+    };
+  };
+
+  // ===========================================
+  // FETCH ADJUSTMENT
+  // ===========================================
+  const fetchAdjustment = async (assetCode: string, startDate: string, endDate: string) => {
+    let query = supabase
+      .from('adjustment_transactions')
+      .select('adjustment_amount')
+      .eq('brand', assetCode)
+      .eq('status', 'Approved')
+      .gte('adjustment_date', `${startDate} 00:00:00`)
+      .lte('adjustment_date', `${endDate} 23:59:59`);
+
+    const adjustments = await fetchAllWithPagination(query);
+    
+    const totalAmount = adjustments.reduce((sum: number, a: any) => sum + (a.adjustment_amount || 0), 0);
+    const totalCount = adjustments.length;
+    
+    return { count: totalCount, amount: totalAmount };
+  };
+
+  // ===========================================
+  // FETCH ALL ASSET DATA
+  // ===========================================
+  const fetchAssetData = async (assetCode: string) => {
+    const dateRange = getDateRange();
+    const startDate = dateRange.start;
+    const endDate = dateRange.end;
+
+    const [
+      newRegist,
+      firstDeposit,
+      totalDeposit,
+      totalWithdrawal,
+      winloseData,
+      adjustment
+    ] = await Promise.all([
+      fetchNewRegist(assetCode, startDate, endDate),
+      fetchFirstDepositData(assetCode, startDate, endDate),
+      fetchTotalDeposit(assetCode, startDate, endDate),
+      fetchTotalWithdrawal(assetCode, startDate, endDate),
+      fetchWinloseData(assetCode, startDate, endDate),
+      fetchAdjustment(assetCode, startDate, endDate)
+    ]);
 
     console.log(`📊 Asset ${assetCode}:`);
-    console.log(`   - New Regist: ${newRegistCount}`);
-    console.log(`   - First Depositors: ${firstDeposit.count}`);
-    console.log(`   - Active Members: ${uniqueActiveMembers}`);
+    console.log(`   - New Regist: ${newRegist}`);
+    console.log(`   - First Deposit: ${firstDeposit.count} (${firstDeposit.amount})`);
+    console.log(`   - Total Deposit: ${totalDeposit.count} (${totalDeposit.amount})`);
+    console.log(`   - Active Member: ${winloseData.active_member}`);
 
     return {
-      total_deposit: { count: totalDepositCount, amount: totalDepositAmount },
-      total_withdrawal: { count: totalWithdrawalCount, amount: -totalWithdrawalAmount },
-      active_member: uniqueActiveMembers,
-      new_regist: newRegistCount,
+      new_regist: newRegist,
       first_deposit: firstDeposit,
-      turnover: turnover,
-      winlose: winloseTotal,
-      adjustment: { count: adjustmentCount, amount: adjustmentAmount }
+      total_deposit: totalDeposit,
+      total_withdrawal: totalWithdrawal,
+      active_member: winloseData.active_member,
+      turnover: winloseData.turnover,
+      winlose: winloseData.winlose,
+      adjustment: adjustment
     };
   };
 
