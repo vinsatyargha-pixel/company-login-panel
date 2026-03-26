@@ -316,158 +316,176 @@ export default function PlayerListingPage() {
   };
 
   const processFile = async () => {
-    if (!selectedFile) return;
+  if (!selectedFile) return;
+  
+  setUploading(true);
+  setUploadProgress('Membaca file...');
+  
+  try {
+    const arrayBuffer = await selectedFile.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
     
-    setUploading(true);
-    setUploadProgress('Membaca file...');
+    const rows = XLSX.utils.sheet_to_json(worksheet, { 
+      header: 1,
+      defval: '',
+      blankrows: false
+    }) as any[][];
     
-    try {
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+    const headerRow = rows[1];
+    const dataRows = rows.slice(2);
+    
+    const findIndex = (keyword: string) => {
+      return headerRow.findIndex((h: string) => 
+        h && h.toString().toLowerCase().includes(keyword.toLowerCase())
+      );
+    };
+    
+    const idx = {
+      no: findIndex('no'),
+      registration: findIndex('registration'),
+      username: findIndex('username'),
+      account_type: findIndex('account type'),
+      loyalty_level: findIndex('loyalty level'),
+      full_name: findIndex('full name'),
+      player_group: findIndex('player group'),
+      contact_info: findIndex('contact info'),
+      status: findIndex('status'),
+      last_login: findIndex('last login'),
+      referrer_type: findIndex('referrer type'),
+      referral_code: findIndex('referral code'),
+      own_referral_code: findIndex('own referral code'),
+      source_information: findIndex('source information'),
+      maximum_transaction_pending: findIndex('maximum transaction pending'),
+      last_deposit: findIndex('last deposit'),
+      current_loyalty_points: findIndex('current loyalty points'),
+      current_balance: findIndex('current balance'),
+      last_transfer_in: findIndex('last transfer in'),
+      current_outstanding_bet: findIndex('current outstanding bet')
+    };
+    
+    if (idx.username === -1) {
+      throw new Error('Kolom Username tidak ditemukan');
+    }
+    
+    setUploadProgress('Memvalidasi data...');
+    
+    const uploadId = crypto.randomUUID();
+    const uploadDate = new Date().toISOString().split('T')[0];
+    const website = selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY';
+    
+    const playerDetails: any[] = [];
+    let errorCount = 0;
+    let firstRegistrationDate: string | null = null;
+    
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      if (!row || row.length === 0) continue;
       
-      const rows = XLSX.utils.sheet_to_json(worksheet, { 
-        header: 1,
-        defval: '',
-        blankrows: false
-      }) as any[][];
-      
-      const headerRow = rows[1];
-      const dataRows = rows.slice(2);
-      
-      const findIndex = (keyword: string) => {
-        return headerRow.findIndex((h: string) => 
-          h && h.toString().toLowerCase().includes(keyword.toLowerCase())
-        );
-      };
-      
-      const idx = {
-        no: findIndex('no'),
-        registration: findIndex('registration'),
-        username: findIndex('username'),
-        account_type: findIndex('account type'),
-        loyalty_level: findIndex('loyalty level'),
-        full_name: findIndex('full name'),
-        player_group: findIndex('player group'),
-        contact_info: findIndex('contact info'),
-        status: findIndex('status'),
-        last_login: findIndex('last login'),
-        referrer_type: findIndex('referrer type'),
-        referral_code: findIndex('referral code'),
-        own_referral_code: findIndex('own referral code'),
-        source_information: findIndex('source information'),
-        maximum_transaction_pending: findIndex('maximum transaction pending'),
-        last_deposit: findIndex('last deposit'),
-        current_loyalty_points: findIndex('current loyalty points'),
-        current_balance: findIndex('current balance'),
-        last_transfer_in: findIndex('last transfer in'),
-        current_outstanding_bet: findIndex('current outstanding bet')
-      };
-      
-      if (idx.username === -1) {
-        throw new Error('Kolom Username tidak ditemukan');
+      const username = row[idx.username];
+      if (!username) {
+        errorCount++;
+        continue;
       }
       
-      setUploadProgress('Memvalidasi data...');
+      const registration = row[idx.registration] || '';
+      let registrationDate = null;
       
-      const uploadId = crypto.randomUUID();
-      const uploadDate = new Date().toISOString().split('T')[0];
-      const website = selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY';
-      
-      const playerDetails: any[] = [];
-      let errorCount = 0;
-      let firstRegistrationDate: string | null = null;
-      
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i];
-        if (!row || row.length === 0) continue;
-        
-        const username = row[idx.username];
-        if (!username) {
-          errorCount++;
-          continue;
-        }
-        
-        const registration = row[idx.registration] || '';
-        let registrationDate = null;
-        
-        const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}[- ][A-Za-z]+[- ][0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
-        if (regMatch) {
-          registrationDate = parseExcelDate(regMatch[1]);
-        }
-        
-        if (registrationDate && !firstRegistrationDate) {
-          firstRegistrationDate = registrationDate;
-        }
-        
-        playerDetails.push({
-          upload_id: uploadId,
-          registration_date: registrationDate,
-          no: parseInt(row[idx.no]) || i + 1,
-          registration: registration,
-          username: username,
-          account_type: row[idx.account_type] || null,
-          loyalty_level: row[idx.loyalty_level] || null,
-          full_name: row[idx.full_name] || null,
-          player_group: row[idx.player_group] || null,
-          contact_info: row[idx.contact_info] || null,
-          status: row[idx.status] || null,
-          last_login: row[idx.last_login] || null,
-          referrer_type: row[idx.referrer_type] || null,
-          referral_code: row[idx.referral_code] || null,
-          own_referral_code: row[idx.own_referral_code] || null,
-          source_information: row[idx.source_information] || null,
-          maximum_transaction_pending: parseInt(row[idx.maximum_transaction_pending]) || 0,
-          last_deposit: row[idx.last_deposit] || null,
-          current_loyalty_points: row[idx.current_loyalty_points] || null,
-          current_balance: parseCurrency(row[idx.current_balance]),
-          last_transfer_in: row[idx.last_transfer_in] || null,
-          current_outstanding_bet: parseCurrency(row[idx.current_outstanding_bet]),
-          file_name: selectedFile.name,
-          website: website
-        });
+      const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}[- ][A-Za-z]+[- ][0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
+      if (regMatch) {
+        registrationDate = parseExcelDate(regMatch[1]);
       }
-
-      if (playerDetails.length === 0) throw new Error('Tidak ada data valid');
-
-      setUploadProgress(`Menyimpan ${playerDetails.length} data...`);
       
-      const registrationMonth = firstRegistrationDate ? firstRegistrationDate.substring(0, 7) : uploadDate.substring(0, 7);
+      if (registrationDate && !firstRegistrationDate) {
+        firstRegistrationDate = registrationDate;
+      }
       
-      const { error: uploadError } = await supabase
-        .from('player_uploads')
-        .insert([{
-          upload_id: uploadId,
-          upload_date: uploadDate,
-          registration_month: registrationMonth,
-          file_name: selectedFile.name,
-          total_rows: playerDetails.length,
-          status: 'completed',
-          website: website
-        }]);
+      playerDetails.push({
+        upload_id: uploadId,
+        registration_date: registrationDate,
+        no: parseInt(row[idx.no]) || i + 1,
+        registration: registration,
+        username: username,
+        account_type: row[idx.account_type] || null,
+        loyalty_level: row[idx.loyalty_level] || null,
+        full_name: row[idx.full_name] || null,
+        player_group: row[idx.player_group] || null,
+        contact_info: row[idx.contact_info] || null,
+        status: row[idx.status] || null,
+        last_login: row[idx.last_login] || null,
+        referrer_type: row[idx.referrer_type] || null,
+        referral_code: row[idx.referral_code] || null,
+        own_referral_code: row[idx.own_referral_code] || null,
+        source_information: row[idx.source_information] || null,
+        maximum_transaction_pending: parseInt(row[idx.maximum_transaction_pending]) || 0,
+        last_deposit: row[idx.last_deposit] || null,
+        current_loyalty_points: row[idx.current_loyalty_points] || null,
+        current_balance: parseCurrency(row[idx.current_balance]),
+        last_transfer_in: row[idx.last_transfer_in] || null,
+        current_outstanding_bet: parseCurrency(row[idx.current_outstanding_bet]),
+        file_name: selectedFile.name,
+        website: website
+      });
+    }
 
-      if (uploadError) throw uploadError;
+    if (playerDetails.length === 0) throw new Error('Tidak ada data valid');
 
+    const registrationMonth = firstRegistrationDate ? firstRegistrationDate.substring(0, 7) : uploadDate.substring(0, 7);
+    
+    // ========== INSERT KE PLAYER_UPLOADS (SEKALI AJA) ==========
+    setUploadProgress(`Menyimpan metadata upload...`);
+    
+    const { error: uploadError } = await supabase
+      .from('player_uploads')
+      .insert([{
+        upload_id: uploadId,
+        upload_date: uploadDate,
+        registration_month: registrationMonth,
+        file_name: selectedFile.name,
+        total_rows: playerDetails.length,
+        status: 'completed',
+        website: website
+      }]);
+
+    if (uploadError) throw uploadError;
+
+    // ========== BATCH INSERT KE PLAYER_LISTING (PER 500 BIAR AMAN) ==========
+    const BATCH_SIZE = 500;
+    let successCount = 0;
+    
+    for (let i = 0; i < playerDetails.length; i += BATCH_SIZE) {
+      const batch = playerDetails.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(playerDetails.length / BATCH_SIZE);
+      
+      setUploadProgress(`Menyimpan data: batch ${batchNum}/${totalBatches} (${batch.length} data)...`);
+      
       const { error: listingError } = await supabase
         .from('player_listing')
-        .insert(playerDetails);
-
-      if (listingError) throw listingError;
-
-      alert(`✅ Berhasil! ${playerDetails.length} data player diupload (${errorCount} baris error/skip)\n📅 Bulan Registrasi: ${registrationMonth}`);
-      setShowModal(false);
-      setSelectedFile(null);
-      fetchUploads();
+        .insert(batch);
       
-    } catch (error: any) {
-      console.error('Error:', error);
-      alert('Gagal: ' + error.message);
-    } finally {
-      setUploading(false);
-      setUploadProgress('');
+      if (listingError) throw listingError;
+      
+      successCount += batch.length;
+      
+      // Jeda 500ms biar ga kena rate limit
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
-  };
+
+    alert(`✅ Berhasil! ${successCount} data player diupload (${errorCount} baris error/skip)\n📅 Bulan Registrasi: ${registrationMonth}`);
+    setShowModal(false);
+    setSelectedFile(null);
+    fetchUploads();
+    
+  } catch (error: any) {
+    console.error('Error:', error);
+    alert('Gagal: ' + error.message);
+  } finally {
+    setUploading(false);
+    setUploadProgress('');
+  }
+};
 
   const getStatusColor = (status: string) => {
     switch(status?.toLowerCase()) {
