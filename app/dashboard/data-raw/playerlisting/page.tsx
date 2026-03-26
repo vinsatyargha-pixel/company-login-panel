@@ -84,142 +84,137 @@ export default function PlayerListingPage() {
   };
 
   const fetchUploads = async () => {
-    try {
-      setLoading(true);
-      
-      if (!selectedMonth || !selectedYear) {
-        setLoading(false);
-        return;
+  try {
+    setLoading(true);
+    
+    if (!selectedMonth || !selectedYear) {
+      setLoading(false);
+      return;
+    }
+    
+    const monthIndex = months.indexOf(selectedMonth) + 1;
+    const monthPadded = String(monthIndex).padStart(2, '0');
+    const startDate = `${selectedYear}-${monthPadded}-01`;
+    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
+    const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
+
+    console.log(`📅 Filter: ${startDate} → ${endDate}`);
+
+    // ========== STEP 1: AMBIL UPLOAD_ID DAN REGISTRATION_DATE ==========
+    let query = supabase
+      .from('player_listing')
+      .select('upload_id, registration_date')
+      .gte('registration_date', startDate)
+      .lte('registration_date', endDate);
+
+    if (selectedAsset !== 'all') {
+      const asset = assets.find(a => a.id === selectedAsset);
+      if (asset) {
+        query = query.eq('website', asset.asset_code);
       }
-      
-      const monthIndex = months.indexOf(selectedMonth) + 1;
-      const monthPadded = String(monthIndex).padStart(2, '0');
-      const startDate = `${selectedYear}-${monthPadded}-01`;
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
-      const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
+    }
 
-      console.log(`📅 Filter: ${startDate} → ${endDate}`);
+    const { data: listings, error: listingsError } = await query;
+    
+    if (listingsError) {
+      console.error('❌ Error fetching listings:', listingsError);
+      throw listingsError;
+    }
 
-      // ========== STEP 1: AMBIL UPLOAD_ID DAN REGISTRATION_DATE ==========
-      let query = supabase
-        .from('player_listing')
-        .select('upload_id, registration_date, file_name, website')
-        .gte('registration_date', startDate)
-        .lte('registration_date', endDate);
+    console.log(`📊 Found ${listings?.length || 0} player records`);
 
-      if (selectedAsset !== 'all') {
-        const asset = assets.find(a => a.id === selectedAsset);
-        if (asset) {
-          query = query.eq('website', asset.asset_code);
-        }
-      }
+    if (!listings || listings.length === 0) {
+      setUploads([]);
+      setLoading(false);
+      return;
+    }
 
-      const { data: listings, error: listingsError } = await query;
-      
-      if (listingsError) {
-        console.error('❌ Error fetching listings:', listingsError);
-        throw listingsError;
-      }
+    // ========== STEP 2: AMBIL UPLOAD_ID UNIK ==========
+    const uniqueUploadIds = [...new Set(listings.map(l => l.upload_id))];
+    console.log(`📁 Unique upload_ids: ${uniqueUploadIds.length}`);
 
-      console.log(`📊 Found ${listings?.length || 0} player records`);
+    // ========== STEP 3: AMBIL DATA DARI PLAYER_UPLOADS ==========
+    const { data: uploadsData, error: uploadsError } = await supabase
+      .from('player_uploads')
+      .select('*')
+      .in('upload_id', uniqueUploadIds);
 
-      if (!listings || listings.length === 0) {
-        setUploads([]);
-        setLoading(false);
-        return;
-      }
+    if (uploadsError) {
+      console.error('❌ Error fetching uploads:', uploadsError);
+      throw uploadsError;
+    }
 
-      // ========== STEP 2: GROUP BY UPLOAD_ID DAN HITUNG MIN/MAX DATE ==========
-      const uploadMap = new Map<string, {
-        upload_id: string;
-        file_name: string;
-        website: string;
-        total_rows: number;
-        min_date: string;
-        max_date: string;
-        upload_date: string;
-        active_players: number;
-      }>();
+    console.log(`📊 Uploads data: ${uploadsData?.length || 0}`);
 
-      for (const item of listings) {
+    if (!uploadsData || uploadsData.length === 0) {
+      setUploads([]);
+      setLoading(false);
+      return;
+    }
+
+    // ========== STEP 4: HITUNG TOTAL ROWS, MIN/MAX DATE, ACTIVE PLAYERS ==========
+    // Hitung total rows per upload_id
+    const countMap = new Map<string, number>();
+    const dateMap = new Map<string, { min: string; max: string }>();
+    const usernameMap = new Map<string, Set<string>>();
+
+    // Ambil semua data detail untuk perhitungan
+    const { data: detailsData } = await supabase
+      .from('player_listing')
+      .select('upload_id, registration_date, username')
+      .in('upload_id', uniqueUploadIds);
+
+    if (detailsData) {
+      detailsData.forEach(item => {
         const uploadId = item.upload_id;
         const regDate = item.registration_date?.split(' ')[0];
         
-        if (!uploadMap.has(uploadId)) {
-          const { data: uploadData } = await supabase
-            .from('player_uploads')
-            .select('upload_date')
-            .eq('upload_id', uploadId)
-            .single();
-          
-          uploadMap.set(uploadId, {
-            upload_id: uploadId,
-            file_name: item.file_name,
-            website: item.website || 'XLY',
-            total_rows: 0,
-            min_date: regDate || '',
-            max_date: regDate || '',
-            upload_date: uploadData?.upload_date || '',
-            active_players: 0
-          });
+        // Count rows
+        countMap.set(uploadId, (countMap.get(uploadId) || 0) + 1);
+        
+        // Min/Max date
+        if (!dateMap.has(uploadId)) {
+          dateMap.set(uploadId, { min: regDate || '', max: regDate || '' });
+        } else {
+          const current = dateMap.get(uploadId)!;
+          if (regDate && regDate < current.min) current.min = regDate;
+          if (regDate && regDate > current.max) current.max = regDate;
         }
         
-        const upload = uploadMap.get(uploadId)!;
-        upload.total_rows++;
-        
-        if (regDate && regDate < upload.min_date) {
-          upload.min_date = regDate;
+        // Active players (unique username)
+        if (!usernameMap.has(uploadId)) {
+          usernameMap.set(uploadId, new Set());
         }
-        if (regDate && regDate > upload.max_date) {
-          upload.max_date = regDate;
+        if (item.username) {
+          usernameMap.get(uploadId)!.add(item.username);
         }
-      }
-
-      // ========== STEP 3: HITUNG REGIST PLAYERS (UNIQUE USERNAME) ==========
-      const { data: usernamesData } = await supabase
-        .from('player_listing')
-        .select('upload_id, username')
-        .in('upload_id', Array.from(uploadMap.keys()));
-
-      if (usernamesData) {
-        const activeCountMap = new Map<string, Set<string>>();
-        usernamesData.forEach(item => {
-          if (!activeCountMap.has(item.upload_id)) {
-            activeCountMap.set(item.upload_id, new Set());
-          }
-          activeCountMap.get(item.upload_id)!.add(item.username);
-        });
-        
-        activeCountMap.forEach((usernames, uploadId) => {
-          if (uploadMap.has(uploadId)) {
-            uploadMap.get(uploadId)!.active_players = usernames.size;
-          }
-        });
-      }
-
-      // ========== STEP 4: KONVERSI KE ARRAY ==========
-      const result = Array.from(uploadMap.values()).map(upload => ({
-        id: upload.upload_id,
-        upload_id: upload.upload_id,
-        upload_date: upload.upload_date,
-        file_name: upload.file_name,
-        website: upload.website,
-        total_rows: upload.total_rows,
-        status: 'completed',
-        min_date: upload.min_date,
-        max_date: upload.max_date,
-        active_players: upload.active_players
-      }));
-
-      console.log(`✅ Final result: ${result.length} uploads`);
-      setUploads(result);
-      
-    } catch (error) {
-      console.error('❌ Error fetching uploads:', error);
-    } finally {
-      setLoading(false);
+      });
     }
-  };
+
+    // ========== STEP 5: GABUNGKAN ==========
+    const result = uploadsData.map(upload => ({
+      id: upload.upload_id,
+      upload_id: upload.upload_id,
+      upload_date: upload.upload_date,
+      file_name: upload.file_name,
+      website: upload.website || 'XLY',
+      total_rows: countMap.get(upload.upload_id) || 0,
+      status: upload.status,
+      min_date: dateMap.get(upload.upload_id)?.min || '',
+      max_date: dateMap.get(upload.upload_id)?.max || '',
+      active_players: usernameMap.get(upload.upload_id)?.size || 0
+    }));
+
+    console.log(`✅ Final result: ${result.length} uploads`);
+    console.log('📁 Result:', result);
+    setUploads(result);
+    
+  } catch (error) {
+    console.error('❌ Error fetching uploads:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
