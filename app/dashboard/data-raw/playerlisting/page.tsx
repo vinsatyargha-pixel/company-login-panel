@@ -97,13 +97,14 @@ export default function PlayerListingPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
       const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
 
-      // ========== AMBIL DATA DARI PLAYER_LISTING BERDASARKAN REGISTRATION_DATE ==========
+      console.log(`📅 Filter: ${startDate} → ${endDate}`);
+
+      // ========== STEP 1: AMBIL UPLOAD_ID DARI PLAYER_LISTING ==========
       let query = supabase
         .from('player_listing')
-        .select('upload_id, upload_date, file_name, website, registration_date')
+        .select('upload_id')
         .gte('registration_date', startDate)
-        .lte('registration_date', endDate)
-        .order('registration_date', { ascending: true });
+        .lte('registration_date', endDate);
 
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset);
@@ -112,32 +113,60 @@ export default function PlayerListingPage() {
         }
       }
 
-      const { data, error } = await query;
+      const { data: listings, error: listingsError } = await query;
       
-      if (error) throw error;
-      
-      // ========== GROUP BY UPLOAD_ID UNTUK MENAMPILKAN PER FILE ==========
-      const groupedUploads = new Map<string, PlayerUpload>();
-      data?.forEach((item: any) => {
-        if (!groupedUploads.has(item.upload_id)) {
-          groupedUploads.set(item.upload_id, {
-            id: item.upload_id,
-            upload_id: item.upload_id,
-            upload_date: item.upload_date,
-            registration_month: item.registration_date?.substring(0, 7) || '',
-            file_name: item.file_name,
-            website: item.website,
-            total_rows: 0,
-            status: 'completed'
-          });
+      if (listingsError) {
+        console.error('❌ Error fetching listings:', listingsError);
+        throw listingsError;
+      }
+
+      console.log(`📊 Found ${listings?.length || 0} player records`);
+
+      if (!listings || listings.length === 0) {
+        setUploads([]);
+        setLoading(false);
+        return;
+      }
+
+      // ========== STEP 2: AMBIL UPLOAD_ID UNIK ==========
+      const uniqueUploadIds = [...new Set(listings.map(l => l.upload_id))];
+      console.log(`📁 Unique upload_ids: ${uniqueUploadIds.length}`);
+
+      // ========== STEP 3: AMBIL DATA DARI PLAYER_UPLOADS ==========
+      let uploadsQuery = supabase
+        .from('player_uploads')
+        .select('*')
+        .in('upload_id', uniqueUploadIds);
+
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset);
+        if (asset) {
+          uploadsQuery = uploadsQuery.eq('website', asset.asset_code);
         }
-        groupedUploads.get(item.upload_id)!.total_rows++;
+      }
+
+      const { data: uploadsData, error: uploadsError } = await uploadsQuery;
+      if (uploadsError) throw uploadsError;
+
+      console.log(`📊 Uploads data: ${uploadsData?.length || 0}`);
+
+      // ========== STEP 4: HITUNG TOTAL ROWS PER UPLOAD ==========
+      const countMap = new Map<string, number>();
+      listings.forEach(l => {
+        countMap.set(l.upload_id, (countMap.get(l.upload_id) || 0) + 1);
       });
-      
-      setUploads(Array.from(groupedUploads.values()));
+
+      // ========== STEP 5: GABUNGKAN ==========
+      const result = uploadsData?.map(upload => ({
+        ...upload,
+        total_rows: countMap.get(upload.upload_id) || 0
+      })) || [];
+
+      console.log(`✅ Final result: ${result.length} uploads`);
+      setUploads(result);
       
     } catch (error) {
-      console.error('Error fetching uploads:', error);
+      console.error('❌ Error fetching uploads:', error);
     } finally {
       setLoading(false);
     }
@@ -198,7 +227,6 @@ export default function PlayerListingPage() {
       if (matchMon) {
         const day = matchMon[1].padStart(2, '0');
         let monthName = matchMon[2].toLowerCase();
-        // Ambil 3 huruf pertama
         if (monthName.length > 3) {
           monthName = monthName.substring(0, 3);
         }
@@ -212,11 +240,9 @@ export default function PlayerListingPage() {
       if (str.includes('/')) {
         const [datePart, timePart = '00:00:00'] = str.split(' ');
         const parts = datePart.split('/');
-        // Pastikan format: DD/MM/YYYY
         let day = parts[0].padStart(2, '0');
         let month = parts[1].padStart(2, '0');
         let year = parts[2];
-        // Kalau format MM/DD/YYYY, tukar
         if (parseInt(month) > 12 && parseInt(day) <= 12) {
           [day, month] = [month, day];
         }
@@ -307,9 +333,7 @@ export default function PlayerListingPage() {
       const uploadDate = new Date().toISOString().split('T')[0];
       const website = selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY';
       
-      // Data untuk player_listing (detail player)
       const playerDetails: any[] = [];
-      let validCount = 0;
       let errorCount = 0;
       let firstRegistrationDate: string | null = null;
       
@@ -326,20 +350,13 @@ export default function PlayerListingPage() {
         const registration = row[idx.registration] || '';
         let registrationDate = null;
         
-        // Parse Registration Date dari kolom Registration
         const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}[- ][A-Za-z]+[- ][0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
         if (regMatch) {
           registrationDate = parseExcelDate(regMatch[1]);
         }
         
-        // Simpan tanggal registrasi pertama untuk registration_month
         if (registrationDate && !firstRegistrationDate) {
           firstRegistrationDate = registrationDate;
-        }
-        
-        // DEBUG: Logging untuk cek tanggal (5 data pertama)
-        if (i < 5) {
-          console.log(`📅 Row ${i+3}: username=${username}, raw="${regMatch?.[1]}", parsed="${registrationDate}"`);
         }
         
         playerDetails.push({
@@ -368,17 +385,15 @@ export default function PlayerListingPage() {
           file_name: selectedFile.name,
           website: website
         });
-        validCount++;
       }
 
       if (playerDetails.length === 0) throw new Error('Tidak ada data valid');
 
       setUploadProgress(`Menyimpan ${playerDetails.length} data...`);
       
-      // ========== TAMBAHKAN REGISTRATION_MONTH KE PLAYER_UPLOADS ==========
       const registrationMonth = firstRegistrationDate ? firstRegistrationDate.substring(0, 7) : uploadDate.substring(0, 7);
       
-      // 1. INSERT KE PLAYER_UPLOADS (tracking upload)
+      // 1. INSERT KE PLAYER_UPLOADS
       const { error: uploadError } = await supabase
         .from('player_uploads')
         .insert([{
@@ -393,7 +408,7 @@ export default function PlayerListingPage() {
 
       if (uploadError) throw uploadError;
 
-      // 2. INSERT KE PLAYER_LISTING (detail player)
+      // 2. INSERT KE PLAYER_LISTING
       const { error: listingError } = await supabase
         .from('player_listing')
         .insert(playerDetails);
