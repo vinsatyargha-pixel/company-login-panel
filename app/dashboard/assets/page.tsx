@@ -189,32 +189,6 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH UNIQUE DEPOSITORS (SEMUA YANG DEPOSIT DI PERIODE)
-  // ===========================================
-  const fetchUniqueDepositors = async (assetCode: string, startDate: string, endDate: string) => {
-    let query = supabase
-      .from('deposit_transactions')
-      .select('user_name, nett_amount')
-      .eq('brand', assetCode)
-      .gte('approved_date', `${startDate} 00:00:00`)
-      .lte('approved_date', `${endDate} 23:59:59`)
-      .eq('status', 'Approved');
-
-    const deposits = await fetchAllWithPagination(query);
-    
-    const userMap = new Map<string, number>();
-    for (const d of deposits) {
-      if (d.user_name) {
-        userMap.set(d.user_name, (userMap.get(d.user_name) || 0) + (d.nett_amount || 0));
-      }
-    }
-    
-    const totalAmount = Array.from(userMap.values()).reduce((a, b) => a + b, 0);
-    
-    return { count: userMap.size, amount: totalAmount };
-  };
-
-  // ===========================================
   // FETCH TOTAL DEPOSIT
   // ===========================================
   const fetchTotalDeposit = async (assetCode: string, startDate: string, endDate: string) => {
@@ -319,7 +293,6 @@ export default function AssetsPage() {
     const [
       newRegist,
       firstDepositLifetime,
-      uniqueDepositors,
       totalDeposit,
       totalWithdrawal,
       winloseData,
@@ -327,7 +300,6 @@ export default function AssetsPage() {
     ] = await Promise.all([
       fetchNewRegist(assetCode, startDate, endDate),
       fetchFirstDepositLifetime(assetCode, startDate, endDate),
-      fetchUniqueDepositors(assetCode, startDate, endDate),
       fetchTotalDeposit(assetCode, startDate, endDate),
       fetchTotalWithdrawal(assetCode, startDate, endDate),
       fetchWinloseData(assetCode, startDate, endDate),
@@ -337,7 +309,6 @@ export default function AssetsPage() {
     return {
       new_regist: newRegist,
       first_deposit: firstDepositLifetime,
-      unique_depositors: uniqueDepositors,
       total_deposit: totalDeposit,
       total_withdrawal: totalWithdrawal,
       active_member: winloseData.active_member,
@@ -465,14 +436,9 @@ export default function AssetsPage() {
                       <td className="px-4 py-2 text-right">-</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">First Deposit (Lifetime)</td>
+                      <td className="px-4 py-2">New Member Deposit (first)</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.count)}</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.first_deposit.amount)}</td>
-                    </tr>
-                    <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Unique Depositor</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.unique_depositors.count)}</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.unique_depositors.amount)}</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">Total Deposit</td>
