@@ -40,6 +40,22 @@ export default function PlayerListingPage() {
   ];
   const years = ['2025', '2026', '2027'];
 
+  // ========== MAP BULAN INGGRIS KE ANGKA ==========
+  const monthMap: { [key: string]: string } = {
+    'jan': '01', 'january': '01',
+    'feb': '02', 'february': '02',
+    'mar': '03', 'march': '03',
+    'apr': '04', 'april': '04',
+    'may': '05',
+    'jun': '06', 'june': '06',
+    'jul': '07', 'july': '07',
+    'aug': '08', 'august': '08',
+    'sep': '09', 'september': '09',
+    'oct': '10', 'october': '10',
+    'nov': '11', 'november': '11',
+    'dec': '12', 'december': '12'
+  };
+
   useEffect(() => {
     const today = new Date();
     setSelectedMonth(months[today.getMonth()]);
@@ -80,6 +96,7 @@ export default function PlayerListingPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
       const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
 
+      // QUERY BERDASARKAN UPLOAD_DATE (tanggal upload file)
       let query = supabase
         .from('player_uploads')
         .select('*')
@@ -133,10 +150,12 @@ export default function PlayerListingPage() {
     }
   }, []);
 
+  // ========== FUNGSI PARSING TANGGAL LENGKAP ==========
   const parseExcelDate = (value: any): string | null => {
     if (!value) return null;
 
     try {
+      // 1. Excel Serial Number (angka)
       if (typeof value === 'number') {
         const excelEpoch = new Date(Date.UTC(1899, 11, 30));
         const date = new Date(excelEpoch.getTime() + value * 86400000);
@@ -151,18 +170,49 @@ export default function PlayerListingPage() {
 
       const str = value.toString().trim();
       
+      // 2. Format "31-Jan-2026 21:45:55" atau "31 Jan 2026 21:45:55"
+      const regMon = /^(\d{1,2})[- ]([A-Za-z]+)[- ](\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?$/;
+      const matchMon = str.match(regMon);
+      if (matchMon) {
+        const day = matchMon[1].padStart(2, '0');
+        let monthName = matchMon[2].toLowerCase();
+        // Ambil 3 huruf pertama
+        if (monthName.length > 3) {
+          monthName = monthName.substring(0, 3);
+        }
+        const year = matchMon[3];
+        const time = matchMon[4] || '00:00:00';
+        const month = monthMap[monthName] || '01';
+        return `${year}-${month}-${day} ${time}`;
+      }
+      
+      // 3. Format "31/01/2026" atau "31/01/2026 21:45:55"
       if (str.includes('/')) {
         const [datePart, timePart = '00:00:00'] = str.split(' ');
         const parts = datePart.split('/');
-        const month = parts[0].padStart(2, '0');
-        const day = parts[1].padStart(2, '0');
-        const year = parts[2];
+        // Pastikan format: DD/MM/YYYY
+        let day = parts[0].padStart(2, '0');
+        let month = parts[1].padStart(2, '0');
+        let year = parts[2];
+        // Kalau format MM/DD/YYYY, tukar
+        if (parseInt(month) > 12 && parseInt(day) <= 12) {
+          [day, month] = [month, day];
+        }
         return `${year}-${month}-${day} ${timePart}`;
+      }
+      
+      // 4. Format "2026-01-31" atau "2026-01-31 21:45:55"
+      if (str.includes('-')) {
+        const [datePart, timePart = '00:00:00'] = str.split(' ');
+        const parts = datePart.split('-');
+        if (parts.length === 3 && parts[0].length === 4) {
+          return `${parts[0]}-${parts[1]}-${parts[2]} ${timePart}`;
+        }
       }
       
       return str;
     } catch (err) {
-      console.error('Date parse error:', value);
+      console.error('Date parse error:', value, err);
       return null;
     }
   };
@@ -238,21 +288,30 @@ export default function PlayerListingPage() {
       // Data untuk player_listing (detail player)
       const playerDetails: any[] = [];
       let validCount = 0;
+      let errorCount = 0;
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
         if (!row || row.length === 0) continue;
         
         const username = row[idx.username];
-        if (!username) continue;
+        if (!username) {
+          errorCount++;
+          continue;
+        }
         
         const registration = row[idx.registration] || '';
         let registrationDate = null;
         
         // Parse Registration Date dari kolom Registration
-        const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}-[A-Za-z]+-[0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
+        const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}[- ][A-Za-z]+[- ][0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
         if (regMatch) {
           registrationDate = parseExcelDate(regMatch[1]);
+        }
+        
+        // DEBUG: Logging untuk cek tanggal
+        if (i < 5) {
+          console.log(`📅 Row ${i+3}: username=${username}, raw="${regMatch?.[1]}", parsed="${registrationDate}"`);
         }
         
         playerDetails.push({
@@ -309,7 +368,7 @@ export default function PlayerListingPage() {
 
       if (listingError) throw listingError;
 
-      alert(`✅ Berhasil! ${playerDetails.length} data player diupload`);
+      alert(`✅ Berhasil! ${playerDetails.length} data player diupload (${errorCount} baris error/skip)`);
       setShowModal(false);
       setSelectedFile(null);
       fetchUploads();
@@ -407,7 +466,7 @@ export default function PlayerListingPage() {
               <th className="px-4 py-3 text-left text-[#FFD700]">File Name</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Player</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
-             </tr>
+            </tr>
           </thead>
           <tbody>
             {uploads.length > 0 ? uploads.map((item) => (
