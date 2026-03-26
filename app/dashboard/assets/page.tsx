@@ -141,7 +141,7 @@ export default function AssetsPage() {
       if (p.username) uniqueUsers.add(p.username.toLowerCase());
     });
     
-    return uniqueUsers;
+    return uniqueUsers.size;
   };
 
   // ===========================================
@@ -186,13 +186,12 @@ export default function AssetsPage() {
   };
 
   // ===========================================
-  // FETCH ACTIVE NEW MEMBER (NEW REGIST YANG DEPOSIT)
+  // FETCH ACTIVE MEMBER (UNIQUE USER YANG DEPOSIT ATAU WINLOSE)
   // ===========================================
-  const fetchActiveNewMember = async (assetCode: string, startDate: string, endDate: string) => {
-    const newRegistSet = await fetchNewRegist(assetCode, startDate, endDate);
+  const fetchActiveMember = async (assetCode: string, startDate: string, endDate: string) => {
+    const activeSet = new Set<string>();
     
-    if (newRegistSet.size === 0) return 0;
-    
+    // 1. Ambil semua user yang deposit di periode
     let depositQuery = supabase
       .from('deposit_transactions')
       .select('user_name')
@@ -202,20 +201,27 @@ export default function AssetsPage() {
       .eq('status', 'Approved');
 
     const deposits = await fetchAllWithPagination(depositQuery);
-    
-    const depositorsSet = new Set<string>();
     for (const d of deposits) {
-      if (d.user_name) depositorsSet.add(d.user_name.toLowerCase());
+      if (d.user_name) activeSet.add(d.user_name.toLowerCase());
     }
     
-    let activeCount = 0;
-    for (const newUser of newRegistSet) {
-      if (depositorsSet.has(newUser)) {
-        activeCount++;
+    // 2. Ambil semua user yang ada di winlose (account_id)
+    let winloseQuery = supabase
+      .from('winlose_transactions')
+      .select('account_id')
+      .eq('website', assetCode)
+      .gte('period_start', startDate)
+      .lte('period_start', endDate);
+
+    const winlose = await fetchAllWithPagination(winloseQuery);
+    for (const w of winlose) {
+      if (w.account_id) {
+        const cleanId = cleanAccountId(w.account_id);
+        if (cleanId) activeSet.add(cleanId.toLowerCase());
       }
     }
     
-    return activeCount;
+    return activeSet.size;
   };
 
   // ===========================================
@@ -309,29 +315,29 @@ export default function AssetsPage() {
     const endDate = dateRange.end;
 
     const [
-      newRegistSet,
+      newRegist,
       firstDeposit,
+      activeMember,
       totalDeposit,
       totalWithdrawal,
-      activeNewMember,
       winloseData,
       adjustment
     ] = await Promise.all([
       fetchNewRegist(assetCode, startDate, endDate),
       fetchFirstDepositLifetime(assetCode, startDate, endDate),
+      fetchActiveMember(assetCode, startDate, endDate),
       fetchTotalDeposit(assetCode, startDate, endDate),
       fetchTotalWithdrawal(assetCode, startDate, endDate),
-      fetchActiveNewMember(assetCode, startDate, endDate),
       fetchWinloseData(assetCode, startDate, endDate),
       fetchAdjustment(assetCode, startDate, endDate)
     ]);
 
     return {
-      new_regist: newRegistSet.size,
+      new_regist: newRegist,
       first_deposit: firstDeposit,
+      active_member: activeMember,
       total_deposit: totalDeposit,
       total_withdrawal: totalWithdrawal,
-      active_new_member: activeNewMember,
       turnover: winloseData.turnover,
       winlose: winloseData.winlose,
       adjustment: adjustment
@@ -447,7 +453,7 @@ export default function AssetsPage() {
                       <th className="px-4 py-2 text-left text-[#FFD700]">Metric</th>
                       <th className="px-4 py-2 text-right text-[#FFD700]">Count</th>
                       <th className="px-4 py-2 text-right text-[#FFD700]">Amount</th>
-                     </tr>
+                    </tr>
                   </thead>
                   <tbody>
                     <tr className="border-b border-[#FFD700]/10">
@@ -471,8 +477,8 @@ export default function AssetsPage() {
                       <td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.amount)}</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Active New Member</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.active_new_member)}</td>
+                      <td className="px-4 py-2">Active Member</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.active_member)}</td>
                       <td className="px-4 py-2 text-right">-</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
