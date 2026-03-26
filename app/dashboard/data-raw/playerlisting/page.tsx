@@ -37,6 +37,10 @@ export default function PlayerListingPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState('');
 
+  // ========== PAGINATION STATE ==========
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   const months = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
@@ -71,6 +75,11 @@ export default function PlayerListingPage() {
     }
   }, [selectedMonth, selectedYear, selectedAsset]);
 
+  // Reset ke halaman 1 saat filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMonth, selectedYear, selectedAsset]);
+
   const fetchAssets = async () => {
     try {
       const { data } = await supabase
@@ -98,12 +107,10 @@ export default function PlayerListingPage() {
     const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
     const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
 
-    console.log(`📅 Filter: ${startDate} → ${endDate}`);
-
-    // ========== STEP 1: AMBIL UPLOAD_ID DAN REGISTRATION_DATE ==========
+    // ========== AMBIL DATA DARI PLAYER_LISTING (TANPA UPLOAD_DATE) ==========
     let query = supabase
       .from('player_listing')
-      .select('upload_id, registration_date')
+      .select('upload_id, registration_date, username, file_name, website')
       .gte('registration_date', startDate)
       .lte('registration_date', endDate);
 
@@ -117,11 +124,9 @@ export default function PlayerListingPage() {
     const { data: listings, error: listingsError } = await query;
     
     if (listingsError) {
-      console.error('❌ Error fetching listings:', listingsError);
+      console.error('Error fetching listings:', listingsError);
       throw listingsError;
     }
-
-    console.log(`📊 Found ${listings?.length || 0} player records`);
 
     if (!listings || listings.length === 0) {
       setUploads([]);
@@ -129,92 +134,91 @@ export default function PlayerListingPage() {
       return;
     }
 
-    // ========== STEP 2: AMBIL UPLOAD_ID UNIK ==========
-    const uniqueUploadIds = [...new Set(listings.map(l => l.upload_id))];
-    console.log(`📁 Unique upload_ids: ${uniqueUploadIds.length}`);
+    // ========== GROUP BY FILE_NAME ==========
+    const fileMap = new Map<string, {
+      file_name: string;
+      website: string;
+      total_rows: number;
+      min_date: string;
+      max_date: string;
+      active_players: Set<string>;
+    }>();
 
-    // ========== STEP 3: AMBIL DATA DARI PLAYER_UPLOADS ==========
-    const { data: uploadsData, error: uploadsError } = await supabase
+    for (const item of listings) {
+      const fileName = item.file_name;
+      const regDate = item.registration_date?.split(' ')[0];
+      
+      if (!fileMap.has(fileName)) {
+        fileMap.set(fileName, {
+          file_name: fileName,
+          website: item.website || 'XLY',
+          total_rows: 0,
+          min_date: regDate || '',
+          max_date: regDate || '',
+          active_players: new Set()
+        });
+      }
+      
+      const file = fileMap.get(fileName)!;
+      file.total_rows++;
+      file.active_players.add(item.username);
+      
+      if (regDate && regDate < file.min_date) file.min_date = regDate;
+      if (regDate && regDate > file.max_date) file.max_date = regDate;
+    }
+
+    // ========== AMBIL UPLOAD_DATE DARI PLAYER_UPLOADS ==========
+    const uniqueFileNames = Array.from(fileMap.keys());
+    const { data: uploadsData } = await supabase
       .from('player_uploads')
-      .select('*')
-      .in('upload_id', uniqueUploadIds);
+      .select('file_name, upload_date')
+      .in('file_name', uniqueFileNames);
 
-    if (uploadsError) {
-      console.error('❌ Error fetching uploads:', uploadsError);
-      throw uploadsError;
-    }
+    const uploadDateMap = new Map();
+    uploadsData?.forEach(u => {
+      uploadDateMap.set(u.file_name, u.upload_date);
+    });
 
-    console.log(`📊 Uploads data: ${uploadsData?.length || 0}`);
-
-    if (!uploadsData || uploadsData.length === 0) {
-      setUploads([]);
-      setLoading(false);
-      return;
-    }
-
-    // ========== STEP 4: HITUNG TOTAL ROWS, MIN/MAX DATE, ACTIVE PLAYERS ==========
-    // Hitung total rows per upload_id
-    const countMap = new Map<string, number>();
-    const dateMap = new Map<string, { min: string; max: string }>();
-    const usernameMap = new Map<string, Set<string>>();
-
-    // Ambil semua data detail untuk perhitungan
-    const { data: detailsData } = await supabase
-      .from('player_listing')
-      .select('upload_id, registration_date, username')
-      .in('upload_id', uniqueUploadIds);
-
-    if (detailsData) {
-      detailsData.forEach(item => {
-        const uploadId = item.upload_id;
-        const regDate = item.registration_date?.split(' ')[0];
-        
-        // Count rows
-        countMap.set(uploadId, (countMap.get(uploadId) || 0) + 1);
-        
-        // Min/Max date
-        if (!dateMap.has(uploadId)) {
-          dateMap.set(uploadId, { min: regDate || '', max: regDate || '' });
-        } else {
-          const current = dateMap.get(uploadId)!;
-          if (regDate && regDate < current.min) current.min = regDate;
-          if (regDate && regDate > current.max) current.max = regDate;
-        }
-        
-        // Active players (unique username)
-        if (!usernameMap.has(uploadId)) {
-          usernameMap.set(uploadId, new Set());
-        }
-        if (item.username) {
-          usernameMap.get(uploadId)!.add(item.username);
-        }
-      });
-    }
-
-    // ========== STEP 5: GABUNGKAN ==========
-    const result = uploadsData.map(upload => ({
-      id: upload.upload_id,
-      upload_id: upload.upload_id,
-      upload_date: upload.upload_date,
-      file_name: upload.file_name,
-      website: upload.website || 'XLY',
-      total_rows: countMap.get(upload.upload_id) || 0,
-      status: upload.status,
-      min_date: dateMap.get(upload.upload_id)?.min || '',
-      max_date: dateMap.get(upload.upload_id)?.max || '',
-      active_players: usernameMap.get(upload.upload_id)?.size || 0
+    const result = Array.from(fileMap.values()).map(file => ({
+      id: file.file_name,
+      upload_id: file.file_name,
+      upload_date: uploadDateMap.get(file.file_name) || '',
+      file_name: file.file_name,
+      website: file.website,
+      total_rows: file.total_rows,
+      status: 'completed',
+      min_date: file.min_date,
+      max_date: file.max_date,
+      active_players: file.active_players.size
     }));
 
-    console.log(`✅ Final result: ${result.length} uploads`);
-    console.log('📁 Result:', result);
     setUploads(result);
     
   } catch (error) {
-    console.error('❌ Error fetching uploads:', error);
+    console.error('Error fetching uploads:', error);
   } finally {
     setLoading(false);
   }
 };
+
+  // ========== PAGINATION LOGIC ==========
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = uploads.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(uploads.length / itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  // ========== FUNGSI LAINNYA (handleDrag, handleDrop, parseExcelDate, parseCurrency, processFile) ==========
+  // ... (sama seperti sebelumnya, gue potong karena panjang, tapi tetap sama)
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -457,8 +461,8 @@ export default function PlayerListingPage() {
       fetchUploads();
       
     } catch (error: any) {
-      console.error('❌ Error:', error);
-      alert('❌ Gagal: ' + error.message);
+      console.error('Error:', error);
+      alert('Gagal: ' + error.message);
     } finally {
       setUploading(false);
       setUploadProgress('');
@@ -518,7 +522,7 @@ export default function PlayerListingPage() {
         </button>
       </div>
 
-      <h1 className="text-3xl font-bold text-[#FFD700] mb-6">👥 PLAYER LISTING DATA RAW</h1>
+      <h1 className="text-3xl font-bold text-[#FFD700] mb-6">PLAYER LISTING DATA RAW</h1>
 
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
@@ -546,8 +550,24 @@ export default function PlayerListingPage() {
           {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
         </select>
 
-        <div className="ml-auto text-[#A7D8FF]">
-          Total: <span className="text-[#FFD700] font-bold">{uploads.length}</span> file
+        <div className="ml-auto flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-[#A7D8FF]">Show:</span>
+            <select
+              value={itemsPerPage}
+              onChange={handleItemsPerPageChange}
+              className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-2 py-1 text-white text-sm"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <div className="text-[#A7D8FF]">
+            Total: <span className="text-[#FFD700] font-bold">{uploads.length}</span> file
+          </div>
         </div>
       </div>
 
@@ -559,15 +579,15 @@ export default function PlayerListingPage() {
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Asset</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">New Regist Player</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Active Players</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
             </tr>
           </thead>
           <tbody>
-            {uploads.length > 0 ? uploads.map((item, index) => (
+            {currentItems.length > 0 ? currentItems.map((item, index) => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
-                <td className="px-4 py-3">{index + 1}</td>
+                <td className="px-4 py-3">{indexOfFirstItem + index + 1}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                 <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
                 <td className="px-4 py-3">{formatPeriod(item.min_date, item.max_date)}</td>
@@ -590,7 +610,57 @@ export default function PlayerListingPage() {
         </table>
       </div>
 
-      {/* MODAL UPLOAD - SAMA SEPERTI SEBELUMNYA */}
+      {/* ========== PAGINATION COMPONENT ========== */}
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center mt-6">
+          <div className="text-sm text-[#A7D8FF]">
+            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, uploads.length)} of {uploads.length} files
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 rounded bg-[#0B1A33] border border-[#FFD700]/30 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#FFD700]/10"
+            >
+              Previous
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`px-3 py-1 rounded border ${
+                    currentPage === pageNum
+                      ? 'bg-[#FFD700] text-[#0B1A33] border-[#FFD700]'
+                      : 'bg-[#0B1A33] border-[#FFD700]/30 text-white hover:bg-[#FFD700]/10'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 rounded bg-[#0B1A33] border border-[#FFD700]/30 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#FFD700]/10"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL UPLOAD */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
