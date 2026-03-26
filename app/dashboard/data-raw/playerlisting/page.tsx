@@ -107,28 +107,40 @@ export default function PlayerListingPage() {
     const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
     const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
 
-    // ========== AMBIL DATA DARI PLAYER_LISTING (TANPA UPLOAD_DATE) ==========
-    let query = supabase
-      .from('player_listing')
-      .select('upload_id, registration_date, username, file_name, website')
-      .gte('registration_date', startDate)
-      .lte('registration_date', endDate);
+    // ========== AMBIL SEMUA DATA DENGAN LOOP PAGINATION ==========
+    let allListings: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('player_listing')
+        .select('upload_id, registration_date, username, file_name, website')
+        .gte('registration_date', startDate)
+        .lte('registration_date', endDate)
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        allListings = [...allListings, ...data];
+        page++;
+      }
+      
+      if (!data || data.length < pageSize) {
+        hasMore = false;
+      }
+    }
 
     if (selectedAsset !== 'all') {
       const asset = assets.find(a => a.id === selectedAsset);
       if (asset) {
-        query = query.eq('website', asset.asset_code);
+        allListings = allListings.filter(item => item.website === asset.asset_code);
       }
     }
 
-    const { data: listings, error: listingsError } = await query;
-    
-    if (listingsError) {
-      console.error('Error fetching listings:', listingsError);
-      throw listingsError;
-    }
-
-    if (!listings || listings.length === 0) {
+    if (!allListings || allListings.length === 0) {
       setUploads([]);
       setLoading(false);
       return;
@@ -144,7 +156,7 @@ export default function PlayerListingPage() {
       active_players: Set<string>;
     }>();
 
-    for (const item of listings) {
+    for (const item of allListings) {
       const fileName = item.file_name;
       const regDate = item.registration_date?.split(' ')[0];
       
