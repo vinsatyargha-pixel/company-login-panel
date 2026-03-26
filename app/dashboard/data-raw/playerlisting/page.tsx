@@ -175,7 +175,7 @@ export default function PlayerListingPage() {
         }
       }
 
-      // ========== STEP 3: HITUNG ACTIVE PLAYERS (UNIQUE USERNAME) ==========
+      // ========== STEP 3: HITUNG REGIST PLAYERS (UNIQUE USERNAME) ==========
       const { data: usernamesData } = await supabase
         .from('player_listing')
         .select('upload_id, username')
@@ -564,7 +564,7 @@ export default function PlayerListingPage() {
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Asset</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Active Players</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">New Regist Player</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
             </tr>
