@@ -189,12 +189,10 @@ export default function AssetsPage() {
   // FETCH ACTIVE NEW MEMBER (NEW REGIST YANG DEPOSIT)
   // ===========================================
   const fetchActiveNewMember = async (assetCode: string, startDate: string, endDate: string) => {
-    // 1. Ambil semua new regist di periode
     const newRegistSet = await fetchNewRegist(assetCode, startDate, endDate);
     
     if (newRegistSet.size === 0) return 0;
     
-    // 2. Ambil semua deposit di periode
     let depositQuery = supabase
       .from('deposit_transactions')
       .select('user_name')
@@ -205,7 +203,6 @@ export default function AssetsPage() {
 
     const deposits = await fetchAllWithPagination(depositQuery);
     
-    // 3. Cari user yang deposit dan termasuk new regist
     const depositorsSet = new Set<string>();
     for (const d of deposits) {
       if (d.user_name) depositorsSet.add(d.user_name.toLowerCase());
@@ -314,27 +311,27 @@ export default function AssetsPage() {
     const [
       newRegistSet,
       firstDeposit,
-      activeNewMember,
       totalDeposit,
       totalWithdrawal,
+      activeNewMember,
       winloseData,
       adjustment
     ] = await Promise.all([
       fetchNewRegist(assetCode, startDate, endDate),
       fetchFirstDepositLifetime(assetCode, startDate, endDate),
-      fetchActiveNewMember(assetCode, startDate, endDate),
       fetchTotalDeposit(assetCode, startDate, endDate),
       fetchTotalWithdrawal(assetCode, startDate, endDate),
+      fetchActiveNewMember(assetCode, startDate, endDate),
       fetchWinloseData(assetCode, startDate, endDate),
       fetchAdjustment(assetCode, startDate, endDate)
     ]);
 
     return {
       new_regist: newRegistSet.size,
-      active_new_member: activeNewMember,
       first_deposit: firstDeposit,
       total_deposit: totalDeposit,
       total_withdrawal: totalWithdrawal,
+      active_new_member: activeNewMember,
       turnover: winloseData.turnover,
       winlose: winloseData.winlose,
       adjustment: adjustment
@@ -450,17 +447,12 @@ export default function AssetsPage() {
                       <th className="px-4 py-2 text-left text-[#FFD700]">Metric</th>
                       <th className="px-4 py-2 text-right text-[#FFD700]">Count</th>
                       <th className="px-4 py-2 text-right text-[#FFD700]">Amount</th>
-                    </tr>
+                     </tr>
                   </thead>
                   <tbody>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">New Regist</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.new_regist)}</td>
-                      <td className="px-4 py-2 text-right">-</td>
-                    </tr>
-                    <tr className="border-b border-[#FFD700]/10">
-                      <td className="px-4 py-2">Active New Member</td>
-                      <td className="px-4 py-2 text-right">{formatNumber(data.active_new_member)}</td>
                       <td className="px-4 py-2 text-right">-</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
@@ -477,6 +469,11 @@ export default function AssetsPage() {
                       <td className="px-4 py-2">Total Withdrawal</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.count)}</td>
                       <td className="px-4 py-2 text-right">{formatNumber(data.total_withdrawal.amount)}</td>
+                    </tr>
+                    <tr className="border-b border-[#FFD700]/10">
+                      <td className="px-4 py-2">Active New Member</td>
+                      <td className="px-4 py-2 text-right">{formatNumber(data.active_new_member)}</td>
+                      <td className="px-4 py-2 text-right">-</td>
                     </tr>
                     <tr className="border-b border-[#FFD700]/10">
                       <td className="px-4 py-2">TurnOver</td>
