@@ -37,7 +37,6 @@ export default function PlayerListingPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState('');
 
-  // ========== PAGINATION STATE ==========
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
@@ -75,7 +74,6 @@ export default function PlayerListingPage() {
     }
   }, [selectedMonth, selectedYear, selectedAsset]);
 
-  // Reset ke halaman 1 saat filter berubah
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedMonth, selectedYear, selectedAsset]);
@@ -93,127 +91,124 @@ export default function PlayerListingPage() {
   };
 
   const fetchUploads = async () => {
-  try {
-    setLoading(true);
-    
-    if (!selectedMonth || !selectedYear) {
+    try {
+      setLoading(true);
+      
+      if (!selectedMonth || !selectedYear) {
+        setLoading(false);
+        return;
+      }
+      
+      const monthIndex = months.indexOf(selectedMonth) + 1;
+      const monthPadded = String(monthIndex).padStart(2, '0');
+      const startDate = `${selectedYear}-${monthPadded}-01`;
+      // @ts-ignore
+      const lastDay = new Date(selectedYear, monthIndex, 0).getDate();
+      const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
+
+      let allListings: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('player_listing')
+          .select('upload_id, registration_date, username, file_name, website')
+          .gte('registration_date', startDate)
+          .lte('registration_date', endDate)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allListings = [...allListings, ...data];
+          page++;
+        }
+        
+        if (!data || data.length < pageSize) {
+          hasMore = false;
+        }
+      }
+
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset);
+        if (asset) {
+          allListings = allListings.filter(item => item.website === asset.asset_code);
+        }
+      }
+
+      if (!allListings || allListings.length === 0) {
+        setUploads([]);
+        setLoading(false);
+        return;
+      }
+
+      const fileMap = new Map<string, {
+        file_name: string;
+        website: string;
+        total_rows: number;
+        min_date: string;
+        max_date: string;
+        active_players: Set<string>;
+      }>();
+
+      for (const item of allListings) {
+        const fileName = item.file_name;
+        const regDate = item.registration_date?.split(' ')[0];
+        
+        if (!fileMap.has(fileName)) {
+          fileMap.set(fileName, {
+            file_name: fileName,
+            website: item.website || 'XLY',
+            total_rows: 0,
+            min_date: regDate || '',
+            max_date: regDate || '',
+            active_players: new Set()
+          });
+        }
+        
+        const file = fileMap.get(fileName)!;
+        file.total_rows++;
+        file.active_players.add(item.username);
+        
+        if (regDate && regDate < file.min_date) file.min_date = regDate;
+        if (regDate && regDate > file.max_date) file.max_date = regDate;
+      }
+
+      const uniqueFileNames = Array.from(fileMap.keys());
+      const { data: uploadsData } = await supabase
+        .from('player_uploads')
+        .select('file_name, upload_date')
+        .in('file_name', uniqueFileNames);
+
+      const uploadDateMap = new Map();
+      uploadsData?.forEach(u => {
+        uploadDateMap.set(u.file_name, u.upload_date);
+      });
+
+      const result = Array.from(fileMap.values()).map(file => ({
+        id: file.file_name,
+        upload_id: file.file_name,
+        upload_date: uploadDateMap.get(file.file_name) || '',
+        file_name: file.file_name,
+        website: file.website,
+        total_rows: file.total_rows,
+        status: 'completed',
+        min_date: file.min_date,
+        max_date: file.max_date,
+        active_players: file.active_players.size
+      }));
+
+      setUploads(result);
+      
+    } catch (error) {
+      console.error('Error fetching uploads:', error);
+    } finally {
       setLoading(false);
-      return;
     }
-    
-    const monthIndex = months.indexOf(selectedMonth) + 1;
-    const monthPadded = String(monthIndex).padStart(2, '0');
-    const startDate = `${selectedYear}-${monthPadded}-01`;
-    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
-    const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
+  };
 
-    // ========== AMBIL SEMUA DATA DENGAN LOOP PAGINATION ==========
-    let allListings: any[] = [];
-    let page = 0;
-    const pageSize = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('player_listing')
-        .select('upload_id, registration_date, username, file_name, website')
-        .gte('registration_date', startDate)
-        .lte('registration_date', endDate)
-        .range(page * pageSize, (page + 1) * pageSize - 1);
-
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        allListings = [...allListings, ...data];
-        page++;
-      }
-      
-      if (!data || data.length < pageSize) {
-        hasMore = false;
-      }
-    }
-
-    if (selectedAsset !== 'all') {
-      const asset = assets.find(a => a.id === selectedAsset);
-      if (asset) {
-        allListings = allListings.filter(item => item.website === asset.asset_code);
-      }
-    }
-
-    if (!allListings || allListings.length === 0) {
-      setUploads([]);
-      setLoading(false);
-      return;
-    }
-
-    // ========== GROUP BY FILE_NAME ==========
-    const fileMap = new Map<string, {
-      file_name: string;
-      website: string;
-      total_rows: number;
-      min_date: string;
-      max_date: string;
-      active_players: Set<string>;
-    }>();
-
-    for (const item of allListings) {
-      const fileName = item.file_name;
-      const regDate = item.registration_date?.split(' ')[0];
-      
-      if (!fileMap.has(fileName)) {
-        fileMap.set(fileName, {
-          file_name: fileName,
-          website: item.website || 'XLY',
-          total_rows: 0,
-          min_date: regDate || '',
-          max_date: regDate || '',
-          active_players: new Set()
-        });
-      }
-      
-      const file = fileMap.get(fileName)!;
-      file.total_rows++;
-      file.active_players.add(item.username);
-      
-      if (regDate && regDate < file.min_date) file.min_date = regDate;
-      if (regDate && regDate > file.max_date) file.max_date = regDate;
-    }
-
-    // ========== AMBIL UPLOAD_DATE DARI PLAYER_UPLOADS ==========
-    const uniqueFileNames = Array.from(fileMap.keys());
-    const { data: uploadsData } = await supabase
-      .from('player_uploads')
-      .select('file_name, upload_date')
-      .in('file_name', uniqueFileNames);
-
-    const uploadDateMap = new Map();
-    uploadsData?.forEach(u => {
-      uploadDateMap.set(u.file_name, u.upload_date);
-    });
-
-    const result = Array.from(fileMap.values()).map(file => ({
-      id: file.file_name,
-      upload_id: file.file_name,
-      upload_date: uploadDateMap.get(file.file_name) || '',
-      file_name: file.file_name,
-      website: file.website,
-      total_rows: file.total_rows,
-      status: 'completed',
-      min_date: file.min_date,
-      max_date: file.max_date,
-      active_players: file.active_players.size
-    }));
-
-    setUploads(result);
-    
-  } catch (error) {
-    console.error('Error fetching uploads:', error);
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // ========== PAGINATION LOGIC ==========
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = uploads.slice(indexOfFirstItem, indexOfLastItem);
@@ -228,9 +223,6 @@ export default function PlayerListingPage() {
     setItemsPerPage(Number(e.target.value));
     setCurrentPage(1);
   };
-
-  // ========== FUNGSI LAINNYA (handleDrag, handleDrop, parseExcelDate, parseCurrency, processFile) ==========
-  // ... (sama seperti sebelumnya, gue potong karena panjang, tapi tetap sama)
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -277,7 +269,7 @@ export default function PlayerListingPage() {
         return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
       }
 
-      const str = value.toString().trim();
+      const str = String(value).trim();
       
       const regMon = /^(\d{1,2})[- ]([A-Za-z]+)[- ](\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?$/;
       const matchMon = str.match(regMon);
@@ -299,7 +291,9 @@ export default function PlayerListingPage() {
         let day = parts[0].padStart(2, '0');
         let month = parts[1].padStart(2, '0');
         let year = parts[2];
-        if (parseInt(month) > 12 && parseInt(day) <= 12) {
+        const monthNum = parseInt(month, 10);
+        const dayNum = parseInt(day, 10);
+        if (monthNum > 12 && dayNum <= 12) {
           [day, month] = [month, day];
         }
         return `${year}-${month}-${day} ${timePart}`;
@@ -323,38 +317,47 @@ export default function PlayerListingPage() {
   const parseCurrency = (value: any): number => {
     if (!value) return 0;
     if (typeof value === 'number') return value;
-    const str = value.toString().replace(/[^0-9.-]/g, '');
-    return parseFloat(str) || 0;
+    const str = String(value).replace(/[^0-9.-]/g, '');
+    const num = parseFloat(str);
+    return isNaN(num) ? 0 : num;
   };
 
-  const processFile = async () => {
-  if (!selectedFile) return;
-  
-  setUploading(true);
-  setUploadProgress('Membaca file...');
-  
-  try {
-    const arrayBuffer = await selectedFile.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    
-    const rows = XLSX.utils.sheet_to_json(worksheet, { 
-      header: 1,
-      defval: '',
-      blankrows: false
-    }) as any[][];
-    
-    const headerRow = rows[1];
-    const dataRows = rows.slice(2);
-    
-    const findIndex = (keyword: string) => {
+  const safeGetRowValue = (row: any[], index: number, defaultValue: any = null): any => {
+    if (index === undefined || index === null || index === -1) return defaultValue;
+    if (!row || index >= row.length) return defaultValue;
+    const val = row[index];
+    return val !== undefined && val !== '' ? val : defaultValue;
+  };
+
+  const detectFileType = (headerRow: any[]): string => {
+    const headerStr = headerRow.join(' ').toLowerCase();
+    if (headerStr.includes('brand') && headerStr.includes('user name') && headerStr.includes('total deposit')) {
+      return 'report';
+    }
+    return 'listing';
+  };
+
+  const getIndexMapping = (headerRow: any[], fileType: string) => {
+    const findIndex = (keyword: string): number => {
       return headerRow.findIndex((h: string) => 
         h && h.toString().toLowerCase().includes(keyword.toLowerCase())
       );
     };
     
-    const idx = {
+    if (fileType === 'report') {
+      return {
+        no: findIndex('no'),
+        username: findIndex('user name'),
+        full_name: findIndex('full name'),
+        contact_info: findIndex('contact no'),
+        registration_date: findIndex('registration date'),
+        last_login: findIndex('last login date'),
+        total_deposit: findIndex('total deposit'),
+        total_withdrawal: findIndex('total withdrawal'),
+      };
+    }
+    
+    return {
       no: findIndex('no'),
       registration: findIndex('registration'),
       username: findIndex('username'),
@@ -376,128 +379,190 @@ export default function PlayerListingPage() {
       last_transfer_in: findIndex('last transfer in'),
       current_outstanding_bet: findIndex('current outstanding bet')
     };
+  };
+
+  const processFile = async () => {
+    if (!selectedFile) return;
     
-    if (idx.username === -1) {
-      throw new Error('Kolom Username tidak ditemukan');
-    }
+    setUploading(true);
+    setUploadProgress('Membaca file...');
     
-    setUploadProgress('Memvalidasi data...');
-    
-    const uploadId = crypto.randomUUID();
-    const uploadDate = new Date().toISOString().split('T')[0];
-    const website = selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY';
-    
-    const playerDetails: any[] = [];
-    let errorCount = 0;
-    let firstRegistrationDate: string | null = null;
-    
-    for (let i = 0; i < dataRows.length; i++) {
-      const row = dataRows[i];
-      if (!row || row.length === 0) continue;
+    try {
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
       
-      const username = row[idx.username];
-      if (!username) {
-        errorCount++;
-        continue;
+      const rows = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        defval: '',
+        blankrows: false
+      }) as any[][];
+      
+      let headerRow: any[] = [];
+      let dataStartRow = 0;
+      
+      for (let i = 0; i < Math.min(5, rows.length); i++) {
+        const row = rows[i];
+        if (row && row.some(cell => cell && (String(cell).toLowerCase().includes('username') || String(cell).toLowerCase().includes('user name')))) {
+          headerRow = row;
+          dataStartRow = i + 1;
+          break;
+        }
       }
       
-      const registration = row[idx.registration] || '';
-      let registrationDate = null;
-      
-      const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}[- ][A-Za-z]+[- ][0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
-      if (regMatch) {
-        registrationDate = parseExcelDate(regMatch[1]);
+      if (headerRow.length === 0) {
+        headerRow = rows[1] || rows[0];
+        dataStartRow = 2;
       }
       
-      if (registrationDate && !firstRegistrationDate) {
-        firstRegistrationDate = registrationDate;
+      const dataRows = rows.slice(dataStartRow);
+      const fileType = detectFileType(headerRow);
+      console.log(`📄 Detected file type: ${fileType}`);
+      
+      const idx = getIndexMapping(headerRow, fileType);
+      
+      if (idx.username === undefined || idx.username === -1) {
+        throw new Error('Kolom Username / User Name tidak ditemukan');
       }
       
-      playerDetails.push({
-        upload_id: uploadId,
-        registration_date: registrationDate,
-        no: parseInt(row[idx.no]) || i + 1,
-        registration: registration,
-        username: username,
-        account_type: row[idx.account_type] || null,
-        loyalty_level: row[idx.loyalty_level] || null,
-        full_name: row[idx.full_name] || null,
-        player_group: row[idx.player_group] || null,
-        contact_info: row[idx.contact_info] || null,
-        status: row[idx.status] || null,
-        last_login: row[idx.last_login] || null,
-        referrer_type: row[idx.referrer_type] || null,
-        referral_code: row[idx.referral_code] || null,
-        own_referral_code: row[idx.own_referral_code] || null,
-        source_information: row[idx.source_information] || null,
-        maximum_transaction_pending: parseInt(row[idx.maximum_transaction_pending]) || 0,
-        last_deposit: row[idx.last_deposit] || null,
-        current_loyalty_points: row[idx.current_loyalty_points] || null,
-        current_balance: parseCurrency(row[idx.current_balance]),
-        last_transfer_in: row[idx.last_transfer_in] || null,
-        current_outstanding_bet: parseCurrency(row[idx.current_outstanding_bet]),
-        file_name: selectedFile.name,
-        website: website
-      });
+      setUploadProgress('Memvalidasi data...');
+      
+      const uploadId = crypto.randomUUID();
+      const uploadDate = new Date().toISOString().split('T')[0];
+      const website = selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY';
+      
+      const playerDetails: any[] = [];
+      let errorCount = 0;
+      let firstRegistrationDate: string | null = null;
+      
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i];
+        if (!row || row.length === 0) continue;
+        
+        const username = safeGetRowValue(row, idx.username);
+        if (!username) {
+          errorCount++;
+          continue;
+        }
+        
+        let registrationDate = null;
+        
+        if (fileType === 'report') {
+          const regDateRaw = safeGetRowValue(row, idx.registration_date);
+          if (regDateRaw) {
+            registrationDate = parseExcelDate(regDateRaw);
+          }
+        } else {
+          const registration = safeGetRowValue(row, idx.registration, '');
+          const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}[- ][A-Za-z]+[- ][0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
+          if (regMatch && regMatch[1]) {
+            registrationDate = parseExcelDate(regMatch[1]);
+          }
+        }
+        
+        if (registrationDate && !firstRegistrationDate) {
+          firstRegistrationDate = registrationDate;
+        }
+        
+        let currentBalance = 0;
+        if (fileType === 'report') {
+          const totalDepositRaw = safeGetRowValue(row, idx.total_deposit, 0);
+          const totalWithdrawalRaw = safeGetRowValue(row, idx.total_withdrawal, 0);
+          currentBalance = parseCurrency(totalDepositRaw) - parseCurrency(totalWithdrawalRaw);
+        }
+        
+        // @ts-ignore - skip type checking untuk numeric conversion
+        const rowNo = safeGetRowValue(row, idx.no, i + 1);
+        // @ts-ignore
+        const maxPendingRaw = safeGetRowValue(row, idx.maximum_transaction_pending, 1);
+        // @ts-ignore
+        const currentBalRaw = fileType === 'report' ? currentBalance : safeGetRowValue(row, idx.current_balance, 0);
+        // @ts-ignore
+        const outstandingBetRaw = fileType === 'report' ? 0 : safeGetRowValue(row, idx.current_outstanding_bet, 0);
+        
+        playerDetails.push({
+          upload_id: uploadId,
+          registration_date: registrationDate,
+          no: parseInt(String(rowNo), 10) || i + 1,
+          registration: fileType === 'report' ? `Registration Date: ${registrationDate || ''}` : safeGetRowValue(row, idx.registration, ''),
+          username: username,
+          account_type: fileType === 'report' ? 'Live' : safeGetRowValue(row, idx.account_type, null),
+          loyalty_level: fileType === 'report' ? 'Bronze' : safeGetRowValue(row, idx.loyalty_level, null),
+          full_name: safeGetRowValue(row, idx.full_name, null),
+          player_group: safeGetRowValue(row, idx.player_group, null),
+          contact_info: safeGetRowValue(row, idx.contact_info, null),
+          status: fileType === 'report' ? 'Aktif' : safeGetRowValue(row, idx.status, 'Aktif'),
+          last_login: safeGetRowValue(row, idx.last_login, null),
+          referrer_type: safeGetRowValue(row, idx.referrer_type, null),
+          referral_code: safeGetRowValue(row, idx.referral_code, null),
+          own_referral_code: safeGetRowValue(row, idx.own_referral_code, null),
+          source_information: safeGetRowValue(row, idx.source_information, null),
+          maximum_transaction_pending: parseInt(String(maxPendingRaw), 10) || 1,
+          last_deposit: safeGetRowValue(row, idx.last_deposit, null),
+          current_loyalty_points: safeGetRowValue(row, idx.current_loyalty_points, null),
+          current_balance: parseCurrency(currentBalRaw),
+          last_transfer_in: safeGetRowValue(row, idx.last_transfer_in, null),
+          current_outstanding_bet: parseCurrency(outstandingBetRaw),
+          file_name: selectedFile.name,
+          website: website
+        });
+      }
+
+      if (playerDetails.length === 0) throw new Error('Tidak ada data valid');
+
+      const registrationMonth = firstRegistrationDate ? firstRegistrationDate.substring(0, 7) : uploadDate.substring(0, 7);
+      
+      setUploadProgress(`Menyimpan metadata upload...`);
+      
+      const { error: uploadError } = await supabase
+        .from('player_uploads')
+        .insert([{
+          upload_id: uploadId,
+          upload_date: uploadDate,
+          registration_month: registrationMonth,
+          file_name: selectedFile.name,
+          total_rows: playerDetails.length,
+          status: 'completed',
+          website: website
+        }]);
+
+      if (uploadError) throw uploadError;
+
+      const BATCH_SIZE = 500;
+      let successCount = 0;
+      
+      for (let i = 0; i < playerDetails.length; i += BATCH_SIZE) {
+        const batch = playerDetails.slice(i, i + BATCH_SIZE);
+        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(playerDetails.length / BATCH_SIZE);
+        
+        setUploadProgress(`Menyimpan data: batch ${batchNum}/${totalBatches} (${batch.length} data)...`);
+        
+        const { error: listingError } = await supabase
+          .from('player_listing')
+          .insert(batch);
+        
+        if (listingError) throw listingError;
+        
+        successCount += batch.length;
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      alert(`✅ Berhasil! ${successCount} data player diupload (${errorCount} baris error/skip)\n📅 Bulan Registrasi: ${registrationMonth}`);
+      setShowModal(false);
+      setSelectedFile(null);
+      fetchUploads();
+      
+    } catch (error: any) {
+      console.error('Error:', error);
+      alert('Gagal: ' + error.message);
+    } finally {
+      setUploading(false);
+      setUploadProgress('');
     }
-
-    if (playerDetails.length === 0) throw new Error('Tidak ada data valid');
-
-    const registrationMonth = firstRegistrationDate ? firstRegistrationDate.substring(0, 7) : uploadDate.substring(0, 7);
-    
-    // ========== INSERT KE PLAYER_UPLOADS (SEKALI AJA) ==========
-    setUploadProgress(`Menyimpan metadata upload...`);
-    
-    const { error: uploadError } = await supabase
-      .from('player_uploads')
-      .insert([{
-        upload_id: uploadId,
-        upload_date: uploadDate,
-        registration_month: registrationMonth,
-        file_name: selectedFile.name,
-        total_rows: playerDetails.length,
-        status: 'completed',
-        website: website
-      }]);
-
-    if (uploadError) throw uploadError;
-
-    // ========== BATCH INSERT KE PLAYER_LISTING (PER 500 BIAR AMAN) ==========
-    const BATCH_SIZE = 500;
-    let successCount = 0;
-    
-    for (let i = 0; i < playerDetails.length; i += BATCH_SIZE) {
-      const batch = playerDetails.slice(i, i + BATCH_SIZE);
-      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-      const totalBatches = Math.ceil(playerDetails.length / BATCH_SIZE);
-      
-      setUploadProgress(`Menyimpan data: batch ${batchNum}/${totalBatches} (${batch.length} data)...`);
-      
-      const { error: listingError } = await supabase
-        .from('player_listing')
-        .insert(batch);
-      
-      if (listingError) throw listingError;
-      
-      successCount += batch.length;
-      
-      // Jeda 500ms biar ga kena rate limit
-      await new Promise(resolve => setTimeout(resolve, 500));
-    }
-
-    alert(`✅ Berhasil! ${successCount} data player diupload (${errorCount} baris error/skip)\n📅 Bulan Registrasi: ${registrationMonth}`);
-    setShowModal(false);
-    setSelectedFile(null);
-    fetchUploads();
-    
-  } catch (error: any) {
-    console.error('Error:', error);
-    alert('Gagal: ' + error.message);
-  } finally {
-    setUploading(false);
-    setUploadProgress('');
-  }
-};
+  };
 
   const getStatusColor = (status: string) => {
     switch(status?.toLowerCase()) {
@@ -506,25 +571,19 @@ export default function PlayerListingPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
   const formatPeriod = (minDate: string, maxDate: string) => {
     if (!minDate || !maxDate) return '-';
-    const min = new Date(minDate);
-    const max = new Date(maxDate);
-    const format = (d: Date) => d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    if (minDate === maxDate) {
-      return format(min);
+    try {
+      const min = new Date(minDate);
+      const max = new Date(maxDate);
+      const format = (d: Date) => d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      if (minDate === maxDate) {
+        return format(min);
+      }
+      return `${format(min)} s/d ${format(max)}`;
+    } catch {
+      return '-';
     }
-    return `${format(min)} s/d ${format(max)}`;
   };
 
   if (loading) {
@@ -640,7 +699,6 @@ export default function PlayerListingPage() {
         </table>
       </div>
 
-      {/* ========== PAGINATION COMPONENT ========== */}
       {totalPages > 1 && (
         <div className="flex justify-between items-center mt-6">
           <div className="text-sm text-[#A7D8FF]">
@@ -690,7 +748,6 @@ export default function PlayerListingPage() {
         </div>
       )}
 
-      {/* MODAL UPLOAD */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
