@@ -256,6 +256,7 @@ export default function PlayerListingPage() {
     if (!value) return null;
 
     try {
+      // Handle Excel serial number
       if (typeof value === 'number') {
         const excelEpoch = new Date(Date.UTC(1899, 11, 30));
         const date = new Date(excelEpoch.getTime() + value * 86400000);
@@ -270,38 +271,32 @@ export default function PlayerListingPage() {
 
       const str = value.toString().trim();
       
-      const regMon = /^(\d{1,2})[- ]([A-Za-z]+)[- ](\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?$/;
-      const matchMon = str.match(regMon);
-      if (matchMon) {
-        const day = matchMon[1].padStart(2, '0');
-        let monthName = matchMon[2].toLowerCase();
-        if (monthName.length > 3) {
-          monthName = monthName.substring(0, 3);
-        }
-        const year = matchMon[3];
-        const time = matchMon[4] || '00:00:00';
+      // Format: 28-Mar-2026 23:57:04
+      const dateRegex = /(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{2}:\d{2}:\d{2})/;
+      const match = str.match(dateRegex);
+      if (match) {
+        const day = match[1].padStart(2, '0');
+        const monthName = match[2].toLowerCase();
+        const year = match[3];
+        const time = match[4];
         const month = monthMap[monthName] || '01';
         return `${year}-${month}-${day} ${time}`;
       }
       
+      // Format: DD/MM/YYYY HH:MM:SS
       if (str.includes('/')) {
         const [datePart, timePart = '00:00:00'] = str.split(' ');
         const parts = datePart.split('/');
         let day = parts[0].padStart(2, '0');
         let month = parts[1].padStart(2, '0');
         let year = parts[2];
-        if (parseInt(month) > 12 && parseInt(day) <= 12) {
-          [day, month] = [month, day];
-        }
         return `${year}-${month}-${day} ${timePart}`;
       }
       
-      if (str.includes('-')) {
+      // Format: YYYY-MM-DD HH:MM:SS
+      if (str.includes('-') && str[0] === '2') {
         const [datePart, timePart = '00:00:00'] = str.split(' ');
-        const parts = datePart.split('-');
-        if (parts.length === 3 && parts[0].length === 4) {
-          return `${parts[0]}-${parts[1]}-${parts[2]} ${timePart}`;
-        }
+        return `${datePart} ${timePart}`;
       }
       
       return str;
@@ -311,90 +306,20 @@ export default function PlayerListingPage() {
     }
   };
 
-  const parseCurrency = (value: any): number => {
-    if (!value) return 0;
-    if (typeof value === 'number') return value;
-    const str = value.toString().replace(/[^0-9.-]/g, '');
-    return parseFloat(str) || 0;
-  };
-
-  // ===========================================
-  // DETECT FILE TYPE (PlayerListing atau ReportPlayer)
-  // ===========================================
-  const detectFileType = (headerRow: any[]): string => {
-    const headerStr = headerRow.join(' ').toLowerCase();
-    
-    // Cek ReportPlayer
-    if (headerStr.includes('brand') && headerStr.includes('user name') && headerStr.includes('total deposit')) {
-      return 'report';
+  // Fungsi untuk mendapatkan kolom dari header yang sudah diperbaiki
+  const getColumnIndex = (headerRow: any[], searchTerms: string[]): number => {
+    for (let i = 0; i < headerRow.length; i++) {
+      const cell = headerRow[i];
+      if (cell) {
+        const cellStr = cell.toString().toLowerCase();
+        for (const term of searchTerms) {
+          if (cellStr.includes(term.toLowerCase())) {
+            return i;
+          }
+        }
+      }
     }
-    
-    // Cek PlayerListing
-    if (headerStr.includes('registration') && headerStr.includes('account type')) {
-      return 'listing';
-    }
-    
-    // Default ke listing
-    return 'listing';
-  };
-
-  // ===========================================
-  // GET COLUMN INDEX MAPPING
-  // ===========================================
-  const getColumnMapping = (headerRow: any[], fileType: string) => {
-    const findIndex = (keyword: string) => {
-      return headerRow.findIndex((h: string) => 
-        h && h.toString().toLowerCase().includes(keyword.toLowerCase())
-      );
-    };
-    
-    if (fileType === 'report') {
-      return {
-        no: findIndex('no'),
-        brand: findIndex('brand'),
-        username: findIndex('user name'),
-        full_name: findIndex('full name'),
-        contact_no: findIndex('contact no'),
-        whatsapp: findIndex('whatsapp'),
-        referral_code: findIndex('referral code'),
-        kyc_verification: findIndex('kyc verification'),
-        own_referral_code: findIndex('own referral code'),
-        registration_date: findIndex('registration date'),
-        last_login_date: findIndex('last login date'),
-        total_deposit: findIndex('total deposit'),
-        total_withdrawal: findIndex('total withdrawal')
-      };
-    }
-    
-    // PlayerListing mapping
-    return {
-      no: findIndex('no'),
-      registration: findIndex('registration'),
-      username: findIndex('username'),
-      account_type: findIndex('account type'),
-      loyalty_level: findIndex('loyalty level'),
-      full_name: findIndex('full name'),
-      player_group: findIndex('player group'),
-      contact_info: findIndex('contact info'),
-      status: findIndex('status'),
-      last_login: findIndex('last login'),
-      referrer_type: findIndex('referrer type'),
-      referral_code: findIndex('referral code'),
-      own_referral_code: findIndex('own referral code'),
-      source_information: findIndex('source information'),
-      maximum_transaction_pending: findIndex('maximum transaction pending'),
-      last_deposit: findIndex('last deposit'),
-      current_loyalty_points: findIndex('current loyalty points'),
-      current_balance: findIndex('current balance'),
-      last_transfer_in: findIndex('last transfer in'),
-      current_outstanding_bet: findIndex('current outstanding bet')
-    };
-  };
-
-  const safeGetRowValue = (row: any[], idx: number, defaultValue: any = null): any => {
-    if (idx === undefined || idx === -1 || idx >= row.length) return defaultValue;
-    const val = row[idx];
-    return val !== undefined && val !== '' ? val : defaultValue;
+    return -1;
   };
 
   const processFile = async () => {
@@ -415,36 +340,58 @@ export default function PlayerListingPage() {
         blankrows: false
       }) as any[][];
       
-      // Cari header row (biasanya di baris 0 atau 1)
+      console.log('Total rows:', rows.length);
+      console.log('First 5 rows:', rows.slice(0, 5));
+      
+      // Cari header row - biasanya di baris index 1 (setelah judul)
       let headerRow: any[] = [];
       let dataStartRow = 0;
       
-      for (let i = 0; i < Math.min(5, rows.length); i++) {
+      for (let i = 0; i < Math.min(10, rows.length); i++) {
         const row = rows[i];
-        if (row && row.some(cell => cell && (
-          String(cell).toLowerCase().includes('username') || 
-          String(cell).toLowerCase().includes('user name') ||
-          String(cell).toLowerCase().includes('brand')
-        ))) {
-          headerRow = row;
-          dataStartRow = i + 1;
-          break;
+        if (row && row.length > 0) {
+          const firstCell = row[0]?.toString().toLowerCase() || '';
+          // Cek apakah ini baris header (berisi "no." atau "registration" atau "username")
+          if (firstCell === 'no.' || firstCell === 'no' || 
+              row.some(cell => cell && cell.toString().toLowerCase().includes('username')) ||
+              row.some(cell => cell && cell.toString().toLowerCase().includes('registration'))) {
+            headerRow = row;
+            dataStartRow = i + 1;
+            console.log('Header found at row:', i, headerRow);
+            break;
+          }
         }
       }
       
-      if (headerRow.length === 0) {
-        headerRow = rows[1] || rows[0];
+      // Jika tidak ketemu, coba gunakan baris 1 sebagai header
+      if (headerRow.length === 0 && rows[1]) {
+        headerRow = rows[1];
         dataStartRow = 2;
+        console.log('Using row 1 as header');
       }
       
-      const dataRows = rows.slice(dataStartRow);
-      const fileType = detectFileType(headerRow);
-      console.log(`📄 Detected file type: ${fileType}`);
+      if (headerRow.length === 0) {
+        throw new Error('Header tidak ditemukan. Pastikan file memiliki kolom Username dan Registration.');
+      }
       
-      const col = getColumnMapping(headerRow, fileType);
+      // Cari index kolom yang dibutuhkan
+      const usernameIdx = getColumnIndex(headerRow, ['username']);
+      const registrationIdx = getColumnIndex(headerRow, ['registration']);
+      const fullNameIdx = getColumnIndex(headerRow, ['full name']);
+      const accountTypeIdx = getColumnIndex(headerRow, ['account type']);
+      const loyaltyLevelIdx = getColumnIndex(headerRow, ['loyalty level']);
+      const statusIdx = getColumnIndex(headerRow, ['status']);
       
-      if (col.username === undefined || col.username === -1) {
-        throw new Error('Kolom Username / User Name tidak ditemukan');
+      console.log('Column indexes:', {
+        usernameIdx, registrationIdx, fullNameIdx, accountTypeIdx, loyaltyLevelIdx, statusIdx
+      });
+      
+      if (usernameIdx === -1) {
+        throw new Error('Kolom Username tidak ditemukan di file');
+      }
+      
+      if (registrationIdx === -1) {
+        throw new Error('Kolom Registration tidak ditemukan di file');
       }
       
       setUploadProgress('Memvalidasi data...');
@@ -457,65 +404,60 @@ export default function PlayerListingPage() {
       let errorCount = 0;
       let firstRegistrationDate: string | null = null;
       
+      const dataRows = rows.slice(dataStartRow);
+      console.log(`Processing ${dataRows.length} data rows`);
+      
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
         if (!row || row.length === 0) continue;
         
-        const username = safeGetRowValue(row, col.username);
+        const username = row[usernameIdx]?.toString().trim();
         if (!username) {
           errorCount++;
           continue;
         }
         
-        let registrationDate = null;
+        // Ambil registration text dan ekstrak tanggal
+        const registrationText = row[registrationIdx]?.toString() || '';
+        let registrationDate: string | null = null;
         
-        if (fileType === 'report') {
-          // ReportPlayer: registration_date langsung dari kolom
-          const regDateRaw = safeGetRowValue(row, col.registration_date);
-          if (regDateRaw) {
-            registrationDate = parseExcelDate(regDateRaw);
-          }
-        } else {
-          // PlayerListing: ambil dari kolom registration yang berisi teks
-          const registration = safeGetRowValue(row, col.registration, '');
-          const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}[- ][A-Za-z]+[- ][0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
-          if (regMatch && regMatch[1]) {
-            registrationDate = parseExcelDate(regMatch[1]);
-          }
+        // Extract Registration Date from text: "Registration Date :28-Mar-2026 23:57:04"
+        const dateMatch = registrationText.match(/Registration Date\s*:\s*(\d{1,2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})/i);
+        if (dateMatch && dateMatch[1]) {
+          registrationDate = parseExcelDate(dateMatch[1]);
         }
         
         if (registrationDate && !firstRegistrationDate) {
           firstRegistrationDate = registrationDate;
         }
         
-        let currentBalance = 0;
-        if (fileType === 'report') {
-          const totalDeposit = parseCurrency(safeGetRowValue(row, col.total_deposit, 0));
-          const totalWithdrawal = parseCurrency(safeGetRowValue(row, col.total_withdrawal, 0));
-          currentBalance = totalDeposit - totalWithdrawal;
-        }
+        // Ambil data lainnya
+        const fullName = row[fullNameIdx]?.toString() || null;
+        const accountType = row[accountTypeIdx]?.toString() || 'Live';
+        const loyaltyLevel = row[loyaltyLevelIdx]?.toString() || 'Bronze';
+        const status = row[statusIdx]?.toString() || 'Aktif';
         
         playerDetails.push({
           upload_id: uploadId,
           registration_date: registrationDate,
-          no: parseInt(safeGetRowValue(row, col.no, i + 1)) || i + 1,
-          registration: fileType === 'report' ? `Registration Date: ${registrationDate || ''}` : safeGetRowValue(row, col.registration, ''),
+          no: i + 1,
+          registration: registrationText,
           username: username,
-          account_type: fileType === 'report' ? 'Live' : safeGetRowValue(row, col.account_type, null),
-          loyalty_level: fileType === 'report' ? 'Bronze' : safeGetRowValue(row, col.loyalty_level, null),
-          full_name: safeGetRowValue(row, col.full_name, null),
-          player_group: fileType === 'report' ? null : safeGetRowValue(row, col.player_group, null),
-          contact_info: fileType === 'report' ? safeGetRowValue(row, col.contact_no, null) : safeGetRowValue(row, col.contact_info, null),
-          status: 'Aktif',
-          last_login: fileType === 'report' ? safeGetRowValue(row, col.last_login_date, null) : safeGetRowValue(row, col.last_login, null),
+          account_type: accountType,
+          loyalty_level: loyaltyLevel,
+          full_name: fullName,
+          player_group: null,
+          contact_info: null,
+          status: status,
+          last_login: null,
           referrer_type: null,
-          referral_code: safeGetRowValue(row, col.referral_code, null),
-          own_referral_code: safeGetRowValue(row, col.own_referral_code, null),
+          referral_code: null,
+          own_referral_code: null,
           source_information: null,
           maximum_transaction_pending: 1,
           last_deposit: null,
           current_loyalty_points: null,
-          current_balance: currentBalance,
+          current_balance: 0,
           last_transfer_in: null,
           current_outstanding_bet: 0,
           file_name: selectedFile.name,
@@ -523,7 +465,9 @@ export default function PlayerListingPage() {
         });
       }
 
-      if (playerDetails.length === 0) throw new Error('Tidak ada data valid');
+      if (playerDetails.length === 0) {
+        throw new Error('Tidak ada data valid yang bisa diupload');
+      }
 
       const registrationMonth = firstRegistrationDate ? firstRegistrationDate.substring(0, 7) : uploadDate.substring(0, 7);
       
@@ -543,7 +487,7 @@ export default function PlayerListingPage() {
 
       if (uploadError) throw uploadError;
 
-      // ========== BATCH INSERT KE PLAYER_LISTING (PER 500) ==========
+      // BATCH INSERT KE PLAYER_LISTING (PER 500)
       const BATCH_SIZE = 500;
       let successCount = 0;
       
@@ -571,8 +515,8 @@ export default function PlayerListingPage() {
       fetchUploads();
       
     } catch (error: any) {
-      console.error('Error:', error);
-      alert('Gagal: ' + error.message);
+      console.error('Error detail:', error);
+      alert('Gagal upload: ' + error.message);
     } finally {
       setUploading(false);
       setUploadProgress('');
