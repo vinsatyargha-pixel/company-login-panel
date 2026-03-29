@@ -62,14 +62,14 @@ export default function DataRawPage() {
         .order('upload_date', { ascending: false })
         .limit(1);
 
-      // Winlose Data - ambil max_date (tanggal data terakhir, bukan upload_date)
+      // Winlose Data - ambil period_end (tanggal data terakhir) BUKAN upload_date
       const { data: winloseData } = await supabase
         .from('winlose_uploads')
-        .select('max_date')
-        .order('max_date', { ascending: false })
+        .select('period_end')
+        .order('period_end', { ascending: false })
         .limit(1);
 
-      // Player Listing - ambil max_date (tanggal registrasi terakhir, bukan upload_date)
+      // Player Listing - ambil max_date (tanggal registrasi terakhir) dari player_uploads
       const { data: playerData } = await supabase
         .from('player_uploads')
         .select('max_date')
@@ -81,7 +81,7 @@ export default function DataRawPage() {
         dp: dpData?.[0]?.upload_date || null,
         wd: wdData?.[0]?.upload_date || null,
         adj: adjData?.[0]?.upload_date || null,
-        winlose: winloseData?.[0]?.max_date || null,
+        winlose: winloseData?.[0]?.period_end || null,
         player: playerData?.[0]?.max_date || null
       });
       
