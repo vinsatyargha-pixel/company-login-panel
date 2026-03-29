@@ -35,7 +35,7 @@ export default function DataRawPage() {
       setLoading(true);
       
       const tables = [
-        { name: 'cs', table: 'chat_uploads' },           // ← GANTI jadi chat_uploads
+        { name: 'cs', table: 'chat_uploads' },
         { name: 'dp', table: 'deposit_uploads' },
         { name: 'wd', table: 'withdrawal_uploads' },
         { name: 'adj', table: 'adjustment_uploads' },
@@ -67,15 +67,14 @@ export default function DataRawPage() {
     }
   };
 
-  const formatDate = (dateString: string | null) => {
+  // Format tanggal saja, tanpa jam
+  const formatDateOnly = (dateString: string | null) => {
     if (!dateString) return 'Belum ada data';
     const date = new Date(dateString);
-    return date.toLocaleString('id-ID', {
+    return date.toLocaleDateString('id-ID', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric'
     });
   };
 
@@ -149,27 +148,27 @@ export default function DataRawPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
           <div className="bg-[#1A2F4A]/30 p-3 rounded-lg text-center">
             <div className="text-blue-400 font-medium mb-1">CS Data</div>
-            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDate(lastUploads.cs)}</div>
+            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDateOnly(lastUploads.cs)}</div>
           </div>
           <div className="bg-[#1A2F4A]/30 p-3 rounded-lg text-center">
             <div className="text-green-400 font-medium mb-1">DP Data</div>
-            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDate(lastUploads.dp)}</div>
+            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDateOnly(lastUploads.dp)}</div>
           </div>
           <div className="bg-[#1A2F4A]/30 p-3 rounded-lg text-center">
             <div className="text-orange-400 font-medium mb-1">WD Data</div>
-            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDate(lastUploads.wd)}</div>
+            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDateOnly(lastUploads.wd)}</div>
           </div>
           <div className="bg-[#1A2F4A]/30 p-3 rounded-lg text-center">
             <div className="text-purple-400 font-medium mb-1">Adjustment</div>
-            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDate(lastUploads.adj)}</div>
+            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDateOnly(lastUploads.adj)}</div>
           </div>
           <div className="bg-[#1A2F4A]/30 p-3 rounded-lg text-center">
             <div className="text-pink-400 font-medium mb-1">Winlose</div>
-            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDate(lastUploads.winlose)}</div>
+            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDateOnly(lastUploads.winlose)}</div>
           </div>
           <div className="bg-[#1A2F4A]/30 p-3 rounded-lg text-center">
             <div className="text-teal-400 font-medium mb-1">Player Listing</div>
-            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDate(lastUploads.player)}</div>
+            <div className="text-[#A7D8FF] text-[10px]">{loading ? 'Loading...' : formatDateOnly(lastUploads.player)}</div>
           </div>
         </div>
       </div>

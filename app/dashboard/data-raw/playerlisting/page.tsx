@@ -102,8 +102,7 @@ export default function PlayerListingPage() {
       const monthIndex = months.indexOf(selectedMonth) + 1;
       const monthPadded = String(monthIndex).padStart(2, '0');
       const startDate = `${selectedYear}-${monthPadded}-01`;
-      // @ts-ignore
-      const lastDay = new Date(selectedYear, monthIndex, 0).getDate();
+      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
       const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
 
       let allListings: any[] = [];
@@ -269,7 +268,7 @@ export default function PlayerListingPage() {
         return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
       }
 
-      const str = String(value).trim();
+      const str = value.toString().trim();
       
       const regMon = /^(\d{1,2})[- ]([A-Za-z]+)[- ](\d{4})(?:\s+(\d{2}:\d{2}:\d{2}))?$/;
       const matchMon = str.match(regMon);
@@ -291,9 +290,7 @@ export default function PlayerListingPage() {
         let day = parts[0].padStart(2, '0');
         let month = parts[1].padStart(2, '0');
         let year = parts[2];
-        const monthNum = parseInt(month, 10);
-        const dayNum = parseInt(day, 10);
-        if (monthNum > 12 && dayNum <= 12) {
+        if (parseInt(month) > 12 && parseInt(day) <= 12) {
           [day, month] = [month, day];
         }
         return `${year}-${month}-${day} ${timePart}`;
@@ -317,28 +314,35 @@ export default function PlayerListingPage() {
   const parseCurrency = (value: any): number => {
     if (!value) return 0;
     if (typeof value === 'number') return value;
-    const str = String(value).replace(/[^0-9.-]/g, '');
-    const num = parseFloat(str);
-    return isNaN(num) ? 0 : num;
+    const str = value.toString().replace(/[^0-9.-]/g, '');
+    return parseFloat(str) || 0;
   };
 
-  const safeGetRowValue = (row: any[], index: number, defaultValue: any = null): any => {
-    if (index === undefined || index === null || index === -1) return defaultValue;
-    if (!row || index >= row.length) return defaultValue;
-    const val = row[index];
-    return val !== undefined && val !== '' ? val : defaultValue;
-  };
-
+  // ===========================================
+  // DETECT FILE TYPE (PlayerListing atau ReportPlayer)
+  // ===========================================
   const detectFileType = (headerRow: any[]): string => {
     const headerStr = headerRow.join(' ').toLowerCase();
+    
+    // Cek ReportPlayer
     if (headerStr.includes('brand') && headerStr.includes('user name') && headerStr.includes('total deposit')) {
       return 'report';
     }
+    
+    // Cek PlayerListing
+    if (headerStr.includes('registration') && headerStr.includes('account type')) {
+      return 'listing';
+    }
+    
+    // Default ke listing
     return 'listing';
   };
 
-  const getIndexMapping = (headerRow: any[], fileType: string) => {
-    const findIndex = (keyword: string): number => {
+  // ===========================================
+  // GET COLUMN INDEX MAPPING
+  // ===========================================
+  const getColumnMapping = (headerRow: any[], fileType: string) => {
+    const findIndex = (keyword: string) => {
       return headerRow.findIndex((h: string) => 
         h && h.toString().toLowerCase().includes(keyword.toLowerCase())
       );
@@ -347,16 +351,22 @@ export default function PlayerListingPage() {
     if (fileType === 'report') {
       return {
         no: findIndex('no'),
+        brand: findIndex('brand'),
         username: findIndex('user name'),
         full_name: findIndex('full name'),
-        contact_info: findIndex('contact no'),
+        contact_no: findIndex('contact no'),
+        whatsapp: findIndex('whatsapp'),
+        referral_code: findIndex('referral code'),
+        kyc_verification: findIndex('kyc verification'),
+        own_referral_code: findIndex('own referral code'),
         registration_date: findIndex('registration date'),
-        last_login: findIndex('last login date'),
+        last_login_date: findIndex('last login date'),
         total_deposit: findIndex('total deposit'),
-        total_withdrawal: findIndex('total withdrawal'),
+        total_withdrawal: findIndex('total withdrawal')
       };
     }
     
+    // PlayerListing mapping
     return {
       no: findIndex('no'),
       registration: findIndex('registration'),
@@ -381,6 +391,12 @@ export default function PlayerListingPage() {
     };
   };
 
+  const safeGetRowValue = (row: any[], idx: number, defaultValue: any = null): any => {
+    if (idx === undefined || idx === -1 || idx >= row.length) return defaultValue;
+    const val = row[idx];
+    return val !== undefined && val !== '' ? val : defaultValue;
+  };
+
   const processFile = async () => {
     if (!selectedFile) return;
     
@@ -399,12 +415,17 @@ export default function PlayerListingPage() {
         blankrows: false
       }) as any[][];
       
+      // Cari header row (biasanya di baris 0 atau 1)
       let headerRow: any[] = [];
       let dataStartRow = 0;
       
       for (let i = 0; i < Math.min(5, rows.length); i++) {
         const row = rows[i];
-        if (row && row.some(cell => cell && (String(cell).toLowerCase().includes('username') || String(cell).toLowerCase().includes('user name')))) {
+        if (row && row.some(cell => cell && (
+          String(cell).toLowerCase().includes('username') || 
+          String(cell).toLowerCase().includes('user name') ||
+          String(cell).toLowerCase().includes('brand')
+        ))) {
           headerRow = row;
           dataStartRow = i + 1;
           break;
@@ -420,9 +441,9 @@ export default function PlayerListingPage() {
       const fileType = detectFileType(headerRow);
       console.log(`📄 Detected file type: ${fileType}`);
       
-      const idx = getIndexMapping(headerRow, fileType);
+      const col = getColumnMapping(headerRow, fileType);
       
-      if (idx.username === undefined || idx.username === -1) {
+      if (col.username === undefined || col.username === -1) {
         throw new Error('Kolom Username / User Name tidak ditemukan');
       }
       
@@ -440,7 +461,7 @@ export default function PlayerListingPage() {
         const row = dataRows[i];
         if (!row || row.length === 0) continue;
         
-        const username = safeGetRowValue(row, idx.username);
+        const username = safeGetRowValue(row, col.username);
         if (!username) {
           errorCount++;
           continue;
@@ -449,12 +470,14 @@ export default function PlayerListingPage() {
         let registrationDate = null;
         
         if (fileType === 'report') {
-          const regDateRaw = safeGetRowValue(row, idx.registration_date);
+          // ReportPlayer: registration_date langsung dari kolom
+          const regDateRaw = safeGetRowValue(row, col.registration_date);
           if (regDateRaw) {
             registrationDate = parseExcelDate(regDateRaw);
           }
         } else {
-          const registration = safeGetRowValue(row, idx.registration, '');
+          // PlayerListing: ambil dari kolom registration yang berisi teks
+          const registration = safeGetRowValue(row, col.registration, '');
           const regMatch = registration.match(/Registration Date\s*:\s*([0-9]{1,2}[- ][A-Za-z]+[- ][0-9]{4}\s[0-9]{2}:[0-9]{2}:[0-9]{2})/i);
           if (regMatch && regMatch[1]) {
             registrationDate = parseExcelDate(regMatch[1]);
@@ -467,59 +490,34 @@ export default function PlayerListingPage() {
         
         let currentBalance = 0;
         if (fileType === 'report') {
-          const totalDepositRaw = safeGetRowValue(row, idx.total_deposit, 0);
-          const totalWithdrawalRaw = safeGetRowValue(row, idx.total_withdrawal, 0);
-          currentBalance = parseCurrency(totalDepositRaw) - parseCurrency(totalWithdrawalRaw);
+          const totalDeposit = parseCurrency(safeGetRowValue(row, col.total_deposit, 0));
+          const totalWithdrawal = parseCurrency(safeGetRowValue(row, col.total_withdrawal, 0));
+          currentBalance = totalDeposit - totalWithdrawal;
         }
-        
-        // @ts-ignore - skip type checking untuk index yang mungkin undefined
-        const rowNo = safeGetRowValue(row, idx.no, i + 1);
-        // @ts-ignore
-        const maxPendingRaw = safeGetRowValue(row, idx.maximum_transaction_pending, 1);
-        // @ts-ignore
-        const currentBalRaw = fileType === 'report' ? currentBalance : safeGetRowValue(row, idx.current_balance, 0);
-        // @ts-ignore
-        const outstandingBetRaw = fileType === 'report' ? 0 : safeGetRowValue(row, idx.current_outstanding_bet, 0);
         
         playerDetails.push({
           upload_id: uploadId,
           registration_date: registrationDate,
-          // @ts-ignore
-          no: parseInt(String(rowNo), 10) || i + 1,
-          registration: fileType === 'report' ? `Registration Date: ${registrationDate || ''}` : safeGetRowValue(row, idx.registration, ''),
+          no: parseInt(safeGetRowValue(row, col.no, i + 1)) || i + 1,
+          registration: fileType === 'report' ? `Registration Date: ${registrationDate || ''}` : safeGetRowValue(row, col.registration, ''),
           username: username,
-          // @ts-ignore
-          account_type: fileType === 'report' ? 'Live' : safeGetRowValue(row, idx.account_type, null),
-          // @ts-ignore
-          loyalty_level: fileType === 'report' ? 'Bronze' : safeGetRowValue(row, idx.loyalty_level, null),
-          // @ts-ignore
-          full_name: safeGetRowValue(row, idx.full_name, null),
-          // @ts-ignore
-          player_group: safeGetRowValue(row, idx.player_group, null),
-          // @ts-ignore
-          contact_info: safeGetRowValue(row, idx.contact_info, null),
-          // @ts-ignore
-          status: fileType === 'report' ? 'Aktif' : safeGetRowValue(row, idx.status, 'Aktif'),
-          // @ts-ignore
-          last_login: safeGetRowValue(row, idx.last_login, null),
-          // @ts-ignore
-          referrer_type: safeGetRowValue(row, idx.referrer_type, null),
-          // @ts-ignore
-          referral_code: safeGetRowValue(row, idx.referral_code, null),
-          // @ts-ignore
-          own_referral_code: safeGetRowValue(row, idx.own_referral_code, null),
-          // @ts-ignore
-          source_information: safeGetRowValue(row, idx.source_information, null),
-          // @ts-ignore
-          maximum_transaction_pending: parseInt(String(maxPendingRaw), 10) || 1,
-          // @ts-ignore
-          last_deposit: safeGetRowValue(row, idx.last_deposit, null),
-          // @ts-ignore
-          current_loyalty_points: safeGetRowValue(row, idx.current_loyalty_points, null),
-          current_balance: parseCurrency(currentBalRaw),
-          // @ts-ignore
-          last_transfer_in: safeGetRowValue(row, idx.last_transfer_in, null),
-          current_outstanding_bet: parseCurrency(outstandingBetRaw),
+          account_type: fileType === 'report' ? 'Live' : safeGetRowValue(row, col.account_type, null),
+          loyalty_level: fileType === 'report' ? 'Bronze' : safeGetRowValue(row, col.loyalty_level, null),
+          full_name: safeGetRowValue(row, col.full_name, null),
+          player_group: fileType === 'report' ? null : safeGetRowValue(row, col.player_group, null),
+          contact_info: fileType === 'report' ? safeGetRowValue(row, col.contact_no, null) : safeGetRowValue(row, col.contact_info, null),
+          status: 'Aktif',
+          last_login: fileType === 'report' ? safeGetRowValue(row, col.last_login_date, null) : safeGetRowValue(row, col.last_login, null),
+          referrer_type: null,
+          referral_code: safeGetRowValue(row, col.referral_code, null),
+          own_referral_code: safeGetRowValue(row, col.own_referral_code, null),
+          source_information: null,
+          maximum_transaction_pending: 1,
+          last_deposit: null,
+          current_loyalty_points: null,
+          current_balance: currentBalance,
+          last_transfer_in: null,
+          current_outstanding_bet: 0,
           file_name: selectedFile.name,
           website: website
         });
@@ -545,6 +543,7 @@ export default function PlayerListingPage() {
 
       if (uploadError) throw uploadError;
 
+      // ========== BATCH INSERT KE PLAYER_LISTING (PER 500) ==========
       const BATCH_SIZE = 500;
       let successCount = 0;
       
@@ -589,17 +588,13 @@ export default function PlayerListingPage() {
 
   const formatPeriod = (minDate: string, maxDate: string) => {
     if (!minDate || !maxDate) return '-';
-    try {
-      const min = new Date(minDate);
-      const max = new Date(maxDate);
-      const format = (d: Date) => d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      if (minDate === maxDate) {
-        return format(min);
-      }
-      return `${format(min)} s/d ${format(max)}`;
-    } catch {
-      return '-';
+    const min = new Date(minDate);
+    const max = new Date(maxDate);
+    const format = (d: Date) => d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (minDate === maxDate) {
+      return format(min);
     }
+    return `${format(min)} s/d ${format(max)}`;
   };
 
   if (loading) {
@@ -764,6 +759,7 @@ export default function PlayerListingPage() {
         </div>
       )}
 
+      {/* MODAL UPLOAD */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
