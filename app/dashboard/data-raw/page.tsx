@@ -34,32 +34,57 @@ export default function DataRawPage() {
     try {
       setLoading(true);
       
-      const tables = [
-        { name: 'cs', table: 'chat_uploads' },
-        { name: 'dp', table: 'deposit_uploads' },
-        { name: 'wd', table: 'withdrawal_uploads' },
-        { name: 'adj', table: 'adjustment_uploads' },
-        { name: 'winlose', table: 'winlose_uploads' },
-        { name: 'player', table: 'player_uploads' }
-      ];
+      // CS Data - ambil upload_date terakhir
+      const { data: csData } = await supabase
+        .from('chat_uploads')
+        .select('upload_date')
+        .order('upload_date', { ascending: false })
+        .limit(1);
 
-      const results: any = {};
+      // DP Data - ambil upload_date terakhir
+      const { data: dpData } = await supabase
+        .from('deposit_uploads')
+        .select('upload_date')
+        .order('upload_date', { ascending: false })
+        .limit(1);
 
-      for (const t of tables) {
-        const { data, error } = await supabase
-          .from(t.table)
-          .select('upload_date')
-          .order('upload_date', { ascending: false })
-          .limit(1);
+      // WD Data - ambil upload_date terakhir
+      const { data: wdData } = await supabase
+        .from('withdrawal_uploads')
+        .select('upload_date')
+        .order('upload_date', { ascending: false })
+        .limit(1);
 
-        if (!error && data && data.length > 0) {
-          results[t.name] = data[0].upload_date;
-        } else {
-          results[t.name] = null;
-        }
-      }
+      // Adjustment Data - ambil upload_date terakhir
+      const { data: adjData } = await supabase
+        .from('adjustment_uploads')
+        .select('upload_date')
+        .order('upload_date', { ascending: false })
+        .limit(1);
 
-      setLastUploads(results);
+      // Winlose Data - ambil max_date (tanggal data terakhir, bukan upload_date)
+      const { data: winloseData } = await supabase
+        .from('winlose_uploads')
+        .select('max_date')
+        .order('max_date', { ascending: false })
+        .limit(1);
+
+      // Player Listing - ambil max_date (tanggal registrasi terakhir, bukan upload_date)
+      const { data: playerData } = await supabase
+        .from('player_uploads')
+        .select('max_date')
+        .order('max_date', { ascending: false })
+        .limit(1);
+
+      setLastUploads({
+        cs: csData?.[0]?.upload_date || null,
+        dp: dpData?.[0]?.upload_date || null,
+        wd: wdData?.[0]?.upload_date || null,
+        adj: adjData?.[0]?.upload_date || null,
+        winlose: winloseData?.[0]?.max_date || null,
+        player: playerData?.[0]?.max_date || null
+      });
+      
     } catch (error) {
       console.error('Error fetching last upload dates:', error);
     } finally {
