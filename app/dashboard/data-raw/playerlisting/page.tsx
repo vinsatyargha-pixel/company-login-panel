@@ -105,6 +105,7 @@ export default function PlayerListingPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate();
       const endDate = `${selectedYear}-${monthPadded}-${lastDay}`;
 
+      // Ambil semua data player_listing dalam range bulan
       let allListings: any[] = [];
       let page = 0;
       const pageSize = 1000;
@@ -130,6 +131,7 @@ export default function PlayerListingPage() {
         }
       }
 
+      // Filter by asset jika dipilih
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset);
         if (asset) {
@@ -143,7 +145,9 @@ export default function PlayerListingPage() {
         return;
       }
 
-      const fileMap = new Map<string, {
+      // Group by upload_id (bukan file_name) karena upload_id unik per upload session
+      const uploadMap = new Map<string, {
+        upload_id: string;
         file_name: string;
         website: string;
         total_rows: number;
@@ -153,13 +157,14 @@ export default function PlayerListingPage() {
       }>();
 
       for (const item of allListings) {
-        const fileName = item.file_name;
+        const uploadId = item.upload_id;
         const regDate = item.registration_date?.split(' ')[0];
         
-        if (!fileMap.has(fileName)) {
-          fileMap.set(fileName, {
-            file_name: fileName,
-            website: item.website || 'XLY',
+        if (!uploadMap.has(uploadId)) {
+          uploadMap.set(uploadId, {
+            upload_id: uploadId,
+            file_name: item.file_name,
+            website: item.website,
             total_rows: 0,
             min_date: regDate || '',
             max_date: regDate || '',
@@ -167,36 +172,37 @@ export default function PlayerListingPage() {
           });
         }
         
-        const file = fileMap.get(fileName)!;
-        file.total_rows++;
-        file.active_players.add(item.username);
+        const upload = uploadMap.get(uploadId)!;
+        upload.total_rows++;
+        upload.active_players.add(item.username);
         
-        if (regDate && regDate < file.min_date) file.min_date = regDate;
-        if (regDate && regDate > file.max_date) file.max_date = regDate;
+        if (regDate && regDate < upload.min_date) upload.min_date = regDate;
+        if (regDate && regDate > upload.max_date) upload.max_date = regDate;
       }
 
-      const uniqueFileNames = Array.from(fileMap.keys());
+      // Ambil upload_date dari tabel player_uploads
+      const uniqueUploadIds = Array.from(uploadMap.keys());
       const { data: uploadsData } = await supabase
         .from('player_uploads')
-        .select('file_name, upload_date')
-        .in('file_name', uniqueFileNames);
+        .select('upload_id, upload_date')
+        .in('upload_id', uniqueUploadIds);
 
       const uploadDateMap = new Map();
       uploadsData?.forEach(u => {
-        uploadDateMap.set(u.file_name, u.upload_date);
+        uploadDateMap.set(u.upload_id, u.upload_date);
       });
 
-      const result = Array.from(fileMap.values()).map(file => ({
-        id: file.file_name,
-        upload_id: file.file_name,
-        upload_date: uploadDateMap.get(file.file_name) || '',
-        file_name: file.file_name,
-        website: file.website,
-        total_rows: file.total_rows,
+      const result = Array.from(uploadMap.values()).map(upload => ({
+        id: upload.upload_id,
+        upload_id: upload.upload_id,
+        upload_date: uploadDateMap.get(upload.upload_id) || '',
+        file_name: upload.file_name,
+        website: upload.website,
+        total_rows: upload.total_rows,
         status: 'completed',
-        min_date: file.min_date,
-        max_date: file.max_date,
-        active_players: file.active_players.size
+        min_date: upload.min_date,
+        max_date: upload.max_date,
+        active_players: upload.active_players.size
       }));
 
       setUploads(result);
@@ -306,7 +312,6 @@ export default function PlayerListingPage() {
     }
   };
 
-  // Fungsi untuk mendapatkan kolom dari header yang sudah diperbaiki
   const getColumnIndex = (headerRow: any[], searchTerms: string[]): number => {
     for (let i = 0; i < headerRow.length; i++) {
       const cell = headerRow[i];
@@ -341,9 +346,8 @@ export default function PlayerListingPage() {
       }) as any[][];
       
       console.log('Total rows:', rows.length);
-      console.log('First 5 rows:', rows.slice(0, 5));
       
-      // Cari header row - biasanya di baris index 1 (setelah judul)
+      // Cari header row
       let headerRow: any[] = [];
       let dataStartRow = 0;
       
@@ -351,19 +355,17 @@ export default function PlayerListingPage() {
         const row = rows[i];
         if (row && row.length > 0) {
           const firstCell = row[0]?.toString().toLowerCase() || '';
-          // Cek apakah ini baris header (berisi "no." atau "registration" atau "username")
           if (firstCell === 'no.' || firstCell === 'no' || 
               row.some(cell => cell && cell.toString().toLowerCase().includes('username')) ||
               row.some(cell => cell && cell.toString().toLowerCase().includes('registration'))) {
             headerRow = row;
             dataStartRow = i + 1;
-            console.log('Header found at row:', i, headerRow);
+            console.log('Header found at row:', i);
             break;
           }
         }
       }
       
-      // Jika tidak ketemu, coba gunakan baris 1 sebagai header
       if (headerRow.length === 0 && rows[1]) {
         headerRow = rows[1];
         dataStartRow = 2;
@@ -374,7 +376,7 @@ export default function PlayerListingPage() {
         throw new Error('Header tidak ditemukan. Pastikan file memiliki kolom Username dan Registration.');
       }
       
-      // Cari index kolom yang dibutuhkan
+      // Cari index kolom
       const usernameIdx = getColumnIndex(headerRow, ['username']);
       const registrationIdx = getColumnIndex(headerRow, ['registration']);
       const fullNameIdx = getColumnIndex(headerRow, ['full name']);
@@ -398,11 +400,12 @@ export default function PlayerListingPage() {
       
       const uploadId = crypto.randomUUID();
       const uploadDate = new Date().toISOString().split('T')[0];
-      const website = selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : 'XLY';
+      const website = selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : null;
       
       const playerDetails: any[] = [];
       let errorCount = 0;
-      let firstRegistrationDate: string | null = null;
+      let minRegDate: string | null = null;
+      let maxRegDate: string | null = null;
       
       const dataRows = rows.slice(dataStartRow);
       console.log(`Processing ${dataRows.length} data rows`);
@@ -420,15 +423,16 @@ export default function PlayerListingPage() {
         // Ambil registration text dan ekstrak tanggal
         const registrationText = row[registrationIdx]?.toString() || '';
         let registrationDate: string | null = null;
+        let regDateOnly: string | null = null;
         
-        // Extract Registration Date from text: "Registration Date :28-Mar-2026 23:57:04"
         const dateMatch = registrationText.match(/Registration Date\s*:\s*(\d{1,2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})/i);
         if (dateMatch && dateMatch[1]) {
           registrationDate = parseExcelDate(dateMatch[1]);
-        }
-        
-        if (registrationDate && !firstRegistrationDate) {
-          firstRegistrationDate = registrationDate;
+          if (registrationDate) {
+            regDateOnly = registrationDate.split(' ')[0];
+            if (!minRegDate || regDateOnly < minRegDate) minRegDate = regDateOnly;
+            if (!maxRegDate || regDateOnly > maxRegDate) maxRegDate = regDateOnly;
+          }
         }
         
         // Ambil data lainnya
@@ -441,14 +445,14 @@ export default function PlayerListingPage() {
           upload_id: uploadId,
           registration_date: registrationDate,
           no: i + 1,
-          registration: registrationText,
-          username: username,
-          account_type: accountType,
-          loyalty_level: loyaltyLevel,
-          full_name: fullName,
+          registration: registrationText.substring(0, 500),
+          username: username.substring(0, 100),
+          account_type: accountType.substring(0, 50),
+          loyalty_level: loyaltyLevel.substring(0, 50),
+          full_name: fullName ? fullName.substring(0, 100) : null,
           player_group: null,
           contact_info: null,
-          status: status,
+          status: status.substring(0, 50),
           last_login: null,
           referrer_type: null,
           referral_code: null,
@@ -460,8 +464,9 @@ export default function PlayerListingPage() {
           current_balance: 0,
           last_transfer_in: null,
           current_outstanding_bet: 0,
-          file_name: selectedFile.name,
-          website: website
+          file_name: selectedFile.name.substring(0, 255),
+          website: website,
+          upload_date: uploadDate
         });
       }
 
@@ -469,25 +474,25 @@ export default function PlayerListingPage() {
         throw new Error('Tidak ada data valid yang bisa diupload');
       }
 
-      const registrationMonth = firstRegistrationDate ? firstRegistrationDate.substring(0, 7) : uploadDate.substring(0, 7);
-      
       setUploadProgress(`Menyimpan metadata upload...`);
       
+      // Simpan ke player_uploads per FILE (bukan per tanggal)
       const { error: uploadError } = await supabase
         .from('player_uploads')
         .insert([{
           upload_id: uploadId,
           upload_date: uploadDate,
-          registration_month: registrationMonth,
           file_name: selectedFile.name,
           total_rows: playerDetails.length,
           status: 'completed',
-          website: website
+          website: website,
+          min_date: minRegDate,
+          max_date: maxRegDate
         }]);
 
       if (uploadError) throw uploadError;
 
-      // BATCH INSERT KE PLAYER_LISTING (PER 500)
+      // BATCH INSERT KE PLAYER_LISTING
       const BATCH_SIZE = 500;
       let successCount = 0;
       
@@ -506,10 +511,14 @@ export default function PlayerListingPage() {
         
         successCount += batch.length;
         
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
 
-      alert(`✅ Berhasil! ${successCount} data player diupload (${errorCount} baris error/skip)\n📅 Bulan Registrasi: ${registrationMonth}`);
+      const periodText = minRegDate && maxRegDate 
+        ? `${minRegDate} s/d ${maxRegDate}`
+        : uploadDate;
+      
+      alert(`✅ Berhasil! ${successCount} data player diupload (${errorCount} baris error/skip)\n📅 Periode: ${periodText}\n📁 File: ${selectedFile.name}\n🌐 Website: ${website || 'Tidak dipilih'}`);
       setShowModal(false);
       setSelectedFile(null);
       fetchUploads();
@@ -622,7 +631,8 @@ export default function PlayerListingPage() {
               <th className="px-4 py-3 text-left text-[#FFD700]">No</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Asset</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal Upload</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Periode Registrasi</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">New Regist</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
@@ -633,7 +643,8 @@ export default function PlayerListingPage() {
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                 <td className="px-4 py-3">{indexOfFirstItem + index + 1}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                <td className="px-4 py-3 text-[#FFD700]">{item.website || 'XLY'}</td>
+                <td className="px-4 py-3 text-[#FFD700]">{item.website || '-'}</td>
+                <td className="px-4 py-3">{new Date(item.upload_date).toLocaleDateString('id-ID')}</td>
                 <td className="px-4 py-3">{formatPeriod(item.min_date, item.max_date)}</td>
                 <td className="px-4 py-3">{item.active_players}</td>
                 <td className="px-4 py-3">{item.total_rows} data</td>
@@ -645,7 +656,7 @@ export default function PlayerListingPage() {
               </tr>
             )) : (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-400">
                   Tidak ada data untuk periode ini
                 </td>
               </tr>
