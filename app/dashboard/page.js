@@ -1307,7 +1307,7 @@ const fetchRecentActivities = async () => {
   const menuItems = [
     {
       title: '📊 ANALYTICAL COMPARISON',
-      description: 'Attendance & Division Overview',
+      description: 'Divison & Member Overview',
       href: '/dashboard/analytics',
       icon: '📊',
       color: 'text-blue-400',
@@ -1325,7 +1325,7 @@ const fetchRecentActivities = async () => {
     },
     {
       title: '📥 DATA RAW',
-      description: 'Import CS, DP, WD Data',
+      description: 'Import CS, DP, WD, Adj, Winlose Data',
       href: '/dashboard/data-raw',
       icon: '📥',
       color: 'text-green-400',
