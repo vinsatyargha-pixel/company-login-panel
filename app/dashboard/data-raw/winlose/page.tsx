@@ -111,36 +111,40 @@ export default function WinloseDataRawPage() {
   }
 
   const fetchUploads = async () => {
-    try {
-      setLoading(true)
-      
-      const monthIndex = months.indexOf(selectedMonth) + 1
-      const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
-      
-      const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
-      const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
+  try {
+    setLoading(true)
+    
+    const monthIndex = months.indexOf(selectedMonth) + 1
+    const startDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-01`
+    
+    const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
+    const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      let query = supabase
-        .from('winlose_uploads')
-        .select('*')
-        .gte('period_start', startDate)
-        .lte('period_end', endDate)
-        .order('period_start', { ascending: true })
+    let query = supabase
+      .from('winlose_uploads')
+      .select('*')
+      .gte('period_start', startDate)
+      .lte('period_end', endDate)
+      .order('period_start', { ascending: true })
 
-      if (selectedAsset !== 'all') {
-        query = query.eq('asset_code', selectedAsset)
+    // PERBAIKAN: filter berdasarkan asset_code, bukan id
+    if (selectedAsset !== 'all') {
+      const selectedAssetObj = assets.find(a => a.id === selectedAsset)
+      if (selectedAssetObj) {
+        query = query.eq('asset_code', selectedAssetObj.asset_code)
       }
-
-      const { data, error } = await query
-      if (error) throw error
-      
-      setUploads(data || [])
-    } catch (error) {
-      console.error('Error fetching uploads:', error)
-    } finally {
-      setLoading(false)
     }
+
+    const { data, error } = await query
+    if (error) throw error
+    
+    setUploads(data || [])
+  } catch (error) {
+    console.error('Error fetching uploads:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
   // ===========================================
   // DRAG & DROP HANDLERS
