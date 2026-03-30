@@ -883,7 +883,7 @@ export default function PlayerOverviewPage() {
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Asset</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Deposit</th>
                         <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Withdraw</th>
-                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Ratio (W/D)</th>
+                        <th className="px-2 py-2 text-right text-xs text-[#A7D8FF]">Ratio (WD/DP)</th>
                       </tr>
                     </thead>
                     <tbody>
