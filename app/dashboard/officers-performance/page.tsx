@@ -93,14 +93,13 @@ const fetchAllData = async (
       .select(selectFields)
       .range(from, to)
 
-    // Apply date filter if provided
     if (startDate && endDate) {
       query = query
         .gte('approved_date', startDate)
         .lte('approved_date', endDate)
     }
 
-    const { data, error, count } = await query
+    const { data, error } = await query
 
     if (error) {
       console.error(`❌ Error fetching ${table} page ${page}:`, error)
@@ -115,7 +114,6 @@ const fetchAllData = async (
       hasMore = false
     }
 
-    // Safety break if no data or less than pageSize
     if (!data || data.length < pageSize) {
       hasMore = false
     }
@@ -168,7 +166,6 @@ export default function OfficersKPIPage() {
     setSelectedMonth(months[today.getMonth()])
     setSelectedYear(today.getFullYear().toString())
     
-    // Set default custom range (7 hari terakhir)
     const end = new Date()
     const start = new Date()
     start.setDate(end.getDate() - 7)
@@ -216,6 +213,13 @@ export default function OfficersKPIPage() {
           full_name: 'MOZARTDP (AUTO)',
           department: 'AUTOMATION',
           status: 'SYSTEM'
+        },
+        {
+          id: 'unknown',
+          panel_id: 'UNKNOWN',
+          full_name: 'UNKNOWN HANDLER',
+          department: 'UNKNOWN',
+          status: 'UNKNOWN'
         }
       ]
       
@@ -230,7 +234,7 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // GET DATE RANGE - AKURAT SAMPAI DETIK
+  // GET DATE RANGE
   // ===========================================
   const getDateRange = () => {
     let startDate = ''
@@ -268,11 +272,11 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // HELPER: Get Panel ID dari handler (CASE INSENSITIVE)
+  // HELPER: Get Panel ID dari handler - SYSTEM HANYA untuk handler 'system'
   // ===========================================
-  const getPanelIdFromHandler = (handler: string): string => {
+  const getPanelIdFromHandler = (handler: string): string | null => {
     if (!handler || typeof handler !== 'string') {
-      return 'SYSTEM'
+      return 'UNKNOWN'
     }
     
     const normalized = handler.toLowerCase().trim()
@@ -282,7 +286,7 @@ export default function OfficersKPIPage() {
       return 'MOZARTDP'
     }
     
-    // SYSTEM
+    // SYSTEM - HANYA handler yang persis 'system'
     if (normalized === 'system') {
       return 'SYSTEM'
     }
@@ -292,11 +296,17 @@ export default function OfficersKPIPage() {
       o.panel_id?.toLowerCase() === normalized
     )
     
-    return officer ? officer.panel_id : 'SYSTEM'
+    // Kalo ketemu di officers, return panel_id-nya
+    if (officer) {
+      return officer.panel_id
+    }
+    
+    // Kalo gak dikenal, masukin ke UNKNOWN
+    return 'UNKNOWN'
   }
 
   // ===========================================
-  // FETCH KPI - DENGAN PAGINATION
+  // FETCH KPI
   // ===========================================
 
   const fetchKPI = async () => {
@@ -307,9 +317,7 @@ export default function OfficersKPIPage() {
       const { startDate, endDate, periodText } = getDateRange()
       console.log('🔍 Filter:', { filterType, startDate, endDate, periodText })
 
-      // ===========================================
-      // FETCH ALL DEPOSIT DATA DENGAN PAGINATION
-      // ===========================================
+      // FETCH ALL DATA DENGAN PAGINATION
       const depositData = await fetchAllData(
         'deposit_transactions',
         'handler, status, duration_minutes, reason, approved_date',
@@ -317,9 +325,6 @@ export default function OfficersKPIPage() {
         endDate
       )
 
-      // ===========================================
-      // FETCH ALL WITHDRAWAL DATA DENGAN PAGINATION
-      // ===========================================
       const withdrawalData = await fetchAllData(
         'withdrawal_transactions',
         'handler, status, duration_minutes, reason, approved_date',
@@ -330,22 +335,42 @@ export default function OfficersKPIPage() {
       console.log('📊 Total Deposit count:', depositData.length)
       console.log('📊 Total Withdrawal count:', withdrawalData.length)
       
-      // DEBUG: Hitung MOZARTDP di deposit
+      // Hitung MOZARTDP
       const mozartDepositCount = depositData.filter(tx => 
         tx.handler?.toLowerCase() === 'mozartdp'
       ).length
-      console.log('🎯 MOZARTDP Deposit transactions:', mozartDepositCount)
-      
-      // DEBUG: Hitung MOZARTDP di withdrawal
       const mozartWithdrawalCount = withdrawalData.filter(tx => 
         tx.handler?.toLowerCase() === 'mozartdp'
       ).length
-      console.log('🎯 MOZARTDP Withdrawal transactions:', mozartWithdrawalCount)
+      console.log('🎯 MOZARTDP Deposit:', mozartDepositCount)
+      console.log('🎯 MOZARTDP Withdrawal:', mozartWithdrawalCount)
       
+      // Hitung SYSTEM
+      const systemDepositCount = depositData.filter(tx => 
+        tx.handler?.toLowerCase() === 'system'
+      ).length
+      const systemWithdrawalCount = withdrawalData.filter(tx => 
+        tx.handler?.toLowerCase() === 'system'
+      ).length
+      console.log('🎯 SYSTEM Deposit:', systemDepositCount)
+      console.log('🎯 SYSTEM Withdrawal:', systemWithdrawalCount)
+      
+      // Hitung UNKNOWN
+      const unknownDepositCount = depositData.filter(tx => {
+        const h = tx.handler?.toLowerCase()
+        return h && h !== 'mozartdp' && h !== 'system' && !officers.find(o => o.panel_id?.toLowerCase() === h)
+      }).length
+      const unknownWithdrawalCount = withdrawalData.filter(tx => {
+        const h = tx.handler?.toLowerCase()
+        return h && h !== 'mozartdp' && h !== 'system' && !officers.find(o => o.panel_id?.toLowerCase() === h)
+      }).length
+      console.log('⚠️ UNKNOWN Deposit:', unknownDepositCount)
+      console.log('⚠️ UNKNOWN Withdrawal:', unknownWithdrawalCount)
+
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan SEMUA officer
+      // Inisialisasi dengan SEMUA officer (termasuk UNKNOWN)
       officers.forEach(officer => {
         kpiMap[officer.panel_id] = {
           officer_id: officer.id,
@@ -354,7 +379,6 @@ export default function OfficersKPIPage() {
           department: officer.department,
           status: officer.status || 'REGULAR',
           
-          // Deposit
           dep_total: 0,
           dep_approved: 0,
           dep_rejected: 0,
@@ -369,7 +393,6 @@ export default function OfficersKPIPage() {
           dep_non_sop: 0,
           dep_human_error: 0,
           
-          // Withdrawal
           wd_total: 0,
           wd_approved: 0,
           wd_rejected: 0,
@@ -386,16 +409,12 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // ===========================================
       // PROSES DEPOSIT
-      // ===========================================
       depositData.forEach((tx: any) => {
         const targetPanelId = getPanelIdFromHandler(tx.handler)
-        
-        if (!kpiMap[targetPanelId]) return
+        if (!targetPanelId || !kpiMap[targetPanelId]) return
         
         const kpi = kpiMap[targetPanelId]
-        
         kpi.dep_total++
 
         const status = tx.status?.toLowerCase()
@@ -406,7 +425,6 @@ export default function OfficersKPIPage() {
             kpi.dep_approved++
             kpi.dep_approve_count++
             kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
-            
             if (tx.duration_minutes <= 3) {
               kpi.dep_sop++
             } else {
@@ -422,7 +440,6 @@ export default function OfficersKPIPage() {
             kpi.dep_approved++
             kpi.dep_approve_count++
             kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
-            
             if (tx.duration_minutes <= 3) {
               kpi.dep_sop++
             } else {
@@ -440,24 +457,18 @@ export default function OfficersKPIPage() {
         }
 
         const reason = tx.reason?.toLowerCase() || ''
-        if (reason.includes('mistake') ||
-            reason.includes('crossbank') ||
-            reason.includes('cross asset') ||
-            reason.includes('wrong process')) {
+        if (reason.includes('mistake') || reason.includes('crossbank') ||
+            reason.includes('cross asset') || reason.includes('wrong process')) {
           kpi.dep_human_error++
         }
       })
 
-      // ===========================================
       // PROSES WITHDRAWAL
-      // ===========================================
       withdrawalData.forEach((tx: any) => {
         const targetPanelId = getPanelIdFromHandler(tx.handler)
-        
-        if (!kpiMap[targetPanelId]) return
+        if (!targetPanelId || !kpiMap[targetPanelId]) return
         
         const kpi = kpiMap[targetPanelId]
-        
         kpi.wd_total++
 
         const status = tx.status?.toLowerCase()
@@ -468,7 +479,6 @@ export default function OfficersKPIPage() {
             kpi.wd_approved++
             kpi.wd_approve_count++
             kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
-            
             if (tx.duration_minutes <= 5) {
               kpi.wd_sop++
             } else {
@@ -484,7 +494,6 @@ export default function OfficersKPIPage() {
             kpi.wd_approved++
             kpi.wd_approve_count++
             kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
-            
             if (tx.duration_minutes <= 5) {
               kpi.wd_sop++
             } else {
@@ -502,10 +511,8 @@ export default function OfficersKPIPage() {
         }
 
         const reason = tx.reason?.toLowerCase() || ''
-        if (reason.includes('mistake') ||
-            reason.includes('crossbank') ||
-            reason.includes('cross asset') ||
-            reason.includes('wrong process')) {
+        if (reason.includes('mistake') || reason.includes('crossbank') ||
+            reason.includes('cross asset') || reason.includes('wrong process')) {
           kpi.wd_human_error++
         }
       })
@@ -577,14 +584,16 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Urutkan: officer biasa, MOZARTDP, SYSTEM
+      // Urutkan: officer biasa, MOZARTDP, SYSTEM, UNKNOWN
       const sortedData = [
         ...formattedData.filter(item => 
           item.panel_id !== 'SYSTEM' && 
-          item.panel_id !== 'MOZARTDP'
+          item.panel_id !== 'MOZARTDP' &&
+          item.panel_id !== 'UNKNOWN'
         ),
         ...formattedData.filter(item => item.panel_id === 'MOZARTDP'),
-        ...formattedData.filter(item => item.panel_id === 'SYSTEM')
+        ...formattedData.filter(item => item.panel_id === 'SYSTEM'),
+        ...formattedData.filter(item => item.panel_id === 'UNKNOWN')
       ]
       
       console.log('✅ Final KPI Data:', sortedData.map(d => ({ 
@@ -595,9 +604,9 @@ export default function OfficersKPIPage() {
       
       setKpiData(sortedData)
 
-      // Buat data untuk pie chart
+      // Pie chart (tanpa UNKNOWN)
       const depositPie = sortedData
-        .filter(item => item.dep_approved > 0)
+        .filter(item => item.dep_approved > 0 && item.panel_id !== 'UNKNOWN')
         .map((item, index) => ({
           name: item.panel_id,
           fullName: item.officer_name,
@@ -607,7 +616,7 @@ export default function OfficersKPIPage() {
         .sort((a, b) => b.value - a.value)
 
       const withdrawalPie = sortedData
-        .filter(item => item.wd_approved > 0)
+        .filter(item => item.wd_approved > 0 && item.panel_id !== 'UNKNOWN')
         .map((item, index) => ({
           name: item.panel_id,
           fullName: item.officer_name,
@@ -653,9 +662,7 @@ export default function OfficersKPIPage() {
     )
   }
 
-  // ===========================================
   // SUMMARY
-  // ===========================================
   const depTotal = kpiData.reduce((sum, item) => sum + item.dep_total, 0)
   const depApproved = kpiData.reduce((sum, item) => sum + item.dep_approved, 0)
   const depRejected = kpiData.reduce((sum, item) => sum + item.dep_rejected, 0)
@@ -966,17 +973,20 @@ export default function OfficersKPIPage() {
                   <tr 
                     key={`dep-${item.panel_id}`} 
                     className={`border-b border-blue-500/10 hover:bg-[#0B1A33]/50 ${
-                      item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
+                      item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : 
+                      item.panel_id === 'UNKNOWN' ? 'bg-gray-800/50 text-gray-400' : ''
                     }`}
                   >
                     <td className="px-2 py-2">{idx + 1}</td>
-                    <td className="px-2 py-2 text-blue-400">{item.panel_id}</td>
+                    <td className={`px-2 py-2 ${item.panel_id === 'UNKNOWN' ? 'text-gray-400' : 'text-blue-400'}`}>{item.panel_id}</td>
                     <td className="px-2 py-2">{item.officer_name}</td>
                     <td className="px-2 py-2">{item.department}</td>
                     <td className="px-2 py-2">
                       <span className={`px-1 py-0.5 rounded text-[10px] ${
                         item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
                           ? 'bg-purple-500/20 text-purple-400' 
+                          : item.panel_id === 'UNKNOWN'
+                          ? 'bg-gray-500/20 text-gray-400'
                           : 'bg-green-500/20 text-green-400'
                       }`}>
                         {item.status}
@@ -1056,17 +1066,20 @@ export default function OfficersKPIPage() {
                   <tr 
                     key={`wd-${item.panel_id}`} 
                     className={`border-b border-green-500/10 hover:bg-[#0B1A33]/50 ${
-                      item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
+                      item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' :
+                      item.panel_id === 'UNKNOWN' ? 'bg-gray-800/50 text-gray-400' : ''
                     }`}
                   >
                     <td className="px-2 py-2">{idx + 1}</td>
-                    <td className="px-2 py-2 text-green-400">{item.panel_id}</td>
+                    <td className={`px-2 py-2 ${item.panel_id === 'UNKNOWN' ? 'text-gray-400' : 'text-green-400'}`}>{item.panel_id}</td>
                     <td className="px-2 py-2">{item.officer_name}</td>
                     <td className="px-2 py-2">{item.department}</td>
                     <td className="px-2 py-2">
                       <span className={`px-1 py-0.5 rounded text-[10px] ${
                         item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
                           ? 'bg-purple-500/20 text-purple-400' 
+                          : item.panel_id === 'UNKNOWN'
+                          ? 'bg-gray-500/20 text-gray-400'
                           : 'bg-green-500/20 text-green-400'
                       }`}>
                         {item.status}
@@ -1103,7 +1116,7 @@ export default function OfficersKPIPage() {
       {/* SUMMARY GABUNGAN */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF]">
         <div className="flex justify-between flex-wrap gap-2">
-          <span>Total Officers: {kpiData.filter(o => o.panel_id !== 'MOZARTDP' && o.panel_id !== 'SYSTEM').length} + SYSTEM + MOZARTDP</span>
+          <span>Total Officers: {kpiData.filter(o => o.panel_id !== 'MOZARTDP' && o.panel_id !== 'SYSTEM' && o.panel_id !== 'UNKNOWN').length} + SYSTEM + MOZARTDP</span>
           <span>Total Transactions: {totalTransactions}</span>
           <span className="text-green-400">Approved: {totalApproved}</span>
           <span className="text-red-400">Rejected: {totalRejected}</span>
