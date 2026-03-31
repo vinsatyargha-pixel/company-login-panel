@@ -18,12 +18,7 @@ export default function AnalyticsPage() {
       <h1 className="text-3xl font-bold text-[#FFD700] mb-4">📊 ANALYTICS</h1>
       
       {/* 3 MENU SEDERHANA */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link href="/dashboard/analytics/attendance" className="bg-[#1A2F4A] p-6 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700]">
-          <h2 className="text-xl font-bold text-blue-400">Attendance Overview</h2>
-          <p className="text-[#A7D8FF] text-sm mt-2">Perbulan - offday 4 hari</p>
-        </Link>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">       
         <Link href="/dashboard/analytics/division" className="bg-[#1A2F4A] p-6 rounded-lg border border-[#FFD700]/30 hover:border-[#FFD700]">
           <h2 className="text-xl font-bold text-purple-400">Division Overview</h2>
           <p className="text-[#A7D8FF] text-sm mt-2">CS, Deposit, WD Performance</p>
