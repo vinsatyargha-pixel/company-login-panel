@@ -202,8 +202,6 @@ export default function OfficersKPIPage() {
       periodText = `${startDate} s/d ${endDate}`
     }
 
-    // Format dengan waktu yang benar
-    // Gunakan ISO format yang kompatibel dengan Supabase
     return { 
       startDate: `${startDate} 00:00:00`, 
       endDate: `${endDate} 23:59:59`, 
@@ -212,24 +210,30 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // NORMALIZE HANDLER (MOZARTDP case insensitive + mapping)
+  // HELPER: Get Panel ID dari handler (CASE INSENSITIVE)
   // ===========================================
-  const normalizeHandler = (handler: string): string => {
-    if (!handler || typeof handler !== 'string') return handler
+  const getPanelIdFromHandler = (handler: string): string => {
+    if (!handler || typeof handler !== 'string') return 'SYSTEM'
     
-    const lowerHandler = handler.toLowerCase()
+    const normalized = handler.toLowerCase().trim()
     
-    // Mapping: mozartwd -> MOZARTDP, mozartdp -> MOZARTDP
-    if (lowerHandler === 'mozartdp' || lowerHandler === 'mozartwd') {
+    // Mapping khusus: mozartdp, mozartwd, dll -> MOZARTDP
+    if (normalized === 'mozartdp' || normalized === 'mozartwd') {
       return 'MOZARTDP'
     }
     
-    // SYSTEM juga dinormalisasi
-    if (lowerHandler === 'system') {
+    // Mapping khusus: system -> SYSTEM
+    if (normalized === 'system') {
       return 'SYSTEM'
     }
     
-    return handler
+    // Cari di officers list (case insensitive)
+    const officer = officers.find(o => 
+      o.panel_id?.toLowerCase() === normalized
+    )
+    
+    // Kalo ketemu return panel_id asli, kalo ga ketemu masukin ke SYSTEM
+    return officer ? officer.panel_id : 'SYSTEM'
   }
 
   // ===========================================
@@ -251,7 +255,6 @@ export default function OfficersKPIPage() {
         .from('deposit_transactions')
         .select('handler, status, duration_minutes, reason, approved_date')
       
-      // Terapkan filter hanya jika startDate dan endDate valid
       if (startDate && endDate) {
         depositQuery = depositQuery
           .gte('approved_date', startDate)
@@ -284,7 +287,7 @@ export default function OfficersKPIPage() {
       
       // Debug sample data
       if (depositData && depositData.length > 0) {
-        console.log('📝 Sample deposit (first 2):', depositData.slice(0, 2).map(tx => ({
+        console.log('📝 Sample deposit (first 3):', depositData.slice(0, 3).map(tx => ({
           handler: tx.handler,
           status: tx.status,
           approved_date: tx.approved_date
@@ -292,7 +295,7 @@ export default function OfficersKPIPage() {
       }
       
       if (withdrawalData && withdrawalData.length > 0) {
-        console.log('📝 Sample withdrawal (first 2):', withdrawalData.slice(0, 2).map(tx => ({
+        console.log('📝 Sample withdrawal (first 3):', withdrawalData.slice(0, 3).map(tx => ({
           handler: tx.handler,
           status: tx.status,
           approved_date: tx.approved_date
@@ -344,20 +347,10 @@ export default function OfficersKPIPage() {
       })
 
       // ===========================================
-      // PROSES DEPOSIT - DENGAN NORMALIZE HANDLER
+      // PROSES DEPOSIT - DENGAN CASE INSENSITIVE
       // ===========================================
       depositData?.forEach((tx: any) => {
-        if (!tx.handler || typeof tx.handler !== 'string') return
-        
-        // Normalize handler (MOZARTDP, mozartdp, MOZARTWD, mozartwd -> MOZARTDP)
-        const normalizedHandler = normalizeHandler(tx.handler)
-        
-        // Cari officer berdasarkan normalized handler
-        const officer = officers.find(o => 
-          o.panel_id?.toLowerCase() === normalizedHandler.toLowerCase()
-        )
-        
-        const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+        const targetPanelId = getPanelIdFromHandler(tx.handler)
         
         if (!kpiMap[targetPanelId]) return
         
@@ -366,25 +359,28 @@ export default function OfficersKPIPage() {
         kpi.dep_total++
 
         const status = tx.status?.toLowerCase()
-        const isSystem = targetPanelId === 'SYSTEM' || targetPanelId === 'SYSTEM'
+        const isSystemOrMozart = targetPanelId === 'SYSTEM' || targetPanelId === 'MOZARTDP'
         
-        if (isSystem) {
+        if (isSystemOrMozart) {
+          // SYSTEM & MOZARTDP: hanya Approved dan Failed (tidak ada Rejected)
           if (status === 'approved') {
             kpi.dep_approved++
             kpi.dep_approve_count++
             kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
             
+            // SOP: deposit <= 3 menit
             if (tx.duration_minutes <= 3) {
               kpi.dep_sop++
             } else {
               kpi.dep_non_sop++
             }
-          } else {
+          } else if (status?.includes('fail') || status === 'failed') {
             kpi.dep_failed++
             kpi.dep_fail_count++
             kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
           }
         } else {
+          // Officer biasa: Approved, Rejected, Failed
           if (status === 'approved') {
             kpi.dep_approved++
             kpi.dep_approve_count++
@@ -399,14 +395,14 @@ export default function OfficersKPIPage() {
             kpi.dep_rejected++
             kpi.dep_reject_count++
             kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
-          } else if (status?.includes('fail')) {
+          } else if (status?.includes('fail') || status === 'failed') {
             kpi.dep_failed++
             kpi.dep_fail_count++
             kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
           }
         }
 
-        // Human error check
+        // Human error check (berlaku untuk semua)
         const reason = tx.reason?.toLowerCase() || ''
         if (reason.includes('mistake') ||
             reason.includes('crossbank') ||
@@ -417,20 +413,10 @@ export default function OfficersKPIPage() {
       })
 
       // ===========================================
-      // PROSES WITHDRAWAL - DENGAN NORMALIZE HANDLER
+      // PROSES WITHDRAWAL - DENGAN CASE INSENSITIVE
       // ===========================================
       withdrawalData?.forEach((tx: any) => {
-        if (!tx.handler || typeof tx.handler !== 'string') return
-        
-        // Normalize handler (MOZARTDP, mozartdp, MOZARTWD, mozartwd -> MOZARTDP)
-        const normalizedHandler = normalizeHandler(tx.handler)
-        
-        // Cari officer berdasarkan normalized handler
-        const officer = officers.find(o => 
-          o.panel_id?.toLowerCase() === normalizedHandler.toLowerCase()
-        )
-        
-        const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
+        const targetPanelId = getPanelIdFromHandler(tx.handler)
         
         if (!kpiMap[targetPanelId]) return
         
@@ -439,25 +425,28 @@ export default function OfficersKPIPage() {
         kpi.wd_total++
 
         const status = tx.status?.toLowerCase()
-        const isSystem = targetPanelId === 'SYSTEM' || targetPanelId === 'SYSTEM'
+        const isSystemOrMozart = targetPanelId === 'SYSTEM' || targetPanelId === 'MOZARTDP'
         
-        if (isSystem) {
+        if (isSystemOrMozart) {
+          // SYSTEM & MOZARTDP: hanya Approved dan Failed (tidak ada Rejected)
           if (status === 'approved') {
             kpi.wd_approved++
             kpi.wd_approve_count++
             kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
             
+            // SOP: withdrawal <= 5 menit
             if (tx.duration_minutes <= 5) {
               kpi.wd_sop++
             } else {
               kpi.wd_non_sop++
             }
-          } else {
+          } else if (status?.includes('fail') || status === 'failed') {
             kpi.wd_failed++
             kpi.wd_fail_count++
             kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
           }
         } else {
+          // Officer biasa: Approved, Rejected, Failed
           if (status === 'approved') {
             kpi.wd_approved++
             kpi.wd_approve_count++
@@ -472,7 +461,7 @@ export default function OfficersKPIPage() {
             kpi.wd_rejected++
             kpi.wd_reject_count++
             kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
-          } else if (status?.includes('fail')) {
+          } else if (status?.includes('fail') || status === 'failed') {
             kpi.wd_failed++
             kpi.wd_fail_count++
             kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
@@ -1082,7 +1071,7 @@ export default function OfficersKPIPage() {
       {/* SUMMARY GABUNGAN */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF]">
         <div className="flex justify-between flex-wrap gap-2">
-          <span>Total Officers: {kpiData.filter(o => o.panel_id !== 'MOZARTDP').length - 1} + SYSTEM + MOZARTDP</span>
+          <span>Total Officers: {kpiData.filter(o => o.panel_id !== 'MOZARTDP' && o.panel_id !== 'SYSTEM').length} + SYSTEM + MOZARTDP</span>
           <span>Total Transactions: {totalTransactions}</span>
           <span className="text-green-400">Approved: {totalApproved}</span>
           <span className="text-red-400">Rejected: {totalRejected}</span>
