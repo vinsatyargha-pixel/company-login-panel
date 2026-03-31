@@ -128,7 +128,7 @@ export default function OfficersKPIPage() {
   }, [filterType, selectedMonth, selectedYear, customStartDate, customEndDate, officers])
 
   // ===========================================
-  // FETCH OFFICERS - Tambah Mozartdp & Mozartwd
+  // FETCH OFFICERS - SATU MOZARTDP (bukan dua)
   // ===========================================
 
   const fetchOfficers = async () => {
@@ -153,19 +153,11 @@ export default function OfficersKPIPage() {
           department: 'AUTOMATION',
           status: 'SYSTEM'
         },
-        // Tambah MOZARTDP untuk deposit
+        // SATU MOZARTDP untuk deposit DAN withdrawal
         {
           id: 'mozartdp',
           panel_id: 'MOZARTDP',
           full_name: 'MOZARTDP (AUTO)',
-          department: 'AUTOMATION',
-          status: 'SYSTEM'
-        },
-        // Tambah MOZARTWD untuk withdrawal
-        {
-          id: 'mozartwd',
-          panel_id: 'MOZARTWD',
-          full_name: 'MOZARTWD (AUTO)',
           department: 'AUTOMATION',
           status: 'SYSTEM'
         }
@@ -219,7 +211,7 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // FETCH KPI - Tanpa redirect Mozart
+  // FETCH KPI - MOZARTDP untuk deposit & withdrawal
   // ===========================================
 
   const fetchKPI = async () => {
@@ -254,7 +246,7 @@ export default function OfficersKPIPage() {
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan SEMUA officer (termasuk Mozartdp & Mozartwd)
+      // Inisialisasi dengan SEMUA officer (termasuk MOZARTDP)
       officers.forEach(officer => {
         kpiMap[officer.panel_id] = {
           officer_id: officer.id,
@@ -295,12 +287,13 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Deposit - Pakai handler asli (MOZARTDP akan masuk ke panel_id MOZARTDP)
+      // Proses Deposit - MOZARTDP akan handle deposit
       depositData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
         const handler = tx.handler
         
+        // Cari officer berdasarkan handler (MOZARTDP akan match dengan panel_id MOZARTDP)
         const officer = officers.find(o => 
           o.panel_id?.toLowerCase() === handler.toLowerCase()
         )
@@ -362,7 +355,7 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Withdrawal - Pakai handler asli (MOZARTWD akan masuk ke panel_id MOZARTWD)
+      // Proses Withdrawal - MOZARTDP akan handle withdrawal juga
       withdrawalData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
@@ -496,22 +489,20 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Urutkan: officer biasa, MOZARTDP, MOZARTWD, SYSTEM
+      // Urutkan: officer biasa, MOZARTDP, SYSTEM
       const sortedData = [
         ...formattedData.filter(item => 
           item.panel_id !== 'SYSTEM' && 
-          item.panel_id !== 'MOZARTDP' && 
-          item.panel_id !== 'MOZARTWD'
+          item.panel_id !== 'MOZARTDP'
         ),
         ...formattedData.filter(item => item.panel_id === 'MOZARTDP'),
-        ...formattedData.filter(item => item.panel_id === 'MOZARTWD'),
         ...formattedData.filter(item => item.panel_id === 'SYSTEM')
       ]
       
       console.log('✅ KPI Data:', sortedData)
       setKpiData(sortedData)
 
-      // Buat data untuk pie chart (termasuk Mozart)
+      // Buat data untuk pie chart (termasuk MOZARTDP)
       const depositPie = sortedData
         .filter(item => item.dep_approved > 0)
         .map((item, index) => ({
@@ -570,22 +561,19 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // SUMMARY PER TABEL (Filter Mozart)
+  // SUMMARY PER TABEL (Tanpa filter MOZARTDP)
   // ===========================================
-  const depFiltered = kpiData.filter(item => item.panel_id !== 'MOZARTWD')
-  const wdFiltered = kpiData.filter(item => item.panel_id !== 'MOZARTDP')
+  const depTotal = kpiData.reduce((sum, item) => sum + item.dep_total, 0)
+  const depApproved = kpiData.reduce((sum, item) => sum + item.dep_approved, 0)
+  const depRejected = kpiData.reduce((sum, item) => sum + item.dep_rejected, 0)
+  const depFailed = kpiData.reduce((sum, item) => sum + item.dep_failed, 0)
+  const depHumanError = kpiData.reduce((sum, item) => sum + item.dep_human_error, 0)
 
-  const depTotal = depFiltered.reduce((sum, item) => sum + item.dep_total, 0)
-  const depApproved = depFiltered.reduce((sum, item) => sum + item.dep_approved, 0)
-  const depRejected = depFiltered.reduce((sum, item) => sum + item.dep_rejected, 0)
-  const depFailed = depFiltered.reduce((sum, item) => sum + item.dep_failed, 0)
-  const depHumanError = depFiltered.reduce((sum, item) => sum + item.dep_human_error, 0)
-
-  const wdTotal = wdFiltered.reduce((sum, item) => sum + item.wd_total, 0)
-  const wdApproved = wdFiltered.reduce((sum, item) => sum + item.wd_approved, 0)
-  const wdRejected = wdFiltered.reduce((sum, item) => sum + item.wd_rejected, 0)
-  const wdFailed = wdFiltered.reduce((sum, item) => sum + item.wd_failed, 0)
-  const wdHumanError = wdFiltered.reduce((sum, item) => sum + item.wd_human_error, 0)
+  const wdTotal = kpiData.reduce((sum, item) => sum + item.wd_total, 0)
+  const wdApproved = kpiData.reduce((sum, item) => sum + item.wd_approved, 0)
+  const wdRejected = kpiData.reduce((sum, item) => sum + item.wd_rejected, 0)
+  const wdFailed = kpiData.reduce((sum, item) => sum + item.wd_failed, 0)
+  const wdHumanError = kpiData.reduce((sum, item) => sum + item.wd_human_error, 0)
 
   const totalTransactions = kpiData.reduce((sum, item) => sum + item.dep_total + item.wd_total, 0)
   const totalApproved = kpiData.reduce((sum, item) => sum + item.dep_approved + item.wd_approved, 0)
@@ -604,7 +592,7 @@ export default function OfficersKPIPage() {
         </Link>
         
         <h1 className="text-3xl font-bold text-[#FFD700]">PERFORMANCE SUMMARY OFFICERS</h1>
-        <p className="text-[#A7D8FF] mt-2">Performance monitoring all officers (including SYSTEM)</p>
+        <p className="text-[#A7D8FF] mt-2">Performance monitoring all officers (including SYSTEM & MOZARTDP)</p>
       </div>
 
       {/* FILTER SECTION */}
@@ -670,20 +658,19 @@ export default function OfficersKPIPage() {
 
       {/* PIE CHARTS SECTION - 3D EXPLODED dengan layout baru */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Deposit Pie Chart - Geser ke kiri */}
+        {/* Deposit Pie Chart */}
         <div className="bg-[#1A2F4A] rounded-lg border border-blue-500/30 p-4">
           <h3 className="text-lg font-bold text-blue-400 mb-4 text-center">
             DEPOSIT APPROVED DISTRIBUTION
           </h3>
           {depositPieData.length > 0 ? (
             <div className="flex flex-col md:flex-row items-center gap-4">
-              {/* Pie Chart - Geser ke kiri dengan cx="40%" */}
               <div className="w-full md:w-1/2 h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={depositPieData}
-                      cx="40%" // Digeser ke kiri
+                      cx="40%"
                       cy="50%"
                       innerRadius={0}
                       outerRadius={100}
@@ -727,7 +714,6 @@ export default function OfficersKPIPage() {
                 </ResponsiveContainer>
               </div>
               
-              {/* Legend di kanan - 1 kolom biar muat nama panjang */}
               <div className="w-full md:w-1/2 max-h-80 overflow-y-auto pr-2">
                 <div className="space-y-2">
                   {depositPieData.map((item, index) => {
@@ -756,20 +742,19 @@ export default function OfficersKPIPage() {
           </div>
         </div>
 
-        {/* Withdrawal Pie Chart - Geser ke kiri */}
+        {/* Withdrawal Pie Chart */}
         <div className="bg-[#1A2F4A] rounded-lg border border-green-500/30 p-4">
           <h3 className="text-lg font-bold text-green-400 mb-4 text-center">
             WITHDRAWAL APPROVED DISTRIBUTION
           </h3>
           {withdrawalPieData.length > 0 ? (
             <div className="flex flex-col md:flex-row items-center gap-4">
-              {/* Pie Chart - Geser ke kiri dengan cx="40%" */}
               <div className="w-full md:w-1/2 h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={withdrawalPieData}
-                      cx="40%" // Digeser ke kiri
+                      cx="40%"
                       cy="50%"
                       innerRadius={0}
                       outerRadius={100}
@@ -813,7 +798,6 @@ export default function OfficersKPIPage() {
                 </ResponsiveContainer>
               </div>
               
-              {/* Legend di kanan - 1 kolom biar muat nama panjang */}
               <div className="w-full md:w-1/2 max-h-80 overflow-y-auto pr-2">
                 <div className="space-y-2">
                   {withdrawalPieData.map((item, index) => {
@@ -843,7 +827,7 @@ export default function OfficersKPIPage() {
         </div>
       </div>
 
-      {/* TABEL DEPOSIT - Hanya MOZARTDP */}
+      {/* TABEL DEPOSIT - MOZARTDP tampil di sini */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-xl font-bold text-blue-400 flex items-center">
@@ -885,49 +869,44 @@ export default function OfficersKPIPage() {
             </thead>
             <tbody>
               {kpiData.length > 0 ? (
-                kpiData
-                  .filter(item => item.panel_id !== 'MOZARTWD')
-                  .map((item, idx) => {
-                    const filteredIndex = kpiData
-                      .filter(i => i.panel_id !== 'MOZARTWD')
-                      .findIndex(i => i.panel_id === item.panel_id)
-                    
-                    return (
-                      <tr 
-                        key={`dep-${item.panel_id}`} 
-                        className={`border-b border-blue-500/10 hover:bg-[#0B1A33]/50 ${
-                          item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
-                        }`}
-                      >
-                        <td className="px-2 py-2">{filteredIndex + 1}</td>
-                        <td className="px-2 py-2 text-blue-400">{item.panel_id}</td>
-                        <td className="px-2 py-2">{item.officer_name}</td>
-                        <td className="px-2 py-2">{item.department}</td>
-                        <td className="px-2 py-2">
-                          <span className={`px-1 py-0.5 rounded text-[10px] ${
-                            item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
-                              ? 'bg-purple-500/20 text-purple-400' 
-                              : 'bg-green-500/20 text-green-400'
-                          }`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        
-                        <td className="px-2 py-2 font-bold text-blue-400">{item.dep_total}</td>
-                        <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
-                        <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
-                        <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
-                        <td className="px-2 py-2">{item.dep_approve_rate}%</td>
-                        <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
-                        <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
-                        <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
-                        <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
-                        <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
-                        
-                        <td className="px-2 py-2 text-red-400">{item.dep_human_error}</td>
-                      </tr>
-                    )
-                  })
+                kpiData.map((item, idx) => {
+                  // Hanya tampilkan MOZARTDP (tanpa filter apapun)
+                  return (
+                    <tr 
+                      key={`dep-${item.panel_id}`} 
+                      className={`border-b border-blue-500/10 hover:bg-[#0B1A33]/50 ${
+                        item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
+                      }`}
+                    >
+                      <td className="px-2 py-2">{idx + 1}</td>
+                      <td className="px-2 py-2 text-blue-400">{item.panel_id}</td>
+                      <td className="px-2 py-2">{item.officer_name}</td>
+                      <td className="px-2 py-2">{item.department}</td>
+                      <td className="px-2 py-2">
+                        <span className={`px-1 py-0.5 rounded text-[10px] ${
+                          item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
+                            ? 'bg-purple-500/20 text-purple-400' 
+                            : 'bg-green-500/20 text-green-400'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      
+                      <td className="px-2 py-2 font-bold text-blue-400">{item.dep_total}</td>
+                      <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
+                      <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
+                      <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
+                      <td className="px-2 py-2">{item.dep_approve_rate}%</td>
+                      <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
+                      <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
+                      <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
+                      <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
+                      <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
+                      
+                      <td className="px-2 py-2 text-red-400">{item.dep_human_error}</td>
+                    </tr>
+                  )
+                })
               ) : (
                 <tr>
                   <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
@@ -941,7 +920,7 @@ export default function OfficersKPIPage() {
         </div>
       </div>
 
-      {/* TABEL WITHDRAWAL - Hanya MOZARTWD */}
+      {/* TABEL WITHDRAWAL - MOZARTDP tampil di sini juga */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-xl font-bold text-green-400 flex items-center">
@@ -983,49 +962,43 @@ export default function OfficersKPIPage() {
             </thead>
             <tbody>
               {kpiData.length > 0 ? (
-                kpiData
-                  .filter(item => item.panel_id !== 'MOZARTDP')
-                  .map((item, idx) => {
-                    const filteredIndex = kpiData
-                      .filter(i => i.panel_id !== 'MOZARTDP')
-                      .findIndex(i => i.panel_id === item.panel_id)
-                    
-                    return (
-                      <tr 
-                        key={`wd-${item.panel_id}`} 
-                        className={`border-b border-green-500/10 hover:bg-[#0B1A33]/50 ${
-                          item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTWD' ? 'bg-purple-900/20' : ''
-                        }`}
-                      >
-                        <td className="px-2 py-2">{filteredIndex + 1}</td>
-                        <td className="px-2 py-2 text-green-400">{item.panel_id}</td>
-                        <td className="px-2 py-2">{item.officer_name}</td>
-                        <td className="px-2 py-2">{item.department}</td>
-                        <td className="px-2 py-2">
-                          <span className={`px-1 py-0.5 rounded text-[10px] ${
-                            item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTWD' 
-                              ? 'bg-purple-500/20 text-purple-400' 
-                              : 'bg-green-500/20 text-green-400'
-                          }`}>
-                            {item.status}
-                          </span>
-                        </td>
-                        
-                        <td className="px-2 py-2 font-bold text-green-400">{item.wd_total}</td>
-                        <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
-                        <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
-                        <td className="px-2 py-2 text-orange-400">{item.wd_failed}</td>
-                        <td className="px-2 py-2">{item.wd_approve_rate}%</td>
-                        <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
-                        <td className="px-2 py-2 text-red-400 font-mono">{item.wd_avg_reject}</td>
-                        <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_fail}</td>
-                        <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
-                        <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
-                        
-                        <td className="px-2 py-2 text-red-400">{item.wd_human_error}</td>
-                      </tr>
-                    )
-                  })
+                kpiData.map((item, idx) => {
+                  return (
+                    <tr 
+                      key={`wd-${item.panel_id}`} 
+                      className={`border-b border-green-500/10 hover:bg-[#0B1A33]/50 ${
+                        item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
+                      }`}
+                    >
+                      <td className="px-2 py-2">{idx + 1}</td>
+                      <td className="px-2 py-2 text-green-400">{item.panel_id}</td>
+                      <td className="px-2 py-2">{item.officer_name}</td>
+                      <td className="px-2 py-2">{item.department}</td>
+                      <td className="px-2 py-2">
+                        <span className={`px-1 py-0.5 rounded text-[10px] ${
+                          item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
+                            ? 'bg-purple-500/20 text-purple-400' 
+                            : 'bg-green-500/20 text-green-400'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      
+                      <td className="px-2 py-2 font-bold text-green-400">{item.wd_total}</td>
+                      <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
+                      <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
+                      <td className="px-2 py-2 text-orange-400">{item.wd_failed}</td>
+                      <td className="px-2 py-2">{item.wd_approve_rate}%</td>
+                      <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
+                      <td className="px-2 py-2 text-red-400 font-mono">{item.wd_avg_reject}</td>
+                      <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_fail}</td>
+                      <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
+                      <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
+                      
+                      <td className="px-2 py-2 text-red-400">{item.wd_human_error}</td>
+                    </tr>
+                  )
+                })
               ) : (
                 <tr>
                   <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
@@ -1042,7 +1015,7 @@ export default function OfficersKPIPage() {
       {/* SUMMARY GABUNGAN */}
       <div className="mt-4 bg-[#1A2F4A] p-3 rounded-lg border border-[#FFD700]/30 text-xs text-[#A7D8FF]">
         <div className="flex justify-between flex-wrap gap-2">
-          <span>Total Officers: {kpiData.filter(o => o.panel_id !== 'MOZARTDP' && o.panel_id !== 'MOZARTWD').length - 1} + SYSTEM + MOZART</span>
+          <span>Total Officers: {kpiData.filter(o => o.panel_id !== 'MOZARTDP').length - 1} + SYSTEM + MOZARTDP</span>
           <span>Total Transactions: {totalTransactions}</span>
           <span className="text-green-400">Approved: {totalApproved}</span>
           <span className="text-red-400">Rejected: {totalRejected}</span>
