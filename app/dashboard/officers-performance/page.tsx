@@ -68,6 +68,63 @@ const minutesToHHMMSS = (minutes: number): string => {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+// ===========================================
+// HELPER: Fetch ALL data dengan pagination
+// ===========================================
+const fetchAllData = async (
+  table: string,
+  selectFields: string,
+  startDate: string,
+  endDate: string
+): Promise<any[]> => {
+  let allData: any[] = []
+  let page = 0
+  const pageSize = 1000
+  let hasMore = true
+
+  console.log(`🚀 Fetching ${table} with pagination...`)
+
+  while (hasMore) {
+    const from = page * pageSize
+    const to = (page + 1) * pageSize - 1
+
+    let query = supabase
+      .from(table)
+      .select(selectFields)
+      .range(from, to)
+
+    // Apply date filter if provided
+    if (startDate && endDate) {
+      query = query
+        .gte('approved_date', startDate)
+        .lte('approved_date', endDate)
+    }
+
+    const { data, error, count } = await query
+
+    if (error) {
+      console.error(`❌ Error fetching ${table} page ${page}:`, error)
+      throw error
+    }
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data]
+      console.log(`📥 ${table} page ${page}: fetched ${data.length} rows (total: ${allData.length})`)
+      page++
+    } else {
+      hasMore = false
+    }
+
+    // Safety break if no data or less than pageSize
+    if (!data || data.length < pageSize) {
+      hasMore = false
+    }
+  }
+
+  console.log(`✅ ${table} total fetched: ${allData.length} rows`)
+  return allData
+}
+
 // Warna untuk pie chart
 const COLORS = [
   '#FFD700', '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
@@ -163,6 +220,7 @@ export default function OfficersKPIPage() {
       ]
       
       console.log('📊 Officers found:', allOfficers.length)
+      console.log('📊 Officers list:', allOfficers.map(o => o.panel_id))
       setOfficers(allOfficers)
       
     } catch (error: any) {
@@ -213,16 +271,18 @@ export default function OfficersKPIPage() {
   // HELPER: Get Panel ID dari handler (CASE INSENSITIVE)
   // ===========================================
   const getPanelIdFromHandler = (handler: string): string => {
-    if (!handler || typeof handler !== 'string') return 'SYSTEM'
+    if (!handler || typeof handler !== 'string') {
+      return 'SYSTEM'
+    }
     
     const normalized = handler.toLowerCase().trim()
     
-    // Mapping khusus: mozartdp, mozartwd, dll -> MOZARTDP
-    if (normalized === 'mozartdp' || normalized === 'mozartwd') {
+    // MOZARTDP
+    if (normalized === 'mozartdp') {
       return 'MOZARTDP'
     }
     
-    // Mapping khusus: system -> SYSTEM
+    // SYSTEM
     if (normalized === 'system') {
       return 'SYSTEM'
     }
@@ -232,12 +292,11 @@ export default function OfficersKPIPage() {
       o.panel_id?.toLowerCase() === normalized
     )
     
-    // Kalo ketemu return panel_id asli, kalo ga ketemu masukin ke SYSTEM
     return officer ? officer.panel_id : 'SYSTEM'
   }
 
   // ===========================================
-  // FETCH KPI - DENGAN FILTER TANGGAL AKURAT
+  // FETCH KPI - DENGAN PAGINATION
   // ===========================================
 
   const fetchKPI = async () => {
@@ -249,59 +308,40 @@ export default function OfficersKPIPage() {
       console.log('🔍 Filter:', { filterType, startDate, endDate, periodText })
 
       // ===========================================
-      // DEPOSIT: Filter berdasarkan approved_date
+      // FETCH ALL DEPOSIT DATA DENGAN PAGINATION
       // ===========================================
-      let depositQuery = supabase
-        .from('deposit_transactions')
-        .select('handler, status, duration_minutes, reason, approved_date')
-      
-      if (startDate && endDate) {
-        depositQuery = depositQuery
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate)
-      }
-      
-      const { data: depositData, error: depositError } = await depositQuery
-
-      if (depositError) throw depositError
+      const depositData = await fetchAllData(
+        'deposit_transactions',
+        'handler, status, duration_minutes, reason, approved_date',
+        startDate,
+        endDate
+      )
 
       // ===========================================
-      // WITHDRAWAL: Filter berdasarkan approved_date
+      // FETCH ALL WITHDRAWAL DATA DENGAN PAGINATION
       // ===========================================
-      let withdrawalQuery = supabase
-        .from('withdrawal_transactions')
-        .select('handler, status, duration_minutes, reason, approved_date')
-      
-      if (startDate && endDate) {
-        withdrawalQuery = withdrawalQuery
-          .gte('approved_date', startDate)
-          .lte('approved_date', endDate)
-      }
-      
-      const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery
+      const withdrawalData = await fetchAllData(
+        'withdrawal_transactions',
+        'handler, status, duration_minutes, reason, approved_date',
+        startDate,
+        endDate
+      )
 
-      if (withdrawalError) throw withdrawalError
-
-      console.log('📊 Deposit count:', depositData?.length || 0)
-      console.log('📊 Withdrawal count:', withdrawalData?.length || 0)
+      console.log('📊 Total Deposit count:', depositData.length)
+      console.log('📊 Total Withdrawal count:', withdrawalData.length)
       
-      // Debug sample data
-      if (depositData && depositData.length > 0) {
-        console.log('📝 Sample deposit (first 3):', depositData.slice(0, 3).map(tx => ({
-          handler: tx.handler,
-          status: tx.status,
-          approved_date: tx.approved_date
-        })))
-      }
+      // DEBUG: Hitung MOZARTDP di deposit
+      const mozartDepositCount = depositData.filter(tx => 
+        tx.handler?.toLowerCase() === 'mozartdp'
+      ).length
+      console.log('🎯 MOZARTDP Deposit transactions:', mozartDepositCount)
       
-      if (withdrawalData && withdrawalData.length > 0) {
-        console.log('📝 Sample withdrawal (first 3):', withdrawalData.slice(0, 3).map(tx => ({
-          handler: tx.handler,
-          status: tx.status,
-          approved_date: tx.approved_date
-        })))
-      }
-
+      // DEBUG: Hitung MOZARTDP di withdrawal
+      const mozartWithdrawalCount = withdrawalData.filter(tx => 
+        tx.handler?.toLowerCase() === 'mozartdp'
+      ).length
+      console.log('🎯 MOZARTDP Withdrawal transactions:', mozartWithdrawalCount)
+      
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
@@ -347,9 +387,9 @@ export default function OfficersKPIPage() {
       })
 
       // ===========================================
-      // PROSES DEPOSIT - DENGAN CASE INSENSITIVE
+      // PROSES DEPOSIT
       // ===========================================
-      depositData?.forEach((tx: any) => {
+      depositData.forEach((tx: any) => {
         const targetPanelId = getPanelIdFromHandler(tx.handler)
         
         if (!kpiMap[targetPanelId]) return
@@ -362,13 +402,11 @@ export default function OfficersKPIPage() {
         const isSystemOrMozart = targetPanelId === 'SYSTEM' || targetPanelId === 'MOZARTDP'
         
         if (isSystemOrMozart) {
-          // SYSTEM & MOZARTDP: hanya Approved dan Failed (tidak ada Rejected)
           if (status === 'approved') {
             kpi.dep_approved++
             kpi.dep_approve_count++
             kpi.dep_approve_minutes_sum += (tx.duration_minutes || 0)
             
-            // SOP: deposit <= 3 menit
             if (tx.duration_minutes <= 3) {
               kpi.dep_sop++
             } else {
@@ -380,7 +418,6 @@ export default function OfficersKPIPage() {
             kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
           }
         } else {
-          // Officer biasa: Approved, Rejected, Failed
           if (status === 'approved') {
             kpi.dep_approved++
             kpi.dep_approve_count++
@@ -402,7 +439,6 @@ export default function OfficersKPIPage() {
           }
         }
 
-        // Human error check (berlaku untuk semua)
         const reason = tx.reason?.toLowerCase() || ''
         if (reason.includes('mistake') ||
             reason.includes('crossbank') ||
@@ -413,9 +449,9 @@ export default function OfficersKPIPage() {
       })
 
       // ===========================================
-      // PROSES WITHDRAWAL - DENGAN CASE INSENSITIVE
+      // PROSES WITHDRAWAL
       // ===========================================
-      withdrawalData?.forEach((tx: any) => {
+      withdrawalData.forEach((tx: any) => {
         const targetPanelId = getPanelIdFromHandler(tx.handler)
         
         if (!kpiMap[targetPanelId]) return
@@ -428,13 +464,11 @@ export default function OfficersKPIPage() {
         const isSystemOrMozart = targetPanelId === 'SYSTEM' || targetPanelId === 'MOZARTDP'
         
         if (isSystemOrMozart) {
-          // SYSTEM & MOZARTDP: hanya Approved dan Failed (tidak ada Rejected)
           if (status === 'approved') {
             kpi.wd_approved++
             kpi.wd_approve_count++
             kpi.wd_approve_minutes_sum += (tx.duration_minutes || 0)
             
-            // SOP: withdrawal <= 5 menit
             if (tx.duration_minutes <= 5) {
               kpi.wd_sop++
             } else {
@@ -446,7 +480,6 @@ export default function OfficersKPIPage() {
             kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
           }
         } else {
-          // Officer biasa: Approved, Rejected, Failed
           if (status === 'approved') {
             kpi.wd_approved++
             kpi.wd_approve_count++
@@ -468,7 +501,6 @@ export default function OfficersKPIPage() {
           }
         }
 
-        // Human error check
         const reason = tx.reason?.toLowerCase() || ''
         if (reason.includes('mistake') ||
             reason.includes('crossbank') ||
@@ -596,9 +628,9 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // RENDER
+  // RENDER (sama seperti sebelumnya)
   // ===========================================
-
+  
   if (loading) {
     return (
       <div className="p-6 min-h-screen bg-[#0B1A33] flex items-center justify-center">
