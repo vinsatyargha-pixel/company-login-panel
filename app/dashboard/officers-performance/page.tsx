@@ -217,7 +217,7 @@ export default function OfficersKPIPage() {
         {
           id: 'unknown',
           panel_id: 'UNKNOWN',
-          full_name: 'UNKNOWN HANDLER',
+          full_name: 'ANOTHER HANDLER',
           department: 'UNKNOWN',
           status: 'UNKNOWN'
         }
