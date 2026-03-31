@@ -128,7 +128,7 @@ export default function OfficersKPIPage() {
   }, [filterType, selectedMonth, selectedYear, customStartDate, customEndDate, officers])
 
   // ===========================================
-  // FETCH OFFICERS - SATU MOZARTDP (bukan dua)
+  // FETCH OFFICERS
   // ===========================================
 
   const fetchOfficers = async () => {
@@ -153,7 +153,6 @@ export default function OfficersKPIPage() {
           department: 'AUTOMATION',
           status: 'SYSTEM'
         },
-        // SATU MOZARTDP untuk deposit DAN withdrawal
         {
           id: 'mozartdp',
           panel_id: 'MOZARTDP',
@@ -173,7 +172,7 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // GET DATE RANGE BASED ON FILTER
+  // GET DATE RANGE - AKURAT SAMPAI DETIK
   // ===========================================
   const getDateRange = () => {
     let startDate = ''
@@ -203,6 +202,8 @@ export default function OfficersKPIPage() {
       periodText = `${startDate} s/d ${endDate}`
     }
 
+    // Format dengan waktu yang benar
+    // Gunakan ISO format yang kompatibel dengan Supabase
     return { 
       startDate: `${startDate} 00:00:00`, 
       endDate: `${endDate} 23:59:59`, 
@@ -211,7 +212,28 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // FETCH KPI - MOZARTDP untuk deposit & withdrawal
+  // NORMALIZE HANDLER (MOZARTDP case insensitive + mapping)
+  // ===========================================
+  const normalizeHandler = (handler: string): string => {
+    if (!handler || typeof handler !== 'string') return handler
+    
+    const lowerHandler = handler.toLowerCase()
+    
+    // Mapping: mozartwd -> MOZARTDP, mozartdp -> MOZARTDP
+    if (lowerHandler === 'mozartdp' || lowerHandler === 'mozartwd') {
+      return 'MOZARTDP'
+    }
+    
+    // SYSTEM juga dinormalisasi
+    if (lowerHandler === 'system') {
+      return 'SYSTEM'
+    }
+    
+    return handler
+  }
+
+  // ===========================================
+  // FETCH KPI - DENGAN FILTER TANGGAL AKURAT
   // ===========================================
 
   const fetchKPI = async () => {
@@ -222,31 +244,65 @@ export default function OfficersKPIPage() {
       const { startDate, endDate, periodText } = getDateRange()
       console.log('🔍 Filter:', { filterType, startDate, endDate, periodText })
 
-      // Ambil data deposit
-      const { data: depositData, error: depositError } = await supabase
+      // ===========================================
+      // DEPOSIT: Filter berdasarkan approved_date
+      // ===========================================
+      let depositQuery = supabase
         .from('deposit_transactions')
-        .select('handler, status, duration_minutes, reason')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
+        .select('handler, status, duration_minutes, reason, approved_date')
+      
+      // Terapkan filter hanya jika startDate dan endDate valid
+      if (startDate && endDate) {
+        depositQuery = depositQuery
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate)
+      }
+      
+      const { data: depositData, error: depositError } = await depositQuery
 
       if (depositError) throw depositError
 
-      // Ambil data withdrawal
-      const { data: withdrawalData, error: withdrawalError } = await supabase
+      // ===========================================
+      // WITHDRAWAL: Filter berdasarkan approved_date
+      // ===========================================
+      let withdrawalQuery = supabase
         .from('withdrawal_transactions')
-        .select('handler, status, duration_minutes, reason')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate)
+        .select('handler, status, duration_minutes, reason, approved_date')
+      
+      if (startDate && endDate) {
+        withdrawalQuery = withdrawalQuery
+          .gte('approved_date', startDate)
+          .lte('approved_date', endDate)
+      }
+      
+      const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery
 
       if (withdrawalError) throw withdrawalError
 
-      console.log('📊 Deposit:', depositData?.length || 0)
-      console.log('📊 Withdrawal:', withdrawalData?.length || 0)
+      console.log('📊 Deposit count:', depositData?.length || 0)
+      console.log('📊 Withdrawal count:', withdrawalData?.length || 0)
+      
+      // Debug sample data
+      if (depositData && depositData.length > 0) {
+        console.log('📝 Sample deposit (first 2):', depositData.slice(0, 2).map(tx => ({
+          handler: tx.handler,
+          status: tx.status,
+          approved_date: tx.approved_date
+        })))
+      }
+      
+      if (withdrawalData && withdrawalData.length > 0) {
+        console.log('📝 Sample withdrawal (first 2):', withdrawalData.slice(0, 2).map(tx => ({
+          handler: tx.handler,
+          status: tx.status,
+          approved_date: tx.approved_date
+        })))
+      }
 
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan SEMUA officer (termasuk MOZARTDP)
+      // Inisialisasi dengan SEMUA officer
       officers.forEach(officer => {
         kpiMap[officer.panel_id] = {
           officer_id: officer.id,
@@ -287,15 +343,18 @@ export default function OfficersKPIPage() {
         }
       })
 
-      // Proses Deposit - MOZARTDP akan handle deposit
+      // ===========================================
+      // PROSES DEPOSIT - DENGAN NORMALIZE HANDLER
+      // ===========================================
       depositData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
-        const handler = tx.handler
+        // Normalize handler (MOZARTDP, mozartdp, MOZARTWD, mozartwd -> MOZARTDP)
+        const normalizedHandler = normalizeHandler(tx.handler)
         
-        // Cari officer berdasarkan handler (MOZARTDP akan match dengan panel_id MOZARTDP)
+        // Cari officer berdasarkan normalized handler
         const officer = officers.find(o => 
-          o.panel_id?.toLowerCase() === handler.toLowerCase()
+          o.panel_id?.toLowerCase() === normalizedHandler.toLowerCase()
         )
         
         const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
@@ -307,7 +366,7 @@ export default function OfficersKPIPage() {
         kpi.dep_total++
 
         const status = tx.status?.toLowerCase()
-        const isSystem = targetPanelId === 'SYSTEM'
+        const isSystem = targetPanelId === 'SYSTEM' || targetPanelId === 'SYSTEM'
         
         if (isSystem) {
           if (status === 'approved') {
@@ -347,22 +406,28 @@ export default function OfficersKPIPage() {
           }
         }
 
-        if (tx.reason?.toLowerCase().includes('mistake') ||
-            tx.reason?.toLowerCase().includes('crossbank') ||
-            tx.reason?.toLowerCase().includes('cross asset') ||
-            tx.reason?.toLowerCase().includes('wrong process')) {
+        // Human error check
+        const reason = tx.reason?.toLowerCase() || ''
+        if (reason.includes('mistake') ||
+            reason.includes('crossbank') ||
+            reason.includes('cross asset') ||
+            reason.includes('wrong process')) {
           kpi.dep_human_error++
         }
       })
 
-      // Proses Withdrawal - MOZARTDP akan handle withdrawal juga
+      // ===========================================
+      // PROSES WITHDRAWAL - DENGAN NORMALIZE HANDLER
+      // ===========================================
       withdrawalData?.forEach((tx: any) => {
         if (!tx.handler || typeof tx.handler !== 'string') return
         
-        const handler = tx.handler
+        // Normalize handler (MOZARTDP, mozartdp, MOZARTWD, mozartwd -> MOZARTDP)
+        const normalizedHandler = normalizeHandler(tx.handler)
         
+        // Cari officer berdasarkan normalized handler
         const officer = officers.find(o => 
-          o.panel_id?.toLowerCase() === handler.toLowerCase()
+          o.panel_id?.toLowerCase() === normalizedHandler.toLowerCase()
         )
         
         const targetPanelId = officer ? officer.panel_id : 'SYSTEM'
@@ -374,7 +439,7 @@ export default function OfficersKPIPage() {
         kpi.wd_total++
 
         const status = tx.status?.toLowerCase()
-        const isSystem = targetPanelId === 'SYSTEM'
+        const isSystem = targetPanelId === 'SYSTEM' || targetPanelId === 'SYSTEM'
         
         if (isSystem) {
           if (status === 'approved') {
@@ -414,10 +479,12 @@ export default function OfficersKPIPage() {
           }
         }
 
-        if (tx.reason?.toLowerCase().includes('mistake') ||
-            tx.reason?.toLowerCase().includes('crossbank') ||
-            tx.reason?.toLowerCase().includes('cross asset') ||
-            tx.reason?.toLowerCase().includes('wrong process')) {
+        // Human error check
+        const reason = tx.reason?.toLowerCase() || ''
+        if (reason.includes('mistake') ||
+            reason.includes('crossbank') ||
+            reason.includes('cross asset') ||
+            reason.includes('wrong process')) {
           kpi.wd_human_error++
         }
       })
@@ -499,10 +566,15 @@ export default function OfficersKPIPage() {
         ...formattedData.filter(item => item.panel_id === 'SYSTEM')
       ]
       
-      console.log('✅ KPI Data:', sortedData)
+      console.log('✅ Final KPI Data:', sortedData.map(d => ({ 
+        panel_id: d.panel_id, 
+        dep_total: d.dep_total, 
+        wd_total: d.wd_total 
+      })))
+      
       setKpiData(sortedData)
 
-      // Buat data untuk pie chart (termasuk MOZARTDP)
+      // Buat data untuk pie chart
       const depositPie = sortedData
         .filter(item => item.dep_approved > 0)
         .map((item, index) => ({
@@ -561,7 +633,7 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // SUMMARY PER TABEL (Tanpa filter MOZARTDP)
+  // SUMMARY
   // ===========================================
   const depTotal = kpiData.reduce((sum, item) => sum + item.dep_total, 0)
   const depApproved = kpiData.reduce((sum, item) => sum + item.dep_approved, 0)
@@ -656,7 +728,7 @@ export default function OfficersKPIPage() {
         </div>
       </div>
 
-      {/* PIE CHARTS SECTION - 3D EXPLODED dengan layout baru */}
+      {/* PIE CHARTS SECTION */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Deposit Pie Chart */}
         <div className="bg-[#1A2F4A] rounded-lg border border-blue-500/30 p-4">
@@ -734,11 +806,11 @@ export default function OfficersKPIPage() {
             </div>
           ) : (
             <div className="h-80 flex items-center justify-center text-[#A7D8FF]">
-              No deposit approved data
+              No deposit approved data for {periodText}
             </div>
           )}
           <div className="mt-2 text-center text-xs text-[#A7D8FF]">
-            Total Approved: {depApproved}
+            Total Approved: {depApproved} | Total Deposit: {depTotal}
           </div>
         </div>
 
@@ -818,16 +890,16 @@ export default function OfficersKPIPage() {
             </div>
           ) : (
             <div className="h-80 flex items-center justify-center text-[#A7D8FF]">
-              No withdrawal approved data
+              No withdrawal approved data for {periodText}
             </div>
           )}
           <div className="mt-2 text-center text-xs text-[#A7D8FF]">
-            Total Approved: {wdApproved}
+            Total Approved: {wdApproved} | Total Withdrawal: {wdTotal}
           </div>
         </div>
       </div>
 
-      {/* TABEL DEPOSIT - MOZARTDP tampil di sini */}
+      {/* TABEL DEPOSIT */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-xl font-bold text-blue-400 flex items-center">
@@ -869,44 +941,41 @@ export default function OfficersKPIPage() {
             </thead>
             <tbody>
               {kpiData.length > 0 ? (
-                kpiData.map((item, idx) => {
-                  // Hanya tampilkan MOZARTDP (tanpa filter apapun)
-                  return (
-                    <tr 
-                      key={`dep-${item.panel_id}`} 
-                      className={`border-b border-blue-500/10 hover:bg-[#0B1A33]/50 ${
-                        item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
-                      }`}
-                    >
-                      <td className="px-2 py-2">{idx + 1}</td>
-                      <td className="px-2 py-2 text-blue-400">{item.panel_id}</td>
-                      <td className="px-2 py-2">{item.officer_name}</td>
-                      <td className="px-2 py-2">{item.department}</td>
-                      <td className="px-2 py-2">
-                        <span className={`px-1 py-0.5 rounded text-[10px] ${
-                          item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
-                            ? 'bg-purple-500/20 text-purple-400' 
-                            : 'bg-green-500/20 text-green-400'
-                        }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      
-                      <td className="px-2 py-2 font-bold text-blue-400">{item.dep_total}</td>
-                      <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
-                      <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
-                      <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
-                      <td className="px-2 py-2">{item.dep_approve_rate}%</td>
-                      <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
-                      <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
-                      <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
-                      <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
-                      <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
-                      
-                      <td className="px-2 py-2 text-red-400">{item.dep_human_error}</td>
-                    </tr>
-                  )
-                })
+                kpiData.map((item, idx) => (
+                  <tr 
+                    key={`dep-${item.panel_id}`} 
+                    className={`border-b border-blue-500/10 hover:bg-[#0B1A33]/50 ${
+                      item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
+                    }`}
+                  >
+                    <td className="px-2 py-2">{idx + 1}</td>
+                    <td className="px-2 py-2 text-blue-400">{item.panel_id}</td>
+                    <td className="px-2 py-2">{item.officer_name}</td>
+                    <td className="px-2 py-2">{item.department}</td>
+                    <td className="px-2 py-2">
+                      <span className={`px-1 py-0.5 rounded text-[10px] ${
+                        item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
+                          ? 'bg-purple-500/20 text-purple-400' 
+                          : 'bg-green-500/20 text-green-400'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    
+                    <td className="px-2 py-2 font-bold text-blue-400">{item.dep_total}</td>
+                    <td className="px-2 py-2 text-green-400">{item.dep_approved}</td>
+                    <td className="px-2 py-2 text-red-400">{item.dep_rejected}</td>
+                    <td className="px-2 py-2 text-orange-400">{item.dep_failed}</td>
+                    <td className="px-2 py-2">{item.dep_approve_rate}%</td>
+                    <td className="px-2 py-2 text-blue-400 font-mono">{item.dep_avg_approve}</td>
+                    <td className="px-2 py-2 text-red-400 font-mono">{item.dep_avg_reject}</td>
+                    <td className="px-2 py-2 text-orange-400 font-mono">{item.dep_avg_fail}</td>
+                    <td className="px-2 py-2 text-green-400">{item.dep_sop}</td>
+                    <td className="px-2 py-2 text-yellow-400">{item.dep_non_sop}</td>
+                    
+                    <td className="px-2 py-2 text-red-400">{item.dep_human_error}</td>
+                  </tr>
+                ))
               ) : (
                 <tr>
                   <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
@@ -920,7 +989,7 @@ export default function OfficersKPIPage() {
         </div>
       </div>
 
-      {/* TABEL WITHDRAWAL - MOZARTDP tampil di sini juga */}
+      {/* TABEL WITHDRAWAL */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-xl font-bold text-green-400 flex items-center">
@@ -962,43 +1031,41 @@ export default function OfficersKPIPage() {
             </thead>
             <tbody>
               {kpiData.length > 0 ? (
-                kpiData.map((item, idx) => {
-                  return (
-                    <tr 
-                      key={`wd-${item.panel_id}`} 
-                      className={`border-b border-green-500/10 hover:bg-[#0B1A33]/50 ${
-                        item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
-                      }`}
-                    >
-                      <td className="px-2 py-2">{idx + 1}</td>
-                      <td className="px-2 py-2 text-green-400">{item.panel_id}</td>
-                      <td className="px-2 py-2">{item.officer_name}</td>
-                      <td className="px-2 py-2">{item.department}</td>
-                      <td className="px-2 py-2">
-                        <span className={`px-1 py-0.5 rounded text-[10px] ${
-                          item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
-                            ? 'bg-purple-500/20 text-purple-400' 
-                            : 'bg-green-500/20 text-green-400'
-                        }`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      
-                      <td className="px-2 py-2 font-bold text-green-400">{item.wd_total}</td>
-                      <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
-                      <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
-                      <td className="px-2 py-2 text-orange-400">{item.wd_failed}</td>
-                      <td className="px-2 py-2">{item.wd_approve_rate}%</td>
-                      <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
-                      <td className="px-2 py-2 text-red-400 font-mono">{item.wd_avg_reject}</td>
-                      <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_fail}</td>
-                      <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
-                      <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
-                      
-                      <td className="px-2 py-2 text-red-400">{item.wd_human_error}</td>
-                    </tr>
-                  )
-                })
+                kpiData.map((item, idx) => (
+                  <tr 
+                    key={`wd-${item.panel_id}`} 
+                    className={`border-b border-green-500/10 hover:bg-[#0B1A33]/50 ${
+                      item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' ? 'bg-purple-900/20' : ''
+                    }`}
+                  >
+                    <td className="px-2 py-2">{idx + 1}</td>
+                    <td className="px-2 py-2 text-green-400">{item.panel_id}</td>
+                    <td className="px-2 py-2">{item.officer_name}</td>
+                    <td className="px-2 py-2">{item.department}</td>
+                    <td className="px-2 py-2">
+                      <span className={`px-1 py-0.5 rounded text-[10px] ${
+                        item.panel_id === 'SYSTEM' || item.panel_id === 'MOZARTDP' 
+                          ? 'bg-purple-500/20 text-purple-400' 
+                          : 'bg-green-500/20 text-green-400'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    
+                    <td className="px-2 py-2 font-bold text-green-400">{item.wd_total}</td>
+                    <td className="px-2 py-2 text-green-400">{item.wd_approved}</td>
+                    <td className="px-2 py-2 text-red-400">{item.wd_rejected}</td>
+                    <td className="px-2 py-2 text-orange-400">{item.wd_failed}</td>
+                    <td className="px-2 py-2">{item.wd_approve_rate}%</td>
+                    <td className="px-2 py-2 text-blue-400 font-mono">{item.wd_avg_approve}</td>
+                    <td className="px-2 py-2 text-red-400 font-mono">{item.wd_avg_reject}</td>
+                    <td className="px-2 py-2 text-orange-400 font-mono">{item.wd_avg_fail}</td>
+                    <td className="px-2 py-2 text-green-400">{item.wd_sop}</td>
+                    <td className="px-2 py-2 text-yellow-400">{item.wd_non_sop}</td>
+                    
+                    <td className="px-2 py-2 text-red-400">{item.wd_human_error}</td>
+                  </tr>
+                ))
               ) : (
                 <tr>
                   <td colSpan={16} className="px-4 py-12 text-center text-gray-400">
