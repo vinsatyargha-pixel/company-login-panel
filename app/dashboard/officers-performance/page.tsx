@@ -272,26 +272,36 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // HELPER: Get Panel ID dari handler - FIXED dengan includes
+  // HELPER: Get Panel ID dari handler
+  // ATURAN BARU:
+  // 1. Kalau status FAIL -> SYSTEM
+  // 2. Kalau handler = SYSTEM/MOZARTDP -> masing-masing
+  // 3. Selain itu cari di officers atau UNKNOWN
   // ===========================================
-  const getPanelIdFromHandler = (handler: string): string | null => {
+  const getPanelIdFromHandler = (handler: string, status: string): string | null => {
+    const statusLower = status?.toLowerCase() || ''
+    
+    // ATURAN 1: Kalau status FAIL, masuk ke SYSTEM
+    if (statusLower === 'fail' || statusLower === 'failed' || statusLower.includes('fail')) {
+      return 'SYSTEM'
+    }
+    
     if (!handler || typeof handler !== 'string') {
       return 'UNKNOWN'
     }
     
     const normalized = handler.toLowerCase().trim()
     
-    // MOZARTDP - handle semua yang mengandung kata mozart
-    if (normalized.includes('mozart')) {
-      return 'MOZARTDP'
-    }
-    
-    // SYSTEM - handle semua yang mengandung kata system
-    if (normalized.includes('system') || normalized === 'sys') {
+    // ATURAN 2: Handler SYSTEM atau MOZARTDP
+    if (normalized === 'system' || normalized === 'system ' || normalized === 'sys' || normalized.includes('system')) {
       return 'SYSTEM'
     }
     
-    // Cari di officers list (case insensitive)
+    if (normalized === 'mozartdp' || normalized === 'mozartdp ' || normalized === 'mozart' || normalized.includes('mozart')) {
+      return 'MOZARTDP'
+    }
+    
+    // ATURAN 3: Cari di officers list
     const officer = officers.find(o => 
       o.panel_id?.toLowerCase() === normalized ||
       o.full_name?.toLowerCase().includes(normalized)
@@ -333,20 +343,6 @@ export default function OfficersKPIPage() {
 
       console.log('📊 Total Deposit count:', depositData.length)
       console.log('📊 Total Withdrawal count:', withdrawalData.length)
-      
-      // DEBUG DETAIL: Cek semua unique handlers
-      const allHandlers = [...new Set([
-        ...depositData.map(tx => tx.handler), 
-        ...withdrawalData.map(tx => tx.handler)
-      ])].filter(Boolean)
-      console.log('🔍 ALL UNIQUE HANDLERS IN DATABASE:')
-      console.log(JSON.stringify(allHandlers, null, 2))
-      
-      // Cek khusus SYSTEM dan MOZARTDP
-      const systemRelated = allHandlers.filter(h => h?.toLowerCase().includes('system'))
-      const mozartRelated = allHandlers.filter(h => h?.toLowerCase().includes('mozart'))
-      console.log('🎯 SYSTEM related handlers:', systemRelated)
-      console.log('🎯 MOZART related handlers:', mozartRelated)
       
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
@@ -392,9 +388,9 @@ export default function OfficersKPIPage() {
 
       // PROSES DEPOSIT
       depositData.forEach((tx: any) => {
-        const targetPanelId = getPanelIdFromHandler(tx.handler)
+        const targetPanelId = getPanelIdFromHandler(tx.handler, tx.status)
         if (!targetPanelId || !kpiMap[targetPanelId]) {
-          console.log(`⚠️ Handler not mapped: "${tx.handler}" -> ${targetPanelId}`)
+          console.log(`⚠️ Handler not mapped: "${tx.handler}" status: "${tx.status}" -> ${targetPanelId}`)
           return
         }
         
@@ -418,6 +414,10 @@ export default function OfficersKPIPage() {
             kpi.dep_failed++
             kpi.dep_fail_count++
             kpi.dep_fail_minutes_sum += (tx.duration_minutes || 0)
+          } else if (status === 'rejected') {
+            kpi.dep_rejected++
+            kpi.dep_reject_count++
+            kpi.dep_reject_minutes_sum += (tx.duration_minutes || 0)
           }
         } else {
           if (status === 'approved') {
@@ -449,9 +449,9 @@ export default function OfficersKPIPage() {
 
       // PROSES WITHDRAWAL
       withdrawalData.forEach((tx: any) => {
-        const targetPanelId = getPanelIdFromHandler(tx.handler)
+        const targetPanelId = getPanelIdFromHandler(tx.handler, tx.status)
         if (!targetPanelId || !kpiMap[targetPanelId]) {
-          console.log(`⚠️ Handler not mapped: "${tx.handler}" -> ${targetPanelId}`)
+          console.log(`⚠️ Handler not mapped: "${tx.handler}" status: "${tx.status}" -> ${targetPanelId}`)
           return
         }
         
@@ -475,6 +475,10 @@ export default function OfficersKPIPage() {
             kpi.wd_failed++
             kpi.wd_fail_count++
             kpi.wd_fail_minutes_sum += (tx.duration_minutes || 0)
+          } else if (status === 'rejected') {
+            kpi.wd_rejected++
+            kpi.wd_reject_count++
+            kpi.wd_reject_minutes_sum += (tx.duration_minutes || 0)
           }
         } else {
           if (status === 'approved') {
@@ -586,7 +590,9 @@ export default function OfficersKPIPage() {
       console.log('✅ Final KPI Data:', sortedData.map(d => ({ 
         panel_id: d.panel_id, 
         dep_total: d.dep_total, 
-        wd_total: d.wd_total 
+        dep_failed: d.dep_failed,
+        wd_total: d.wd_total,
+        wd_failed: d.wd_failed
       })))
       
       setKpiData(sortedData)
