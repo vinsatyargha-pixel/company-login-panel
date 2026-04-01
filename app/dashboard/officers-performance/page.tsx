@@ -272,7 +272,7 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // HELPER: Get Panel ID dari handler - SYSTEM HANYA untuk handler 'system'
+  // HELPER: Get Panel ID dari handler - FIXED!
   // ===========================================
   const getPanelIdFromHandler = (handler: string): string | null => {
     if (!handler || typeof handler !== 'string') {
@@ -281,13 +281,13 @@ export default function OfficersKPIPage() {
     
     const normalized = handler.toLowerCase().trim()
     
-    // MOZARTDP
-    if (normalized === 'mozartdp') {
+    // MOZARTDP - handle berbagai kemungkinan format
+    if (normalized === 'mozartdp' || normalized === 'mozartdp ' || normalized === 'mozart') {
       return 'MOZARTDP'
     }
     
-    // SYSTEM - HANYA handler yang persis 'system'
-    if (normalized === 'system') {
+    // SYSTEM - handle berbagai kemungkinan format
+    if (normalized === 'system' || normalized === 'system ' || normalized === 'sys') {
       return 'SYSTEM'
     }
     
@@ -335,42 +335,14 @@ export default function OfficersKPIPage() {
       console.log('📊 Total Deposit count:', depositData.length)
       console.log('📊 Total Withdrawal count:', withdrawalData.length)
       
-      // Hitung MOZARTDP
-      const mozartDepositCount = depositData.filter(tx => 
-        tx.handler?.toLowerCase() === 'mozartdp'
-      ).length
-      const mozartWithdrawalCount = withdrawalData.filter(tx => 
-        tx.handler?.toLowerCase() === 'mozartdp'
-      ).length
-      console.log('🎯 MOZARTDP Deposit:', mozartDepositCount)
-      console.log('🎯 MOZARTDP Withdrawal:', mozartWithdrawalCount)
+      // DEBUG: Cek sample handler dari database
+      const uniqueHandlers = [...new Set(depositData.map(tx => tx.handler).concat(withdrawalData.map(tx => tx.handler)))].filter(Boolean)
+      console.log('🔍 Unique handlers in database:', uniqueHandlers.slice(0, 20))
       
-      // Hitung SYSTEM
-      const systemDepositCount = depositData.filter(tx => 
-        tx.handler?.toLowerCase() === 'system'
-      ).length
-      const systemWithdrawalCount = withdrawalData.filter(tx => 
-        tx.handler?.toLowerCase() === 'system'
-      ).length
-      console.log('🎯 SYSTEM Deposit:', systemDepositCount)
-      console.log('🎯 SYSTEM Withdrawal:', systemWithdrawalCount)
-      
-      // Hitung UNKNOWN
-      const unknownDepositCount = depositData.filter(tx => {
-        const h = tx.handler?.toLowerCase()
-        return h && h !== 'mozartdp' && h !== 'system' && !officers.find(o => o.panel_id?.toLowerCase() === h)
-      }).length
-      const unknownWithdrawalCount = withdrawalData.filter(tx => {
-        const h = tx.handler?.toLowerCase()
-        return h && h !== 'mozartdp' && h !== 'system' && !officers.find(o => o.panel_id?.toLowerCase() === h)
-      }).length
-      console.log('⚠️ UNKNOWN Deposit:', unknownDepositCount)
-      console.log('⚠️ UNKNOWN Withdrawal:', unknownWithdrawalCount)
-
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan SEMUA officer (termasuk UNKNOWN)
+      // Inisialisasi dengan SEMUA officer (termasuk SYSTEM, MOZARTDP, UNKNOWN)
       officers.forEach(officer => {
         kpiMap[officer.panel_id] = {
           officer_id: officer.id,
@@ -412,7 +384,10 @@ export default function OfficersKPIPage() {
       // PROSES DEPOSIT
       depositData.forEach((tx: any) => {
         const targetPanelId = getPanelIdFromHandler(tx.handler)
-        if (!targetPanelId || !kpiMap[targetPanelId]) return
+        if (!targetPanelId || !kpiMap[targetPanelId]) {
+          console.log(`⚠️ Handler not mapped: "${tx.handler}" -> ${targetPanelId}`)
+          return
+        }
         
         const kpi = kpiMap[targetPanelId]
         kpi.dep_total++
@@ -466,7 +441,10 @@ export default function OfficersKPIPage() {
       // PROSES WITHDRAWAL
       withdrawalData.forEach((tx: any) => {
         const targetPanelId = getPanelIdFromHandler(tx.handler)
-        if (!targetPanelId || !kpiMap[targetPanelId]) return
+        if (!targetPanelId || !kpiMap[targetPanelId]) {
+          console.log(`⚠️ Handler not mapped: "${tx.handler}" -> ${targetPanelId}`)
+          return
+        }
         
         const kpi = kpiMap[targetPanelId]
         kpi.wd_total++
@@ -637,7 +615,7 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // RENDER (sama seperti sebelumnya)
+  // RENDER
   // ===========================================
   
   if (loading) {
