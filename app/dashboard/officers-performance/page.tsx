@@ -272,7 +272,7 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // HELPER: Get Panel ID dari handler - FIXED!
+  // HELPER: Get Panel ID dari handler - FIXED dengan includes
   // ===========================================
   const getPanelIdFromHandler = (handler: string): string | null => {
     if (!handler || typeof handler !== 'string') {
@@ -281,27 +281,26 @@ export default function OfficersKPIPage() {
     
     const normalized = handler.toLowerCase().trim()
     
-    // MOZARTDP - handle berbagai kemungkinan format
-    if (normalized === 'mozartdp' || normalized === 'mozartdp ' || normalized === 'mozart') {
+    // MOZARTDP - handle semua yang mengandung kata mozart
+    if (normalized.includes('mozart')) {
       return 'MOZARTDP'
     }
     
-    // SYSTEM - handle berbagai kemungkinan format
-    if (normalized === 'system' || normalized === 'system ' || normalized === 'sys') {
+    // SYSTEM - handle semua yang mengandung kata system
+    if (normalized.includes('system') || normalized === 'sys') {
       return 'SYSTEM'
     }
     
     // Cari di officers list (case insensitive)
     const officer = officers.find(o => 
-      o.panel_id?.toLowerCase() === normalized
+      o.panel_id?.toLowerCase() === normalized ||
+      o.full_name?.toLowerCase().includes(normalized)
     )
     
-    // Kalo ketemu di officers, return panel_id-nya
     if (officer) {
       return officer.panel_id
     }
     
-    // Kalo gak dikenal, masukin ke UNKNOWN
     return 'UNKNOWN'
   }
 
@@ -335,14 +334,24 @@ export default function OfficersKPIPage() {
       console.log('📊 Total Deposit count:', depositData.length)
       console.log('📊 Total Withdrawal count:', withdrawalData.length)
       
-      // DEBUG: Cek sample handler dari database
-      const uniqueHandlers = [...new Set(depositData.map(tx => tx.handler).concat(withdrawalData.map(tx => tx.handler)))].filter(Boolean)
-      console.log('🔍 Unique handlers in database:', uniqueHandlers.slice(0, 20))
+      // DEBUG DETAIL: Cek semua unique handlers
+      const allHandlers = [...new Set([
+        ...depositData.map(tx => tx.handler), 
+        ...withdrawalData.map(tx => tx.handler)
+      ])].filter(Boolean)
+      console.log('🔍 ALL UNIQUE HANDLERS IN DATABASE:')
+      console.log(JSON.stringify(allHandlers, null, 2))
+      
+      // Cek khusus SYSTEM dan MOZARTDP
+      const systemRelated = allHandlers.filter(h => h?.toLowerCase().includes('system'))
+      const mozartRelated = allHandlers.filter(h => h?.toLowerCase().includes('mozart'))
+      console.log('🎯 SYSTEM related handlers:', systemRelated)
+      console.log('🎯 MOZART related handlers:', mozartRelated)
       
       // Hitung KPI per officer
       const kpiMap: { [key: string]: any } = {}
 
-      // Inisialisasi dengan SEMUA officer (termasuk SYSTEM, MOZARTDP, UNKNOWN)
+      // Inisialisasi dengan SEMUA officer
       officers.forEach(officer => {
         kpiMap[officer.panel_id] = {
           officer_id: officer.id,
@@ -615,7 +624,7 @@ export default function OfficersKPIPage() {
   }
 
   // ===========================================
-  // RENDER
+  // RENDER (sama seperti sebelumnya)
   // ===========================================
   
   if (loading) {
