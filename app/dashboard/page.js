@@ -883,157 +883,196 @@ const processMonthlyTrafficData = (deposits, withdrawals, chats, period, year) =
     }
   };
 
-  // ===========================================
-  // FETCH DASHBOARD TRANSACTION METRICS DATA - DENGAN ADJUSTMENT PLUS/MINUS
-  // ===========================================
-  const fetchDashboardTransactionMetrics = async () => {
-    try {
-      const { startDate, endDate } = getDateRangeForDashboard();
+// ===========================================
+// FETCH ALL DATA WITH PAGINATION - SIMPLE VERSION (UNTUK DASHBOARD)
+// ===========================================
+const fetchAllDataWithPaginationSimple = async (queryBuilder, tableName) => {
+  let allData = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
 
-      // DEPOSIT
-      let depositQuery = supabase
-        .from('deposit_transactions')
-        .select('deposit_amount, status')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
+  while (hasMore) {
+    const from = page * pageSize;
+    const to = (page + 1) * pageSize - 1;
 
-      if (selectedAsset !== 'all') {
-        depositQuery = depositQuery.eq('brand', 'XLY');
-      }
+    const { data, error } = await queryBuilder
+      .range(from, to);
 
-      const { data: depositData, error: depositError } = await depositQuery;
-      if (depositError) throw depositError;
-
-      // WITHDRAWAL
-      let withdrawalQuery = supabase
-        .from('withdrawal_transactions')
-        .select('withdrawal_amount, status')
-        .gte('approved_date', startDate)
-        .lte('approved_date', endDate);
-
-      if (selectedAsset !== 'all') {
-        withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
-      }
-
-      const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery;
-      if (withdrawalError) throw withdrawalError;
-
-      // ADJUSTMENT - HANYA APPROVED (DENGAN PLUS/MINUS)
-      let adjustmentQuery = supabase
-        .from('adjustment_transactions')
-        .select('adjustment_amount, status')
-        .eq('status', 'Approved')
-        .gte('adjustment_date', startDate)
-        .lte('adjustment_date', endDate);
-
-      if (selectedAsset !== 'all') {
-        adjustmentQuery = adjustmentQuery.eq('brand', 'XLY');
-      }
-
-      const { data: adjustmentData, error: adjustmentError } = await adjustmentQuery;
-      if (adjustmentError) throw adjustmentError;
-
-      // HITUNG DEPOSIT
-      let totalDeposit = 0;
-      let depositApproved = 0;
-      let depositRejected = 0;
-      let depositFailed = 0;
-      
-      let depositApprovedCount = 0;
-      let depositRejectedCount = 0;
-      let depositFailedCount = 0;
-
-      depositData?.forEach(tx => {
-        const amount = Number(tx.deposit_amount) || 0;
-        totalDeposit += amount;
-
-        const status = tx.status?.toLowerCase() || '';
-
-        if (status === 'approved') {
-          depositApproved += amount;
-          depositApprovedCount++;
-        } 
-        else if (status === 'rejected') {
-          depositRejected += amount;
-          depositRejectedCount++;
-        } 
-        else if (status === 'fail' || status.includes('fail')) {
-          depositFailed += amount;
-          depositFailedCount++;
-        }
-      });
-
-      // HITUNG WITHDRAWAL
-      let totalWithdrawal = 0;
-      let withdrawalApproved = 0;
-      let withdrawalRejected = 0;
-      
-      let withdrawalApprovedCount = 0;
-      let withdrawalRejectedCount = 0;
-
-      withdrawalData?.forEach(tx => {
-        const amount = Number(tx.withdrawal_amount) || 0;
-        totalWithdrawal += amount;
-
-        const status = tx.status?.toLowerCase() || '';
-
-        if (status === 'approved') {
-          withdrawalApproved += amount;
-          withdrawalApprovedCount++;
-        } 
-        else if (status === 'rejected') {
-          withdrawalRejected += amount;
-          withdrawalRejectedCount++;
-        }
-      });
-
-      // HITUNG ADJUSTMENT - PISAHKAN PLUS DAN MINUS
-      let totalAdjustment = 0;
-      let adjustmentPlus = 0;
-      let adjustmentMinus = 0;
-      let adjustmentPlusCount = 0;
-      let adjustmentMinusCount = 0;
-
-      adjustmentData?.forEach(tx => {
-        const amount = Number(tx.adjustment_amount) || 0;
-        totalAdjustment += Math.abs(amount);
-        
-        if (amount > 0) {
-          adjustmentPlus += amount;
-          adjustmentPlusCount++;
-        } else if (amount < 0) {
-          adjustmentMinus += Math.abs(amount);
-          adjustmentMinusCount++;
-        }
-      });
-
-      // UPDATE STATE
-      setDashboardTransactionTotals({
-        total_deposit: totalDeposit,
-        deposit_approved: depositApproved,
-        deposit_rejected: depositRejected,
-        deposit_failed: depositFailed,
-        deposit_approved_count: depositApprovedCount,
-        deposit_rejected_count: depositRejectedCount,
-        deposit_failed_count: depositFailedCount,
-        
-        total_withdrawal: totalWithdrawal,
-        withdrawal_approved: withdrawalApproved,
-        withdrawal_rejected: withdrawalRejected,
-        withdrawal_approved_count: withdrawalApprovedCount,
-        withdrawal_rejected_count: withdrawalRejectedCount,
-        
-        total_adjustment: totalAdjustment,
-        adjustment_plus: adjustmentPlus,
-        adjustment_minus: adjustmentMinus,
-        adjustment_plus_count: adjustmentPlusCount,
-        adjustment_minus_count: adjustmentMinusCount
-      });
-
-    } catch (error) {
-      console.error('Error fetching dashboard transaction metrics:', error);
+    if (error) {
+      console.error(`❌ Error fetching ${tableName} page ${page}:`, error);
+      throw error;
     }
-  };
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data];
+      page++;
+    } else {
+      hasMore = false;
+    }
+
+    if (!data || data.length < pageSize) {
+      hasMore = false;
+    }
+  }
+
+  return allData;
+};
+
+  // ===========================================
+// FETCH DASHBOARD TRANSACTION METRICS DATA - DENGAN ADJUSTMENT PLUS/MINUS + PAGINATION
+// ===========================================
+const fetchDashboardTransactionMetrics = async () => {
+  try {
+    const { startDate, endDate } = getDateRangeForDashboard();
+
+    // DEPOSIT - DENGAN PAGINATION
+    let depositQuery = supabase
+      .from('deposit_transactions')
+      .select('deposit_amount, status')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate);
+
+    if (selectedAsset !== 'all') {
+      depositQuery = depositQuery.eq('brand', 'XLY');
+    }
+
+    const depositData = await fetchAllDataWithPaginationSimple(depositQuery, 'deposit_transactions');
+
+    // WITHDRAWAL - DENGAN PAGINATION
+    let withdrawalQuery = supabase
+      .from('withdrawal_transactions')
+      .select('withdrawal_amount, status')
+      .gte('approved_date', startDate)
+      .lte('approved_date', endDate);
+
+    if (selectedAsset !== 'all') {
+      withdrawalQuery = withdrawalQuery.eq('brand', 'XLY');
+    }
+
+    const withdrawalData = await fetchAllDataWithPaginationSimple(withdrawalQuery, 'withdrawal_transactions');
+
+    // ADJUSTMENT - DENGAN PAGINATION
+    let adjustmentQuery = supabase
+      .from('adjustment_transactions')
+      .select('adjustment_amount, status')
+      .eq('status', 'Approved')
+      .gte('adjustment_date', startDate)
+      .lte('adjustment_date', endDate);
+
+    if (selectedAsset !== 'all') {
+      adjustmentQuery = adjustmentQuery.eq('brand', 'XLY');
+    }
+
+    const adjustmentData = await fetchAllDataWithPaginationSimple(adjustmentQuery, 'adjustment_transactions');
+
+    // HITUNG DEPOSIT
+    let totalDeposit = 0;
+    let depositApproved = 0;
+    let depositRejected = 0;
+    let depositFailed = 0;
+    
+    let depositApprovedCount = 0;
+    let depositRejectedCount = 0;
+    let depositFailedCount = 0;
+
+    depositData?.forEach(tx => {
+      const amount = Number(tx.deposit_amount) || 0;
+      totalDeposit += amount;
+
+      const status = tx.status?.toLowerCase() || '';
+
+      if (status === 'approved') {
+        depositApproved += amount;
+        depositApprovedCount++;
+      } 
+      else if (status === 'rejected') {
+        depositRejected += amount;
+        depositRejectedCount++;
+      } 
+      else if (status === 'fail' || status.includes('fail')) {
+        depositFailed += amount;
+        depositFailedCount++;
+      }
+    });
+
+    // HITUNG WITHDRAWAL
+    let totalWithdrawal = 0;
+    let withdrawalApproved = 0;
+    let withdrawalRejected = 0;
+    
+    let withdrawalApprovedCount = 0;
+    let withdrawalRejectedCount = 0;
+
+    withdrawalData?.forEach(tx => {
+      const amount = Number(tx.withdrawal_amount) || 0;
+      totalWithdrawal += amount;
+
+      const status = tx.status?.toLowerCase() || '';
+
+      if (status === 'approved') {
+        withdrawalApproved += amount;
+        withdrawalApprovedCount++;
+      } 
+      else if (status === 'rejected') {
+        withdrawalRejected += amount;
+        withdrawalRejectedCount++;
+      }
+    });
+
+    // HITUNG ADJUSTMENT - PISAHKAN PLUS DAN MINUS
+    let totalAdjustment = 0;
+    let adjustmentPlus = 0;
+    let adjustmentMinus = 0;
+    let adjustmentPlusCount = 0;
+    let adjustmentMinusCount = 0;
+
+    adjustmentData?.forEach(tx => {
+      const amount = Number(tx.adjustment_amount) || 0;
+      totalAdjustment += Math.abs(amount);
+      
+      if (amount > 0) {
+        adjustmentPlus += amount;
+        adjustmentPlusCount++;
+      } else if (amount < 0) {
+        adjustmentMinus += Math.abs(amount);
+        adjustmentMinusCount++;
+      }
+    });
+
+    // UPDATE STATE
+    setDashboardTransactionTotals({
+      total_deposit: totalDeposit,
+      deposit_approved: depositApproved,
+      deposit_rejected: depositRejected,
+      deposit_failed: depositFailed,
+      deposit_approved_count: depositApprovedCount,
+      deposit_rejected_count: depositRejectedCount,
+      deposit_failed_count: depositFailedCount,
+      
+      total_withdrawal: totalWithdrawal,
+      withdrawal_approved: withdrawalApproved,
+      withdrawal_rejected: withdrawalRejected,
+      withdrawal_approved_count: withdrawalApprovedCount,
+      withdrawal_rejected_count: withdrawalRejectedCount,
+      
+      total_adjustment: totalAdjustment,
+      adjustment_plus: adjustmentPlus,
+      adjustment_minus: adjustmentMinus,
+      adjustment_plus_count: adjustmentPlusCount,
+      adjustment_minus_count: adjustmentMinusCount
+    });
+
+    console.log('📊 Dashboard Transaction Metrics (with pagination):', {
+      deposits: depositData.length,
+      withdrawals: withdrawalData.length,
+      adjustments: adjustmentData.length
+    });
+
+  } catch (error) {
+    console.error('Error fetching dashboard transaction metrics:', error);
+  }
+};
 
   // ===========================================
   // GET DATE RANGE FOR DASHBOARD - PAKSA GMT+7 (JAKARTA)
