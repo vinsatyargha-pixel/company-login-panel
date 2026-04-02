@@ -25,6 +25,46 @@ const formatDate = (date) => {
 }
 
 // ===========================================
+// HELPER: Fetch ALL data dengan pagination
+// ===========================================
+const fetchAllDataWithPagination = async (queryBuilder, tableName) => {
+  let allData = []
+  let page = 0
+  const pageSize = 1000
+  let hasMore = true
+
+  console.log(`🚀 Fetching ${tableName} with pagination...`)
+
+  while (hasMore) {
+    const from = page * pageSize
+    const to = (page + 1) * pageSize - 1
+
+    const { data, error } = await queryBuilder
+      .range(from, to)
+
+    if (error) {
+      console.error(`❌ Error fetching ${tableName} page ${page}:`, error)
+      throw error
+    }
+
+    if (data && data.length > 0) {
+      allData = [...allData, ...data]
+      console.log(`📥 ${tableName} page ${page}: fetched ${data.length} rows (total: ${allData.length})`)
+      page++
+    } else {
+      hasMore = false
+    }
+
+    if (!data || data.length < pageSize) {
+      hasMore = false
+    }
+  }
+
+  console.log(`✅ ${tableName} total fetched: ${allData.length} rows`)
+  return allData
+}
+
+// ===========================================
 // MAIN COMPONENT
 // ===========================================
 
@@ -146,7 +186,7 @@ export default function TransactionMetricsPage() {
   }
 
   // ===========================================
-  // FETCH DATA FROM SUPABASE
+  // FETCH DATA FROM SUPABASE DENGAN PAGINATION
   // ===========================================
 
   const fetchData = async () => {
@@ -161,7 +201,7 @@ export default function TransactionMetricsPage() {
       })
 
       // ===========================================
-      // 1. AMBIL DATA DEPOSIT
+      // 1. AMBIL DATA DEPOSIT DENGAN PAGINATION
       // ===========================================
       let depositQuery = supabase
         .from('deposit_transactions')
@@ -173,11 +213,10 @@ export default function TransactionMetricsPage() {
         depositQuery = depositQuery.eq('brand', 'XLY')
       }
 
-      const { data: depositData, error: depositError } = await depositQuery
-      if (depositError) throw depositError
+      const depositData = await fetchAllDataWithPagination(depositQuery, 'deposit_transactions')
 
       // ===========================================
-      // 2. AMBIL DATA WITHDRAWAL
+      // 2. AMBIL DATA WITHDRAWAL DENGAN PAGINATION
       // ===========================================
       let withdrawalQuery = supabase
         .from('withdrawal_transactions')
@@ -189,11 +228,10 @@ export default function TransactionMetricsPage() {
         withdrawalQuery = withdrawalQuery.eq('brand', 'XLY')
       }
 
-      const { data: withdrawalData, error: withdrawalError } = await withdrawalQuery
-      if (withdrawalError) throw withdrawalError
+      const withdrawalData = await fetchAllDataWithPagination(withdrawalQuery, 'withdrawal_transactions')
 
       // ===========================================
-      // 3. AMBIL DATA ADJUSTMENT (HANYA APPROVED)
+      // 3. AMBIL DATA ADJUSTMENT (HANYA APPROVED) DENGAN PAGINATION
       // ===========================================
       let adjustmentQuery = supabase
         .from('adjustment_transactions')
@@ -206,8 +244,7 @@ export default function TransactionMetricsPage() {
         adjustmentQuery = adjustmentQuery.eq('brand', 'XLY')
       }
 
-      const { data: adjustmentData, error: adjustmentError } = await adjustmentQuery
-      if (adjustmentError) throw adjustmentError
+      const adjustmentData = await fetchAllDataWithPagination(adjustmentQuery, 'adjustment_transactions')
 
       // ===========================================
       // 4. HITUNG DEPOSIT
@@ -288,9 +325,16 @@ export default function TransactionMetricsPage() {
         referral: 0
       })
 
-      console.log('📊 ADJUSTMENT (Approved Only):', {
-        plus: adjustmentPlus,
-        minus: adjustmentMinus
+      console.log('📊 Final Summary:', {
+        totalDeposit,
+        totalWithdrawal,
+        depositApproved,
+        depositRejected,
+        depositFailed,
+        withdrawalApproved,
+        withdrawalRejected,
+        adjustmentPlus,
+        adjustmentMinus
       })
       
     } catch (error) {
