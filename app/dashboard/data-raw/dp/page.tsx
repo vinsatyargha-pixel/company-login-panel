@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'  // <-- TAMBAH
+import { useAuth } from '@/hooks/useAuth'
 import Link from 'next/link'
 import * as XLSX from 'xlsx'
 
@@ -89,11 +89,30 @@ const setSessionVariable = async () => {
 };
 
 // ===========================================
+// MAP WEBSITE NAME TO CODE (Untuk file Excel)
+// ===========================================
+
+const mapWebsiteToCode = (websiteName: string): string => {
+  if (!websiteName) return 'XLY'
+  
+  const upperName = websiteName.toString().toUpperCase().trim()
+  
+  const mapping: { [key: string]: string } = {
+    'LUCKY77': 'XLY',
+    'LUX77': 'XLX',
+    'XLY': 'XLY',
+    'XLX': 'XLX'
+  }
+  
+  return mapping[upperName] || 'XLY'
+}
+
+// ===========================================
 // MAIN COMPONENT
 // ===========================================
 
 export default function DPDataRawPage() {
-  const { user } = useAuth()  // <-- TAMBAH
+  const { user } = useAuth()
   
   // Data states
   const [uploads, setUploads] = useState<DepositUpload[]>([])
@@ -170,6 +189,7 @@ export default function DPDataRawPage() {
         .lte('upload_date', endDate)
         .order('upload_date', { ascending: true })
 
+      // ✅ FILTER BERDASARKAN ASSET CODE (XLY atau XLX)
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset)
         if (asset) {
@@ -266,243 +286,258 @@ export default function DPDataRawPage() {
   }
 
   // ===========================================
-// UPLOAD PROCESS
-// ===========================================
+  // GET WEBSITE BADGE
+  // ===========================================
 
-const processFile = async () => {
-  if (!selectedFile) return
-  
-  setUploading(true)
-  setUploadProgress('Membaca file...')
-  
-  try {
-    const arrayBuffer = await selectedFile.arrayBuffer()
-    const workbook = XLSX.read(arrayBuffer)
-    const sheetName = workbook.SheetNames[0]
-    const worksheet = workbook.Sheets[sheetName]
-    
-    const rows = XLSX.utils.sheet_to_json(worksheet, { 
-      header: 1,
-      defval: '',
-      blankrows: false
-    }) as any[][]
-    
-    console.log('📋 Total baris:', rows.length)
-    
-    // CARI BARIS HEADER (yang ada "No.")
-    let headerRowIndex = -1
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i]
-      if (row && row[0] && row[0].toString().includes('No.')) {
-        headerRowIndex = i
-        break
-      }
+  const getWebsiteBadge = (websiteCode: string) => {
+    if (websiteCode === 'XLY') {
+      return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">🎰 Lucky77 (XLY)</span>
+    } else if (websiteCode === 'XLX') {
+      return <span className="px-2 py-1 rounded text-xs font-bold bg-purple-500/20 text-purple-400">🎲 LUX77 (XLX)</span>
     }
+    return <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500/20 text-gray-400">{websiteCode || '-'}</span>
+  }
+
+  // ===========================================
+  // UPLOAD PROCESS
+  // ===========================================
+
+  const processFile = async () => {
+    if (!selectedFile) return
     
-    if (headerRowIndex === -1) {
-      throw new Error('Tidak menemukan baris header (No.)')
-    }
+    setUploading(true)
+    setUploadProgress('Membaca file...')
     
-    const headers = rows[headerRowIndex]
-    const dataRows = rows.slice(headerRowIndex + 1)
-    
-    console.log('📊 Jumlah baris data:', dataRows.length)
-    
-    // Cari index kolom yang diperlukan
-    const findIndex = (keyword: string) => {
-      return headers.findIndex((h: string) => 
-        h && h.toString().toLowerCase().includes(keyword.toLowerCase())
-      )
-    }
-    
-    const idx = {
-      no: 0,
-      brand: findIndex('brand'),
-      ticket: findIndex('ticket'),
-      requested: findIndex('requested'),
-      approved: findIndex('approved date'),
-      bank: findIndex('bank statement'),
-      userName: findIndex('user name'),
-      playerGroup: findIndex('player group'),
-      fullName: findIndex('full name'),
-      paymentType: findIndex('payment type'),
-      amount: findIndex('deposit amount'),
-      adminFee: findIndex('admin fee'),
-      agentFee: findIndex('agent fee'),
-      playerFee: findIndex('player fee'),
-      nett: findIndex('nett amount'),
-      playerBank: findIndex('player bank'),
-      bankTitle: findIndex('bank title'),
-      remarks: findIndex('remarks'),
-      reference: findIndex('reference'),
-      status: findIndex('status'),
-      reason: findIndex('reason'),
-      handler: findIndex('handler'),
-      handlerIp: findIndex('handlerip'),
-      creator: findIndex('creator'),
-      website: findIndex('website')
-    }
-    
-    if (idx.approved === -1) {
-      throw new Error('Kolom Approved Date tidak ditemukan')
-    }
-    
-    setUploadProgress('Memvalidasi data...')
-    
-    // Transform data
-    const validTransactions: DepositTransaction[] = []
-    const transactionDates = new Set<string>()
-    
-    for (let i = 0; i < dataRows.length; i++) {
-      const row = dataRows[i]
-      if (!row || row.length === 0) continue
+    try {
+      const arrayBuffer = await selectedFile.arrayBuffer()
+      const workbook = XLSX.read(arrayBuffer)
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
       
-      // Skip GRAND TOTAL
-      let isGrandTotal = false
-      for (let j = 0; j < row.length; j++) {
-        if (row[j] && row[j].toString().includes('GRAND TOTAL')) {
-          isGrandTotal = true
+      const rows = XLSX.utils.sheet_to_json(worksheet, { 
+        header: 1,
+        defval: '',
+        blankrows: false
+      }) as any[][]
+      
+      console.log('📋 Total baris:', rows.length)
+      
+      // CARI BARIS HEADER (yang ada "No.")
+      let headerRowIndex = -1
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
+        if (row && row[0] && row[0].toString().includes('No.')) {
+          headerRowIndex = i
           break
         }
       }
-      if (isGrandTotal) continue
       
-      // PARSE TANGGAL
-      const approvedDate = parseExcelDate(row[idx.approved])
-      const requestedDate = parseExcelDate(row[idx.requested])
-      
-      if (!approvedDate) continue
-      
-      // 🔥 HITUNG DURATION_MINUTES
-      let durationMinutes = null
-      if (approvedDate && requestedDate) {
-        const diffMs = new Date(approvedDate).getTime() - new Date(requestedDate).getTime()
-        durationMinutes = diffMs / (1000 * 60)
-        console.log(`⏱️ Durasi: ${durationMinutes} menit`)
+      if (headerRowIndex === -1) {
+        throw new Error('Tidak menemukan baris header (No.)')
       }
       
-      // Ambil tanggal saja (YYYY-MM-DD) untuk tracking
-      const dateOnly = approvedDate.split(' ')[0]
-      transactionDates.add(dateOnly)
+      const headers = rows[headerRowIndex]
+      const dataRows = rows.slice(headerRowIndex + 1)
       
-      validTransactions.push({
-        nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
-        brand: row[idx.brand] || null,
-        ticket_number: row[idx.ticket] || null,
-        requested_date: requestedDate,
-        approved_date: approvedDate,
-        bank_statement_date: parseExcelDate(row[idx.bank]),
-        user_name: row[idx.userName] || null,
-        player_group: row[idx.playerGroup] || null,
-        full_name: row[idx.fullName] || null,
-        payment_type: row[idx.paymentType] || null,
-        deposit_amount: row[idx.amount] ? parseFloat(row[idx.amount]) || 0 : 0,
-        admin_fee: row[idx.adminFee] ? parseFloat(row[idx.adminFee]) || 0 : 0,
-        agent_fee: row[idx.agentFee] ? parseFloat(row[idx.agentFee]) || 0 : 0,
-        player_fee: row[idx.playerFee] ? parseFloat(row[idx.playerFee]) || 0 : 0,
-        nett_amount: row[idx.nett] ? parseFloat(row[idx.nett]) || 0 : 0,
-        player_bank: row[idx.playerBank] || null,
-        bank_title: row[idx.bankTitle] || null,
-        remarks: row[idx.remarks] || null,
-        reference: row[idx.reference] || null,
-        status: row[idx.status] || null,
-        reason: row[idx.reason] || null,
-        handler: row[idx.handler] || null,
-        handler_ip: row[idx.handlerIp] || null,
-        creator: row[idx.creator] || null,
-        website: row[idx.website] || 'XLY',
-        file_name: selectedFile.name,
-        duration_minutes: durationMinutes
-      })
-    }
-
-    console.log('✅ Data valid:', validTransactions.length)
-    console.log('📅 Tanggal dalam file:', Array.from(transactionDates))
-    
-    if (validTransactions.length === 0) {
-      throw new Error('Tidak ada data valid dalam file')
-    }
-
-    setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
-    
-    // Insert ke deposit_transactions
-    const { error } = await supabase
-      .from('deposit_transactions')
-      .insert(validTransactions)
-
-    if (error) {
-      console.error('❌ Error detail:', error)
-      throw error
-    }
-
-    // Insert ke deposit_uploads untuk tracking
-    setUploadProgress('Menyimpan tracking upload...')
-    
-    const transactionsByDate: { [key: string]: DepositTransaction[] } = {}
-    validTransactions.forEach(t => {
-      const date = t.approved_date?.split(' ')[0]
-      if (!date) return
-      if (!transactionsByDate[date]) {
-        transactionsByDate[date] = []
+      console.log('📊 Jumlah baris data:', dataRows.length)
+      
+      // Cari index kolom yang diperlukan
+      const findIndex = (keyword: string) => {
+        return headers.findIndex((h: string) => 
+          h && h.toString().toLowerCase().includes(keyword.toLowerCase())
+        )
       }
-      transactionsByDate[date].push(t)
-    })
-
-    for (const [date, transactions] of Object.entries(transactionsByDate)) {
-      const { error: uploadError } = await supabase
-        .from('deposit_uploads')
-        .insert({
-          upload_date: date,
+      
+      const idx = {
+        no: 0,
+        brand: findIndex('brand'),
+        ticket: findIndex('ticket'),
+        requested: findIndex('requested'),
+        approved: findIndex('approved date'),
+        bank: findIndex('bank statement'),
+        userName: findIndex('user name'),
+        playerGroup: findIndex('player group'),
+        fullName: findIndex('full name'),
+        paymentType: findIndex('payment type'),
+        amount: findIndex('deposit amount'),
+        adminFee: findIndex('admin fee'),
+        agentFee: findIndex('agent fee'),
+        playerFee: findIndex('player fee'),
+        nett: findIndex('nett amount'),
+        playerBank: findIndex('player bank'),
+        bankTitle: findIndex('bank title'),
+        remarks: findIndex('remarks'),
+        reference: findIndex('reference'),
+        status: findIndex('status'),
+        reason: findIndex('reason'),
+        handler: findIndex('handler'),
+        handlerIp: findIndex('handlerip'),
+        creator: findIndex('creator'),
+        website: findIndex('website')
+      }
+      
+      if (idx.approved === -1) {
+        throw new Error('Kolom Approved Date tidak ditemukan')
+      }
+      
+      setUploadProgress('Memvalidasi data...')
+      
+      // Transform data
+      const validTransactions: DepositTransaction[] = []
+      const transactionDates = new Set<string>()
+      
+      for (let i = 0; i < dataRows.length; i++) {
+        const row = dataRows[i]
+        if (!row || row.length === 0) continue
+        
+        // Skip GRAND TOTAL
+        let isGrandTotal = false
+        for (let j = 0; j < row.length; j++) {
+          if (row[j] && row[j].toString().includes('GRAND TOTAL')) {
+            isGrandTotal = true
+            break
+          }
+        }
+        if (isGrandTotal) continue
+        
+        // PARSE TANGGAL
+        const approvedDate = parseExcelDate(row[idx.approved])
+        const requestedDate = parseExcelDate(row[idx.requested])
+        
+        if (!approvedDate) continue
+        
+        // HITUNG DURATION_MINUTES
+        let durationMinutes = null
+        if (approvedDate && requestedDate) {
+          const diffMs = new Date(approvedDate).getTime() - new Date(requestedDate).getTime()
+          durationMinutes = diffMs / (1000 * 60)
+          console.log(`⏱️ Durasi: ${durationMinutes} menit`)
+        }
+        
+        // Ambil tanggal saja (YYYY-MM-DD) untuk tracking
+        const dateOnly = approvedDate.split(' ')[0]
+        transactionDates.add(dateOnly)
+        
+        // ✅ MAPPING WEBSITE DARI EXCEL KE ASSET CODE (XLY / XLX)
+        const rawWebsite = row[idx.website] || ''
+        const mappedWebsite = mapWebsiteToCode(rawWebsite)
+        
+        validTransactions.push({
+          nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
+          brand: row[idx.brand] || null,
+          ticket_number: row[idx.ticket] || null,
+          requested_date: requestedDate,
+          approved_date: approvedDate,
+          bank_statement_date: parseExcelDate(row[idx.bank]),
+          user_name: row[idx.userName] || null,
+          player_group: row[idx.playerGroup] || null,
+          full_name: row[idx.fullName] || null,
+          payment_type: row[idx.paymentType] || null,
+          deposit_amount: row[idx.amount] ? parseFloat(row[idx.amount]) || 0 : 0,
+          admin_fee: row[idx.adminFee] ? parseFloat(row[idx.adminFee]) || 0 : 0,
+          agent_fee: row[idx.agentFee] ? parseFloat(row[idx.agentFee]) || 0 : 0,
+          player_fee: row[idx.playerFee] ? parseFloat(row[idx.playerFee]) || 0 : 0,
+          nett_amount: row[idx.nett] ? parseFloat(row[idx.nett]) || 0 : 0,
+          player_bank: row[idx.playerBank] || null,
+          bank_title: row[idx.bankTitle] || null,
+          remarks: row[idx.remarks] || null,
+          reference: row[idx.reference] || null,
+          status: row[idx.status] || null,
+          reason: row[idx.reason] || null,
+          handler: row[idx.handler] || null,
+          handler_ip: row[idx.handlerIp] || null,
+          creator: row[idx.creator] || null,
+          website: mappedWebsite, // ✅ SUDAH PAKAI XLY ATAU XLX
           file_name: selectedFile.name,
-          total_rows: transactions.length,
-          status: 'completed'
+          duration_minutes: durationMinutes
         })
-      
-      if (uploadError) {
-        console.error('❌ Error insert upload:', uploadError)
       }
-    }
 
-    // ===========================================
-    // 🔥 TAMBAHKAN LOG KE AUDIT_LOGS DISINI!
-    // ===========================================
-    try {
-      // Ambil user dari session
-      const { data: { user } } = await supabase.auth.getUser();
+      console.log('✅ Data valid:', validTransactions.length)
+      console.log('📅 Tanggal dalam file:', Array.from(transactionDates))
       
-      await supabase.from('audit_logs').insert({
-        table_name: 'deposit_transactions',
-        action: 'UPLOAD',
-        new_data: { 
-          count: validTransactions.length,
-          filename: selectedFile.name,
-          dates: Array.from(transactionDates)
-        },
-        changed_by: user?.id,
-        changed_at: new Date().toISOString(),
-        module: 'DEPOSIT',
-        description: `Uploaded ${validTransactions.length} deposit transactions from ${selectedFile.name}`
-      });
-      console.log('✅ Upload logged to audit_logs');
-    } catch (logError) {
-      console.error('❌ Error logging to audit_logs:', logError);
-      // Jangan throw, biar upload tetap sukses
-    }
+      if (validTransactions.length === 0) {
+        throw new Error('Tidak ada data valid dalam file')
+      }
 
-    alert(`✅ Berhasil! ${validTransactions.length} data transaksi dari ${Object.keys(transactionsByDate).length} tanggal`)
-    
-    setShowModal(false)
-    setSelectedFile(null)
-    fetchUploads()
-    
-  } catch (error: any) {
-    console.error('❌ Error:', error)
-    alert('❌ Gagal: ' + error.message)
-  } finally {
-    setUploading(false)
-    setUploadProgress('')
+      setUploadProgress(`Menyimpan ${validTransactions.length} transaksi...`)
+      
+      // Insert ke deposit_transactions
+      const { error } = await supabase
+        .from('deposit_transactions')
+        .insert(validTransactions)
+
+      if (error) {
+        console.error('❌ Error detail:', error)
+        throw error
+      }
+
+      // Insert ke deposit_uploads untuk tracking
+      setUploadProgress('Menyimpan tracking upload...')
+      
+      const transactionsByDate: { [key: string]: DepositTransaction[] } = {}
+      validTransactions.forEach(t => {
+        const date = t.approved_date?.split(' ')[0]
+        if (!date) return
+        if (!transactionsByDate[date]) {
+          transactionsByDate[date] = []
+        }
+        transactionsByDate[date].push(t)
+      })
+
+      for (const [date, transactions] of Object.entries(transactionsByDate)) {
+        // ✅ TAMBAHKAN WEBSITE DI DEPOSIT_UPLOADS
+        const { error: uploadError } = await supabase
+          .from('deposit_uploads')
+          .insert({
+            upload_date: date,
+            file_name: selectedFile.name,
+            total_rows: transactions.length,
+            status: 'completed',
+            website: transactions[0]?.website || 'XLY'  // ✅ DEFAULT XLY
+          })
+        
+        if (uploadError) {
+          console.error('❌ Error insert upload:', uploadError)
+        }
+      }
+
+      // LOG KE AUDIT_LOGS
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        await supabase.from('audit_logs').insert({
+          table_name: 'deposit_transactions',
+          action: 'UPLOAD',
+          new_data: { 
+            count: validTransactions.length,
+            filename: selectedFile.name,
+            dates: Array.from(transactionDates)
+          },
+          changed_by: user?.id,
+          changed_at: new Date().toISOString(),
+          module: 'DEPOSIT',
+          description: `Uploaded ${validTransactions.length} deposit transactions from ${selectedFile.name}`
+        });
+        console.log('✅ Upload logged to audit_logs');
+      } catch (logError) {
+        console.error('❌ Error logging to audit_logs:', logError);
+      }
+
+      alert(`✅ Berhasil! ${validTransactions.length} data transaksi dari ${Object.keys(transactionsByDate).length} tanggal`)
+      
+      setShowModal(false)
+      setSelectedFile(null)
+      fetchUploads()
+      
+    } catch (error: any) {
+      console.error('❌ Error:', error)
+      alert('❌ Gagal: ' + error.message)
+    } finally {
+      setUploading(false)
+      setUploadProgress('')
+    }
   }
-}
 
   // ===========================================
   // HELPER FUNCTIONS
@@ -581,15 +616,16 @@ const processFile = async () => {
           ))}
         </select>
         
+        {/* ✅ DROPDOWN FILTER UNTUK 2 ASSET */}
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[220px]"
           value={selectedAsset}
           onChange={(e) => setSelectedAsset(e.target.value)}
         >
-          <option value="all">SEMUA ASSET</option>
+          <option value="all">🌐 SEMUA WEBSITE</option>
           {assets.map(asset => (
             <option key={asset.id} value={asset.id}>
-              {asset.asset_name}
+              🎰 {asset.asset_name} ({asset.asset_code})
             </option>
           ))}
         </select>
@@ -605,6 +641,7 @@ const processFile = async () => {
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
@@ -620,6 +657,7 @@ const processFile = async () => {
                     <td className="px-4 py-3">
                       {day} {selectedMonth} {selectedYear}
                     </td>
+                    <td className="px-4 py-3">{getWebsiteBadge(item.website || '')}</td>
                     <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                     <td className="px-4 py-3">{item.total_rows} data</td>
                     <td className="px-4 py-3">
@@ -632,7 +670,7 @@ const processFile = async () => {
               })
             ) : (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
                   Tidak ada data untuk periode ini
                 </td>
               </tr>
