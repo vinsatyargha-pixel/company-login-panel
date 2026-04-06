@@ -84,7 +84,6 @@ export default function ChatCSPage() {
       const monthIndex = months.indexOf(selectedMonth) + 1
       const monthPadded = String(monthIndex).padStart(2, '0')
       
-      // FORMAT FILTER YYYY-MM-DD
       const startDate = `${selectedYear}-${monthPadded}-01`
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${monthPadded}-${lastDay}`
@@ -96,6 +95,7 @@ export default function ChatCSPage() {
         .lte('upload_date', endDate)
         .order('upload_date', { ascending: true })
 
+      // ✅ FILTER BERDASARKAN ASSET CODE (XLY atau XLX)
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset)
         if (asset) {
@@ -147,7 +147,26 @@ export default function ChatCSPage() {
   }, [])
 
   // ===========================================
-  // PARSE TANGGAL EXCEL - FINAL FIX UNTUK FORMAT MM/DD/YYYY
+  // MAP WEBSITE NAME TO CODE (Untuk file Excel)
+  // ===========================================
+  
+  const mapWebsiteToCode = (websiteName: string): string => {
+    if (!websiteName) return 'XLY'
+    
+    const upperName = websiteName.toString().toUpperCase().trim()
+    
+    const mapping: { [key: string]: string } = {
+      'LUCKY77': 'XLY',
+      'LUX77': 'XLX',
+      'XLY': 'XLY',
+      'XLX': 'XLX'
+    }
+    
+    return mapping[upperName] || 'XLY'
+  }
+
+  // ===========================================
+  // PARSE TANGGAL EXCEL - UNTUK FORMAT MM/DD/YYYY
   // ===========================================
 
   const parseExcelDate = (value: any): string | null => {
@@ -169,7 +188,7 @@ export default function ChatCSPage() {
 
       const str = value.toString().trim()
       
-      // Format dengan slash: 3/13/2026 23:29 (MM/DD/YYYY)
+      // Format dengan slash: 4/5/2026 23:57 (MM/DD/YYYY)
       if (str.includes('/')) {
         const [datePart, timePart = '00:00:00'] = str.split(' ')
         const parts = datePart.split('/')
@@ -179,7 +198,6 @@ export default function ChatCSPage() {
         const day = parts[1].padStart(2, '0')
         const year = parts[2]
         
-        // KONVERSI KE YYYY-MM-DD UNTUK DATABASE
         return `${year}-${month}-${day} ${timePart}`
       }
       
@@ -217,11 +235,9 @@ export default function ChatCSPage() {
         blankrows: false
       }) as any[][]
       
-      // HEADER LANGSUNG DI BARIS PERTAMA
       const headers = rows[0]
       const dataRows = rows.slice(1)
       
-      // Cari index kolom berdasarkan header baru
       const findIndex = (keyword: string) => {
         return headers.findIndex((h: string) => 
           h && h.toString().toLowerCase().includes(keyword.toLowerCase())
@@ -272,9 +288,13 @@ export default function ChatCSPage() {
         const dateOnly = started.split(' ')[0]
         uploadDates.add(dateOnly)
         
+        // ✅ MAPPING WEBSITE DARI EXCEL KE ASSET CODE (XLY / XLX)
+        const rawWebsite = row[idx.website] || ''
+        const mappedWebsite = mapWebsiteToCode(rawWebsite)
+        
         validData.push({
           account: row[idx.account] || null,
-          website: row[idx.website] || 'LUCKY77',
+          website: mappedWebsite,  // ✅ SUDAH PAKAI XLY ATAU XLX
           group: row[idx.group] || null,
           conversation_id: row[idx.conversation_id] || null,
           started: started,
@@ -299,7 +319,6 @@ export default function ChatCSPage() {
 
       if (validData.length === 0) throw new Error('Tidak ada data valid')
 
-      // INSERT KE CHAT_CS_DATA
       setUploadProgress(`Menyimpan ${validData.length} data...`)
       
       const { error } = await supabase
@@ -308,7 +327,6 @@ export default function ChatCSPage() {
 
       if (error) throw error
 
-      // INSERT KE CHAT_UPLOADS
       setUploadProgress('Menyimpan tracking upload...')
       
       const dataByDate: { [key: string]: any[] } = {}
@@ -327,7 +345,7 @@ export default function ChatCSPage() {
             file_name: selectedFile.name,
             total_rows: data.length,
             status: 'completed',
-            website: data[0]?.website || 'LUCKY77'
+            website: data[0]?.website || 'XLY'  // ✅ DEFAULT XLY
           })
       }
 
@@ -365,6 +383,15 @@ export default function ChatCSPage() {
     }
   }
 
+  const getWebsiteBadge = (websiteCode: string) => {
+    if (websiteCode === 'XLY') {
+      return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">🎰 LUCKY77 (XLY)</span>
+    } else if (websiteCode === 'XLX') {
+      return <span className="px-2 py-1 rounded text-xs font-bold bg-purple-500/20 text-purple-400">🎲 LUX77 (XLX)</span>
+    }
+    return <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500/20 text-gray-400">{websiteCode || '-'}</span>
+  }
+
   // ===========================================
   // RENDER
   // ===========================================
@@ -391,6 +418,7 @@ export default function ChatCSPage() {
 
       <h1 className="text-3xl font-bold text-[#FFD700] mb-6">CHAT CS DATA RAW</h1>
 
+      {/* FILTER SECTION */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
           className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
@@ -408,13 +436,18 @@ export default function ChatCSPage() {
           {years.map(year => <option key={year} value={year}>{year}</option>)}
         </select>
         
+        {/* ✅ DROPDOWN FILTER UNTUK 2 ASSET */}
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[220px]"
           value={selectedAsset}
           onChange={(e) => setSelectedAsset(e.target.value)}
         >
-          <option value="all">SEMUA WEBSITE</option>
-          {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
+          <option value="all">🌐 SEMUA WEBSITE</option>
+          {assets.map(asset => (
+            <option key={asset.id} value={asset.id}>
+              🎰 {asset.asset_name} ({asset.asset_code})
+            </option>
+          ))}
         </select>
 
         <div className="ml-auto text-[#A7D8FF]">
@@ -422,6 +455,7 @@ export default function ChatCSPage() {
         </div>
       </div>
 
+      {/* TABLE SECTION */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
@@ -437,7 +471,7 @@ export default function ChatCSPage() {
             {uploads.length > 0 ? uploads.map(item => (
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                 <td className="px-4 py-3">{new Date(item.upload_date).getDate()} {selectedMonth} {selectedYear}</td>
-                <td className="px-4 py-3 text-[#FFD700]">{item.website || '-'}</td>
+                <td className="px-4 py-3">{getWebsiteBadge(item.website || '')}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                 <td className="px-4 py-3">{item.total_rows} chat</td>
                 <td className="px-4 py-3">
@@ -451,6 +485,7 @@ export default function ChatCSPage() {
         </table>
       </div>
 
+      {/* MODAL UPLOAD */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
