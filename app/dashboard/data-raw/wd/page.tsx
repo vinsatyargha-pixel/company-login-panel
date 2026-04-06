@@ -21,6 +21,7 @@ type WithdrawalUpload = {
   file_name: string
   total_rows: number
   status: string
+  website?: string
 }
 
 type WithdrawalTransaction = {
@@ -85,6 +86,25 @@ const setSessionVariable = async () => {
     console.error('❌ Error set session:', err);
   }
 };
+
+// ===========================================
+// MAP WEBSITE NAME TO CODE (Untuk file Excel)
+// ===========================================
+
+const mapWebsiteToCode = (websiteName: string): string => {
+  if (!websiteName) return 'XLY'
+  
+  const upperName = websiteName.toString().toUpperCase().trim()
+  
+  const mapping: { [key: string]: string } = {
+    'LUCKY77': 'XLY',
+    'LUX77': 'XLX',
+    'XLY': 'XLY',
+    'XLX': 'XLX'
+  }
+  
+  return mapping[upperName] || 'XLY'
+}
 
 // ===========================================
 // MAIN COMPONENT
@@ -159,28 +179,25 @@ export default function WDDataRawPage() {
       const lastDay = new Date(parseInt(selectedYear), monthIndex, 0).getDate()
       const endDate = `${selectedYear}-${String(monthIndex).padStart(2, '0')}-${lastDay}`
 
-      console.log('🔍 FILTER:', { 
-        selectedMonth, 
-        selectedYear,
-        startDate, 
-        endDate 
-      })
-
-      const { data, error } = await supabase
+      let query = supabase
         .from('withdrawal_uploads')
         .select('*')
         .gte('upload_date', startDate)
         .lte('upload_date', endDate)
         .order('upload_date', { ascending: true })
 
-      if (error) {
-        console.error('❌ ERROR SUPABASE:', error)
-        throw error
+      // ✅ FILTER BERDASARKAN ASSET CODE (XLY atau XLX)
+      if (selectedAsset !== 'all') {
+        const asset = assets.find(a => a.id === selectedAsset)
+        if (asset) {
+          query = query.eq('website', asset.asset_code)
+        }
       }
+
+      const { data, error } = await query
+      if (error) throw error
       
-      console.log('📅 DATA DITEMUKAN:', data?.length || 0, 'baris')
-      console.log('📅 ISI DATA:', data)
-      
+      console.log('📅 Data uploads:', data?.length || 0)
       setUploads(data || [])
       
     } catch (error) {
@@ -267,6 +284,19 @@ export default function WDDataRawPage() {
   }
 
   // ===========================================
+  // GET WEBSITE BADGE
+  // ===========================================
+
+  const getWebsiteBadge = (websiteCode: string) => {
+    if (websiteCode === 'XLY') {
+      return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">🎰 Lucky77 (XLY)</span>
+    } else if (websiteCode === 'XLX') {
+      return <span className="px-2 py-1 rounded text-xs font-bold bg-purple-500/20 text-purple-400">🎲 LUX77 (XLX)</span>
+    }
+    return <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500/20 text-gray-400">{websiteCode || '-'}</span>
+  }
+
+  // ===========================================
   // UPLOAD PROCESS
   // ===========================================
 
@@ -350,16 +380,18 @@ export default function WDDataRawPage() {
         
         if (!approvedDate) continue
         
-        // 🔥 HITUNG DURATION_MINUTES
         let durationMinutes = null
         if (approvedDate && requestedDate) {
           const diffMs = new Date(approvedDate).getTime() - new Date(requestedDate).getTime()
           durationMinutes = diffMs / (1000 * 60)
-          console.log(`⏱️ Durasi: ${durationMinutes} menit`)
         }
         
         const dateOnly = approvedDate.split(' ')[0]
         transactionDates.add(dateOnly)
+        
+        // ✅ MAPPING WEBSITE DARI EXCEL KE ASSET CODE (XLY / XLX)
+        const rawWebsite = row[idx.website] || ''
+        const mappedWebsite = mapWebsiteToCode(rawWebsite)
         
         validTransactions.push({
           nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
@@ -383,7 +415,7 @@ export default function WDDataRawPage() {
           handler: row[idx.handler] || null,
           handler_ip: row[idx.handlerIp] || null,
           creator: row[idx.creator] || null,
-          website: row[idx.website] || 'XLY',
+          website: mappedWebsite, // ✅ SUDAH PAKAI XLY ATAU XLX
           referral_code: row[idx.referralCode] || null,
           own_referral_code: row[idx.ownReferralCode] || null,
           last_balance: row[idx.lastBalance] ? parseFloat(row[idx.lastBalance]) || null : null,
@@ -406,6 +438,9 @@ export default function WDDataRawPage() {
 
       if (error) throw error
 
+      // Insert ke withdrawal_uploads untuk tracking
+      setUploadProgress('Menyimpan tracking upload...')
+      
       const transactionsByDate: { [key: string]: WithdrawalTransaction[] } = {}
       validTransactions.forEach(t => {
         const date = t.approved_date?.split(' ')[0]
@@ -415,19 +450,20 @@ export default function WDDataRawPage() {
       })
 
       for (const [date, transactions] of Object.entries(transactionsByDate)) {
+        // ✅ TAMBAHKAN WEBSITE DI WITHDRAWAL_UPLOADS
         await supabase
           .from('withdrawal_uploads')
           .insert({
             upload_date: date,
             file_name: selectedFile.name,
             total_rows: transactions.length,
-            status: 'completed'
+            status: 'completed',
+            website: transactions[0]?.website || 'XLY'  // ✅ DEFAULT XLY
           })
       }
 
-      // 🔥 TAMBAHKAN LOG KE AUDIT_LOGS
+      // LOG KE AUDIT_LOGS
       try {
-        // Ambil user langsung dari supabase
         const { data: { user } } = await supabase.auth.getUser();
         
         await supabase.from('audit_logs').insert({
@@ -446,7 +482,6 @@ export default function WDDataRawPage() {
         console.log('✅ Upload logged to audit_logs');
       } catch (logError) {
         console.error('❌ Error logging to audit_logs:', logError);
-        // Jangan throw, biar upload tetap sukses
       }
 
       alert(`✅ Berhasil! ${validTransactions.length} data dari ${Object.keys(transactionsByDate).length} tanggal`)
@@ -496,9 +531,10 @@ export default function WDDataRawPage() {
 
       <h1 className="text-3xl font-bold text-[#FFD700] mb-6">WITHDRAWAL DATA RAW</h1>
 
+      {/* FILTERS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
           value={selectedMonth}
           onChange={(e) => setSelectedMonth(e.target.value)}
         >
@@ -508,7 +544,7 @@ export default function WDDataRawPage() {
         </select>
         
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[100px]"
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
         >
@@ -517,15 +553,16 @@ export default function WDDataRawPage() {
           ))}
         </select>
         
+        {/* ✅ DROPDOWN FILTER UNTUK 2 ASSET */}
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[220px]"
           value={selectedAsset}
           onChange={(e) => setSelectedAsset(e.target.value)}
         >
-          <option value="all">SEMUA ASSET</option>
+          <option value="all">🌐 SEMUA WEBSITE</option>
           {assets.map(asset => (
             <option key={asset.id} value={asset.id}>
-              {asset.asset_name}
+              🎰 {asset.asset_name} ({asset.asset_code})
             </option>
           ))}
         </select>
@@ -535,11 +572,13 @@ export default function WDDataRawPage() {
         </div>
       </div>
 
+      {/* TABLE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
@@ -558,6 +597,7 @@ export default function WDDataRawPage() {
                     <td className="px-4 py-3">
                       {day} {month} {year}
                     </td>
+                    <td className="px-4 py-3">{getWebsiteBadge(item.website || '')}</td>
                     <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                     <td className="px-4 py-3">{item.total_rows} data</td>
                     <td className="px-4 py-3">
@@ -570,7 +610,7 @@ export default function WDDataRawPage() {
               })
             ) : (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
                   Tidak ada data untuk periode ini
                 </td>
               </tr>
@@ -579,6 +619,7 @@ export default function WDDataRawPage() {
         </table>
       </div>
 
+      {/* UPLOAD MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-[#1A2F4A] rounded-lg p-6 max-w-md w-full border border-[#FFD700]/30">
@@ -614,6 +655,7 @@ export default function WDDataRawPage() {
                   <div className="text-4xl mb-2">📂</div>
                   <p className="text-[#FFD700] font-medium">Geser file ke sini</p>
                   <p className="text-sm text-[#A7D8FF] mt-2">atau klik untuk memilih</p>
+                  <p className="text-xs text-gray-400 mt-4">Format: .xlsx, .xls, .csv</p>
                 </>
               )}
             </div>
@@ -627,6 +669,7 @@ export default function WDDataRawPage() {
                 onClick={() => {
                   setShowModal(false)
                   setSelectedFile(null)
+                  setUploadProgress('')
                 }}
                 className="px-4 py-2 text-gray-400 hover:bg-[#0B1A33] rounded"
               >
@@ -637,7 +680,12 @@ export default function WDDataRawPage() {
                 disabled={!selectedFile || uploading}
                 className="px-4 py-2 bg-[#FFD700] text-[#0B1A33] rounded font-bold hover:bg-[#FFD700]/80 disabled:opacity-50"
               >
-                {uploading ? 'Uploading...' : 'Upload'}
+                {uploading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-[#0B1A33] border-t-transparent rounded-full animate-spin"></div>
+                    Uploading...
+                  </span>
+                ) : 'Upload'}
               </button>
             </div>
           </div>
