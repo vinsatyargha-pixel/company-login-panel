@@ -82,6 +82,25 @@ const setSessionVariable = async () => {
 };
 
 // ===========================================
+// MAP WEBSITE NAME TO CODE (Untuk file Excel)
+// ===========================================
+
+const mapWebsiteToCode = (websiteName: string): string => {
+  if (!websiteName) return 'XLY'
+  
+  const upperName = websiteName.toString().toUpperCase().trim()
+  
+  const mapping: { [key: string]: string } = {
+    'LUCKY77': 'XLY',
+    'LUX77': 'XLX',
+    'XLY': 'XLY',
+    'XLX': 'XLX'
+  }
+  
+  return mapping[upperName] || 'XLY'
+}
+
+// ===========================================
 // MAIN COMPONENT
 // ===========================================
 
@@ -163,6 +182,7 @@ export default function AdjustmentDataRawPage() {
         .lte('upload_date', endDate)
         .order('upload_date', { ascending: true })
 
+      // ✅ FILTER BERDASARKAN ASSET CODE (XLY atau XLX)
       if (selectedAsset !== 'all') {
         const asset = assets.find(a => a.id === selectedAsset)
         if (asset) {
@@ -245,6 +265,19 @@ export default function AdjustmentDataRawPage() {
     } catch {
       return null
     }
+  }
+
+  // ===========================================
+  // GET WEBSITE BADGE
+  // ===========================================
+
+  const getWebsiteBadge = (websiteCode: string) => {
+    if (websiteCode === 'XLY') {
+      return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">🎰 Lucky77 (XLY)</span>
+    } else if (websiteCode === 'XLX') {
+      return <span className="px-2 py-1 rounded text-xs font-bold bg-purple-500/20 text-purple-400">🎲 LUX77 (XLX)</span>
+    }
+    return <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500/20 text-gray-400">{websiteCode || '-'}</span>
   }
 
   // ===========================================
@@ -359,9 +392,13 @@ export default function AdjustmentDataRawPage() {
           amount = parseFloat(amountStr) || 0
         }
         
+        // ✅ MAPPING WEBSITE DARI EXCEL KE ASSET CODE (XLY / XLX)
+        const rawWebsite = row[idx.brand] || ''
+        const mappedWebsite = mapWebsiteToCode(rawWebsite)
+        
         validTransactions.push({
           nomor: row[idx.no] ? parseInt(row[idx.no]) || null : null,
-          brand: row[idx.brand] || 'XLY',
+          brand: mappedWebsite, // ✅ SUDAH PAKAI XLY ATAU XLX
           ticket_number: row[idx.ticket] || null,
           adjustment_type: row[idx.adjustmentType] || null,
           promotion_category: row[idx.promotionCategory] || null,
@@ -378,7 +415,7 @@ export default function AdjustmentDataRawPage() {
           adjustment_date: adjustmentDate,
           referral_code: row[idx.referralCode] || null,
           adjustment_from_ref_no: row[idx.adjustmentFromRef] || null,
-          website: row[idx.brand] || 'XLY',
+          website: mappedWebsite, // ✅ SUDAH PAKAI XLY ATAU XLX
           file_name: selectedFile.name
         })
       }
@@ -416,6 +453,7 @@ export default function AdjustmentDataRawPage() {
       })
 
       for (const [date, transactions] of Object.entries(transactionsByDate)) {
+        // ✅ TAMBAHKAN WEBSITE DI ADJUSTMENT_UPLOADS
         const { error: uploadError } = await supabase
           .from('adjustment_uploads')
           .insert({
@@ -423,7 +461,7 @@ export default function AdjustmentDataRawPage() {
             file_name: selectedFile.name,
             total_rows: transactions.length,
             status: 'completed',
-            website: transactions[0]?.website || 'XLY'
+            website: transactions[0]?.website || 'XLY'  // ✅ DEFAULT XLY
           })
         
         if (uploadError) {
@@ -490,15 +528,6 @@ export default function AdjustmentDataRawPage() {
     }
   }
 
-  // Format currency
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(amount)
-  }
-
   // ===========================================
   // RENDER
   // ===========================================
@@ -554,15 +583,16 @@ export default function AdjustmentDataRawPage() {
           ))}
         </select>
         
+        {/* ✅ DROPDOWN FILTER UNTUK 2 ASSET */}
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[220px]"
           value={selectedAsset}
           onChange={(e) => setSelectedAsset(e.target.value)}
         >
-          <option value="all">SEMUA ASSET</option>
+          <option value="all">🌐 SEMUA WEBSITE</option>
           {assets.map(asset => (
             <option key={asset.id} value={asset.id}>
-              {asset.asset_name}
+              🎰 {asset.asset_name} ({asset.asset_code})
             </option>
           ))}
         </select>
@@ -573,11 +603,12 @@ export default function AdjustmentDataRawPage() {
       </div>
 
       {/* TABLE UPLOADS */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden mb-6">
+      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Jumlah Data</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Status</th>
@@ -593,6 +624,7 @@ export default function AdjustmentDataRawPage() {
                     <td className="px-4 py-3">
                       {day} {selectedMonth} {selectedYear}
                     </td>
+                    <td className="px-4 py-3">{getWebsiteBadge(item.website || '')}</td>
                     <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
                     <td className="px-4 py-3">{item.total_rows} data</td>
                     <td className="px-4 py-3">
@@ -605,24 +637,13 @@ export default function AdjustmentDataRawPage() {
               })
             ) : (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
                   Tidak ada data untuk periode ini
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* PREVIEW DATA TERBARU */}
-      <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-hidden">
-        <div className="bg-[#0B1A33] px-4 py-3 border-b border-[#FFD700]/30">
-          <h2 className="text-[#FFD700] font-bold">Preview Data Terbaru</h2>
-        </div>
-        <div className="p-4 text-sm text-[#A7D8FF]">
-          <p>Klik tombol Upload Excel untuk menambahkan data adjustment</p>
-          <p className="text-xs text-gray-400 mt-2">Format file harus sesuai dengan template adjustment</p>
-        </div>
       </div>
 
       {/* UPLOAD MODAL */}
