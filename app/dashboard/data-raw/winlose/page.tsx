@@ -50,6 +50,38 @@ type WinloseTransaction = {
 }
 
 // ===========================================
+// MAP WEBSITE NAME TO CODE (Untuk file Excel)
+// ===========================================
+
+const mapWebsiteToCode = (websiteName: string): string => {
+  if (!websiteName) return 'XLY'
+  
+  const upperName = websiteName.toString().toUpperCase().trim()
+  
+  const mapping: { [key: string]: string } = {
+    'LUCKY77': 'XLY',
+    'LUX77': 'XLX',
+    'XLY': 'XLY',
+    'XLX': 'XLX'
+  }
+  
+  return mapping[upperName] || 'XLY'
+}
+
+// ===========================================
+// GET WEBSITE BADGE
+// ===========================================
+
+const getWebsiteBadge = (websiteCode: string) => {
+  if (websiteCode === 'XLY') {
+    return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">🎰 Lucky77 (XLY)</span>
+  } else if (websiteCode === 'XLX') {
+    return <span className="px-2 py-1 rounded text-xs font-bold bg-purple-500/20 text-purple-400">🎲 LUX77 (XLX)</span>
+  }
+  return <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500/20 text-gray-400">{websiteCode || '-'}</span>
+}
+
+// ===========================================
 // MAIN COMPONENT
 // ===========================================
 
@@ -127,7 +159,7 @@ export default function WinloseDataRawPage() {
       .lte('period_end', endDate)
       .order('period_start', { ascending: true })
 
-    // PERBAIKAN: filter berdasarkan asset_code, bukan id
+    // ✅ FILTER BERDASARKAN ASSET CODE (XLY atau XLX)
     if (selectedAsset !== 'all') {
       const selectedAssetObj = assets.find(a => a.id === selectedAsset)
       if (selectedAssetObj) {
@@ -404,7 +436,6 @@ export default function WinloseDataRawPage() {
       
       const validTransactions: WinloseTransaction[] = []
       const fileName = parseString(selectedFile.name)
-      const website = 'XLY'
       
       for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i]
@@ -415,7 +446,15 @@ export default function WinloseDataRawPage() {
         if (accountVal.includes('Sub Total')) continue
         
         const accountId = parseString(row[idx.account])
-        const assetCode = accountId.substring(0, 3).toUpperCase()
+        
+        // ✅ MAPPING ASSET CODE DARI ACCOUNT ID ATAU DARI FILE
+        let assetCode = accountId.substring(0, 3).toUpperCase()
+        // Coba mapping ke kode yang benar
+        if (assetCode === 'LUC') assetCode = 'XLY'
+        if (assetCode === 'LUX') assetCode = 'XLX'
+        
+        // Ambil website dari mapping asset code
+        const website = assetCode === 'XLX' ? 'XLX' : 'XLY'
         
         validTransactions.push({
           account_id: accountId,
@@ -447,7 +486,9 @@ export default function WinloseDataRawPage() {
       // Hitung unique players dari data yang valid
       const uniqueAccounts = new Set()
       validTransactions.forEach(tx => {
-        const cleanAccount = tx.account_id.replace(/^XLY/i, '')
+        let cleanAccount = tx.account_id
+        if (cleanAccount.startsWith('XLY')) cleanAccount = cleanAccount.substring(3)
+        if (cleanAccount.startsWith('XLX')) cleanAccount = cleanAccount.substring(3)
         uniqueAccounts.add(cleanAccount)
       })
       const activePlayersFromData = uniqueAccounts.size
@@ -482,7 +523,7 @@ export default function WinloseDataRawPage() {
           file_name: fileName,
           total_rows: validTransactions.length,
           status: 'completed',
-          website: website,
+          website: firstAssetCode === 'XLX' ? 'XLX' : 'XLY',
           asset_code: firstAssetCode,
           period_start: periodStart,
           period_end: periodEnd,
@@ -554,6 +595,7 @@ export default function WinloseDataRawPage() {
 
       <h1 className="text-3xl font-bold text-[#FFD700] mb-6">WINLOSE DATA RAW</h1>
 
+      {/* FILTERS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
           className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
@@ -571,13 +613,18 @@ export default function WinloseDataRawPage() {
           {years.map(year => <option key={year} value={year}>{year}</option>)}
         </select>
         
+        {/* ✅ DROPDOWN FILTER UNTUK 2 ASSET */}
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[220px]"
           value={selectedAsset}
           onChange={(e) => setSelectedAsset(e.target.value)}
         >
-          <option value="all">SEMUA ASSET</option>
-          {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
+          <option value="all">🌐 SEMUA ASSET</option>
+          {assets.map(asset => (
+            <option key={asset.id} value={asset.id}>
+              🎰 {asset.asset_name} ({asset.asset_code})
+            </option>
+          ))}
         </select>
 
         <div className="ml-auto text-[#A7D8FF]">
@@ -585,12 +632,14 @@ export default function WinloseDataRawPage() {
         </div>
       </div>
 
+      {/* TABLE UPLOADS */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
-        <table className="w-full min-w-[800px]">
+        <table className="w-full min-w-[900px]">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th className="px-4 py-3 text-left text-[#FFD700]">No</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Asset</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Periode</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Active Players</th>
@@ -603,6 +652,7 @@ export default function WinloseDataRawPage() {
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                 <td className="px-4 py-3">{index + 1}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
+                <td className="px-4 py-3">{getWebsiteBadge(item.website)}</td>
                 <td className="px-4 py-3 text-[#FFD700] font-bold">{item.asset_code}</td>
                 <td className="px-4 py-3">
                   {item.period_start} s/d {item.period_end}
@@ -614,7 +664,7 @@ export default function WinloseDataRawPage() {
                 </td>
               </tr>
             )) : (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">Tidak ada data untuk periode ini</td></tr>
             )}
           </tbody>
         </table>
