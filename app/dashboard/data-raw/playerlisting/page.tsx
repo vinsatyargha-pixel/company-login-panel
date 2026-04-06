@@ -24,6 +24,38 @@ type PlayerUpload = {
   active_players: number;
 };
 
+// ===========================================
+// MAP WEBSITE NAME TO CODE (Untuk file Excel)
+// ===========================================
+
+const mapWebsiteToCode = (websiteName: string): string => {
+  if (!websiteName) return 'XLY';
+  
+  const upperName = websiteName.toString().toUpperCase().trim();
+  
+  const mapping: { [key: string]: string } = {
+    'LUCKY77': 'XLY',
+    'LUX77': 'XLX',
+    'XLY': 'XLY',
+    'XLX': 'XLX'
+  };
+  
+  return mapping[upperName] || 'XLY';
+};
+
+// ===========================================
+// GET WEBSITE BADGE
+// ===========================================
+
+const getWebsiteBadge = (websiteCode: string) => {
+  if (websiteCode === 'XLY') {
+    return <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">🎰 Lucky77 (XLY)</span>;
+  } else if (websiteCode === 'XLX') {
+    return <span className="px-2 py-1 rounded text-xs font-bold bg-purple-500/20 text-purple-400">🎲 LUX77 (XLX)</span>;
+  }
+  return <span className="px-2 py-1 rounded text-xs font-bold bg-gray-500/20 text-gray-400">{websiteCode || '-'}</span>;
+};
+
 export default function PlayerListingPage() {
   const [uploads, setUploads] = useState<PlayerUpload[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -328,209 +360,233 @@ export default function PlayerListingPage() {
   };
 
   const processFile = async () => {
-    if (!selectedFile) return;
+  if (!selectedFile) return;
+  
+  setUploading(true);
+  setUploadProgress('Membaca file...');
+  
+  try {
+    const arrayBuffer = await selectedFile.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
     
-    setUploading(true);
-    setUploadProgress('Membaca file...');
+    const rows = XLSX.utils.sheet_to_json(worksheet, { 
+      header: 1,
+      defval: '',
+      blankrows: false
+    }) as any[][];
     
-    try {
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(arrayBuffer);
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      
-      const rows = XLSX.utils.sheet_to_json(worksheet, { 
-        header: 1,
-        defval: '',
-        blankrows: false
-      }) as any[][];
-      
-      console.log('Total rows:', rows.length);
-      
-      // Cari header row
-      let headerRow: any[] = [];
-      let dataStartRow = 0;
-      
-      for (let i = 0; i < Math.min(10, rows.length); i++) {
-        const row = rows[i];
-        if (row && row.length > 0) {
-          const firstCell = row[0]?.toString().toLowerCase() || '';
-          if (firstCell === 'no.' || firstCell === 'no' || 
-              row.some(cell => cell && cell.toString().toLowerCase().includes('username')) ||
-              row.some(cell => cell && cell.toString().toLowerCase().includes('registration'))) {
-            headerRow = row;
-            dataStartRow = i + 1;
-            console.log('Header found at row:', i);
-            break;
-          }
+    console.log('Total rows:', rows.length);
+    
+    // Cari header row
+    let headerRow: any[] = [];
+    let dataStartRow = 0;
+    
+    for (let i = 0; i < Math.min(10, rows.length); i++) {
+      const row = rows[i];
+      if (row && row.length > 0) {
+        const firstCell = row[0]?.toString().toLowerCase() || '';
+        if (firstCell === 'no.' || firstCell === 'no' || 
+            row.some(cell => cell && cell.toString().toLowerCase().includes('username')) ||
+            row.some(cell => cell && cell.toString().toLowerCase().includes('registration'))) {
+          headerRow = row;
+          dataStartRow = i + 1;
+          console.log('Header found at row:', i);
+          break;
         }
       }
-      
-      if (headerRow.length === 0 && rows[1]) {
-        headerRow = rows[1];
-        dataStartRow = 2;
-        console.log('Using row 1 as header');
-      }
-      
-      if (headerRow.length === 0) {
-        throw new Error('Header tidak ditemukan. Pastikan file memiliki kolom Username dan Registration.');
-      }
-      
-      // Cari index kolom
-      const usernameIdx = getColumnIndex(headerRow, ['username']);
-      const registrationIdx = getColumnIndex(headerRow, ['registration']);
-      const fullNameIdx = getColumnIndex(headerRow, ['full name']);
-      const accountTypeIdx = getColumnIndex(headerRow, ['account type']);
-      const loyaltyLevelIdx = getColumnIndex(headerRow, ['loyalty level']);
-      const statusIdx = getColumnIndex(headerRow, ['status']);
-      
-      console.log('Column indexes:', {
-        usernameIdx, registrationIdx, fullNameIdx, accountTypeIdx, loyaltyLevelIdx, statusIdx
-      });
-      
-      if (usernameIdx === -1) {
-        throw new Error('Kolom Username tidak ditemukan di file');
-      }
-      
-      if (registrationIdx === -1) {
-        throw new Error('Kolom Registration tidak ditemukan di file');
-      }
-      
-      setUploadProgress('Memvalidasi data...');
-      
-      const uploadId = crypto.randomUUID();
-      const uploadDate = new Date().toISOString().split('T')[0];
-      const website = selectedAsset !== 'all' ? assets.find(a => a.id === selectedAsset)?.asset_code : null;
-      
-      const playerDetails: any[] = [];
-      let errorCount = 0;
-      let minRegDate: string | null = null;
-      let maxRegDate: string | null = null;
-      
-      const dataRows = rows.slice(dataStartRow);
-      console.log(`Processing ${dataRows.length} data rows`);
-      
-      for (let i = 0; i < dataRows.length; i++) {
-        const row = dataRows[i];
-        if (!row || row.length === 0) continue;
-        
-        const username = row[usernameIdx]?.toString().trim();
-        if (!username) {
-          errorCount++;
-          continue;
-        }
-        
-        // Ambil registration text dan ekstrak tanggal
-        const registrationText = row[registrationIdx]?.toString() || '';
-        let registrationDate: string | null = null;
-        let regDateOnly: string | null = null;
-        
-        const dateMatch = registrationText.match(/Registration Date\s*:\s*(\d{1,2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})/i);
-        if (dateMatch && dateMatch[1]) {
-          registrationDate = parseExcelDate(dateMatch[1]);
-          if (registrationDate) {
-            regDateOnly = registrationDate.split(' ')[0];
-            if (!minRegDate || regDateOnly < minRegDate) minRegDate = regDateOnly;
-            if (!maxRegDate || regDateOnly > maxRegDate) maxRegDate = regDateOnly;
-          }
-        }
-        
-        // Ambil data lainnya
-        const fullName = row[fullNameIdx]?.toString() || null;
-        const accountType = row[accountTypeIdx]?.toString() || 'Live';
-        const loyaltyLevel = row[loyaltyLevelIdx]?.toString() || 'Bronze';
-        const status = row[statusIdx]?.toString() || 'Aktif';
-        
-        playerDetails.push({
-          upload_id: uploadId,
-          registration_date: registrationDate,
-          no: i + 1,
-          registration: registrationText.substring(0, 500),
-          username: username.substring(0, 100),
-          account_type: accountType.substring(0, 50),
-          loyalty_level: loyaltyLevel.substring(0, 50),
-          full_name: fullName ? fullName.substring(0, 100) : null,
-          player_group: null,
-          contact_info: null,
-          status: status.substring(0, 50),
-          last_login: null,
-          referrer_type: null,
-          referral_code: null,
-          own_referral_code: null,
-          source_information: null,
-          maximum_transaction_pending: 1,
-          last_deposit: null,
-          current_loyalty_points: null,
-          current_balance: 0,
-          last_transfer_in: null,
-          current_outstanding_bet: 0,
-          file_name: selectedFile.name.substring(0, 255),
-          website: website,
-          upload_date: uploadDate
-        });
-      }
-
-      if (playerDetails.length === 0) {
-        throw new Error('Tidak ada data valid yang bisa diupload');
-      }
-
-      setUploadProgress(`Menyimpan metadata upload...`);
-      
-      // Simpan ke player_uploads per FILE (bukan per tanggal)
-      const { error: uploadError } = await supabase
-        .from('player_uploads')
-        .insert([{
-          upload_id: uploadId,
-          upload_date: uploadDate,
-          file_name: selectedFile.name,
-          total_rows: playerDetails.length,
-          status: 'completed',
-          website: website,
-          min_date: minRegDate,
-          max_date: maxRegDate
-        }]);
-
-      if (uploadError) throw uploadError;
-
-      // BATCH INSERT KE PLAYER_LISTING
-      const BATCH_SIZE = 500;
-      let successCount = 0;
-      
-      for (let i = 0; i < playerDetails.length; i += BATCH_SIZE) {
-        const batch = playerDetails.slice(i, i + BATCH_SIZE);
-        const batchNum = Math.floor(i / BATCH_SIZE) + 1;
-        const totalBatches = Math.ceil(playerDetails.length / BATCH_SIZE);
-        
-        setUploadProgress(`Menyimpan data: batch ${batchNum}/${totalBatches} (${batch.length} data)...`);
-        
-        const { error: listingError } = await supabase
-          .from('player_listing')
-          .insert(batch);
-        
-        if (listingError) throw listingError;
-        
-        successCount += batch.length;
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-
-      const periodText = minRegDate && maxRegDate 
-        ? `${minRegDate} s/d ${maxRegDate}`
-        : uploadDate;
-      
-      alert(`✅ Berhasil! ${successCount} data player diupload (${errorCount} baris error/skip)\n📅 Periode: ${periodText}\n📁 File: ${selectedFile.name}\n🌐 Website: ${website || 'Tidak dipilih'}`);
-      setShowModal(false);
-      setSelectedFile(null);
-      fetchUploads();
-      
-    } catch (error: any) {
-      console.error('Error detail:', error);
-      alert('Gagal upload: ' + error.message);
-    } finally {
-      setUploading(false);
-      setUploadProgress('');
     }
-  };
+    
+    if (headerRow.length === 0 && rows[1]) {
+      headerRow = rows[1];
+      dataStartRow = 2;
+      console.log('Using row 1 as header');
+    }
+    
+    if (headerRow.length === 0) {
+      throw new Error('Header tidak ditemukan. Pastikan file memiliki kolom Username dan Registration.');
+    }
+    
+    // Cari index kolom
+    const usernameIdx = getColumnIndex(headerRow, ['username']);
+    const registrationIdx = getColumnIndex(headerRow, ['registration']);
+    const fullNameIdx = getColumnIndex(headerRow, ['full name']);
+    const accountTypeIdx = getColumnIndex(headerRow, ['account type']);
+    const loyaltyLevelIdx = getColumnIndex(headerRow, ['loyalty level']);
+    const statusIdx = getColumnIndex(headerRow, ['status']);
+    const websiteIdx = getColumnIndex(headerRow, ['website', 'brand']);
+    
+    console.log('Column indexes:', {
+      usernameIdx, registrationIdx, fullNameIdx, accountTypeIdx, loyaltyLevelIdx, statusIdx, websiteIdx
+    });
+    
+    if (usernameIdx === -1) {
+      throw new Error('Kolom Username tidak ditemukan di file');
+    }
+    
+    if (registrationIdx === -1) {
+      throw new Error('Kolom Registration tidak ditemukan di file');
+    }
+    
+    setUploadProgress('Memvalidasi data...');
+    
+    const uploadId = crypto.randomUUID();
+    const uploadDate = new Date().toISOString().split('T')[0];
+    
+    // ✅ TENTUKAN WEBSITE DARI SELECTION ATAU DARI FILE
+    let defaultWebsite: string | null = null;
+    if (selectedAsset !== 'all') {
+      const asset = assets.find(a => a.id === selectedAsset);
+      if (asset) {
+        defaultWebsite = asset.asset_code;
+      }
+    }
+    
+    const playerDetails: any[] = [];
+    let errorCount = 0;
+    let minRegDate: string | null = null;
+    let maxRegDate: string | null = null;
+    let detectedWebsite: string | null = null; // Untuk tracking website yang terdeteksi
+    
+    const dataRows = rows.slice(dataStartRow);
+    console.log(`Processing ${dataRows.length} data rows`);
+    
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      if (!row || row.length === 0) continue;
+      
+      const username = row[usernameIdx]?.toString().trim();
+      if (!username) {
+        errorCount++;
+        continue;
+      }
+      
+      // ✅ TENTUKAN WEBSITE (prioritas: dari filter > dari file > default XLY)
+      let currentWebsite = defaultWebsite;
+      if (!currentWebsite && websiteIdx !== -1) {
+        const rawWebsite = row[websiteIdx]?.toString() || '';
+        currentWebsite = mapWebsiteToCode(rawWebsite);
+      }
+      if (!currentWebsite) currentWebsite = 'XLY';
+      
+      // Simpan website yang terdeteksi untuk tracking upload
+      if (!detectedWebsite) detectedWebsite = currentWebsite;
+      
+      // Ambil registration text dan ekstrak tanggal
+      const registrationText = row[registrationIdx]?.toString() || '';
+      let registrationDate: string | null = null;
+      let regDateOnly: string | null = null;
+      
+      const dateMatch = registrationText.match(/Registration Date\s*:\s*(\d{1,2}-[A-Za-z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2})/i);
+      if (dateMatch && dateMatch[1]) {
+        registrationDate = parseExcelDate(dateMatch[1]);
+        if (registrationDate) {
+          regDateOnly = registrationDate.split(' ')[0];
+          if (!minRegDate || regDateOnly < minRegDate) minRegDate = regDateOnly;
+          if (!maxRegDate || regDateOnly > maxRegDate) maxRegDate = regDateOnly;
+        }
+      }
+      
+      // Ambil data lainnya
+      const fullName = row[fullNameIdx]?.toString() || null;
+      const accountType = row[accountTypeIdx]?.toString() || 'Live';
+      const loyaltyLevel = row[loyaltyLevelIdx]?.toString() || 'Bronze';
+      const status = row[statusIdx]?.toString() || 'Aktif';
+      
+      playerDetails.push({
+        upload_id: uploadId,
+        registration_date: registrationDate,
+        no: i + 1,
+        registration: registrationText.substring(0, 500),
+        username: username.substring(0, 100),
+        account_type: accountType.substring(0, 50),
+        loyalty_level: loyaltyLevel.substring(0, 50),
+        full_name: fullName ? fullName.substring(0, 100) : null,
+        player_group: null,
+        contact_info: null,
+        status: status.substring(0, 50),
+        last_login: null,
+        referrer_type: null,
+        referral_code: null,
+        own_referral_code: null,
+        source_information: null,
+        maximum_transaction_pending: 1,
+        last_deposit: null,
+        current_loyalty_points: null,
+        current_balance: 0,
+        last_transfer_in: null,
+        current_outstanding_bet: 0,
+        file_name: selectedFile.name.substring(0, 255),
+        website: currentWebsite, // ✅ PAKAI currentWebsite
+        upload_date: uploadDate
+      });
+    }
+
+    if (playerDetails.length === 0) {
+      throw new Error('Tidak ada data valid yang bisa diupload');
+    }
+
+    // ✅ Gunakan detectedWebsite atau defaultWebsite atau 'XLY'
+    const finalWebsite = detectedWebsite || defaultWebsite || 'XLY';
+
+    setUploadProgress(`Menyimpan metadata upload...`);
+    
+    // Simpan ke player_uploads per FILE (bukan per tanggal)
+    const { error: uploadError } = await supabase
+      .from('player_uploads')
+      .insert([{
+        upload_id: uploadId,
+        upload_date: uploadDate,
+        file_name: selectedFile.name,
+        total_rows: playerDetails.length,
+        status: 'completed',
+        website: finalWebsite, // ✅ PAKAI finalWebsite
+        min_date: minRegDate,
+        max_date: maxRegDate
+      }]);
+
+    if (uploadError) throw uploadError;
+
+    // BATCH INSERT KE PLAYER_LISTING
+    const BATCH_SIZE = 500;
+    let successCount = 0;
+    
+    for (let i = 0; i < playerDetails.length; i += BATCH_SIZE) {
+      const batch = playerDetails.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(playerDetails.length / BATCH_SIZE);
+      
+      setUploadProgress(`Menyimpan data: batch ${batchNum}/${totalBatches} (${batch.length} data)...`);
+      
+      const { error: listingError } = await supabase
+        .from('player_listing')
+        .insert(batch);
+      
+      if (listingError) throw listingError;
+      
+      successCount += batch.length;
+      
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+
+    const periodText = minRegDate && maxRegDate 
+      ? `${minRegDate} s/d ${maxRegDate}`
+      : uploadDate;
+    
+    alert(`✅ Berhasil! ${successCount} data player diupload (${errorCount} baris error/skip)\n📅 Periode: ${periodText}\n📁 File: ${selectedFile.name}\n🌐 Website: ${finalWebsite}`);
+    setShowModal(false);
+    setSelectedFile(null);
+    fetchUploads();
+    
+  } catch (error: any) {
+    console.error('Error detail:', error);
+    alert('Gagal upload: ' + error.message);
+  } finally {
+    setUploading(false);
+    setUploadProgress('');
+  }
+};
 
   const getStatusColor = (status: string) => {
     switch(status?.toLowerCase()) {
@@ -577,6 +633,7 @@ export default function PlayerListingPage() {
 
       <h1 className="text-3xl font-bold text-[#FFD700] mb-6">PLAYER LISTING DATA RAW</h1>
 
+      {/* FILTERS */}
       <div className="bg-[#1A2F4A] p-4 rounded-lg border border-[#FFD700]/30 mb-6 flex flex-wrap gap-4 items-center">
         <select 
           className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[120px]"
@@ -594,13 +651,18 @@ export default function PlayerListingPage() {
           {years.map(year => <option key={year} value={year}>{year}</option>)}
         </select>
         
+        {/* ✅ DROPDOWN FILTER UNTUK 2 ASSET */}
         <select 
-          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[150px]"
+          className="bg-[#0B1A33] border border-[#FFD700]/30 rounded-lg px-4 py-2 text-white min-w-[220px]"
           value={selectedAsset}
           onChange={(e) => setSelectedAsset(e.target.value)}
         >
-          <option value="all">SEMUA WEBSITE</option>
-          {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.asset_name}</option>)}
+          <option value="all">🌐 SEMUA WEBSITE</option>
+          {assets.map(asset => (
+            <option key={asset.id} value={asset.id}>
+              🎰 {asset.asset_name} ({asset.asset_code})
+            </option>
+          ))}
         </select>
 
         <div className="ml-auto flex items-center gap-4">
@@ -624,13 +686,14 @@ export default function PlayerListingPage() {
         </div>
       </div>
 
+      {/* TABLE */}
       <div className="bg-[#1A2F4A] rounded-lg border border-[#FFD700]/30 overflow-x-auto">
         <table className="w-full">
           <thead className="bg-[#0B1A33] border-b border-[#FFD700]/30">
             <tr>
               <th className="px-4 py-3 text-left text-[#FFD700]">No</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">File</th>
-              <th className="px-4 py-3 text-left text-[#FFD700]">Asset</th>
+              <th className="px-4 py-3 text-left text-[#FFD700]">Website</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Tanggal Upload</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">Periode Registrasi</th>
               <th className="px-4 py-3 text-left text-[#FFD700]">New Regist</th>
@@ -643,7 +706,7 @@ export default function PlayerListingPage() {
               <tr key={item.id} className="border-b border-[#FFD700]/10 hover:bg-[#0B1A33]/50">
                 <td className="px-4 py-3">{indexOfFirstItem + index + 1}</td>
                 <td className="px-4 py-3 text-[#A7D8FF]">{item.file_name}</td>
-                <td className="px-4 py-3 text-[#FFD700]">{item.website || '-'}</td>
+                <td className="px-4 py-3">{getWebsiteBadge(item.website || '')}</td>
                 <td className="px-4 py-3">{new Date(item.upload_date).toLocaleDateString('id-ID')}</td>
                 <td className="px-4 py-3">{formatPeriod(item.min_date, item.max_date)}</td>
                 <td className="px-4 py-3">{item.active_players}</td>
@@ -665,6 +728,7 @@ export default function PlayerListingPage() {
         </table>
       </div>
 
+      {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="flex justify-between items-center mt-6">
           <div className="text-sm text-[#A7D8FF]">
