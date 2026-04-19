@@ -426,70 +426,80 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
-  // FETCH CHAT CS DATA
+  // FETCH CHAT CS DATA (DENGAN PAGINATION UNTUK AMBIL SEMUA DATA)
   // ===========================================
   useEffect(() => {
     const fetchChatCSData = async () => {
-  try {
-    setLoadingChat(true);
-    
-    const startMonth = parseInt(bulanAwal);
-    const endMonth = parseInt(bulanAkhir);
-    
-    const startDate = `${tahun}-${startMonth.toString().padStart(2, '0')}-01`;
-    const lastDay = new Date(parseInt(tahun), endMonth, 0).getDate();
-    const endDate = `${tahun}-${endMonth.toString().padStart(2, '0')}-${lastDay}`;
-    
-    const { data, error } = await supabase
-      .from('chat_cs_data')
-      .select('*')
-      .gte('started', startDate)
-      .lte('started', endDate);
-    
-    if (error) throw error;
-    
-    // ========== TAMBAHKAN DEBUG DI SINI ==========
-    console.log('📊 TOTAL CHAT DATA FETCHED:', data.length);
-    console.log('📊 BOT CHATS (agent_alias = BOT):', data.filter(chat => chat.agent_alias === 'BOT').length);
-    console.log('📊 Sample BOT rows:', data.filter(chat => chat.agent_alias === 'BOT').slice(0, 3));
-    // ============================================
-    
-    const grouped = {};
-    let botTotal = 0;
-    
-    data.forEach(chat => {
-      const agentAlias = chat.agent_alias || 'Unknown';
-      let officerName = AGENT_MAP[agentAlias] || agentAlias;
-      
-      if (agentAlias === 'BOT' || officerName === 'BOT') {
-        botTotal++;
-        return;
+      try {
+        setLoadingChat(true);
+        
+        const startMonth = parseInt(bulanAwal);
+        const endMonth = parseInt(bulanAkhir);
+        
+        const startDate = `${tahun}-${startMonth.toString().padStart(2, '0')}-01`;
+        const lastDay = new Date(parseInt(tahun), endMonth, 0).getDate();
+        const endDate = `${tahun}-${endMonth.toString().padStart(2, '0')}-${lastDay}`;
+        
+        // ========== AMBIL SEMUA DATA DENGAN LOOPING + RANGE ==========
+        let allData = [];
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('chat_cs_data')
+            .select('*')
+            .gte('started', startDate)
+            .lte('started', endDate)
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+          
+          if (error) throw error;
+          
+          if (data.length === 0) {
+            hasMore = false;
+          } else {
+            allData = [...allData, ...data];
+            page++;
+          }
+        }
+        
+        console.log('📊 TOTAL ALL CHAT DATA FETCHED:', allData.length);
+        
+        const grouped = {};
+        let botTotal = 0;
+        
+        allData.forEach(chat => {
+          const agentAlias = chat.agent_alias || 'Unknown';
+          let officerName = AGENT_MAP[agentAlias] || agentAlias;
+          
+          if (agentAlias === 'BOT' || officerName === 'BOT') {
+            botTotal++;
+            return;
+          }
+          
+          if (officerName === 'System' || officerName === 'SYSTEM') {
+            return;
+          }
+          
+          if (!grouped[officerName]) {
+            grouped[officerName] = { totalChat: 0 };
+          }
+          
+          grouped[officerName].totalChat++;
+        });
+        
+        console.log('📊 BOT TOTAL:', botTotal);
+        
+        setChatData(grouped);
+        setBotChatCount(botTotal);
+        
+      } catch (error) {
+        console.error('❌ Error fetching chat data:', error);
+      } finally {
+        setLoadingChat(false);
       }
-      
-      if (officerName === 'System' || officerName === 'SYSTEM') {
-        return;
-      }
-      
-      if (!grouped[officerName]) {
-        grouped[officerName] = { totalChat: 0 };
-      }
-      
-      grouped[officerName].totalChat++;
-    });
-    
-    // ========== TAMBAHKAN DEBUG JUGA DI SINI ==========
-    console.log('📊 BOT TOTAL AFTER COUNTING:', botTotal);
-    // ============================================
-    
-    setChatData(grouped);
-    setBotChatCount(botTotal);
-    
-  } catch (error) {
-    console.error('❌ Error fetching chat data:', error);
-  } finally {
-    setLoadingChat(false);
-  }
-};
+    };
     
     if (tahun && bulanAwal && bulanAkhir) {
       fetchChatCSData();
@@ -1355,7 +1365,7 @@ export default function SummaryKPIDataPage() {
                 <td className="text-center py-2 px-2">0</td>
                </tr>
             </tbody>
-          </table>
+           </table>
           <PaginationControls 
             currentPage={csPage}
             totalPages={totalCsPages}
@@ -1376,7 +1386,7 @@ export default function SummaryKPIDataPage() {
         <p className="mt-1 text-green-400">✓ Time Management menggunakan data real berdasarkan approved_date</p>
         <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
         <p className="mt-1 text-blue-400">✓ Attendance (S/I/A/U) dari API Schedule real</p>
-        <p className="mt-1 text-purple-400">✓ Total Chat dari tabel chat_cs_data berdasarkan agent_alias</p>
+        <p className="mt-1 text-purple-400">✓ Total Chat dari tabel chat_cs_data berdasarkan agent_alias (SEMUA DATA diambil tanpa batasan 1000)</p>
         <p className="mt-1 text-red-400">✓ Human Error & Problem Solving dari Google Sheets (REPORT MISTAKE, REPORT BLOCK BANK, REPORT CROSSBANK, REPORT CROSSASSET)</p>
         <p className="mt-1 text-red-400">✓ Target: {totalDays} hari - {totalOffDays} OFF = {targetPerOfficer} hari</p>
       </div>
