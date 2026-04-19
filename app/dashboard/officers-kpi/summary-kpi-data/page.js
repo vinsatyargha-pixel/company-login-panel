@@ -81,6 +81,17 @@ export default function SummaryKPIDataPage() {
   const [humanErrorData, setHumanErrorData] = useState({});
   const [loadingHumanError, setLoadingHumanError] = useState(false);
 
+  // ===== PAGINATION STATE =====
+  const [depositPage, setDepositPage] = useState(1);
+  const [csPage, setCsPage] = useState(1);
+  const rowsPerPage = 10; // Jumlah baris per halaman
+
+  // Reset page ketika filter berubah
+  useEffect(() => {
+    setDepositPage(1);
+    setCsPage(1);
+  }, [tahun, bulanAwal, bulanAkhir, officers]);
+
   // Daftar bulan
   const bulanList = [
     { value: '1', label: 'Januari' },
@@ -487,10 +498,6 @@ export default function SummaryKPIDataPage() {
     
     const csvText = await response.text();
     console.log('📄 RAW CSV length:', csvText.length);
-    
-    // Gunakan Papa Parse untuk parsing CSV
-    // Papa Parse tersedia di browser via CDN? Kita pake manual tapi lebih baik
-    // Karena Papa Parse mungkin gak tersedia, kita pake fungsi yang sudah diperbaiki
     
     // Parsing CSV dengan metode yang lebih robust
     const parseCSVLine = (line) => {
@@ -944,6 +951,59 @@ export default function SummaryKPIDataPage() {
     };
   });
 
+  // Filter officers untuk CS (exclude System)
+  const csOfficerDataList = officerDataList.filter(o => o.name !== 'System' && o.name !== 'SYSTEM');
+
+  // ===== PAGINATION LOGIC =====
+  // Untuk Deposit & Withdrawal (semua officer termasuk System)
+  const totalDepositPages = Math.ceil(officerDataList.length / rowsPerPage);
+  const paginatedDepositData = officerDataList.slice(
+    (depositPage - 1) * rowsPerPage,
+    depositPage * rowsPerPage
+  );
+
+  // Untuk CS (exclude System)
+  const totalCsPages = Math.ceil(csOfficerDataList.length / rowsPerPage);
+  const paginatedCsData = csOfficerDataList.slice(
+    (csPage - 1) * rowsPerPage,
+    csPage * rowsPerPage
+  );
+
+  // Component Pagination
+  const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+    
+    return (
+      <div className="flex justify-center items-center gap-2 mt-4 py-2">
+        <button
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+            currentPage === 1
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              : 'bg-[#FFD700] text-[#0B1A33] hover:bg-[#FFD700]/80'
+          }`}
+        >
+          ◀ Prev
+        </button>
+        <span className="text-[#A7D8FF] text-sm">
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+            currentPage === totalPages
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              : 'bg-[#FFD700] text-[#0B1A33] hover:bg-[#FFD700]/80'
+          }`}
+        >
+          Next ▶
+        </button>
+      </div>
+    );
+  };
+
   if (loading || checkingRole) {
     return (
       <div className="p-6 w-full min-h-screen bg-[#0B1A33] text-white flex items-center justify-center">
@@ -1047,7 +1107,7 @@ export default function SummaryKPIDataPage() {
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">PROBLEM SOLVING</th>
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">FOLLOW SOP</th>
                 <th colSpan="5" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">SUB SCORE</th>
-               </tr>
+              </tr>
               <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
                 <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
                 <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
@@ -1087,11 +1147,11 @@ export default function SummaryKPIDataPage() {
               </tr>
             </thead>
             <tbody>
-              {officerDataList.map((officer, idx) => (
-                <React.Fragment key={`officer-${idx}`}>
+              {paginatedDepositData.map((officer, idx) => (
+                <React.Fragment key={`officer-${(depositPage-1)*rowsPerPage + idx}`}>
                   {/* DEPOSIT ASPECT */}
                   <tr className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
-                    <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.no}</td>
+                    <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{(depositPage-1)*rowsPerPage + idx + 1}</td>
                     <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
                     <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
                     <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
@@ -1172,6 +1232,11 @@ export default function SummaryKPIDataPage() {
               ))}
             </tbody>
           </table>
+          <PaginationControls 
+            currentPage={depositPage}
+            totalPages={totalDepositPages}
+            onPageChange={setDepositPage}
+          />
         </div>
       </div>
 
@@ -1220,41 +1285,39 @@ export default function SummaryKPIDataPage() {
               </tr>
             </thead>
             <tbody>
-              {officerDataList.map((officer, idx) => {
-                if (officer.name === 'System' || officer.name === 'SYSTEM') return null;
-                return (
-                  <tr key={`cs-${idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
-                    <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.no}</td>
-                    <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
-                    <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
-                    <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
-                    <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
-                      <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
-                    </td>
-                    <td className="text-center py-2 px-2">{officer.cs.totalChat}</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">{officer.cs.s}</td>
-                    <td className="text-center py-2 px-2">{officer.cs.i}</td>
-                    <td className="text-center py-2 px-2">{officer.cs.a}</td>
-                    <td className="text-center py-2 px-2">{officer.cs.u}</td>
-                    <td className="text-center py-2 px-2">{officer.cs.total}</td>
-                    <td className="text-center py-2 px-2">{officer.cs.target}</td>
-                    <td className="text-center py-2 px-2">{officer.cs.achieve}</td>
-                    <td className="text-center py-2 px-2">{officer.cs.presentase}%</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                    <td className="text-center py-2 px-2">0</td>
-                  </tr>
-                );
-              })}
+              {paginatedCsData.map((officer, idx) => (
+                <tr key={`cs-${(csPage-1)*rowsPerPage + idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
+                  <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{(csPage-1)*rowsPerPage + idx + 1}</td>
+                  <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
+                  <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
+                  <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
+                  <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
+                    <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
+                  </td>
+                  <td className="text-center py-2 px-2">{officer.cs.totalChat}</td>
+                  <td className="text-center py-2 px-2">0</td>
+                  <td className="text-center py-2 px-2">0</td>
+                  <td className="text-center py-2 px-2">0</td>
+                  <td className="text-center py-2 px-2">0</td>
+                  <td className="text-center py-2 px-2">{officer.cs.s}</td>
+                  <td className="text-center py-2 px-2">{officer.cs.i}</td>
+                  <td className="text-center py-2 px-2">{officer.cs.a}</td>
+                  <td className="text-center py-2 px-2">{officer.cs.u}</td>
+                  <td className="text-center py-2 px-2">{officer.cs.total}</td>
+                  <td className="text-center py-2 px-2">{officer.cs.target}</td>
+                  <td className="text-center py-2 px-2">{officer.cs.achieve}</td>
+                  <td className="text-center py-2 px-2">{officer.cs.presentase}%</td>
+                  <td className="text-center py-2 px-2">0</td>
+                  <td className="text-center py-2 px-2">0</td>
+                  <td className="text-center py-2 px-2">0</td>
+                  <td className="text-center py-2 px-2">0</td>
+                  <td className="text-center py-2 px-2">0</td>
+                  <td className="text-center py-2 px-2">0</td>
+                </tr>
+              ))}
+              {/* BOT ROW */}
               <tr className="border-b border-[#FFD700]/10 bg-blue-900/20">
-                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officers.length}</td>
+                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{csOfficerDataList.length + 1}</td>
                 <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium text-blue-400">BOT</td>
                 <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">-</td>
                 <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">System</td>
@@ -1280,9 +1343,14 @@ export default function SummaryKPIDataPage() {
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
-              </tr>
+               </tr>
             </tbody>
           </table>
+          <PaginationControls 
+            currentPage={csPage}
+            totalPages={totalCsPages}
+            onPageChange={setCsPage}
+          />
           {loadingChat && (
             <div className="text-center py-4 text-[#A7D8FF]">
               Loading chat data...
