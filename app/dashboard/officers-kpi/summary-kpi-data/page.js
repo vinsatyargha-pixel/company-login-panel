@@ -42,6 +42,31 @@ const getMonthDateRange = (tahun, bulan) => {
 };
 
 // ===========================================
+// HELPER: Fetch ALL data from Supabase with pagination
+// ===========================================
+const fetchAllData = async (table, queryFn) => {
+  let allData = [];
+  let page = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const result = await queryFn(table, page, pageSize);
+    
+    if (result.error) throw result.error;
+    
+    if (result.data.length === 0) {
+      hasMore = false;
+    } else {
+      allData = [...allData, ...result.data];
+      page++;
+    }
+  }
+  
+  return allData;
+};
+
+// ===========================================
 // AGENT MAPPING (ALIAS → NAMA LENGKAP)
 // ===========================================
 const AGENT_MAP = {
@@ -84,7 +109,7 @@ export default function SummaryKPIDataPage() {
   // ===== PAGINATION STATE =====
   const [depositPage, setDepositPage] = useState(1);
   const [csPage, setCsPage] = useState(1);
-  const rowsPerPage = 10; // Jumlah baris per halaman
+  const rowsPerPage = 10;
 
   // Reset page ketika filter berubah
   useEffect(() => {
@@ -186,24 +211,43 @@ export default function SummaryKPIDataPage() {
   }, []);
 
   // ===========================================
-  // FETCH DEPOSIT TRANSACTIONS
+  // FETCH DEPOSIT TRANSACTIONS (ALL DATA)
   // ===========================================
   useEffect(() => {
     const fetchDepositTransactions = async () => {
       try {
-        const { startDate, endDate } = getMonthDateRange(tahun, parseInt(bulanAkhir));
+        const startDate = `${tahun}-${bulanAwal.padStart(2, '0')}-01`;
+        const endDate = new Date(parseInt(tahun), parseInt(bulanAkhir), 0).toISOString().split('T')[0];
         
-        const { data, error } = await supabase
-          .from('deposit_transactions')
-          .select('*')
-          .gte('approved_date', `${tahun}-${bulanAwal.padStart(2, '0')}-01`)
-          .lte('approved_date', endDate);
-
-        if (error) throw error;
-
+        // Ambil SEMUA data deposit dengan looping
+        let allData = [];
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('deposit_transactions')
+            .select('*')
+            .gte('approved_date', startDate)
+            .lte('approved_date', endDate)
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+          
+          if (error) throw error;
+          
+          if (data.length === 0) {
+            hasMore = false;
+          } else {
+            allData = [...allData, ...data];
+            page++;
+          }
+        }
+        
+        console.log('📊 TOTAL DEPOSIT DATA FETCHED:', allData.length);
+        
         const grouped = {};
         
-        data.forEach(tx => {
+        allData.forEach(tx => {
           const handler = tx.handler || 'system';
           
           if (!grouped[handler]) {
@@ -265,24 +309,43 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
-  // FETCH WITHDRAWAL TRANSACTIONS
+  // FETCH WITHDRAWAL TRANSACTIONS (ALL DATA)
   // ===========================================
   useEffect(() => {
     const fetchWithdrawalTransactions = async () => {
       try {
-        const { startDate, endDate } = getMonthDateRange(tahun, parseInt(bulanAkhir));
+        const startDate = `${tahun}-${bulanAwal.padStart(2, '0')}-01`;
+        const endDate = new Date(parseInt(tahun), parseInt(bulanAkhir), 0).toISOString().split('T')[0];
         
-        const { data, error } = await supabase
-          .from('withdrawal_transactions')
-          .select('*')
-          .gte('approved_date', `${tahun}-${bulanAwal.padStart(2, '0')}-01`)
-          .lte('approved_date', endDate);
-
-        if (error) throw error;
-
+        // Ambil SEMUA data withdrawal dengan looping
+        let allData = [];
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('withdrawal_transactions')
+            .select('*')
+            .gte('approved_date', startDate)
+            .lte('approved_date', endDate)
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+          
+          if (error) throw error;
+          
+          if (data.length === 0) {
+            hasMore = false;
+          } else {
+            allData = [...allData, ...data];
+            page++;
+          }
+        }
+        
+        console.log('📊 TOTAL WITHDRAWAL DATA FETCHED:', allData.length);
+        
         const grouped = {};
         
-        data.forEach(tx => {
+        allData.forEach(tx => {
           const handler = tx.handler || 'system';
           
           if (!grouped[handler]) {
@@ -426,7 +489,7 @@ export default function SummaryKPIDataPage() {
   }, [tahun, bulanAwal, bulanAkhir]);
 
   // ===========================================
-  // FETCH CHAT CS DATA (DENGAN PAGINATION UNTUK AMBIL SEMUA DATA)
+  // FETCH CHAT CS DATA (ALL DATA)
   // ===========================================
   useEffect(() => {
     const fetchChatCSData = async () => {
@@ -440,7 +503,7 @@ export default function SummaryKPIDataPage() {
         const lastDay = new Date(parseInt(tahun), endMonth, 0).getDate();
         const endDate = `${tahun}-${endMonth.toString().padStart(2, '0')}-${lastDay}`;
         
-        // ========== AMBIL SEMUA DATA DENGAN LOOPING + RANGE ==========
+        // Ambil SEMUA data chat dengan looping
         let allData = [];
         let page = 0;
         const pageSize = 1000;
@@ -464,7 +527,7 @@ export default function SummaryKPIDataPage() {
           }
         }
         
-        console.log('📊 TOTAL ALL CHAT DATA FETCHED:', allData.length);
+        console.log('📊 TOTAL CHAT DATA FETCHED:', allData.length);
         
         const grouped = {};
         let botTotal = 0;
@@ -506,176 +569,141 @@ export default function SummaryKPIDataPage() {
     }
   }, [tahun, bulanAwal, bulanAkhir]);
 
+  // ===========================================
+  // FETCH HUMAN ERROR DATA (Google Sheets)
+  // ===========================================
   const fetchHumanErrorData = async () => {
-  try {
-    setLoadingHumanError(true);
-    
-    console.log('📥 Fetching HUMAN ERROR data from Google Sheets...');
-    
-    const response = await fetch(
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9VI82RFmJJECM1dwHgAk9YlFSGGVcuAgf5sexjLal3U5OZ6BJL35oAxLd2h17vgsBBC6o0JXEcV-Z/pub?gid=70613788&single=true&output=csv'
-    );
-    
-    const csvText = await response.text();
-    console.log('📄 RAW CSV length:', csvText.length);
-    
-    // Parsing CSV dengan metode yang lebih robust
-    const parseCSVLine = (line) => {
-      const result = [];
-      let inQuote = false;
-      let current = '';
+    try {
+      setLoadingHumanError(true);
       
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') {
-          inQuote = !inQuote;
-        } else if (char === ',' && !inQuote) {
-          result.push(current);
-          current = '';
-        } else {
-          current += char;
+      console.log('📥 Fetching HUMAN ERROR data from Google Sheets...');
+      
+      const response = await fetch(
+        'https://docs.google.com/spreadsheets/d/e/2PACX-1vR9VI82RFmJJECM1dwHgAk9YlFSGGVcuAgf5sexjLal3U5OZ6BJL35oAxLd2h17vgsBBC6o0JXEcV-Z/pub?gid=70613788&single=true&output=csv'
+      );
+      
+      const csvText = await response.text();
+      
+      // Parsing CSV
+      const parseCSVLine = (line) => {
+        const result = [];
+        let inQuote = false;
+        let current = '';
+        
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuote = !inQuote;
+          } else if (char === ',' && !inQuote) {
+            result.push(current);
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current);
+        return result;
+      };
+      
+      const lines = csvText.split('\n').filter(line => line.trim() !== '');
+      
+      let headerIndex = -1;
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes('PERIODE') || lines[i].includes('DATE')) {
+          headerIndex = i;
+          break;
         }
       }
-      result.push(current);
-      return result;
-    };
-    
-    // Split baris, skip baris kosong di awal
-    const lines = csvText.split('\n').filter(line => line.trim() !== '');
-    
-    // Cari baris pertama yang mengandung "PERIODE" (header)
-    let headerIndex = -1;
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes('PERIODE') || lines[i].includes('DATE')) {
-        headerIndex = i;
-        break;
+      
+      if (headerIndex === -1) {
+        console.error('❌ Header not found');
+        setHumanErrorData({});
+        return;
       }
-    }
-    
-    if (headerIndex === -1) {
-      console.error('❌ Header not found');
-      setHumanErrorData({});
-      return;
-    }
-    
-    const headers = parseCSVLine(lines[headerIndex]).map(h => h.replace(/^"|"$/g, '').trim());
-    console.log('📋 Headers:', headers);
-    
-    // Cari index kolom
-    const findIndex = (keyword) => {
-      return headers.findIndex(h => h && h.toLowerCase().includes(keyword.toLowerCase()));
-    };
-    
-    const idxOfficer = findIndex('officer id');
-    const idxTicket = findIndex('no ticket');
-    const idxCategory = findIndex('categories');
-    const idxAmount = findIndex('amount');
-    const idxDate = findIndex('date');
-    const idxMonth = findIndex('month');
-    const idxYear = findIndex('years');
-    
-    console.log('📍 Column indexes:', { idxOfficer, idxTicket, idxCategory, idxAmount, idxDate, idxMonth, idxYear });
-    
-    const data = [];
-    for (let i = headerIndex + 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line.trim()) continue;
       
-      const values = parseCSVLine(line);
-      if (values.length < 2) continue;
+      const headers = parseCSVLine(lines[headerIndex]).map(h => h.replace(/^"|"$/g, '').trim());
       
-      const obj = {};
-      headers.forEach((h, idx) => {
-        let val = values[idx] || '';
-        val = val.replace(/^"|"$/g, '').trim();
-        obj[h] = val;
+      const findIndex = (keyword) => {
+        return headers.findIndex(h => h && h.toLowerCase().includes(keyword.toLowerCase()));
+      };
+      
+      const data = [];
+      for (let i = headerIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        
+        const values = parseCSVLine(line);
+        if (values.length < 2) continue;
+        
+        const obj = {};
+        headers.forEach((h, idx) => {
+          let val = values[idx] || '';
+          val = val.replace(/^"|"$/g, '').trim();
+          obj[h] = val;
+        });
+        
+        if (obj['DATE'] && obj['DATE'] !== '') {
+          data.push(obj);
+        }
+      }
+      
+      const grouped = {};
+      const startMonth = parseInt(bulanAwal);
+      const endMonth = parseInt(bulanAkhir);
+      const targetYear = parseInt(tahun);
+      const monthMap = { 'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12 };
+      
+      data.forEach(item => {
+        const officerId = (item['OFFICER ID'] || '').trim();
+        const ticket = (item['NO TICKET'] || '').trim();
+        const category = (item['CATEGORIES'] || '').toUpperCase().trim();
+        const amount = parseFloat(String(item['AMOUNT'] || '0').replace(/[^0-9.-]/g, '')) || 0;
+        
+        const date = parseInt(item['DATE']) || null;
+        const monthRaw = (item['MONTH'] || '').trim();
+        const month = monthRaw.replace(/\s/g, '');
+        const year = parseInt(item['YEARS']) || null;
+        
+        if (!officerId || !date || !month || !year) return;
+        
+        const itemMonth = monthMap[month.substring(0,3)] || 0;
+        if (year !== targetYear) return;
+        if (itemMonth < startMonth || itemMonth > endMonth) return;
+        
+        const divisi = ticket.toUpperCase().startsWith('W') ? 'withdrawal' : 'deposit';
+        
+        if (!grouped[officerId]) {
+          grouped[officerId] = {
+            deposit: { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 },
+            withdrawal: { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 }
+          };
+        }
+        
+        if (category === 'REPORT MISTAKE') {
+          grouped[officerId][divisi].mistakeQty++;
+          grouped[officerId][divisi].mistakeAmount += amount;
+        }
+        else if (category === 'REPORT BLOCK BANK') {
+          grouped[officerId][divisi].blockBank++;
+        }
+        else if (category === 'REPORT CROSSBANK') {
+          grouped[officerId][divisi].crossBankQty++;
+          grouped[officerId][divisi].crossBankAmount += amount;
+        }
+        else if (category === 'REPORT CROSSASSET') {
+          grouped[officerId][divisi].crossAssetQty++;
+          grouped[officerId][divisi].crossAssetAmount += amount;
+        }
       });
       
-      // Skip baris yang tidak memiliki DATE (baris kosong data)
-      if (obj['DATE'] && obj['DATE'] !== '') {
-        data.push(obj);
-      }
+      setHumanErrorData(grouped);
+      
+    } catch (error) {
+      console.error('❌ Error fetching human error data:', error);
+    } finally {
+      setLoadingHumanError(false);
     }
-    
-    console.log('📊 Valid data rows:', data.length);
-    console.log('📊 Sample data:', data.slice(0, 3));
-    
-    // Kelompokkan data
-    const grouped = {};
-    const startMonth = parseInt(bulanAwal);
-    const endMonth = parseInt(bulanAkhir);
-    const targetYear = parseInt(tahun);
-    const monthMap = { 'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12 };
-    
-    data.forEach(item => {
-      const officerId = (item['OFFICER ID'] || '').trim();
-      const ticket = (item['NO TICKET'] || '').trim();
-      const category = (item['CATEGORIES'] || '').toUpperCase().trim();
-      const amount = parseFloat(String(item['AMOUNT'] || '0').replace(/[^0-9.-]/g, '')) || 0;
-      
-      const date = parseInt(item['DATE']) || null;
-      const monthRaw = (item['MONTH'] || '').trim();
-      const month = monthRaw.replace(/\s/g, '');
-      const year = parseInt(item['YEARS']) || null;
-      
-      console.log('🔍 Row:', { officerId, date, month, year, category, ticket, amount });
-      
-      if (!officerId || !date || !month || !year) {
-        console.log('❌ Skip - missing required data');
-        return;
-      }
-      
-      const itemMonth = monthMap[month.substring(0,3)] || 0;
-      if (year !== targetYear) {
-        console.log(`❌ Filter out: year ${year} != ${targetYear}`);
-        return;
-      }
-      if (itemMonth < startMonth || itemMonth > endMonth) {
-        console.log(`❌ Filter out: month ${itemMonth} not in ${startMonth}-${endMonth}`);
-        return;
-      }
-      
-      console.log(`✅ Pass filter: ${officerId} - ${month}/${year}`);
-      
-      const divisi = ticket.toUpperCase().startsWith('W') ? 'withdrawal' : 'deposit';
-      
-      if (!grouped[officerId]) {
-        grouped[officerId] = {
-          deposit: { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 },
-          withdrawal: { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 }
-        };
-      }
-      
-      if (category === 'REPORT MISTAKE') {
-        grouped[officerId][divisi].mistakeQty++;
-        grouped[officerId][divisi].mistakeAmount += amount;
-        console.log(`✅ Added MISTAKE to ${officerId} - ${divisi}: +${amount}`);
-      }
-      else if (category === 'REPORT BLOCK BANK') {
-        grouped[officerId][divisi].blockBank++;
-        console.log(`✅ Added BLOCK BANK to ${officerId} - ${divisi}`);
-      }
-      else if (category === 'REPORT CROSSBANK') {
-        grouped[officerId][divisi].crossBankQty++;
-        grouped[officerId][divisi].crossBankAmount += amount;
-        console.log(`✅ Added CROSSBANK to ${officerId} - ${divisi}: +${amount}`);
-      }
-      else if (category === 'REPORT CROSSASSET') {
-        grouped[officerId][divisi].crossAssetQty++;
-        grouped[officerId][divisi].crossAssetAmount += amount;
-        console.log(`✅ Added CROSSASSET to ${officerId} - ${divisi}: +${amount}`);
-      }
-    });
-    
-    console.log('📊 Final grouped data:', grouped);
-    setHumanErrorData(grouped);
-    
-  } catch (error) {
-    console.error('❌ Error fetching human error data:', error);
-  } finally {
-    setLoadingHumanError(false);
-  }
-};
+  };
 
   // ===========================================
   // PANGGIL FETCH HUMAN ERROR DATA
@@ -710,7 +738,6 @@ export default function SummaryKPIDataPage() {
   // MAP DATA REAL KE FORMAT YANG DIBUTUHKAN
   // ===========================================
   const getDepositDataForOfficer = (officer) => {
-    // System officer
     if (officer.panel_id === 'System' || officer.full_name === 'System') {
       const data = depositData['SYSTEM'] || depositData['system'] || {};
       return {
@@ -743,7 +770,6 @@ export default function SummaryKPIDataPage() {
       };
     }
 
-    // Cari data deposit dari transaksi
     const handlerVariants = [
       officer.panel_id?.toLowerCase(),
       officer.panel_id,
@@ -759,7 +785,6 @@ export default function SummaryKPIDataPage() {
       }
     }
     
-    // Ambil data human error untuk deposit
     let humanError = { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 };
     
     if (humanErrorData[officer.panel_id]?.deposit) {
@@ -807,7 +832,6 @@ export default function SummaryKPIDataPage() {
   };
 
   const getWithdrawalDataForOfficer = (officer) => {
-    // System officer
     if (officer.panel_id === 'System' || officer.full_name === 'System') {
       const data = withdrawalData['SYSTEM'] || withdrawalData['system'] || {};
       return {
@@ -840,7 +864,6 @@ export default function SummaryKPIDataPage() {
       };
     }
 
-    // Cari data withdrawal dari transaksi
     const handlerVariants = [
       officer.panel_id?.toLowerCase(),
       officer.panel_id,
@@ -856,7 +879,6 @@ export default function SummaryKPIDataPage() {
       }
     }
     
-    // Ambil data human error untuk withdrawal
     let humanError = { mistakeQty: 0, mistakeAmount: 0, blockBank: 0, crossBankQty: 0, crossBankAmount: 0, crossAssetQty: 0, crossAssetAmount: 0 };
     
     if (humanErrorData[officer.panel_id]?.withdrawal) {
@@ -903,7 +925,6 @@ export default function SummaryKPIDataPage() {
     };
   };
 
-  // ===== FUNGSI GET CHAT DATA UNTUK OFFICER =====
   const getChatDataForOfficer = (officer) => {
     const officerName = officer.full_name;
     
@@ -915,7 +936,6 @@ export default function SummaryKPIDataPage() {
     return { totalChat: data?.totalChat || 0 };
   };
 
-  // Generate data dengan real attendance
   const officerDataList = officers.map((officer, index) => {
     const depositReal = getDepositDataForOfficer(officer);
     const withdrawalReal = getWithdrawalDataForOfficer(officer);
@@ -971,25 +991,20 @@ export default function SummaryKPIDataPage() {
     };
   });
 
-  // Filter officers untuk CS (exclude System)
   const csOfficerDataList = officerDataList.filter(o => o.name !== 'System' && o.name !== 'SYSTEM');
 
-  // ===== PAGINATION LOGIC =====
-  // Untuk Deposit & Withdrawal (semua officer termasuk System)
   const totalDepositPages = Math.ceil(officerDataList.length / rowsPerPage);
   const paginatedDepositData = officerDataList.slice(
     (depositPage - 1) * rowsPerPage,
     depositPage * rowsPerPage
   );
 
-  // Untuk CS (exclude System)
   const totalCsPages = Math.ceil(csOfficerDataList.length / rowsPerPage);
   const paginatedCsData = csOfficerDataList.slice(
     (csPage - 1) * rowsPerPage,
     csPage * rowsPerPage
   );
 
-  // Component Pagination
   const PaginationControls = ({ currentPage, totalPages, onPageChange }) => {
     if (totalPages <= 1) return null;
     
@@ -1363,9 +1378,9 @@ export default function SummaryKPIDataPage() {
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
                 <td className="text-center py-2 px-2">0</td>
-               </tr>
+              </tr>
             </tbody>
-           </table>
+          </table>
           <PaginationControls 
             currentPage={csPage}
             totalPages={totalCsPages}
@@ -1383,7 +1398,7 @@ export default function SummaryKPIDataPage() {
       <div className="text-xs text-[#A7D8FF]/30 text-center mt-8">
         <p>KPI Summary • Data officers diambil dari database ({officers.length} officers CS DP WD) • Periode {bulanList.find(b => b.value === bulanAwal)?.label} - {bulanList.find(b => b.value === bulanAkhir)?.label} {tahun}</p>
         <p className="mt-1">P1: Time Management | P2: Human Error | P3: Problem Solving | P4: Follow SOP | P5: Chat Achievement | P6: Attendance & Attitude</p>
-        <p className="mt-1 text-green-400">✓ Time Management menggunakan data real berdasarkan approved_date</p>
+        <p className="mt-1 text-green-400">✓ Time Management menggunakan data real berdasarkan approved_date (SEMUA DATA diambil tanpa batasan 1000)</p>
         <p className="mt-1 text-yellow-400">✓ Interval App & Rej dalam format HH:MM:SS</p>
         <p className="mt-1 text-blue-400">✓ Attendance (S/I/A/U) dari API Schedule real</p>
         <p className="mt-1 text-purple-400">✓ Total Chat dari tabel chat_cs_data berdasarkan agent_alias (SEMUA DATA diambil tanpa batasan 1000)</p>
