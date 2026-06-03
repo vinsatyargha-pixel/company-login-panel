@@ -75,7 +75,7 @@ const AGENT_MAP = {
   'Layla Diyah': 'Lie Fung Kien (Vini)',
   'Melissa Lin': 'Mushollina Nul Hakim',
   'Fania Lolita': 'Ronaldo Ichwan',
-  'Lisa saraswati': 'Sulaeman',
+  'LISA SARASWATI': 'Sulaeman',
   'BOT': 'BOT',
   'System': 'System',
   'SYSTEM': 'System'
