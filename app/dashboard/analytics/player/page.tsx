@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import Link from 'next/link'
 import DatePicker from 'react-datepicker'
+// @ts-ignore - Ignore CSS module type declaration
 import "react-datepicker/dist/react-datepicker.css"
 
 // ===========================================
@@ -136,7 +137,7 @@ export default function PlayerOverviewPage() {
   }
 
   // ===========================================
-  // FETCH ALL DATA WITH PAGINATION
+  // FETCH ALL DATA WITH UNLIMITED PAGINATION
   // ===========================================
   const fetchAllDataWithPagination = async (queryBuilder: any) => {
     let allData: any[] = []
