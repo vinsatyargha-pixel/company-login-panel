@@ -1275,124 +1275,117 @@ export default function SummaryKPIDataPage() {
         </div>
       </div>
 
-      {/* ========== CUSTOMER SERVICE KPI ========== */}
-      <div className="mb-10">
-        <h2 className="text-xl font-bold text-[#FFD700] mb-4">CUSTOMER SERVICE KPI</h2>
-        
-        <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
-          <table className="w-full text-xs min-w-[1600px]">
-            <thead>
-              <tr className="border-b border-[#FFD700]/20">
-                <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Poin 2</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Poin 3</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">Poin 4</th>
-                <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-red-500/10">Poin 5</th>
-                <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-orange-500/10">Attendance & Attitude (Poin 6)</th>
-                <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-pink-500/10">SUB SCORE CS</th>
-              </tr>
-              <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
-                <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
-                <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
-                <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
-                <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
-                <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Missed Chat</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
-                <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
-                <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">S</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">I</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">A</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">U</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">Total</th>
-                <th className="text-center py-2 px-2 min-w-[50px]">Target</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Achieve</th>
-                <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P5</th>
-                <th className="text-center py-2 px-2 min-w-[40px]">P6</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedCsData.map((officer, idx) => (
-                <tr key={`cs-${(csPage-1)*rowsPerPage + idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
-                  <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{(csPage-1)*rowsPerPage + idx + 1}</td>
-                  <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
-                  <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
-                  <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
-                  <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
-                    <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
-                  </td>
-                  <td className="text-center py-2 px-2">{officer.cs.totalChat}</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">{officer.cs.s}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.i}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.a}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.u}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.total}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.target}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.achieve}</td>
-                  <td className="text-center py-2 px-2">{officer.cs.presentase}%</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                  <td className="text-center py-2 px-2">0</td>
-                </tr>
-              ))}
-              {/* BOT ROW */}
-              <tr className="border-b border-[#FFD700]/10 bg-blue-900/20">
-                <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{csOfficerDataList.length + 1}</td>
-                <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium text-blue-400">BOT</td>
-                <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">-</td>
-                <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">System</td>
-                <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
-                  <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">BOT</span>
-                </td>
-                <td className="text-center py-2 px-2">{botChatCount}</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">-</td>
-                <td className="text-center py-2 px-2">-</td>
-                <td className="text-center py-2 px-2">-</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-                <td className="text-center py-2 px-2">0</td>
-              </tr>
-            </tbody>
-          </table>
-          <PaginationControls 
-            currentPage={csPage}
-            totalPages={totalCsPages}
-            onPageChange={setCsPage}
-          />
-          {loadingChat && (
-            <div className="text-center py-4 text-[#A7D8FF]">
-              Loading chat data...
-            </div>
-          )}
-        </div>
+      // ========== CUSTOMER SERVICE KPI ==========
+<div className="mb-10">
+  <h2 className="text-xl font-bold text-[#FFD700] mb-4">CUSTOMER SERVICE KPI</h2>
+  
+  <div className="overflow-x-auto bg-[#1A2F4A] rounded-xl border border-[#FFD700]/30 p-4">
+    <table className="w-full text-xs min-w-[1500px]">
+      <thead>
+        <tr className="border-b border-[#FFD700]/20">
+          <th colSpan="5" className="sticky left-0 z-20 bg-[#1A2F4A] text-left py-2 px-2 text-[#FFD700]"> </th>
+          <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-blue-500/10">Poin 1</th>
+          <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-green-500/10">Poin 2</th>
+          <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-yellow-500/10">Poin 3</th>
+          <th colSpan="1" className="text-center py-2 px-2 text-[#FFD700] bg-purple-500/10">Poin 4</th>
+          <th colSpan="8" className="text-center py-2 px-2 text-[#FFD700] bg-orange-500/10">Attendance & Attitude (Poin 5)</th>
+          <th colSpan="6" className="text-center py-2 px-2 text-[#FFD700] bg-pink-500/10">SUB SCORE CS</th>
+        </tr>
+        <tr className="border-b border-[#FFD700]/20 text-[#A7D8FF] text-[10px]">
+          <th className="sticky left-0 z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[40px]">No</th>
+          <th className="sticky left-[40px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[150px]">NAME</th>
+          <th className="sticky left-[190px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">PANEL ID</th>
+          <th className="sticky left-[290px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[100px]">DEPARTMENT</th>
+          <th className="sticky left-[390px] z-10 bg-[#1A2F4A] text-left py-2 px-2 min-w-[80px]">STATUS</th>
+          <th className="text-center py-2 px-2 min-w-[70px]">Total Chat</th>
+          <th className="text-center py-2 px-2 min-w-[70px]">Time Mgmt</th>
+          <th className="text-center py-2 px-2 min-w-[70px]">Comm Skill</th>
+          <th className="text-center py-2 px-2 min-w-[80px]">Problem Solving</th>
+          <th className="text-center py-2 px-2 min-w-[40px]">S</th>
+          <th className="text-center py-2 px-2 min-w-[40px]">I</th>
+          <th className="text-center py-2 px-2 min-w-[40px]">A</th>
+          <th className="text-center py-2 px-2 min-w-[40px]">U</th>
+          <th className="text-center py-2 px-2 min-w-[50px]">Total</th>
+          <th className="text-center py-2 px-2 min-w-[50px]">Target</th>
+          <th className="text-center py-2 px-2 min-w-[60px]">Achieve</th>
+          <th className="text-center py-2 px-2 min-w-[60px]">Presentase</th>
+          <th className="text-center py-2 px-2 min-w-[40px]">P1</th>
+          <th className="text-center py-2 px-2 min-w-[40px]">P2</th>
+          <th className="text-center py-2 px-2 min-w-[40px]">P3</th>
+          <th className="text-center py-2 px-2 min-w-[40px]">P4</th>
+          <th className="text-center py-2 px-2 min-w-[40px]">P5</th>
+        </tr>
+      </thead>
+      <tbody>
+        {paginatedCsData.map((officer, idx) => (
+          <tr key={`cs-${(csPage-1)*rowsPerPage + idx}`} className="border-b border-[#FFD700]/10 hover:bg-[#FFD700]/5">
+            <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{(csPage-1)*rowsPerPage + idx + 1}</td>
+            <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium">{officer.name}</td>
+            <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#FFD700]">{officer.panelId}</td>
+            <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{officer.dept}</td>
+            <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
+              <span className="bg-green-500/20 text-green-400 px-2 py-1 rounded text-[10px]">{officer.status}</span>
+            </td>
+            <td className="text-center py-2 px-2">{officer.cs.totalChat}</td>
+            <td className="text-center py-2 px-2">0</td>
+            <td className="text-center py-2 px-2">0</td>
+            <td className="text-center py-2 px-2">0</td>
+            <td className="text-center py-2 px-2">{officer.cs.s}</td>
+            <td className="text-center py-2 px-2">{officer.cs.i}</td>
+            <td className="text-center py-2 px-2">{officer.cs.a}</td>
+            <td className="text-center py-2 px-2">{officer.cs.u}</td>
+            <td className="text-center py-2 px-2">{officer.cs.total}</td>
+            <td className="text-center py-2 px-2">{officer.cs.target}</td>
+            <td className="text-center py-2 px-2">{officer.cs.achieve}</td>
+            <td className="text-center py-2 px-2">{officer.cs.presentase}%</td>
+            <td className="text-center py-2 px-2">0</td>
+            <td className="text-center py-2 px-2">0</td>
+            <td className="text-center py-2 px-2">0</td>
+            <td className="text-center py-2 px-2">0</td>
+            <td className="text-center py-2 px-2">0</td>
+          </tr>
+        ))}
+        {/* BOT ROW */}
+        <tr className="border-b border-[#FFD700]/10 bg-blue-900/20">
+          <td className="sticky left-0 z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">{csOfficerDataList.length + 1}</td>
+          <td className="sticky left-[40px] z-10 bg-[#1A2F4A] py-2 px-2 font-medium text-blue-400">BOT</td>
+          <td className="sticky left-[190px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">-</td>
+          <td className="sticky left-[290px] z-10 bg-[#1A2F4A] py-2 px-2 text-[#A7D8FF]">System</td>
+          <td className="sticky left-[390px] z-10 bg-[#1A2F4A] py-2 px-2">
+            <span className="bg-blue-500/20 text-blue-400 px-2 py-1 rounded text-[10px]">BOT</span>
+          </td>
+          <td className="text-center py-2 px-2">{botChatCount}</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">-</td>
+          <td className="text-center py-2 px-2">-</td>
+          <td className="text-center py-2 px-2">-</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+          <td className="text-center py-2 px-2">0</td>
+        </tr>
+      </tbody>
+    </table>
+    <PaginationControls 
+      currentPage={csPage}
+      totalPages={totalCsPages}
+      onPageChange={setCsPage}
+    />
+    {loadingChat && (
+      <div className="text-center py-4 text-[#A7D8FF]">
+        Loading chat data...
       </div>
+    )}
+  </div>
+</div>
 
       {/* FOOTER */}
       <div className="text-xs text-[#A7D8FF]/30 text-center mt-8">
