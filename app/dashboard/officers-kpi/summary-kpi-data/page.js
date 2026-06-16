@@ -1275,7 +1275,7 @@ export default function SummaryKPIDataPage() {
         </div>
       </div>
 
-      // ========== CUSTOMER SERVICE KPI ==========
+      {/* ========== CUSTOMER SERVICE KPI ========== */}
 <div className="mb-10">
   <h2 className="text-xl font-bold text-[#FFD700] mb-4">CUSTOMER SERVICE KPI</h2>
   
